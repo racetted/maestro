@@ -6,7 +6,8 @@ CFLAGS = -optc=-g -includes $(INCDIR) $(XML_DIR)/include/libxml2 \
 
 TEST_CFLAGS = -I$(XML_DIR)/include/libxml2 -L$(XML_DIR)/lib -lxml2
 
-all: log_server runcontrol
+all: prep log_server runcontrol
+
 runcontrol: prep $(OBJECTS) log_server
 	rm -f $(LIBDIR)/libruncontrol.a
 	ar rcv $(LIBDIR)/libruncontrol.a $(OBJECTS)
