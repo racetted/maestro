@@ -1,0 +1,9 @@
+domainHome=$1
+packageHome=$2
+profileDirPath=${packageHome}/etc/profile.d
+packageName=${packageHome##*/}
+profilePath=${profileDirPath}/${packageName}.sh
+mkdir -p ${profileDirPath}
+Platform=`uname -s` ; [[ $Platform = Linux ]] && Platform=${Platform}-`uname -m`
+echo "export SEQ_BIN=${packageHome}/bin" > ${profilePath}
+chmod 644 ${profilePath}
