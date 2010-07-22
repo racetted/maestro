@@ -4,8 +4,6 @@ include ../config/config.mk
 CFLAGS = -optc=-g -includes $(INCDIR) $(XML_DIR)/include/libxml2 \
 	-librmn -defines=-DM$(MACH)=1
 
-TEST_CFLAGS = -I$(XML_DIR)/include/libxml2 -L$(XML_DIR)/lib -lxml2
-
 all: prep log_server runcontrol
 
 runcontrol: prep $(OBJECTS) log_server
@@ -17,7 +15,7 @@ runcontrol: prep $(OBJECTS) log_server
 	   if test $(MACHINE) = "Linux"; then \
 	      ARCH_EXTRA="-bidon c -main main_$${component}"; \
 	   fi; \
-	   r.compile $(CFLAGS) -libpath $(LIBDIR) $(XML_DIR)/lib -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
+	   r.compile $(CFLAGS) -libpath $(LIBDIR) $(XTERN_LIB) $(XML_DIR)/lib -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
 	   cp $${component} $(BINDIR) ; \
 	done;
 
