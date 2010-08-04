@@ -1420,6 +1420,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    }
    expPathLeaf = SeqUtil_getPathLeaf( SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
+   fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    fprintf( tmpFile, "export SEQ_EXP_LEAF=%s\n", expPathLeaf);
    fprintf( tmpFile, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
    fprintf( tmpFile, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
@@ -1441,6 +1442,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    fclose(tmpFile);
    free(tmpdir);
    free(loopArgs);
+
    return filename;
 }
 
