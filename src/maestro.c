@@ -1223,7 +1223,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       }
    }
    free(extName);
-   printf( "sua submitDependencies done\n");
 }
 
 /*
@@ -1600,7 +1599,6 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) 
       status=go_submit( _signal, _flow, nodeDataPtr );
    }
    SeqNode_freeNode( nodeDataPtr );
-   printf( "sua maestro done...\n" );
    free( tmp );
    return status;
 }
