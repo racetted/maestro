@@ -72,6 +72,9 @@ typedef struct _SeqNodeData {
    char* machine;
    char* memory;
    char* cpu;
+   char* npex;
+   char* npey;
+   char* omp;
    char* masterfile;
    char* alias;
    char* args;

@@ -92,10 +92,37 @@ void SeqNode_setMasterfile ( SeqNodeDataPtr node_ptr, const char* masterfile ) {
 */
 
 void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
+   char *tmpstrtok=NULL;
+   char *tmpCpu=NULL;
    if ( cpu != NULL ) {
       free( node_ptr->cpu );
       node_ptr->cpu = malloc( strlen(cpu) + 1 );
       strcpy( node_ptr->cpu, cpu );
+      tmpCpu=strdup(cpu);
+  
+      /* parse NPEX */
+      tmpstrtok = (char*) strtok( tmpCpu, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->npex );
+	  node_ptr->npex=malloc( strlen(tmpstrtok) +1); 
+	  strcpy(node_ptr->npex, tmpstrtok);
+      }
+      /* NPEY */
+      tmpstrtok = (char*) strtok( NULL, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->npey );
+	  node_ptr->npey=malloc( strlen(tmpstrtok) +1); 
+	  strcpy(node_ptr->npey, tmpstrtok);
+      }
+      /* OMP */
+      tmpstrtok = (char*) strtok( NULL, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->omp );
+	  node_ptr->omp=malloc( strlen(tmpstrtok) +1); 
+	  strcpy(node_ptr->omp, tmpstrtok);
+      }
+   free (tmpstrtok);
+   free (tmpCpu);
    }
 }
 
@@ -395,6 +422,9 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->module = NULL;
    nodePtr->masterfile = NULL;
    nodePtr->cpu = NULL;
+   nodePtr->npex = NULL;
+   nodePtr->npey = NULL;
+   nodePtr->omp = NULL; 
    nodePtr->queue = NULL;
    nodePtr->machine = NULL;
    nodePtr->memory = NULL;

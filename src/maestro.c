@@ -1420,6 +1420,16 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    }
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
+   fprintf( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
+   if ( _nodeDataPtr-> npex != NULL ) {
+   fprintf( tmpFile, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
+   } 
+   if ( _nodeDataPtr-> npey != NULL ) {
+   fprintf( tmpFile, "export SEQ_NPEY=%s\n", _nodeDataPtr->npey);
+   }
+   if ( _nodeDataPtr-> omp != NULL ) {
+   fprintf( tmpFile, "export SEQ_OMP=%s\n", _nodeDataPtr->omp);
+   }
    fprintf( tmpFile, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
    fprintf( tmpFile, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
    loopArgs = (char*) SeqLoops_getLoopArgs( LOOP_ARGS );
