@@ -426,7 +426,23 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
 
    SeqLoopsPtr loopsPtr = _nodeDataPtr->loops;
    SeqNameValuesPtr loopArgsTmpPtr = NULL;
-   char* loopExtension = NULL;
+   char *loopExtension = NULL;
+
+   /* We're validating NpassTask here as well even though it is not a loop node
+    * It is an indexed node so we're sharing some index logic here */
+
+   /* validate NpassTask */
+   if ( _nodeDataPtr->type == NpassTask ) {
+      if( _loop_args == NULL ) {
+         raiseError( "SeqLoops_validateLoopArgs(): No index arguments found for NpassTask Node!\n" );
+      }
+      /* validate that user has given format "-l nodename=index_value" where nodename must be current node */ 
+      if( SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName )  == NULL ) {
+         raiseError( "SeqLoops_validateLoopArgs(): Invalid index argument format for NpassTask Node!\n" );
+      }
+   }
+
+   /* validate loop containers */
    if( loopsPtr != NULL ) {
       /* check if the user has given us argument for looping */
       if( _loop_args == NULL ) {
@@ -439,8 +455,9 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
       }
       SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop extension:%s\n", loopExtension );
    }
+
    /* build extension for current node if loop */
-   if( _nodeDataPtr->type == Loop ) {
+   if( _nodeDataPtr->type == Loop ||  _nodeDataPtr->type == NpassTask ) {
       loopArgsTmpPtr = _loop_args;
       while( loopArgsTmpPtr != NULL ) {
          if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {

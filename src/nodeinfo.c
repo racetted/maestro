@@ -56,6 +56,8 @@ SeqNodeType getNodeType ( const xmlChar *_node_name ) {
       nodeType = Module;
    } else if ( strcmp( _node_name, "TASK" ) == 0 ) {
       nodeType = Task;
+   } else if ( strcmp( _node_name, "NPASS_TASK" ) == 0 ) {
+      nodeType = NpassTask;
    } else if ( strcmp( _node_name, "LOOP" ) == 0 ) {
       nodeType = Loop;
    } else if ( strcmp( _node_name, "CASE" ) == 0 ) {
@@ -86,8 +88,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
          nodeName = nodePtr->name;
          propertiesPtr = nodePtr->properties;
          depType = xmlGetProp( nodePtr, "type" );
-         if ( strcmp( depType, "task" ) == 0 ) {
-            SeqUtil_TRACE( "nodeinfo.parseDepends() Parsing Node Type Dependency\n");
+         SeqUtil_TRACE( "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
+         if ( strcmp( depType, "task" ) == 0 || strcmp( depType, "npass_task" ) == 0 ) {
             depUser = xmlGetProp( nodePtr, "user" );
             depExp = xmlGetProp( nodePtr, "exp" );
             depName = xmlGetProp( nodePtr, "dep_name" );
@@ -104,7 +106,12 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depLocalIndex: %s\n", depLocalIndex );
-            SeqNode_addNodeDependency ( _nodeDataPtr, depName, depPath, depUser, depExp, depStatus, depIndex, depLocalIndex );
+	    if ( strcmp( depType, "npass_task" ) == 0 ) { 
+               SeqNode_addNodeDependency ( _nodeDataPtr, NpassDependancy, depName, depPath, depUser, depExp, depStatus, depIndex, depLocalIndex, depHour );
+            } else {
+               SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, depName, \
+	                depPath, depUser, depExp, depStatus, depIndex, depLocalIndex, depHour );
+	    }
             SeqUtil_TRACE( "nodeinfo.parseDepends() done\n" );
             xmlFree( depName );
             xmlFree( depIndex );
@@ -180,7 +187,7 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    xmlNodePtr nodePtr;
    const xmlChar *nodeName, *propertyName;
    xmlAttrPtr propertiesPtr;
-   int i=0;
+   int i=0, isSubmit=1;
    char* tmpstring;
    SeqUtil_TRACE( "nodeinfo.parseSubmits() called\n" );
    if (_result) {
@@ -189,11 +196,14 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
          propertiesPtr = nodePtr->properties;
+	 isSubmit = 0;
          while (propertiesPtr != NULL) {
             propertyName = propertiesPtr->name;
 
             SeqUtil_TRACE( "nodeinfo.parseSubmits() submits:%s\n", propertiesPtr->children->content);
+            SeqUtil_TRACE( "nodeinfo.parseSubmits() property:%s\n",propertyName);
             if ( strcmp( propertyName, "sub_name" ) == 0 ) {
+	       isSubmit = 1;
                if (_nodeDataPtr->type == Task ) {
                    tmpstring=strdup(_nodeDataPtr->container);
                    SeqUtil_stringAppend(&tmpstring,"/");
@@ -204,11 +214,17 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
                    SeqUtil_stringAppend(&tmpstring,"/");
                    SeqUtil_stringAppend(&tmpstring,propertiesPtr->children->content);
                }
-               SeqNode_addSubmit(_nodeDataPtr, tmpstring);
-               free(tmpstring);
-            }
+            } else if ( strcmp( propertyName, "type" ) == 0 && strcmp( propertiesPtr->children->content, "user" ) == 0  ) {
+	       isSubmit = 0;
+	       SeqUtil_TRACE( "nodeinfo.parseSubmits() got user submit node\n" );
+	    }
+
             propertiesPtr = propertiesPtr->next;
          }
+         if( isSubmit == 1 ) {
+	    SeqNode_addSubmit(_nodeDataPtr, tmpstring);
+         }
+         free(tmpstring);
       }
    }
 }
@@ -432,7 +448,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
           }
 
       } else {
-         if( _nodeDataPtr->type == Task )  {
+         if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask )  {
              SeqUtil_stringAppend( &taskPath, "/" );
              SeqUtil_stringAppend( &taskPath, tmpstrtok );
          }

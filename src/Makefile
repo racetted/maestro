@@ -20,7 +20,7 @@ runcontrol: prep $(OBJECTS) log_server
 	done;
 
 runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h
-	r.compile $(CFLAGS) -src runcontrollib.c
+	r.compile $(CFLAGS) -librmn -src runcontrollib.c
 
 SeqNode.o:	SeqNode.c SeqNode.h
 	$(CC) -g -c SeqNode.c;
@@ -35,6 +35,9 @@ SeqNameValues.o:	SeqNameValues.c
 
 SeqLoopsUtil.o:	SeqLoopsUtil.c
 	$(CC) -g -c SeqLoopsUtil.c
+
+SeqDatesUtil.o:	SeqDatesUtil.c
+	r.compile $(CFLAGS) -src SeqDatesUtil.c
 
 SeqUtil.o:	SeqUtil.c
 	$(CC) -g -c SeqUtil.c
@@ -51,6 +54,7 @@ nodeinfo.o:	nodeinfo.c nodeinfo.h runcontrollib.h
 maestro.o:	maestro.c maestro.h nodeinfo.h runcontrollib.h nodelogger.h tictac.h
 	echo CFLAGS=$(CFLAGS) ; \
 	r.compile $(CFLAGS) -libappl maestro -src maestro.c
+
 prep:
 	if [ ! -d $(SWDEST) ] ; then \
 	   echo "Creating $(SWDEST)" ; \

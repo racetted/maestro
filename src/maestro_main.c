@@ -8,51 +8,12 @@
 /***********************************************************************************
 * name: maestro
 *
-* author: Douglas Bender
+* author: cmois
 *
 * description: maestro - operational run control manager
 *
-* revision: March 1993 Douglas Bender
-*                      - maestrojinfo now sets variables with hour extensions
+* revision: 
 *
-*           August 1993 Douglas Bender
-*                      - catchup feature added
-*
-*           May 1994 Douglas Bender
-*                    - ignore dependency if the dependent job has a catchup value of 9
-*
-*           Sept 1994 Douglas Bender
-*                     - cleanup and port to nec
-*
-*           Nov 1994 Douglas Bender
-*                     - abortnoxfer option added
-*
-*           Jun 1995 Douglas Bender
-*                    - maestrolock added
-*                    - maestro exported to the NEC
-*           Sep 1995 Douglas Bender
-*                    - "endmodel" and "endnoxfermodel" added
-*                    - "event" dependancy code added
-*
-*           Feb 1996 Douglas Bender
-*                    - verify $workingdir
-*
-*           Nov 1996 Douglas Bender
-*                    - modified "catchup" code for individual runs
-*
-*           Feb 1997 Douglas Bender
-*                    - converted to perl
-*
-*           July 1999 Douglas Bender
-*                    - new release of perl prefers "defined" when
-*                      testing for EOF. Tightened up maestrojinfo routine
-*
-*           September 1999 Ping An Tan
-*                   - Converted to C language and archived into runcontrollib.a library.
-*                   - The number of parameters for the maestro procedure
-*                     on the runcontrollib.a library have been changed.
-*                   - Using the maestro procedure from the runcontrollib.a library.
-*                   
 *************************************************************************************/
 static void printSeqUsage()
 {

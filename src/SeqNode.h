@@ -5,6 +5,7 @@
 
 typedef enum _SeqDependsType {
    NodeDependancy,
+   NpassDependancy,
    DateDependancy
 } SeqDependsType;
 
@@ -15,8 +16,9 @@ typedef enum _SeqDependsScope {
 } SeqDependsScope;
 
 typedef enum _SeqNodeType {
-   Task,
    Family,
+   Task,
+   NpassTask,
    Module,
    Loop,
    Case,

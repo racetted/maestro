@@ -7,6 +7,7 @@
 #include "SeqUtil.h"
 static char* FamilyTypeString = "Family";
 static char* TaskTypeString = "Task";
+static char* NpassTaskTypeString = "NpassTask";
 static char* LoopTypeString = "Loop";
 static char* CaseTypeString = "Case";
 static char* CaseItemTypeString = "CaseItem";
@@ -19,6 +20,9 @@ char* SeqNode_getTypeString( SeqNodeType _node_type ) {
    switch (_node_type) {
       case Task:
          typePtr = TaskTypeString;
+         break;
+      case NpassTask:
+         typePtr = NpassTaskTypeString;
          break;
       case Family:
          typePtr = FamilyTypeString;
@@ -273,14 +277,14 @@ void SeqNode_setDepsNameValue (SeqNameValuesPtr name_values_ptr, char* name, cha
 }
 
 /* add dependency of type node i.e. tasks/family  */
-void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, char* dep_node_name, char* dep_node_path,
-                         char* dep_user, char* dep_exp, char* dep_status, char* dep_index, char* local_index ) {
+void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, char* dep_node_name, char* dep_node_path,
+                         char* dep_user, char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
    SeqUtil_TRACE( "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_user=%s, dep_exp=%s, dep_status=%s dep_index=%s, local_index=%s\n",
       dep_node_name, dep_node_path, dep_user, dep_exp, dep_status, dep_index, local_index );
    deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
-   deps_ptr->type = NodeDependancy;
+   deps_ptr->type = type;
    nameValuesPtr = deps_ptr->dependencyItem;
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
    SeqNode_setDepsNameValue ( nameValuesPtr, "NAME", dep_node_name );
@@ -299,6 +303,9 @@ void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, char* dep_node_name, c
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
    SeqNode_setDepsNameValue ( nameValuesPtr, "LOCAL_INDEX", local_index );
+
+   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
+   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep_hour );
 }
 
 /* add dependency of type date i.e. not sure how we will implement this yet */
@@ -486,14 +493,14 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       if ( strcmp( node_ptr->taskPath, "" ) == 0 )
          printf("node.configpath=\n");
       else
-         if( node_ptr->type == Task ) {
+         if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
             printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
          } else {
             printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->name );
          }
    }
 
-   if( (showAll || showTaskPath) && node_ptr->type == Task ) {
+   if( (showAll || showTaskPath) && (node_ptr->type == Task || node_ptr->type == NpassTask) ) {
       if ( strcmp( node_ptr->taskPath, "" ) == 0 )
          printf("node.taskpath=\n");
       else
@@ -649,8 +656,8 @@ void seqNodeUnitTest () {
    SeqNode_setNodeName( nodeDataPtr, "test_nodename" );
    SeqNode_setContainer( nodeDataPtr, "testsuite/assimilation/00" );
    /* SeqNode_setMasterfile ( nodeDataPtr, "/users/dor/afsi/dor/sul/.suites/testsuite/sequencing/flow/testsuite.xml" ); */
-   SeqNode_addNodeDependency( nodeDataPtr, "testsuite/assimilation/00/testnode", "afsisul", "testpath", "testsuite", "complete" ,"", "");
-   SeqNode_addNodeDependency( nodeDataPtr, "testsuite/assimilation/00/testnode1", "afsisul", "testpath1", "testsuite", "complete","", "" );
+   SeqNode_addNodeDependency( nodeDataPtr, NodeDependancy, "testsuite/assimilation/00/testnode", "afsisul", "testpath", "testsuite", "complete" ,"", "", "");
+   SeqNode_addNodeDependency( nodeDataPtr, NodeDependancy, "testsuite/assimilation/00/testnode1", "afsisul", "testpath1", "testsuite", "complete","", "", "" );
    /*
    SeqNode_addNodeDependency( nodeDataPtr, "testsuite/assimilation/00/testnode1", "afsisul", "testsuite", "complete" );
    SeqNode_addDateDependency ( nodeDataPtr, "2008/02/18-23:50" );
