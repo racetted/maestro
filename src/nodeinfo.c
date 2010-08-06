@@ -321,7 +321,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
    char query[256],submitsQuery[256];
 
    char *tmpstrtok = NULL, *tmpJobPath = NULL, *suiteName = NULL, *module = NULL;
-   char *taskPath = NULL;
+   char *taskPath = NULL, *intramodulePath = NULL;
    int i = 0, count=0, totalCount = 0;
    xmlDocPtr doc = NULL;
    xmlAttrPtr propertiesPtr = NULL;
@@ -381,6 +381,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
       /* read the new flow file described in the module */
 
       if ( _nodeDataPtr->type == Module ) { 
+       
+         /* reset the intramodule path */
+         free(intramodulePath);
+         intramodulePath = NULL;
+	 SeqUtil_stringAppend( &intramodulePath, "/" );
+
          /* read the flow file located in the module depot */
          memset( xml_file,'\0',sizeof xml_file);
          sprintf ( xml_file, "%s/modules/%s/flow.xml",_seq_exp_home, tmpstrtok ); 
@@ -439,12 +445,21 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
          if (_nodeDataPtr->type == Family) {
             SeqUtil_stringAppend( &taskPath, "/" );
             SeqUtil_stringAppend( &taskPath, tmpstrtok );
+	    free(intramodulePath);
+            intramodulePath = NULL;
+	    SeqUtil_stringAppend( &intramodulePath, taskPath );
+ 
+
+
          }
          if (_nodeDataPtr->type == Module) {
             free(taskPath);
             taskPath = NULL;
             SeqUtil_stringAppend( &taskPath, "/" );
             SeqUtil_stringAppend( &taskPath, tmpstrtok );
+	    free(intramodulePath);
+            intramodulePath = NULL;
+	    SeqUtil_stringAppend( &intramodulePath, taskPath );
           }
 
       } else {
@@ -454,16 +469,15 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
          }
       } 
 
-      /* get the next token */
-      tmpstrtok = (char*) strtok(NULL,"/");
-
       /* the containing module is set if the current node
       is a module and is not the last node  */
       if (  _nodeDataPtr->type == Module && tmpstrtok != NULL ) {
          free( module );
-         module = malloc ( strlen(currentFlowNode) + 1 );
-         strcpy( module, currentFlowNode );
+         module = malloc ( strlen(tmpstrtok) +1);
+         strcpy( module, tmpstrtok );
       }
+      /* get the next token */
+      tmpstrtok = (char*) strtok(NULL,"/");
 
       count++;
 
@@ -487,6 +501,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** Node Information **********\n" );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() node path:%s\n", _jobPath );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() container=%s\n", _nodeDataPtr->container );
+   SeqUtil_TRACE ( "nodeinfo.getFlowInfo() intramodule_container=%s\n", intramodulePath );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() taskPath=%s\n", taskPath );
    SeqNode_setInternalPath( _nodeDataPtr, taskPath );
    strcpy ( query, "(@*)");
@@ -537,7 +552,9 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
       xmlXPathFreeObject (result);
    }
 
+   SeqNode_setSuiteName( _nodeDataPtr, suiteName ); 
    SeqNode_setModule( _nodeDataPtr, module );
+   SeqNode_setIntramoduleContainer( _nodeDataPtr, intramodulePath );
    /* SeqNode_setMasterfile( _nodeDataPtr, xml_file ); */
    
    xmlXPathFreeContext(context);
@@ -560,8 +577,8 @@ void getSchedulerInfo ( SeqNodeDataPtr  _nodeDataPtr, char* _jobPath, char* _seq
          fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->taskPath ) + strlen( _seq_exp_home ) + 18 );
          sprintf( fullpath_cfg_file, "%s/modules%s.cfg", _seq_exp_home, _nodeDataPtr->taskPath );
       } else {
-         fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->name ) + strlen( _seq_exp_home ) + 18 );
-         sprintf( fullpath_cfg_file, "%s/modules%s.cfg", _seq_exp_home, _nodeDataPtr->name );
+         fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->nodeName) + strlen( _nodeDataPtr->name ) + strlen( _seq_exp_home ) + 20 );
+         sprintf( fullpath_cfg_file, "%s/modules%s/container.cfg", _seq_exp_home, _nodeDataPtr->name );
       }
       SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() cfg_file=%s\n", fullpath_cfg_file );
 

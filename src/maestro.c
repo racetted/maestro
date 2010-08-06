@@ -1444,7 +1444,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    char *extName = NULL;
    char *filename = NULL;
    char pidbuf[100];
-   char *tmpdir = NULL, *loopArgs = NULL, *expPathLeaf = NULL;
+   char *tmpdir = NULL, *loopArgs = NULL;
    FILE *tmpFile = NULL;
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -1465,9 +1465,18 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    if ((tmpFile = fopen(filename,"w+")) == NULL) {
       raiseError( "maestro cannot write to file:%s\n",filename );
    }
-   expPathLeaf = SeqUtil_getPathLeaf( SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
-   fprintf( tmpFile, "export SEQ_EXP_LEAF=%s\n", expPathLeaf);
+   fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
+   fprintf( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
+   if ( _nodeDataPtr-> npex != NULL ) {
+   fprintf( tmpFile, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
+   } 
+   if ( _nodeDataPtr-> npey != NULL ) {
+   fprintf( tmpFile, "export SEQ_NPEY=%s\n", _nodeDataPtr->npey);
+   }
+   if ( _nodeDataPtr-> omp != NULL ) {
+   fprintf( tmpFile, "export SEQ_OMP=%s\n", _nodeDataPtr->omp);
+   }
    fprintf( tmpFile, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
    fprintf( tmpFile, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
    loopArgs = (char*) SeqLoops_getLoopArgs( LOOP_ARGS );
@@ -1484,10 +1493,10 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    fprintf( tmpFile, "export SEQ_XFER=%s\n", flow );
    fprintf( tmpFile, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
 
-   free(expPathLeaf);
    fclose(tmpFile);
    free(tmpdir);
    free(loopArgs);
+
    return filename;
 }
 
@@ -1508,6 +1517,7 @@ Inputs:
 int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) {
    char tmpdir[256], workdir[SEQ_MAXFIELD];
    char *seq_exp_home = NULL, *seq_soumet = NULL, *tmp = NULL;
+   char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL;
    SeqNodeDataPtr nodeDataPtr = NULL;
    int status = 1; /* starting with error condition */
    DIR *dirp = NULL;
@@ -1599,6 +1609,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) 
       status=go_submit( _signal, _flow, nodeDataPtr );
    }
    SeqNode_freeNode( nodeDataPtr );
+   free( loopExtension );
+   free( nodeExtension );
+   free( extension );
    free( tmp );
    return status;
 }

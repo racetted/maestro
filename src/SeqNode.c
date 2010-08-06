@@ -64,11 +64,16 @@ void SeqNode_setNodeName ( SeqNodeDataPtr node_ptr, const char* nodeName ) {
 void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module ) {
    if ( module != NULL ) {
       free( node_ptr->module );
-      node_ptr->module = (char *) SeqUtil_fixPath( module );
-      /* 
       node_ptr->module = malloc( strlen(module) + 1 );
       strcpy( node_ptr->module, module );
-      */
+   }
+}
+
+void SeqNode_setIntramoduleContainer ( SeqNodeDataPtr node_ptr, const char* intramodule_container ) {
+   if( intramodule_container != NULL ) {
+      free( node_ptr->intramodule_container );
+      node_ptr->intramodule_container = malloc( strlen(intramodule_container) + 1 );
+      strcpy( node_ptr->intramodule_container, intramodule_container );
    }
 }
 
@@ -91,10 +96,37 @@ void SeqNode_setMasterfile ( SeqNodeDataPtr node_ptr, const char* masterfile ) {
 */
 
 void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
+   char *tmpstrtok=NULL;
+   char *tmpCpu=NULL;
    if ( cpu != NULL ) {
       free( node_ptr->cpu );
       node_ptr->cpu = malloc( strlen(cpu) + 1 );
       strcpy( node_ptr->cpu, cpu );
+      tmpCpu=strdup(cpu);
+  
+      /* parse NPEX */
+      tmpstrtok = (char*) strtok( tmpCpu, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->npex );
+	  node_ptr->npex=malloc( strlen(tmpstrtok) +1); 
+	  strcpy(node_ptr->npex, tmpstrtok);
+      }
+      /* NPEY */
+      tmpstrtok = (char*) strtok( NULL, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->npey );
+	  node_ptr->npey=malloc( strlen(tmpstrtok) +1); 
+	  strcpy(node_ptr->npey, tmpstrtok);
+      }
+      /* OMP */
+      tmpstrtok = (char*) strtok( NULL, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->omp );
+	  node_ptr->omp=malloc( strlen(tmpstrtok) +1); 
+	  strcpy(node_ptr->omp, tmpstrtok);
+      }
+   free (tmpstrtok);
+   free (tmpCpu);
    }
 }
 
@@ -122,11 +154,11 @@ void SeqNode_setQueue ( SeqNodeDataPtr node_ptr, const char* queue ) {
    }
 }
 
-void SeqNode_setConfigFile ( SeqNodeDataPtr node_ptr, const char* config ) {
-   if ( config != NULL ) {
-      free( node_ptr->cfg_file );
-      node_ptr->cfg_file = malloc( strlen(config) + 1 );
-      strcpy( node_ptr->cfg_file, config );
+void SeqNode_setSuiteName ( SeqNodeDataPtr node_ptr, const char* suiteName ) {
+   if ( suiteName != NULL ) {
+      free( node_ptr->suiteName );
+      node_ptr->suiteName = malloc( strlen(suiteName) + 1 );
+      strcpy( node_ptr->suiteName, suiteName );
    }
 }
 
@@ -393,9 +425,13 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->name = NULL;
    nodePtr->nodeName = NULL;
    nodePtr->container = NULL;
+   nodePtr->intramodule_container = NULL;
    nodePtr->module = NULL;
    nodePtr->masterfile = NULL;
    nodePtr->cpu = NULL;
+   nodePtr->npex = NULL;
+   nodePtr->npey = NULL;
+   nodePtr->omp = NULL; 
    nodePtr->queue = NULL;
    nodePtr->machine = NULL;
    nodePtr->memory = NULL;
@@ -413,18 +449,19 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->data = NULL;
    nodePtr->cfg_file = NULL;
    nodePtr->taskPath = NULL;
+   nodePtr->suiteName = NULL;
    nodePtr->extension = NULL;
    nodePtr->datestamp = NULL;
    nodePtr->workdir = NULL;
    SeqNode_setName( nodePtr, "" );
    SeqNode_setContainer( nodePtr, "" );
+   SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
    /* SeqNode_setMasterfile( nodePtr, "" ); */
    SeqNode_setCpu( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
    SeqNode_setMachine( nodePtr, "dorval-ib" );
    SeqNode_setMemory( nodePtr, "40M" );
-   SeqNode_setConfigFile( nodePtr, "" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setAlias( nodePtr, "" );
    SeqNode_setInternalPath( nodePtr, "" );
@@ -466,7 +503,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       printf("node.leaf=%s\n", node_ptr->nodeName );
      
       printf("node.module=%s\n", node_ptr->module );
-      printf("node.container=%s\n", node_ptr->container );
+      printf("node.intramodule_container=%s\n", node_ptr->intramodule_container );
       /*
       printf("alias=%s\n", node_ptr->alias );
       printf("args=%s\n", node_ptr->args );
@@ -496,7 +533,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
          if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
             printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
          } else {
-            printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->name );
+            printf("node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
          }
    }
 
@@ -509,7 +546,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
 
    if( showAll ) {
 
-      printf( "node.masterfile=${SEQ_EXP_HOME}/modules%s/flow.xml\n", node_ptr->module );
+      printf( "node.flow=${SEQ_EXP_HOME}/modules/%s/flow.xml\n", node_ptr->module );
       /*printf("************ Node Specific Data \n"); */
       nameValuesPtr = node_ptr->data;
       while (nameValuesPtr != NULL ) {
@@ -611,6 +648,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->name ) ;
       free( seqNodeDataPtr->nodeName );
       free( seqNodeDataPtr->container ) ;
+      free( seqNodeDataPtr->intramodule_container ) ;
       free( seqNodeDataPtr->module ) ;
       free( seqNodeDataPtr->masterfile ) ;
       free( seqNodeDataPtr->alias ) ;
@@ -619,6 +657,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->cpu ) ;
       free( seqNodeDataPtr->cfg_file ) ;
       free( seqNodeDataPtr->taskPath ) ;
+      free( seqNodeDataPtr->suiteName ) ;
       free( seqNodeDataPtr->memory ) ;
       free( seqNodeDataPtr->machine ) ;
       free( seqNodeDataPtr->queue ) ;

@@ -17,6 +17,6 @@ include config/config.mk
 
 all: install
 install:
-	cd src; gmake runcontrollib; cd ..
+	cd src; gmake clean; gmake; cd ..
 	cd ssm; gmake ssm; cd ..
 clean:
