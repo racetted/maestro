@@ -1521,7 +1521,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) 
    SeqNodeDataPtr nodeDataPtr = NULL;
    int status = 1; /* starting with error condition */
    DIR *dirp = NULL;
-   SeqUtil_setDebug(1);
+   SeqUtil_setDebug(0);
    printf( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" );
    printf( "maestro: node=%s signal=%s flow=%s loop_args=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops));
 
