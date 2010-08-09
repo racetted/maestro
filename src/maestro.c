@@ -937,6 +937,8 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    sprintf( nodeFullPath, "%s/modules/%s.tsk", SEQ_EXP_HOME, _nodeDataPtr->taskPath );
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
    /* check catchup value of the node */
+   printf( "SUA go_submit nodeDataPtr->catchup=%d catchup=%d\n", _nodeDataPtr->catchup, catchup );
+   printf( "SUA go_submit nodeDataPtr->name=%s \n", _nodeDataPtr->name);
    if (_nodeDataPtr->catchup > catchup) {
       if (_nodeDataPtr->catchup == SEQ_CATCHUP_DISCR) {
          printf("nodelogger: -n %s -l %s \"%s\"\n", _nodeDataPtr->name, _nodeDataPtr->extension, CATCHUP_DISCR_MSG );
@@ -1573,6 +1575,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) 
    */
    SeqUtil_TRACE( "maestro() using submit script=%s\n", OCSUB );
    nodeDataPtr = nodeinfo( _node, "all" );
+   printf("SUA after nodeinfo call catchup=%d\n", nodeDataPtr->catchup );
    SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
    SeqNode_setWorkdir( nodeDataPtr, workdir );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );

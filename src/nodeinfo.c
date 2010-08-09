@@ -571,57 +571,54 @@ void getSchedulerInfo ( SeqNodeDataPtr  _nodeDataPtr, char* _jobPath, char* _seq
    int startTagFound = 0;
    char* fullpath_cfg_file = NULL;
    char line[256], attrName[50], attrValue[50];
-
-   if ( _nodeDataPtr->cfg_file != NULL ) {
-      if ( _nodeDataPtr->type == Task ) {
-         fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->taskPath ) + strlen( _seq_exp_home ) + 18 );
-         sprintf( fullpath_cfg_file, "%s/modules%s.cfg", _seq_exp_home, _nodeDataPtr->taskPath );
-      } else {
-         fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->nodeName) + strlen( _nodeDataPtr->name ) + strlen( _seq_exp_home ) + 20 );
-         sprintf( fullpath_cfg_file, "%s/modules%s/container.cfg", _seq_exp_home, _nodeDataPtr->name );
-      }
-      SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() cfg_file=%s\n", fullpath_cfg_file );
-
-      if ( (cfgFilePtr = fopen( fullpath_cfg_file, "r" )) == NULL ) {
-         SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() unable to open cfg_file=%s\n", fullpath_cfg_file );
-      } else {
-         /* the seq scheduler info for the node starts and ends with the <seq_scheduler> tag in
-            the config file */
-         while ( fgets( line, 256, cfgFilePtr ) != NULL && startTagFound == 0) {
-            if( strstr( line, "<seq_scheduler>" ) != NULL ) {
-               startTagFound = 1;
-            }
-         }
-         if ( startTagFound == 1 ) {
-            while ( fgets( line, 256, cfgFilePtr ) != NULL && strstr( line, "</seq_scheduler>" ) == NULL ) {
-               if ( sscanf( line, "%*s SEQ_ATTR %s %s", attrName, attrValue ) == 2 ) {
-                  SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() attrName=%s attrValue=%s\n", attrName, attrValue );
-                  if ( strcmp( attrName, "cpu" ) == 0 ) {
-                     SeqNode_setCpu( _nodeDataPtr, attrValue );
-                  } else if ( strcmp( attrName, "machine" ) == 0 ) {
-                     SeqNode_setMachine( _nodeDataPtr, attrValue );
-                  } else if ( strcmp( attrName, "queue" ) == 0 ) {
-                     SeqNode_setQueue( _nodeDataPtr, attrValue );
-                  } else if ( strcmp( attrName, "memory" ) == 0 ) {
-                     SeqNode_setMemory( _nodeDataPtr, attrValue );
-                  } else if ( strcmp( attrName, "mpi" ) == 0 ) {
-                     _nodeDataPtr->mpi = atoi( attrValue );
-                  } else if ( strcmp( attrName, "wallclock" ) == 0 ) {
-                     _nodeDataPtr->wallclock = atoi( attrValue );
-                  } else if ( strcmp( attrName, "catchup" ) == 0 ) {
-                     _nodeDataPtr->catchup = atoi( attrValue );
-                  } else {
-                     printf ( "nodeinfo.getSchedulerInfo() WARNING: Unprocessed attribute=%s \nfile=%s\nline=%s\n", attrName, fullpath_cfg_file, line );
-                  }
-               } else {
-                  printf ( "nodeinfo.getSchedulerInfo() ERROR: Invalid syntax\nfile=%s\nline=%s\n", fullpath_cfg_file, line );
-               }
-            }
-         }
-         fclose( cfgFilePtr );
-      }
-      free( fullpath_cfg_file );
+   if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
+      fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->taskPath ) + strlen( _seq_exp_home ) + 18 );
+      sprintf( fullpath_cfg_file, "%s/modules%s.cfg", _seq_exp_home, _nodeDataPtr->taskPath );
+   } else {
+      fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->nodeName) + strlen( _nodeDataPtr->name ) + strlen( _seq_exp_home ) + 20 );
+      sprintf( fullpath_cfg_file, "%s/modules%s/container.cfg", _seq_exp_home, _nodeDataPtr->name );
    }
+   SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() cfg_file=%s\n", fullpath_cfg_file );
+
+   if ( (cfgFilePtr = fopen( fullpath_cfg_file, "r" )) == NULL ) {
+      SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() unable to open cfg_file=%s\n", fullpath_cfg_file );
+   } else {
+      /* the seq scheduler info for the node starts and ends with the <seq_scheduler> tag in
+         the config file */
+      while ( fgets( line, 256, cfgFilePtr ) != NULL && startTagFound == 0) {
+         if( strstr( line, "<seq_scheduler>" ) != NULL ) {
+            startTagFound = 1;
+         }
+      }
+      if ( startTagFound == 1 ) {
+         while ( fgets( line, 256, cfgFilePtr ) != NULL && strstr( line, "</seq_scheduler>" ) == NULL ) {
+            if ( sscanf( line, "%*s SEQ_ATTR %s %s", attrName, attrValue ) == 2 ) {
+               SeqUtil_TRACE ( "nodeinfo.getSchedulerInfo() attrName=%s attrValue=%s\n", attrName, attrValue );
+               if ( strcmp( attrName, "cpu" ) == 0 ) {
+                  SeqNode_setCpu( _nodeDataPtr, attrValue );
+               } else if ( strcmp( attrName, "machine" ) == 0 ) {
+                  SeqNode_setMachine( _nodeDataPtr, attrValue );
+               } else if ( strcmp( attrName, "queue" ) == 0 ) {
+                  SeqNode_setQueue( _nodeDataPtr, attrValue );
+               } else if ( strcmp( attrName, "memory" ) == 0 ) {
+                  SeqNode_setMemory( _nodeDataPtr, attrValue );
+               } else if ( strcmp( attrName, "mpi" ) == 0 ) {
+                  _nodeDataPtr->mpi = atoi( attrValue );
+               } else if ( strcmp( attrName, "wallclock" ) == 0 ) {
+                  _nodeDataPtr->wallclock = atoi( attrValue );
+               } else if ( strcmp( attrName, "catchup" ) == 0 ) {
+                  _nodeDataPtr->catchup = atoi( attrValue );
+               } else {
+                  printf ( "nodeinfo.getSchedulerInfo() WARNING: Unprocessed attribute=%s \nfile=%s\nline=%s\n", attrName, fullpath_cfg_file, line );
+               }
+            } else {
+               printf ( "nodeinfo.getSchedulerInfo() ERROR: Invalid syntax\nfile=%s\nline=%s\n", fullpath_cfg_file, line );
+            }
+         }
+      }
+      fclose( cfgFilePtr );
+   }
+   free( fullpath_cfg_file );
 }
 
 void test() {

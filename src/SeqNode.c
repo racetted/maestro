@@ -447,7 +447,6 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->siblings = NULL;
    nodePtr->loops = NULL;
    nodePtr->data = NULL;
-   nodePtr->cfg_file = NULL;
    nodePtr->taskPath = NULL;
    nodePtr->suiteName = NULL;
    nodePtr->extension = NULL;
@@ -655,7 +654,6 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->args ) ;
       free( seqNodeDataPtr->errormsg ) ;
       free( seqNodeDataPtr->cpu ) ;
-      free( seqNodeDataPtr->cfg_file ) ;
       free( seqNodeDataPtr->taskPath ) ;
       free( seqNodeDataPtr->suiteName ) ;
       free( seqNodeDataPtr->memory ) ;

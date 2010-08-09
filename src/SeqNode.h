@@ -104,9 +104,6 @@ typedef struct _SeqNodeData {
    /* relative node path within suite task dir structure */
    char* taskPath;
 
-   /* relative path to the config file */
-   char* cfg_file;
-
    /* loop_extensions */
    char* extension;
 
