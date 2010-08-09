@@ -1,6 +1,6 @@
 # this file contains common config that is sourced by all makefiles
 WHO_I_AM=$(shell whoami)
-VERSION=1.0.0
+VERSION=1.0.1
 MACHINE=$(shell uname -s)
 ARCH=$(MACHINE)
 SWDEST=$(shell pwd)/../bin/$(ARCH)
