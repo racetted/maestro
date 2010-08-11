@@ -59,8 +59,8 @@ prep:
 	if [ ! -d $(SWDEST) ] ; then \
 	   echo "Creating $(SWDEST)" ; \
 	   mkdir -p $(SWDEST); mkdir $(SWDEST)/lib;mkdir $(SWDEST)/include; mkdir $(SWDEST)/bin; \
-	fi ; 
-	$(COMPILER_SSM_CMD)
+	fi ; \
+	eval $(COMPILER_SSM_CMD)
 
 log_server: nodelogger_svr.c initvar.c LogServerUtil.c SeqUtil.c SeqListNode.c
 	cc nodelogger_svr.c initvar.c LogServerUtil.c SeqUtil.c SeqListNode.c -o nodelogger_svr; \

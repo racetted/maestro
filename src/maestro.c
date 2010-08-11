@@ -1146,7 +1146,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char depUser[12], depExp[256], depNode[256], depArgs[SEQ_MAXFIELD], depDatestamp[20];
    char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD];
    SeqNameValuesPtr loopArgsPtr = NULL;
-   char *extName = NULL, *tmpPath = NULL;
+   char *extName = NULL, *tmpPath = NULL, *submitDepArgs = NULL;
    int submitCode = 0;
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
@@ -1175,15 +1175,19 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                &depUser, &depExp, &depNode, &depDatestamp, &depArgs );
             printf( "maestro.submitDependencies() waited file data depUser:%s depExp:%s depNode:%s depDatestamp:%s depArgs:%s\n", 
                depUser, depExp, depNode, depDatestamp, depArgs );
+            if ( strlen( depArgs ) > 0 ) {
+	       SeqUtil_stringAppend( &submitDepArgs, "-l" );
+	    }
+	    SeqUtil_stringAppend( &submitDepArgs, depArgs );
             if( strcmp( depUser, USERNAME ) == 0 && strcmp( depExp, EXPNAME ) != 0 ) {
                /* different exp, same user */
                tmpPath = (char*) SeqUtil_getExpPath( depUser, depExp );
 	       if ( getenv("SEQ_BIN") != NULL ) {
                    sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", 
-		                        tmpPath, depDatestamp, getenv("SEQ_BIN"), depNode, depArgs );
+		                        tmpPath, depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
                } else {
                    sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", 
-		                        tmpPath, depDatestamp, depNode, depArgs );
+		                        tmpPath, depDatestamp, depNode, submitDepArgs );
 	       }
 	       printf( "submitDependencies cmd: %s\n", submitCmd );
                submitCode = system(submitCmd);
@@ -1191,16 +1195,11 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
 	       tmpPath = NULL;
             } else {
                /* for now, we treat the rest as same exp, same user */
-	       /*
-               if( depArgs != NULL && strlen( depArgs ) > 0 ) {
-                  SeqLoops_parseArgs(&loopArgsPtr, depArgs);
-               }
-	       */
                /* maestro ( depNode, "submit", "continue" , loopArgsPtr ); */
 	       if ( getenv("SEQ_BIN") != NULL ) {
-                  sprintf( submitCmd, "(export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", depDatestamp, getenv("SEQ_BIN"), depNode, depArgs );
+                  sprintf( submitCmd, "(export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
                } else {
-                  sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, depArgs );
+                  sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, submitDepArgs );
 	       }
 	       printf( "submitDependencies cmd: %s\n", submitCmd );
                submitCode = system(submitCmd);
@@ -1209,10 +1208,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             if( submitCode != 0 ) {
 	       raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
             }
-	    /*
-            SeqNameValues_deleteWholeList( &loopArgsPtr );
-            loopArgsPtr = NULL;
-	    */
+	    submitDepArgs = NULL;
          }
          fclose(waitedFile);
 
