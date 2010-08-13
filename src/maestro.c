@@ -36,7 +36,7 @@ static int go_abort(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
 static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPtr);
 static int go_begin(char *_signal, char *_flow ,const SeqNodeDataPtr nodeDataPtr);
 static int go_end(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPtr);
-static int go_submit(const char *signal, char *_flow ,const SeqNodeDataPtr nodeDataPtr );
+static int go_submit(const char *signal, char *_flow ,const SeqNodeDataPtr nodeDataPtr, int ignoreAllDeps );
 
 /* deal with containers states */
 static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow );
@@ -157,7 +157,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
       /* issue an appropriate message, then rerun the node */
       printf( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
       nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,"BOMBED: it has been resubmitted",_nodeDataPtr->datestamp);
-      go_submit( "submit", _flow , _nodeDataPtr );
+      go_submit( "submit", _flow , _nodeDataPtr, 1 );
    } else if (strcmp(current_action,"cont") == 0) {
          /*  issue a log message, then submit the jobs in node->submits */
          printf( "nodeabort: %s %s\n", _nodeDataPtr->name, "cont" );
@@ -917,12 +917,13 @@ Inputs:
   signal - pointer to the value of the signal given to the binary (-s option)
   flow - pointer to the value of the flow given to the binary ( -f option)
   _nodeDataPtr - pointer to the node targetted by the execution
+  ignoreAllDeps - integer representing True or False whether dependencies are ignored
 
 Returns the error status of the ord_soumet call.
 
 */
 
-static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr) {
+static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps) {
    char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD];
    char *tmpCfgFile = NULL;
@@ -930,15 +931,16 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char *loopArgs = NULL, *extName = NULL;
    int catchup = SEQ_CATCHUP_NORMAL;
    int status = 0;
-   SeqUtil_TRACE( "maestro.go_submit() node=%s signal=%s flow=%s\n ", _nodeDataPtr->name, _signal, _flow );
+   SeqUtil_TRACE( "maestro.go_submit() node=%s signal=%s flow=%s ignoreAllDeps=%d\n ", _nodeDataPtr->name, _signal, _flow, ignoreAllDeps );
    actions( (char*) _signal, _flow, _nodeDataPtr->name );
    memset(nodeFullPath,'\0',sizeof nodeFullPath);
    memset(listingDir,'\0',sizeof listingDir);
    sprintf( nodeFullPath, "%s/modules/%s.tsk", SEQ_EXP_HOME, _nodeDataPtr->taskPath );
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
    /* check catchup value of the node */
-   if (_nodeDataPtr->catchup > catchup) {
-      if (_nodeDataPtr->catchup == SEQ_CATCHUP_DISCR) {
+   printf("node catchup= %d , normal catchup = %d , discretionary catchup = %d  \n",_nodeDataPtr->catchup, catchup, SEQ_CATCHUP_DISCR );
+   if (_nodeDataPtr->catchup > catchup && !ignoreAllDeps ) {
+      if (_nodeDataPtr->catchup == SEQ_CATCHUP_DISCR ) {
          printf("nodelogger: -n %s -l %s \"%s\"\n", _nodeDataPtr->name, _nodeDataPtr->extension, CATCHUP_DISCR_MSG );
          nodelogger( _nodeDataPtr->name ,"catchup", _nodeDataPtr->extension, CATCHUP_DISCR_MSG,_nodeDataPtr->datestamp);
       } else {
@@ -947,7 +949,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       }
       return(0);
    }
-   if( validateDependencies( _nodeDataPtr ) == 0 ) {
+   if( validateDependencies( _nodeDataPtr ) == 0 || ignoreAllDeps ) {
       /* dependencies are satisfied */
       loopArgs = (char*) SeqLoops_getLoopArgs( LOOP_ARGS );
    
@@ -1507,10 +1509,11 @@ Inputs:
   _signal - pointer to the name of the action being done (end, begin, etc.)
   _flow - pointer to the argument defining whether flow should continue or stop
   _loops - pointer to the loop arguments (optional)
+  ignoreAllDeps - integer representing true or false whether to ignore all dependencies and catchup
 
 */
 
-int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) {
+int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps ) {
    char tmpdir[256], workdir[SEQ_MAXFIELD];
    char *seq_exp_home = NULL, *seq_soumet = NULL, *tmp = NULL;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL;
@@ -1602,7 +1605,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) 
    }
 
    if ( strcmp(_signal,"submit") == 0 ) {
-      status=go_submit( _signal, _flow, nodeDataPtr );
+      status=go_submit( _signal, _flow, nodeDataPtr, ignoreAllDeps );
    }
    SeqNode_freeNode( nodeDataPtr );
    free( loopExtension );
