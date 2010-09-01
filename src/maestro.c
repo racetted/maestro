@@ -248,6 +248,12 @@ static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_acti
    SeqUtil_TRACE( "maestro.setAbortState() created lockfile %s\n", filename);
    touch(filename);
 
+   /* for npasstask, we need to create a lock file without the extension
+    * so that its container gets the same state */
+   if( _nodeDataPtr->type == NpassTask) {
+      sprintf(filename,"%s/%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      touch(filename);
+   }
 
    free( extName );
 
@@ -284,6 +290,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }      
+
    /* delete lockfiles in branches under current node */
    if (  strcmp (_signal,"initbranch" ) == 0 ) {
        memset( cmd, '\0' , sizeof cmd);
@@ -303,6 +310,12 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
        SeqUtil_TRACE( "maestro.go_initialize() deleting waiting lockfiles starting at node=%s\n", _nodeDataPtr->name); 
        sprintf(cmd, "find %s/%s/%s -name \"*%s*%s.waiting\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp  );
        system(cmd);
+   }
+
+   /* delete every iterations if no extension specified for npasstask */
+   if ( _nodeDataPtr->type == NpassTask && strlen( _nodeDataPtr->extension ) == 0 ) {
+      sprintf(cmd, "find %s/%s/ -name \"%s.*.%s.*\" -type f -print",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, _nodeDataPtr->datestamp );
+      system(cmd);
    }
    nodelogger(_nodeDataPtr->name,"init",_nodeDataPtr->extension,"",_nodeDataPtr->datestamp);
    actionsEnd( _signal, _flow, _nodeDataPtr->name );
@@ -487,6 +500,13 @@ static void setBeginState(const SeqNodeDataPtr _nodeDataPtr) {
 
    SeqUtil_TRACE( "maestro.go_begin() created lockfile %s\n", filename);
    touch(filename);
+
+   /* for npasstask, we need to create a lock file without the extension
+    * so that its container gets the same state */
+   if( _nodeDataPtr->type == NpassTask) {
+      sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      touch(filename);
+   }
 
    free( extName );
 
@@ -698,6 +718,12 @@ static void setEndState(const SeqNodeDataPtr _nodeDataPtr) {
    SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
    touch(filename);
 
+   /* for npasstask, we need to create a lock file without the extension
+    * so that its container gets the same state */
+   if( _nodeDataPtr->type == NpassTask) {
+      sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      touch(filename);
+   }
    free( extName );
 
 }
@@ -1569,7 +1595,10 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops ) 
    */
    SeqUtil_TRACE( "maestro() using submit script=%s\n", OCSUB );
    nodeDataPtr = nodeinfo( _node, "all" );
-   SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
+
+   if( ! ( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask && _loops == NULL ) ) {
+      SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
+   }
    SeqNode_setWorkdir( nodeDataPtr, workdir );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );
    SeqUtil_TRACE( "maestro() using DATESTAMP=%s\n", nodeDataPtr->datestamp );
