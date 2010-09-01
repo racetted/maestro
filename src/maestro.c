@@ -247,6 +247,14 @@ static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_acti
    sprintf(filename,"%s/%s.%s.abort.%s",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp, current_action); 
    SeqUtil_TRACE( "maestro.setAbortState() created lockfile %s\n", filename);
    touch(filename);
+    
+   /* for npasstask, we need to create a lock file without the extension
+    * so that it's container get's the same state */
+   if( _nodeDataPtr->type == NpassTask) {
+      sprintf(filename,"%s/%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      touch(filename);
+   }
+
 
 
    free( extName );
@@ -488,6 +496,13 @@ static void setBeginState(const SeqNodeDataPtr _nodeDataPtr) {
    SeqUtil_TRACE( "maestro.go_begin() created lockfile %s\n", filename);
    touch(filename);
 
+   /* for npasstask, we need to create a lock file without the extension
+    * so that it's container get's the same state */
+   if( _nodeDataPtr->type == NpassTask) {
+      sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      touch(filename);
+   }
+
    free( extName );
 
 }
@@ -697,6 +712,13 @@ static void setEndState(const SeqNodeDataPtr _nodeDataPtr) {
 
    SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
    touch(filename);
+
+   /* for npasstask, we need to create a lock file without the extension
+    * so that it's container get's the same state */
+   if( _nodeDataPtr->type == NpassTask) {
+      sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      touch(filename);
+   }
 
    free( extName );
 
