@@ -125,7 +125,6 @@ void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
 	  node_ptr->omp=malloc( strlen(tmpstrtok) +1); 
 	  strcpy(node_ptr->omp, tmpstrtok);
       }
-   free (tmpstrtok);
    free (tmpCpu);
    }
 }
@@ -526,14 +525,11 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       printf("node.memory=%s\n", node_ptr->memory );
    }
    if( showAll || showCfgPath ) {
-      if ( strcmp( node_ptr->taskPath, "" ) == 0 )
-         printf("node.configpath=\n");
-      else
-         if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-            printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
-         } else {
-            printf("node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
-         }
+      if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
+         printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
+      } else {
+         printf("node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
+      }
    }
 
    if( (showAll || showTaskPath) && (node_ptr->type == Task || node_ptr->type == NpassTask) ) {
