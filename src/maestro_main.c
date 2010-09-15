@@ -21,11 +21,13 @@ static void printSeqUsage()
    
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      maestro -n node -s signal [-l loopargs] [-f flow] \n");
+   printf("      maestro -n node -s signal [-i] [-d] [-l loopargs] [-f flow] \n");
    printf("         where:\n");
    printf("         node is full path of task or family node (mandatory):\n");
    printf("         signal is one of:\n");
    printf("            submit begin end abort initbranch initnode\n");
+   printf("         -i is to ignore dependencies and catchup values\n");
+   printf("         -d is to run in debug mode\n");
    printf("         flow is continue (default) or stop, representing whether the flow should continue after this node\n");
    printf("         loopargs is the comma-separated list of loop arguments. ex: -l loopa=1,loopb=2\n");
 
@@ -45,7 +47,7 @@ main (int argc, char * argv [])
    extern char *optarg;
    char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL;
    int errflg = 0, status = 0;
-   int c;
+   int c, ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
 	SeqNameValuesPtr loopsArgs = NULL;
 
@@ -56,7 +58,7 @@ main (int argc, char * argv [])
    }
    flow = malloc( 9 * sizeof(char) + 1 );
    sprintf( flow, "%s", "continue" );
-   while ((c = getopt(argc, argv, "n:s:f:l:d")) != -1) {
+   while ((c = getopt(argc, argv, "n:s:f:l:id")) != -1) {
       switch(c) {
          case 'n':
             node = malloc( strlen( optarg ) + 1 );
@@ -80,6 +82,9 @@ main (int argc, char * argv [])
          case 'd':
             SeqUtil_setTrace(1);
             break;
+	 case 'i':
+	    ignoreAllDeps=1;
+	    break;
          case '?':
             printSeqUsage();
       }
@@ -98,7 +103,7 @@ main (int argc, char * argv [])
       /* SeqNameValues_printList( loopsArgs ); */
    }
    /* printf( "node=%s signal=%s\n", node, sign ); */
-   status = maestro( node, sign, flow, loopsArgs );
+   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps );
 
    free(flow);
    free(node);
