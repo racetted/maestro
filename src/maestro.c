@@ -1138,15 +1138,7 @@ static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waite
    sprintf(filename,"%s/%s.%s.waiting",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 
 
    sprintf( waitMsg, "%s %s", waited_status, waited_one );
-   /* For a container, we don't send the log file entry again if the
-      status file already exists */
-   if( _nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask ) {
-      if( ! isFileExists( filename, "setWaitingState()") ) {
-         nodewait( _nodeDataPtr, waitMsg , _nodeDataPtr->datestamp);  
-      }
-   } else {
-      nodewait( _nodeDataPtr, waitMsg, _nodeDataPtr->datestamp);  
-   }
+   nodewait( _nodeDataPtr, waitMsg, _nodeDataPtr->datestamp);  
 
    /* clear any other state */
    clearAllFinalStates( _nodeDataPtr, extName, "waiting" ); 
@@ -1393,7 +1385,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
             SeqUtil_stringAppend( &localIndexString, tmpExt );
             free(tmpExt);
          }
-	 if( depHour != NULL ) {
+	 if( depHour != NULL && strlen(depHour) > 0 ) {
 	    /* calculate relative datestamp based on the current one */
 	    depDatestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, atoi(depHour) );
             SeqUtil_stringAppend( &depNameMsg, " datestamp=");
