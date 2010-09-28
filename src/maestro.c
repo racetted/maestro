@@ -1269,8 +1269,8 @@ static int writeNodeWaitedFile(  const SeqNodeDataPtr _nodeDataPtr, char* dep_ex
    memset(tmp_line,'\0',sizeof tmp_line);
    memset(line,'\0',sizeof tmp_line);
 
-   SeqUtil_TRACE("maestro.writeNodeWaitedFile() dep_exp_path=%s, dep_node=%s, dep_index=%s\n",
-      dep_exp_path, dep_node, dep_index);
+   SeqUtil_TRACE("maestro.writeNodeWaitedFile() dep_exp_path=%s, dep_node=%s, dep_index=%s dep_datestamp=%s\n",
+      dep_exp_path, dep_node, dep_index, dep_datestamp);
 
    currentExpLeaf = (char*) SeqUtil_getPathLeaf( (const char*) SEQ_EXP_HOME );
    current_passwd = getpwuid(getuid());
