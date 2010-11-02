@@ -97,11 +97,11 @@ void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp)
 * It is normally called at the end of an operational job.
 * INPUT: node - full path of the node
 *****************************************************************************/
-void nodeend( const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
 {
    /* This is needed so messages will be logged into CMCNODELOG */
    putenv("CMCNODELOG=on");
-   nodelogger(node_ptr->name,"end",node_ptr->extension,"",datestamp);
+   nodelogger(node_ptr->name,_signal,node_ptr->extension,"",datestamp);
 }
 
 
@@ -135,7 +135,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
 *nodebegin: send 'begin' message to operational logging system.
 *INPUT: job  - the job
 ****************************************************************/
-void nodebegin( const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
 {
    char hostname[50];
    char message[300];
@@ -151,7 +151,7 @@ void nodebegin( const SeqNodeDataPtr node_ptr, char *datestamp)
    sprintf(message,"host=%s",hostname);
    //nodelogger(job,'X',message);
    /* nodelogger(job,"begin",message); */
-   nodelogger(node_ptr->name,"begin",node_ptr->extension,message,datestamp);
+   nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp);
 }
 /****************************************************************/
 
@@ -162,8 +162,6 @@ void nodebegin( const SeqNodeDataPtr node_ptr, char *datestamp)
 *       [type] (optional)
 *               <rerun> - "ABORTED $run: Job has been rerun"
 *                       - 3bells "Job Has Bombed...Run Continues"
-*                <stem> - "ABORTED $run STEM STOPS"
-*                       - 3bells "Job Has Bombed....Run Stopped"
 *               <nosub> - "JOB OF $run NOT SUBMITTED"
 *                       - 3bells "Job Was Not Submitted......."
 *               <abort> - "ABORTED $run STEM CONTINUES"
@@ -175,32 +173,20 @@ void nodebegin( const SeqNodeDataPtr node_ptr, char *datestamp)
 *               <xxjob> - "XXJOB ABORT"
 *                       - 1bell "****   MESSAGE  ****"
 *                <orji> - "ORJI JOB NOT SUBMITTED"
-*               <bcont> - "JOB ABORT $run-BRANCH CONTINUED"
-*                       - 3bells "Job Has Bombed...Run Continues"
-*               <bstop> - "JOB ABORT $run-BRANCH STOPPED"
-*                       - 3bells "Job Has Bombed...Run Stopped"
 *      [errno] (optional)
 *              - A message with a corresponding number is sent to the
 *                oprun log.
 ****************************************************************/
-void nodeabort(const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp)
+void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp)
 {
-   static char abort_signal[] = "abort";
    static char aborted[] = "ABORTED";
    static char runc[]    = ": run continues";
-   static char callcs[]  = "job aborted ...... Call CS !!!";
    static char joba[]    = "JOB ABORT:";
    static char abortnb[] = "job aborted: ";
    static char jobc[]    = "next job(s) submitted";
    static char jobo[]    = "JOB OF";
    static char jobs[]    = "job stopped ";
-   static char bcont[]   = "branch continued";
-   static char bstop[]   = "branch stopped";
-   static char cronjob[] = "CRON JOB ABORT";
-   static char nosub[]   = "not submitted";
-   static char orji[]    = "ORJI JOB NOT SUBMITTED";
    static char rerun[]   = "job has been resubmitted";
-   static char stem[]    = "STEM STOPS";
    static char xxjob[]   = "XXJOB ABORT";
    int  i=0, errno=0 ;
    char buf[130], *job = NULL, *loopExt = NULL;
@@ -221,38 +207,20 @@ void nodeabort(const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datest
 
 	memset(buf,'\0',sizeof buf);
 
-	if ( strncmp(abort_type,"ABORTNB",7) == 0 ) {
-      nodelogger(job,abort_signal,loopExt,abortnb,datestamp);
-   } else if ( strncmp(thisAbortType,"BCONT",5) == 0 ) {
-      sprintf(buf,"%s-%s",joba, bcont);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
+   if ( strncmp(abort_type,"ABORTNB",7) == 0 ) {
+      nodelogger(job,_signal,loopExt,abortnb,datestamp);
    } else if ( strncmp(thisAbortType,"ABORT",5) == 0 ) {
       sprintf(buf,"%s %s",aborted, runc);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
-   } else if ( strncmp(thisAbortType,"BSTOP",5) == 0 ) {
-      sprintf(buf,"%s-%s",joba, bstop);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
-   } else if ( strncmp(thisAbortType,"CALLCS",6) == 0 ) {
-      nodelogger(job,abort_signal,loopExt,callcs,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"CONT",4) == 0 ) {
       sprintf(buf,"%s %s",aborted, jobc);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
-   } else if ( strncmp(thisAbortType,"CRON",4) == 0 ) {
-      nodelogger(job,abort_signal,loopExt,cronjob,datestamp);
-   } else if ( strncmp(thisAbortType,"NOSUB",5) == 0 ) {
-      sprintf(buf,"%s %s",jobo, nosub);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
-   } else if ( strncmp(thisAbortType,"ORJI",4) == 0 ) {
-      nodelogger(job,"info",loopExt,orji,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"RERUN",5) == 0 ) {
       sprintf(buf,"%s %s", aborted, rerun);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
-   } else if ( strncmp(thisAbortType,"STEM",4) == 0 ) {
-      sprintf(buf,"%s %s", aborted, stem);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"STOP",4) == 0 ) {
       sprintf(buf,"%s %s", aborted, jobs);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"XXJOB",5) == 0 ) {
       nodelogger(job,"info",loopExt,xxjob,datestamp);
    }	else {
@@ -262,7 +230,7 @@ void nodeabort(const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datest
 
 	if ( errno != 0 ) {
       sprintf(buf,"MSG NO. = %d", errno);
-      nodelogger(job,abort_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp);
 	}
    free(thisAbortType);
 }

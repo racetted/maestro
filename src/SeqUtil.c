@@ -335,6 +335,7 @@ char* SeqUtil_fixPath ( const char* source ) {
 
 /* validates username + exp against the current user and current
 exp and returns the path of the suite */
+/* 2010-10-21... not used anymore, should be removed later... */
 char* SeqUtil_getExpPath( const char* username, const char* exp ) {
    char *home = NULL, *expPath = NULL, *currentUser = NULL;
    char *currentExpPath = getenv("SEQ_EXP_HOME");

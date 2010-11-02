@@ -89,6 +89,13 @@ extern char* tictac_getDate( char* _expHome, char *format ) {
       } else {
          raiseError("ERROR: Date File %s cannot be read.\n", dateFileName);
       }
+      /* remove the newline character at the end of the returned value
+       * causing bug when it is used to create lock files */
+      if ( strlen(dateValue) > 0 ) {
+         if ( dateValue[strlen(dateValue)-1] == '\n' ) {
+            dateValue[strlen(dateValue)-1] = '\0';
+         }
+      }
       fclose(dateFile);
       free (dateFileName);
    }

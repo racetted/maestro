@@ -21,8 +21,7 @@ extern void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *date
 * It is normally called at the end of an operational job.
 * INPUT: node - full path of the node
 *****************************************************************************/
-/*extern void nodeend(char* node); */
-extern void nodeend( const SeqNodeDataPtr node_ptr, char *datestamp);
+extern void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp);
 
 /****************************************************************
 *nodesubmit: send 'submit' message to logging system.
@@ -39,23 +38,10 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp);
 *       [type] (optional)
 *               <rerun> - "ABORTED $run: Job has been rerun"
 *                       - 3bells "Job Has Bombed...Run Continues"
-*                <stem> - "ABORTED $run STEM STOPS"
-*                       - 3bells "Job Has Bombed....Run Stopped"
-*               <nosub> - "JOB OF $run NOT SUBMITTED"
-*                       - 3bells "Job Was Not Submitted......."
 *               <abort> - "ABORTED $run STEM CONTINUES"
 *                       - 3bells "Job Has Bombed...Run Continues"
-*                 <aji> - "AUTO JOB ABORT"
-*                       - 1bell "****   MESSAGE  ****"
-*                <cron> - "CRON JOB ABORT"
-*                       - 1bell "****   MESSAGE  ****"
 *               <xxjob> - "XXJOB ABORT"
 *                       - 1bell "****   MESSAGE  ****"
-*                <orji> - "ORJI JOB NOT SUBMITTED"
-*               <bcont> - "JOB ABORT $run-BRANCH CONTINUED"
-*                       - 3bells "Job Has Bombed...Run Continues"
-*               <bstop> - "JOB ABORT $run-BRANCH STOPPED"
-*                       - 3bells "Job Has Bombed...Run Stopped"
 *      [errno] (optional)
 *              - A message with a corresponding number is sent to the
 *                oprun log.
@@ -63,7 +49,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp);
 * NOTE: the variable numbers of arguments must be  string type
 *****************************************************************************/
 /* extern void nodeabort(int num, ...); */
-void nodeabort(const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp);
+void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp);
 
 
 /****************************************************************************
@@ -73,8 +59,7 @@ void nodeabort(const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datest
 * INPUT: job  - the job
 * NOTE: the variable numbers of arguments must be string type
 *****************************************************************************/
-/* extern void nodebegin(char *node); */
-extern void nodebegin( const SeqNodeDataPtr node_ptr, char *datestamp);
+extern void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp);
 
 extern void CopyStrTillCarac(char *result, const char *original, char c);
 
