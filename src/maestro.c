@@ -619,8 +619,6 @@ static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNam
          SeqNameValues_deleteItem(&loop_args_ptr, _nodeDataPtr->nodeName );
       }
       printf( "********** calling maestro -s begin -n %s with loop args=%s\n", nodeBase, SeqLoops_getLoopArgs(loop_args_ptr)  );
-      /* sua new */
-      /* maestro ( nodeBase, "begin", "stop", loop_args_ptr, 0 ); */
       maestro ( nodeBase, "beginx", "stop", loop_args_ptr, 0 );
    }
    free( nodeBase );
@@ -968,8 +966,6 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, SeqNameV
          SeqNameValues_deleteItem(&loop_args_ptr, _nodeDataPtr->nodeName );
       }
       printf( "********** calling maestro -s endx -n %s with loop args=%s\n", nodeBase, SeqLoops_getLoopArgs(loop_args_ptr) );
-      /* sua new */
-      /* maestro ( nodeBase, "end", _flow, loop_args_ptr, 0 ); */
       maestro ( nodeBase, "endx", _flow, loop_args_ptr, 0 );
    }
    free( nodeBase );
