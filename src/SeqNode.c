@@ -472,7 +472,8 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
 
 void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
 
-   int showAll = 0, showCfgPath = 0, showTaskPath = 0, showRessource = 0, showType = 0, showNode = 0;
+   int showAll = 0, showCfgPath = 0, showTaskPath = 0, showRessource = 0; 
+   int showType = 0, showNode = 0, showRootOnly = 0;
    SeqNameValuesPtr nameValuesPtr = NULL ;
    SeqDependenciesPtr depsPtr = NULL;
    LISTNODEPTR submitsPtr = NULL, siblingsPtr = NULL, abortsPtr = NULL;
@@ -487,10 +488,11 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       if( strstr( filters, "res" ) != NULL ) showRessource = 1;
       if( strstr( filters, "type" ) != NULL ) showType = 1;
       if( strstr( filters, "node" ) != NULL ) showNode = 1;
+      if( strstr( filters, "root" ) != NULL ) showRootOnly = 1;
 
-   if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode ) == 0) {
+      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly ) == 0) {
          raiseError("Filters %s unrecognized\n", filters);
-   }
+      }
 
    }
 
@@ -507,6 +509,10 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       printf("args=%s\n", node_ptr->args );
       */
    }
+   if (showRootOnly) {
+      printf("node.rootnode=%s\n",node_ptr->name);
+   }
+
    if (showNode) {
       (node_ptr->extension == NULL || strlen(node_ptr->extension) == 0) ? printf("node.fullnode=%s\n",node_ptr->name) : printf("node.fullnode=%s.%s\n",node_ptr->name,node_ptr->extension);
    }

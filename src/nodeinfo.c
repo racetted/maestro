@@ -16,6 +16,7 @@ static int SHOW_ALL = 0;
 static int SHOW_CFGPATH = 0;
 static int SHOW_TASKPATH = 0;
 static int SHOW_RESSOURCE = 0;
+static int SHOW_ROOT_ONLY = 0;
 
 xmlDocPtr
 getdoc (char *_docname) {
@@ -313,6 +314,42 @@ void parseNodeSiblings (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
 }
 
 
+void getRootNode( SeqNodeDataPtr _nodeDataPtr, const char *_seq_exp_home ) {
+   char xml_file[256];
+   char query[256];
+
+   xmlDocPtr doc = NULL;
+   xmlNodeSetPtr nodeset = NULL;
+   xmlXPathObjectPtr result = NULL;
+   xmlXPathContextPtr context = NULL;
+   const xmlChar *nodeName = NULL;
+   xmlNodePtr nodePtr;
+
+   /* build the xmlfile path */
+   sprintf( xml_file, "%s/EntryModule/flow.xml", _seq_exp_home);
+
+   /* parse the xml file */
+   doc = getdoc(xml_file);
+
+   /* the context is used to walk trough the nodes */
+   context = xmlXPathNewContext(doc);
+
+   /* get the first MODULE name attribute */
+   sprintf ( query, "(/MODULE/@name)");
+   if( (result = getnodeset (doc, query, context)) == NULL ) {
+      raiseError("MODULE not found in XML master file! (getRootNode)\n");
+   }
+   nodeset = result->nodesetval;
+
+  nodePtr = nodeset->nodeTab[0];
+  nodeName = nodePtr->name;
+  SeqUtil_TRACE( "nodeinfo.getRootNode() nodeName=%s\n", nodeName );
+  if ( nodePtr->children != NULL ) {
+     SeqUtil_TRACE( "nodeinfo.getRootNode() %s=%s\n", nodeName, nodePtr->children->content );
+     SeqNode_setName( _nodeDataPtr, SeqUtil_fixPath( nodePtr->children->content ) );
+
+  }
+}
 
    /*
    */
@@ -353,8 +390,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
       /* build the query */      
       if ( count == 0 ) {
          /* initial query */
-         sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
-         strcpy( currentFlowNode, tmpstrtok );
+         if ( SHOW_ROOT_ONLY == 1 ) {
+            sprintf ( query, "(/MODULE)");
+         } else {
+            sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
+            strcpy( currentFlowNode, tmpstrtok );
+         }
       } else {
          /* next queries relative to previous node context */
          sprintf ( query, "(child::*[@name='%s'])", tmpstrtok );
@@ -380,7 +421,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
 
       /* read the new flow file described in the module */
 
-      if ( _nodeDataPtr->type == Module ) { 
+      if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
        
          /* reset the intramodule path */
          free(intramodulePath);
@@ -489,6 +530,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
          strcpy ( query, "(@*)");
          result = getnodeset (doc, query, context);
          parseLoopContainer( result, _nodeDataPtr, currentFlowNode );
+      }
+
+      if ( SHOW_ROOT_ONLY == 1 ) {
+         tmpstrtok = NULL;
       }
 
       xmlXPathFreeObject (result);
@@ -654,11 +699,16 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters ) {
    if( strstr( filters, "cfg" ) != NULL ) SHOW_CFGPATH = 1;
    if( strstr( filters, "task" ) != NULL ) SHOW_TASKPATH = 1;
    if( strstr( filters, "res" ) != NULL ) SHOW_RESSOURCE = 1;
+   if( strstr( filters, "root" ) != NULL ) SHOW_ROOT_ONLY = 1;
 
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
-   getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
+   if ( SHOW_ROOT_ONLY ) {
+      getRootNode ( nodeDataPtr, seq_exp_home );
+   } else {
+      getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
+   }
    if( SHOW_ALL || SHOW_RESSOURCE ) {
       getSchedulerInfo( nodeDataPtr, (char*) newNode, seq_exp_home );
    }

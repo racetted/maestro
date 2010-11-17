@@ -12,7 +12,7 @@ static void printUsage()
    printf("Usage:\n");
    printf("      nodeinfo -n node [-f filters -l loopargs]\n");
    printf("         where:\n");
-   printf("         node     is full path of task or family node (mandatory):\n");
+   printf("         node     is full path of task or family node (mandatory (except -f root)):\n");
    printf("         filters  is a comma separated list of filters (optional):\n");
    printf("                  all (default)\n");
    printf("                  task (node task path only)\n");
@@ -20,6 +20,7 @@ static void printUsage()
    printf("                  res (batch resource only)\n");
    printf("                  type (node type only)\n");
    printf("                  node (node name and extention if applicable)\n");
+   printf("                  root (root node name)\n");
    printf("         loopargs is a comma separated list of loop arguments (optional):\n");
    /* printf("      SEQ_EXP_HOME=%s\n",seq_exp_home); */
    printf("Example: nodeinfo -n regional/assimilation/00/task_0\n");
@@ -40,7 +41,7 @@ main ( int argc, char * argv[] )
    char node[100];
    char filters[100];
    int errflg = 0, nodeFound = 0;
-   int c, gotLoops=0;
+   int c, gotLoops=0, showRootOnly = 0;
    //SeqUtil_DEBUG( "testing SeqUtil_DEBUG testvar=%s\n", "testvar_value" );
    if ( argc == 1 || argc == 2) {
       printUsage();
@@ -73,7 +74,8 @@ main ( int argc, char * argv[] )
             printUsage();
          }
    }
-   if ( nodeFound == 0 ) {
+
+   if ( nodeFound == 0 && strstr( filters, "root" ) == NULL ) {
       printUsage();
    }
    //test();
