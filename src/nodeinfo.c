@@ -481,9 +481,9 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
       /* we are building the internal path of the node and container*/
       if ( count != totalCount ) {
          strcat( currentFlowNode, "/" );
-         /* Loop, case, case_item are not part of the task_depot */
+         /* Case and case_item are not part of the task_depot */
          /* they are however part of the container path */
-         if (_nodeDataPtr->type == Family) {
+         if (_nodeDataPtr->type == Family ||_nodeDataPtr->type == Loop ) {
             SeqUtil_stringAppend( &taskPath, "/" );
             SeqUtil_stringAppend( &taskPath, tmpstrtok );
 	    free(intramodulePath);
