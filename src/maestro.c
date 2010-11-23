@@ -1496,6 +1496,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    char pidbuf[100];
    char *tmpdir = NULL, *loopArgs = NULL;
    FILE *tmpFile = NULL;
+   SeqNameValuesPtr loopArgsPtr = LOOP_ARGS;
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
@@ -1539,13 +1540,19 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
       fprintf( tmpFile, "export SEQ_LOOP_EXT=\"%s\"\n", _nodeDataPtr->extension );
    } else {
       fprintf( tmpFile, "export SEQ_LOOP_EXT=\"\"\n" );
+   } 
+   while (loopArgsPtr != NULL) {
+      fprintf( tmpFile, "export %s=%s \n", loopArgsPtr->name, loopArgsPtr->value );
+      loopArgsPtr=loopArgsPtr->nextPtr;
    }
+
    fprintf( tmpFile, "export SEQ_XFER=%s\n", flow );
    fprintf( tmpFile, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
 
    fclose(tmpFile);
    free(tmpdir);
    free(loopArgs);
+   free(loopArgsPtr);
 
    return filename;
 }
