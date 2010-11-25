@@ -63,7 +63,7 @@ char* SeqLoops_getExtensionBase ( SeqNodeDataPtr _nodeDataPtr ) {
    int containerCount = 0;
    SeqLoopsPtr loopsContainerPtr = _nodeDataPtr->loops;
    work_string = strdup(_nodeDataPtr->extension);
-   if( _nodeDataPtr->type == Loop ) {
+   if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ) {
       while( loopsContainerPtr != NULL ) {
          containerCount++;
          loopsContainerPtr = loopsContainerPtr->nextPtr;

@@ -733,7 +733,9 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    /* for npasstask, we need to create a lock file without the extension
     * so that its container gets the same state */
    if( _nodeDataPtr->type == NpassTask) {
-      sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      SeqUtil_TRACE( "maestro.go_end() entering npass lockfile logic, args: workdir=%s name=%s loop_ext=%s datestamp=%s\n",_nodeDataPtr->workdir, _nodeDataPtr->name, (char *) SeqLoops_getExtensionBase(_nodeDataPtr), _nodeDataPtr->datestamp );
+      sprintf(filename,"%s/%s.%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, (char *) SeqLoops_getExtensionBase(_nodeDataPtr), _nodeDataPtr->datestamp); 
+      SeqUtil_TRACE( "maestro.go_end() creating npass lockfile=%s\n", filename);
       touch(filename);
    }
    free( extName );
