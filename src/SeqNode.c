@@ -501,8 +501,8 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       printf("node.name=%s\n", node_ptr->name );
       printf( "node.extension=%s\n",  node_ptr->extension);
       printf("node.leaf=%s\n", node_ptr->nodeName );
-     
       printf("node.module=%s\n", node_ptr->module );
+      printf("node.container=%s\n", node_ptr->container );
       printf("node.intramodule_container=%s\n", node_ptr->intramodule_container );
       /*
       printf("alias=%s\n", node_ptr->alias );
