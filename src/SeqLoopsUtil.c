@@ -418,11 +418,19 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
    return newLoopsArgsPtr;
 }
 
+
+int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args) {
+   int value = 0;
+   value = SeqLoops_validateLoopNptArgs( _nodeDataPtr, _loop_args, 1 /*check npt arguments*/ );
+   return value;
+}
+
 /* function that validates loop arguments
 returns 0 if validations fails
 returns 1 if succeeds
 */
-int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
+
+int SeqLoops_validateLoopNptArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args, int npt_check ) {
 
    SeqLoopsPtr loopsPtr = _nodeDataPtr->loops;
    SeqNameValuesPtr loopArgsTmpPtr = NULL;
@@ -432,7 +440,8 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
     * It is an indexed node so we're sharing some index logic here */
 
    /* validate NpassTask */
-   if ( _nodeDataPtr->type == NpassTask ) {
+
+   if ( _nodeDataPtr->type == NpassTask && npt_check == 1 ) {
       if( _loop_args == NULL ) {
          raiseError( "SeqLoops_validateLoopArgs(): No index arguments found for NpassTask Node!\n" );
       }

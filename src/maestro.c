@@ -1651,9 +1651,13 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    SeqUtil_TRACE( "maestro() using submit script=%s\n", OCSUB );
    nodeDataPtr = nodeinfo( _node, "all" );
 
-   if( ! ( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask && _loops == NULL ) ) {
-      SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
+   if( nodeDataPtr->loops != NULL ) {
+      if( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask ) {
+          SeqLoops_validateLoopNptArgs( nodeDataPtr, _loops, 0 );
+      } else {
+          SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
    }
+
    SeqNode_setWorkdir( nodeDataPtr, workdir );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );
    SeqUtil_TRACE( "maestro() using DATESTAMP=%s\n", nodeDataPtr->datestamp );
