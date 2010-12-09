@@ -618,10 +618,10 @@ void getSchedulerInfo ( SeqNodeDataPtr  _nodeDataPtr, char* _jobPath, char* _seq
    char line[256], attrName[50], attrValue[50];
    if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
       fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->taskPath ) + strlen( _seq_exp_home ) + 18 );
-      sprintf( fullpath_cfg_file, "%s/modules%s.cfg", _seq_exp_home, _nodeDataPtr->taskPath );
+      sprintf( fullpath_cfg_file, "%s/resources%s.def", _seq_exp_home, _nodeDataPtr->taskPath );
    } else {
          fullpath_cfg_file = malloc ( strlen( _seq_exp_home) + strlen( _nodeDataPtr->intramodule_container) + strlen( _nodeDataPtr->nodeName ) + 25 );
-         sprintf( fullpath_cfg_file, "%s/modules%s/%s/container.cfg", _seq_exp_home, _nodeDataPtr->intramodule_container, _nodeDataPtr->nodeName);
+         sprintf( fullpath_cfg_file, "%s/resources%s/%s/container.def", _seq_exp_home, _nodeDataPtr->intramodule_container, _nodeDataPtr->nodeName);
    /*
       if ( _nodeDataPtr->intramodule_container != NULL ) {
          fullpath_cfg_file = malloc ( strlen( _seq_exp_home) + strlen( _nodeDataPtr->intramodule_container) + strlen( _nodeDataPtr->nodeName ) + 25 );
