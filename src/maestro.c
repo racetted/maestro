@@ -1656,6 +1656,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
           SeqLoops_validateLoopNptArgs( nodeDataPtr, _loops, 0 );
       } else {
           SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
+      }
    }
 
    SeqNode_setWorkdir( nodeDataPtr, workdir );
@@ -1674,8 +1675,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       status=go_end( _signal, _flow, nodeDataPtr );
    }
 
-   if (( strcmp (_signal,"initbranch" ) == 0 ) ||  ( strcmp (_signal,"initnode" ) == 0 ))
-   {
+   if (( strcmp (_signal,"initbranch" ) == 0 ) ||  ( strcmp (_signal,"initnode" ) == 0 )) {
       printf("SEQ: call go_initialize() %s %s %s\n",_signal,_flow,_node);
       status=go_initialize( _signal, _flow, nodeDataPtr );
    }
