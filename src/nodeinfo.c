@@ -135,7 +135,7 @@ void parseLoopContainer (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr,
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
-   xmlChar *loopStart = NULL, *loopStep = NULL, *loopEnd = NULL, *loopSet = NULL;
+   xmlChar *loopStart = NULL, *loopStep = strdup("1"), *loopEnd = NULL, *loopSet = strdup("1");
    xmlAttrPtr propertiesPtr;
    int i=0;
    if (_result) {
@@ -148,8 +148,10 @@ void parseLoopContainer (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr,
             if( strcmp( nodeName, "start" ) == 0 ) {
                loopStart = strdup( nodePtr->children->content );
             } else if( strcmp( nodeName, "step" ) == 0 ) {
+	       free( loopStep );
                loopStep = strdup( nodePtr->children->content );
             } else if( strcmp( nodeName, "set" ) == 0 ) {
+	       free( loopSet );
                loopSet = strdup( nodePtr->children->content );
             } else if( strcmp( nodeName, "end" ) == 0 ) {
                loopEnd = strdup( nodePtr->children->content );
@@ -159,15 +161,9 @@ void parseLoopContainer (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr,
 
       newLoopNodePath = (char *) SeqUtil_fixPath( loop_node_path );
 
-      if( loopStep != NULL && loopSet != NULL ) {
-         raiseError( "Loop Definition Error for node %s.\nLoop step and set attribute are mutually exclusive!\n", newLoopNodePath );
-      }
-      if( loopSet != NULL ) {
-         SeqNode_addNumSetLoop ( _nodeDataPtr, newLoopNodePath, 
-            loopStart, loopSet, loopEnd );
-      } else {
+      if( loopStep != NULL || loopSet != NULL ) {
          SeqNode_addNumLoop ( _nodeDataPtr, newLoopNodePath, 
-            loopStart, loopStep, loopEnd );
+            loopStart, loopStep, loopSet, loopEnd );
       }
 
       SeqUtil_TRACE( "nodeinfo.parseLoopContainer() loopNode: %s\n", newLoopNodePath );
@@ -262,7 +258,7 @@ void parseNodeSpecifics (SeqNodeType _nodeType, xmlXPathObjectPtr _result, SeqNo
    xmlNodePtr nodePtr = NULL;
    const xmlChar *nodeName = NULL;
    xmlAttrPtr propertiesPtr = NULL;
-   int i=0, isLoopSet = 0;
+   int i=0;
    SeqUtil_TRACE( "nodeinfo.parseNodeSpecifics() called node_type=%s\n", SeqNode_getTypeString( _nodeType ) );
    nodeset = _result->nodesetval;
    SeqUtil_TRACE( "nodeinfo.parseNodeSpecifics() nodeset cardinal=%d\n", nodeset->nodeNr );
@@ -273,13 +269,10 @@ void parseNodeSpecifics (SeqNodeType _nodeType, xmlXPathObjectPtr _result, SeqNo
       if ( nodePtr->children != NULL && strcmp((char*)nodeName,"name") != 0 ) {
          SeqUtil_TRACE( "nodeinfo.parseNodeSpecifics() %s=%s\n", nodeName, nodePtr->children->content );
          SeqNode_addSpecificData ( _nodeDataPtr, nodeName, nodePtr->children->content );
-	 if( _nodeType == Loop && strcmp( nodeName, "set" ) == 0 ) {
-	    isLoopSet = 1;
-	 }
       }
    }
    if( _nodeType == Loop ) {
-      isLoopSet == 1 ? SeqNode_addSpecificData( _nodeDataPtr, "TYPE", "LoopSet" ) : SeqNode_addSpecificData( _nodeDataPtr, "TYPE", "Default" );
+      SeqNode_addSpecificData( _nodeDataPtr, "TYPE", "Default" );
    }
 }
 
@@ -525,7 +518,6 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
       /* adds loop containers except if last node is also loop */
       if ( _nodeDataPtr->type == Loop && tmpstrtok != NULL ) {
          SeqUtil_TRACE( "nodeinfo.getFlowInfo() Found Loop Node=%s\n", currentFlowNode );
-         /* SeqNode_addLoop( _nodeDataPtr, currentFlowNode ); */
          xmlXPathFreeObject (result);
          strcpy ( query, "(@*)");
          result = getnodeset (doc, query, context);
@@ -613,14 +605,16 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
 
 void getSchedulerInfo ( SeqNodeDataPtr  _nodeDataPtr, char* _jobPath, char* _seq_exp_home ) {
    FILE *cfgFilePtr = NULL;
-   int startTagFound = 0;
+   int startTagFound = 0, extraSpace = 0;
    char* fullpath_cfg_file = NULL;
    char line[256], attrName[50], attrValue[50];
    if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
-      fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->taskPath ) + strlen( _seq_exp_home ) + 18 );
+      extraSpace = strlen( "/resources.def" );
+      fullpath_cfg_file = malloc ( strlen( _nodeDataPtr->taskPath ) + strlen( _seq_exp_home ) + extraSpace + 1 );
       sprintf( fullpath_cfg_file, "%s/resources%s.def", _seq_exp_home, _nodeDataPtr->taskPath );
    } else {
-         fullpath_cfg_file = malloc ( strlen( _seq_exp_home) + strlen( _nodeDataPtr->intramodule_container) + strlen( _nodeDataPtr->nodeName ) + 25 );
+         extraSpace = strlen( "/resources//container.def" );
+         fullpath_cfg_file = malloc ( strlen( _seq_exp_home) + strlen( _nodeDataPtr->intramodule_container) + strlen( _nodeDataPtr->nodeName ) + extraSpace + 1);
          sprintf( fullpath_cfg_file, "%s/resources%s/%s/container.def", _seq_exp_home, _nodeDataPtr->intramodule_container, _nodeDataPtr->nodeName);
    /*
       if ( _nodeDataPtr->intramodule_container != NULL ) {
@@ -672,6 +666,7 @@ void getSchedulerInfo ( SeqNodeDataPtr  _nodeDataPtr, char* _jobPath, char* _seq
       }
       fclose( cfgFilePtr );
    }
+
    free( fullpath_cfg_file );
 }
 

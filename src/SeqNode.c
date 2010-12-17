@@ -364,11 +364,12 @@ void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data ) {
    SeqListNode_insertItem( &(node_ptr->abort_actions), data );
 }
 
-/* default numerical loop with start, step, end */
+/* default numerical loop with start, step, set, end */
+
 void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, 
-   char* loop_name, char* start, char* step, char* end ) {
+   char* loop_name, char* start, char* step, char* set, char* end ) {
    SeqLoopsPtr loopsPtr = NULL;
-   SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, start=%s, step=%s, end=%s, \n",loop_name, start, step, end );
+   SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, start, step, set, end );
 
    loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
    loopsPtr->type = Numerical;
@@ -377,22 +378,6 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr,
    SeqNameValues_insertItem( &loopsPtr->values, "TYPE", "Default");
    SeqNameValues_insertItem( &loopsPtr->values, "START", start );
    SeqNameValues_insertItem( &loopsPtr->values, "STEP", step );
-   SeqNameValues_insertItem( &loopsPtr->values, "END", end );
-   /* SeqNameValues_printList( loopsPtr->values ); */
-}
-
-/* set looping */
-void SeqNode_addNumSetLoop ( SeqNodeDataPtr node_ptr, 
-   char* loop_name, char* start, char* set, char* end ) {
-   SeqLoopsPtr loopsPtr = NULL;
-   SeqUtil_TRACE( "SeqNode_addNumSetLoop() loop_name=%s, start=%s, set=%s, end=%s, \n",loop_name, start, set, end );
-
-   loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
-   loopsPtr->type = Numerical;
-   loopsPtr->loop_name = strdup( loop_name );
-   /* SeqNameValues_insertItem( &loopsPtr->values, "NAME", loop_name ); */
-   SeqNameValues_insertItem( &loopsPtr->values, "TYPE", "LoopSet");
-   SeqNameValues_insertItem( &loopsPtr->values, "START", start );
    SeqNameValues_insertItem( &loopsPtr->values, "SET", set );
    SeqNameValues_insertItem( &loopsPtr->values, "END", end );
    /* SeqNameValues_printList( loopsPtr->values ); */

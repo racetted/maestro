@@ -38,7 +38,7 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
          _:/- are supported */
       sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._:/-]", &loopName, &loopValue );
 
-      /*printf( "SeqLoops_parseArgs loopName:%s rigthValue:%s\n", loopName, loopValue );
+      /*printf( "SeqLoops_parseArgs loopName:%s rigthValue:%s\n", loopName, loopValue );*/
       /*printf( "SeqLoops_parseArgs adding to list: %s\n", tmpstrtok );*/
       /* should add more syntax validation such as spaces not allowed... */
       if ( strlen( loopName ) == 0 || strlen( loopValue ) == 0 ) {
@@ -111,15 +111,16 @@ SeqNameValuesPtr SeqLoops_convertExtension ( SeqLoopsPtr loops_ptr, char* extens
  */
 char* SeqLoops_getLoopAttribute( SeqNameValuesPtr loop_attr_ptr, char* attr_name ) {
    char* returnValue = NULL;
+   SeqNameValuesPtr tmpptr=loop_attr_ptr;
 
-   while ( loop_attr_ptr != NULL ) {
+   while ( tmpptr != NULL ) {
       /*printf("SeqLoops_getLoopAttribute looking for:%s found: %s=%s\n", 
          attr_name, loop_attr_ptr->name, loop_attr_ptr->value ); */
-      if( strcmp( loop_attr_ptr->name, attr_name ) == 0 ) {
-         returnValue = strdup( loop_attr_ptr->value );
+      if( strcmp( tmpptr->name, attr_name ) == 0 ) {
+         returnValue = strdup( tmpptr->value );
          break;
       }
-      loop_attr_ptr = loop_attr_ptr->nextPtr;
+      tmpptr = tmpptr->nextPtr;
    }
    return returnValue;
 }
@@ -228,7 +229,7 @@ char* SeqLoops_NodeExtension( const char* node_name, SeqNameValuesPtr loop_args_
 LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr loop_args_ptr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
-   int loopStart = 0, loopStep = 0, loopEnd = 0, loopCount = 0;
+   int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
    LISTNODEPTR loopExtensions = NULL;
    memset( tmp, '\0', sizeof tmp );
    baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
@@ -236,9 +237,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr, SeqNameValues
 
    printf("SeqLoops_childExtensions extension:%s baseExtension:%s \n",_nodeDataPtr->extension, baseExtension );
    loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-   if( strcmp( SeqLoops_getLoopAttribute( nodeSpecPtr, "TYPE" ), "LoopSet" ) == 0 ) { 
-      loopStep = 1;
-   } else {
+   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
       loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
    }
    loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
@@ -355,7 +354,7 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20];
    char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL, *loopSetStr = NULL;
-   int loopCurrent = 0, loopStep = 0, loopTotal = 0;
+   int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0;
    int isLast = 0;
    memset( tmp, '\0', sizeof(tmp) );
    /* get the first loop iteration */
@@ -370,7 +369,7 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
       loopStep = atoi(loopStepStr);
    /* if the set has a value, the next iteration is (current iteration + set value)*/
    if( ( loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) ) != NULL )
-      loopStep = atoi(loopSetStr);
+      loopSet = atoi(loopSetStr);
    /* get the iteration end */
    if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
       loopTotal = atoi(loopEndStr);
@@ -378,7 +377,7 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
    fprintf(stdout,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
 
    /* have we reached the end? */
-   if( (loopCurrent + loopStep) > loopTotal ) {
+   if( (loopCurrent + (loopSet * loopStep)) > loopTotal ) {
       isLast = 1;
    }
    
@@ -392,26 +391,27 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
 SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
    SeqNameValuesPtr newLoopsArgsPtr = NULL;
    SeqNameValuesPtr nodeSpecPtr = NULL;
-   char tmp[20], *loopSetStr = NULL;
-   int loopCurrent = 0, loopStep = 0, loopTotal = 0;
+   char tmp[20];
+   int loopCurrent = 0, loopSet = 1 , loopStep = 1, loopTotal = 0;
    memset( tmp, '\0', sizeof(tmp) );
    /* get the first loop iteration */
    nodeSpecPtr = _nodeDataPtr->data;
    /* for now, we only support numerical data */
    loopCurrent = atoi( SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) );
-   if( strcmp( SeqLoops_getLoopAttribute( nodeSpecPtr, "TYPE" ), "LoopSet" ) == 0 ) { 
-      /* if we're dealing with a set value, the next iteration is (current + set  value) */
-      loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" );
-      loopStep = atoi( loopSetStr );
-   } else {
+   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
       loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
    }
+   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
+      loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+   }
+
    loopTotal = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-   fprintf(stdout,"SeqLoops_nextLoopArgs() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
+
+   fprintf(stdout,"SeqLoops_nextLoopArgs() loopCurrent:%d loopSet:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopSet, loopStep, loopTotal);
 
    /* calculate next iteration */
-   if( (loopCurrent + loopStep) <= loopTotal ) {
-      sprintf( tmp, "%d", loopCurrent + loopStep );
+   if( (loopCurrent + (loopSet * loopStep)) <= loopTotal ) {
+      sprintf( tmp, "%d", loopCurrent + (loopSet * loopStep) );
       newLoopsArgsPtr = SeqNameValues_clone( _loop_args );
       SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, tmp );
    }
@@ -528,7 +528,7 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 
 
    char tmp[20];
-   int loopStart = 0, loopEnd= 0, loopSet = 0,
+   int loopStart = 0, loopEnd= 0, loopSet = 0, loopStep = 0,
        loopCount = 0, loopSetCount = 0;
    memset( tmp, '\0', sizeof(tmp) );
 
@@ -548,16 +548,21 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
       nodeSpecPtr = _nodeDataPtr->data;
 
       loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-      loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
+         loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+      }
+      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
+         loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+      }
       loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-      fprintf(stdout,"SeqLoops_getLoopSetArgs() loopstart:%d loopSet:%d loopEnd:%d\n", loopStart, loopSet, loopEnd);
+      fprintf(stdout,"SeqLoops_getLoopSetArgs() loopstart:%d loopSet:%d loopStep:%d loopEnd:%d\n", loopStart, loopSet, loopStep, loopEnd);
 
       loopCount = loopStart;
       /* calculate next iteration */
       while( loopCount <= loopEnd && loopSetCount < loopSet ) {
          sprintf( tmp, "%d", loopCount );
          SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
-         loopCount++;
+         loopCount=loopCount+loopStep;
          loopSetCount++;
       }
    } else {

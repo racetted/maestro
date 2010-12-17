@@ -405,7 +405,7 @@ Inputs:
 static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPtr) {
    char *extensionBase = NULL, *nodeBase = NULL;
    SeqNameValuesPtr newArgs = NULL, loopArgs = NULL, loopSetArgs = NULL;
-   SeqUtil_TRACE( "maestro.go_begin() node=%s signal=%s flow=%s\n", _nodeDataPtr->name, _signal, _flow );
+   SeqUtil_TRACE( "maestro.go_begin() node=%s signal=%s flow=%s loopargs=%s\n", _nodeDataPtr->name, _signal, _flow, SeqLoops_getLoopArgs(LOOP_ARGS));
    nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
 
    actions( _signal, _flow ,_nodeDataPtr->name );
@@ -414,24 +414,19 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
    if ( _nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask && strcmp(_flow, "continue") == 0 ) {
        go_initialize("initbranch", _flow, _nodeDataPtr); 
    } 
-
+ 
    /* create begin lock file and other lock file */
    setBeginState ( _signal, _nodeDataPtr );
 
    /* containers will submit their direct submits in begin */
    if( _nodeDataPtr->type == Loop && (strcmp(_flow, "continue") == 0) ) {
-      if( strcmp(SeqLoops_getLoopAttribute( _nodeDataPtr->data, "TYPE" ), "LoopSet") == 0 ) {
          /* we might have to submit a set of iterations instead of only one */
 	 /* get the list of iterations to submit */
          loopSetArgs = (SeqNameValuesPtr) SeqLoops_getLoopSetArgs( _nodeDataPtr, LOOP_ARGS );
 	 loopArgs =  (SeqNameValuesPtr) SeqLoops_getContainerArgs( _nodeDataPtr, LOOP_ARGS );
 	 /* submit the set iterations */
          submitLoopSetNodeList(_nodeDataPtr->submits, loopArgs, loopSetArgs);
-      } else {
-         loopArgs = (SeqNameValuesPtr) SeqLoops_submitLoopArgs( _nodeDataPtr, LOOP_ARGS );
-         SeqUtil_TRACE( "maestro.go_begin() doing loop submissions\n", _nodeDataPtr->name, _signal );
-         submitNodeList(_nodeDataPtr->submits, loopArgs);
-     }
+	   /* non-loop containers */
    } else if (_nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask 
              && _nodeDataPtr->type != Case && (strcmp(_flow, "continue") == 0) ) {
         SeqUtil_TRACE( "maestro.go_begin() doing submissions\n", _nodeDataPtr->name, _signal );
@@ -480,6 +475,8 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
    char filename[SEQ_MAXFIELD];
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
+   SeqUtil_TRACE( "maestro.setBeginState() on node:%s extension: %s\n", _nodeDataPtr->name, _nodeDataPtr->extension );
+
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
@@ -487,6 +484,9 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
    /* create the node begin lock file name */
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 
+
+   SeqUtil_TRACE( "maestro.setBeginState() checking for lockfile %s\n", filename);
+
 
    /* For a container, we don't send the log file entry again if the
       status file already exists and if the signal is beginx */
@@ -544,6 +544,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr ) {
       if( _nodeDataPtr->loops != NULL ) {
          /* process loops containers */
          processLoopContainerBegin(_nodeDataPtr, loopArgs);
+
       } else {
          siblingIteratorPtr = _nodeDataPtr->siblings;
          /* process the siblings */
@@ -614,7 +615,8 @@ static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNam
 
    if( abortedChild == 0 ) {
       //printf( "processLoopContainerEnd() sending \"maestro end %s%s\n", nodeBase, extension );
-      if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ) {
+        //if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ) {
+	if( _nodeDataPtr->type == NpassTask ) {
          /* remove the loop argument for the current loop first */
          SeqNameValues_deleteItem(&loop_args_ptr, _nodeDataPtr->nodeName );
       }
@@ -1651,12 +1653,10 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    SeqUtil_TRACE( "maestro() using submit script=%s\n", OCSUB );
    nodeDataPtr = nodeinfo( _node, "all" );
 
-   if( nodeDataPtr->loops != NULL ) {
-      if( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask ) {
-          SeqLoops_validateLoopNptArgs( nodeDataPtr, _loops, 0 );
-      } else {
-          SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
-      }
+   if( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask ) {
+       SeqLoops_validateLoopNptArgs( nodeDataPtr, _loops, 0 );
+   } else {
+       SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
    }
 
    SeqNode_setWorkdir( nodeDataPtr, workdir );
@@ -1685,7 +1685,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    }
 
    if ( strcmp(_signal,"begin") == 0 || strcmp(_signal,"beginx") == 0 ) {
-      SeqUtil_TRACE( "maestro() node from nodeinfo before go_begin=%s\n", nodeDataPtr->name );
+      SeqUtil_TRACE( "maestro() node from nodeinfo before go_begin=%s, loopargs=%s, extension=%s \n", nodeDataPtr->name, SeqLoops_getLoopArgs(LOOP_ARGS), nodeDataPtr->extension );
       status=go_begin( _signal, _flow, nodeDataPtr );
    }
 
