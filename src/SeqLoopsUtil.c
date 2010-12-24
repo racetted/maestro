@@ -528,7 +528,7 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 
 
    char tmp[20];
-   int loopStart = 0, loopEnd= 0, loopSet = 0, loopStep = 0,
+   int loopStart = 0, loopEnd= 0, loopSet = 1, loopStep = 1,
        loopCount = 0, loopSetCount = 0;
    memset( tmp, '\0', sizeof(tmp) );
 
