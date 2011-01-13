@@ -18,6 +18,7 @@ static void printUsage()
    printf("                  task (node task path only)\n");
    printf("                  cfg (node config path only)\n");
    printf("                  res (batch resource only)\n");
+   printf("                  res_path (batch resource path only)\n");
    printf("                  type (node type only)\n");
    printf("                  node (node name and extention if applicable)\n");
    printf("                  root (root node name)\n");

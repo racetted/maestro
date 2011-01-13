@@ -17,6 +17,7 @@ static int SHOW_CFGPATH = 0;
 static int SHOW_TASKPATH = 0;
 static int SHOW_RESSOURCE = 0;
 static int SHOW_ROOT_ONLY = 0;
+static int SHOW_RESPATH = 0;
 
 xmlDocPtr
 getdoc (char *_docname) {
@@ -683,18 +684,24 @@ void test() {
 
 SeqNodeDataPtr nodeinfo ( const char* node, const char* filters ) {
 
-   char* seq_exp_home = NULL, *newNode = NULL;
+   char* seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    SeqNodeDataPtr  nodeDataPtr = NULL;
 
    seq_exp_home=getenv("SEQ_EXP_HOME");
    if ( seq_exp_home == NULL ) {
       raiseError("SEQ_EXP_HOME not set! (nodeinfo) \n");
    }
-   if( strstr( filters, "all" ) != NULL ) SHOW_ALL = 1;
-   if( strstr( filters, "cfg" ) != NULL ) SHOW_CFGPATH = 1;
-   if( strstr( filters, "task" ) != NULL ) SHOW_TASKPATH = 1;
-   if( strstr( filters, "res" ) != NULL ) SHOW_RESSOURCE = 1;
-   if( strstr( filters, "root" ) != NULL ) SHOW_ROOT_ONLY = 1;
+   tmpfilters = strdup( filters );
+   tmpstrtok = (char*) strtok( tmpfilters, "," );
+   while ( tmpstrtok != NULL ) {
+      if ( strcmp( tmpfilters, "all" ) == 0 ) SHOW_ALL = 1;
+      if ( strcmp( tmpfilters, "cfg" ) == 0 ) SHOW_CFGPATH = 1;
+      if ( strcmp( tmpfilters, "task" ) == 0 ) SHOW_TASKPATH= 1;
+      if ( strcmp( tmpfilters, "res" ) == 0 ) SHOW_RESSOURCE = 1;
+      if ( strcmp( tmpfilters, "root" ) == 0 ) SHOW_ROOT_ONLY = 1;
+      if ( strcmp( tmpfilters, "res_path" ) == 0 ) SHOW_RESPATH = 1;
+      tmpstrtok = (char*) strtok(NULL,",");
+   }
 
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
@@ -704,8 +711,9 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters ) {
    } else {
       getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
    }
-   if( SHOW_ALL || SHOW_RESSOURCE ) {
+   if( SHOW_ALL || SHOW_RESSOURCE || SHOW_RESPATH ) {
       getSchedulerInfo( nodeDataPtr, (char*) newNode, seq_exp_home );
    }
+   free( tmpfilters ); 
    return nodeDataPtr;
 }

@@ -457,8 +457,9 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
 
 void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
 
+   char *tmpstrtok = NULL, *tmpFilters ;
    int showAll = 0, showCfgPath = 0, showTaskPath = 0, showRessource = 0; 
-   int showType = 0, showNode = 0, showRootOnly = 0;
+   int showType = 0, showNode = 0, showRootOnly = 0, showResPath = 0;
    SeqNameValuesPtr nameValuesPtr = NULL ;
    SeqDependenciesPtr depsPtr = NULL;
    LISTNODEPTR submitsPtr = NULL, siblingsPtr = NULL, abortsPtr = NULL;
@@ -467,15 +468,22 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
    if( filters == NULL ) {
       showAll = 1;
    } else {
-      if( strstr( filters, "all" ) != NULL ) showAll = 1;
-      if( strstr( filters, "cfg" ) != NULL ) showCfgPath = 1;
-      if( strstr( filters, "task" ) != NULL ) showTaskPath = 1;
-      if( strstr( filters, "res" ) != NULL ) showRessource = 1;
-      if( strstr( filters, "type" ) != NULL ) showType = 1;
-      if( strstr( filters, "node" ) != NULL ) showNode = 1;
-      if( strstr( filters, "root" ) != NULL ) showRootOnly = 1;
+      tmpFilters = strdup( filters );
+      tmpstrtok = (char*) strtok( tmpFilters, "," );
+      while ( tmpstrtok != NULL ) {
+         if ( strcmp( tmpstrtok, "all" ) == 0 ) showAll = 1;
+         if ( strcmp( tmpstrtok, "cfg" ) == 0 ) showCfgPath = 1;
+         if ( strcmp( tmpstrtok, "task" ) == 0 ) showTaskPath = 1;
+         if ( strcmp( tmpstrtok, "res" ) == 0 ) showRessource = 1;
+         if ( strcmp( tmpstrtok, "res_path" ) == 0 ) showResPath = 1;
+         if ( strcmp( tmpstrtok, "type" ) == 0 ) showType = 1;
+         if ( strcmp( tmpstrtok, "node" ) == 0 ) showNode= 1;
+         if ( strcmp( tmpstrtok, "root" ) == 0 ) showRootOnly = 1;
 
-      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly ) == 0) {
+         tmpstrtok = (char*) strtok(NULL,",");
+      }
+
+      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly || showResPath ) == 0) {
          raiseError("Filters %s unrecognized\n", filters);
       }
 
@@ -528,6 +536,13 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
          printf("node.taskpath=\n");
       else
          printf("node.taskpath=${SEQ_EXP_HOME}/modules%s.tsk\n", node_ptr->taskPath );
+   }
+   if ( showAll || showResPath ) {
+      if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
+         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s.def\n", node_ptr->taskPath );
+      } else {
+         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s/%s/container.def\n", node_ptr->intramodule_container, node_ptr->nodeName );
+      }
    }
 
    if( showAll ) {
@@ -591,7 +606,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
          siblingsPtr = siblingsPtr->nextPtr;
       }
    }
-
+   free( tmpFilters );
    SeqUtil_TRACE( "SeqNode.SeqNode_printNode() done\n" );
 }
 
