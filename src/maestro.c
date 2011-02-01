@@ -214,7 +214,7 @@ Inputs:
 
 static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_action) {
 
-   char *extName = NULL ;
+   char *extName = NULL, *extension = NULL ;
    char filename[SEQ_MAXFIELD];
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
@@ -253,11 +253,18 @@ static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_acti
    /* for npasstask, we need to create a lock file without the extension
     * so that its container gets the same state */
    if( _nodeDataPtr->type == NpassTask) {
-      sprintf(filename,"%s/%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      /* sprintf(filename,"%s/%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); */
+      extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
+      if( strlen( extension ) > 0 ) {
+         sprintf(filename,"%s/%s.%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp); 
+      } else {
+         sprintf(filename,"%s/%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      }
       touch(filename);
    }
 
    free( extName );
+   free( extension );
 
 }
 
@@ -471,7 +478,7 @@ Inputs:
 
 static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
 
-   char *extName = NULL ;
+   char *extName = NULL, *extension = NULL ;
    char filename[SEQ_MAXFIELD];
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
@@ -509,12 +516,18 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
    /* for npasstask, we need to create a lock file without the extension
     * so that its container gets the same state */
    if( _nodeDataPtr->type == NpassTask) {
-      sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      /* sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); */
+      extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
+      if( strlen( extension ) > 0 ) {
+         sprintf(filename,"%s/%s.%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp); 
+      } else {
+         sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      }
       touch(filename);
    }
 
    free( extName );
-
+   free( extension );
 }
 
 /* 
@@ -586,7 +599,6 @@ static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNam
    char *extension = NULL, *extWrite = NULL;
    int abortedChild = 0;
    LISTNODEPTR siblingIteratorPtr = NULL;
-   int isParentLoop = SeqLoops_isParentLoopContainer( _nodeDataPtr );
 
    char* nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
    siblingIteratorPtr = _nodeDataPtr->siblings;
@@ -702,7 +714,7 @@ Inputs:
 static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    char filename[SEQ_MAXFIELD];
-   char *extName = NULL ;
+   char *extName = NULL, *extension = NULL ;
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -735,13 +747,18 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    /* for npasstask, we need to create a lock file without the extension
     * so that its container gets the same state */
    if( _nodeDataPtr->type == NpassTask) {
-      SeqUtil_TRACE( "maestro.go_end() entering npass lockfile logic, args: workdir=%s name=%s loop_ext=%s datestamp=%s\n",_nodeDataPtr->workdir, _nodeDataPtr->name, (char *) SeqLoops_getExtensionBase(_nodeDataPtr), _nodeDataPtr->datestamp );
-      sprintf(filename,"%s/%s.%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, (char *) SeqLoops_getExtensionBase(_nodeDataPtr), _nodeDataPtr->datestamp); 
+      extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
+      if( strlen( extension ) > 0 ) {
+         sprintf(filename,"%s/%s.%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp); 
+      } else {
+         sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
+      }
+      SeqUtil_TRACE( "maestro.go_end() entering npass lockfile logic, args: workdir=%s name=%s loop_ext=%s datestamp=%s\n",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp );
       SeqUtil_TRACE( "maestro.go_end() creating npass lockfile=%s\n", filename);
       touch(filename);
    }
    free( extName );
-
+   free( extension );
 }
 
 /* 
@@ -920,7 +937,6 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, SeqNameV
    int undoneChild = 0;
    LISTNODEPTR siblingIteratorPtr = NULL;
    SeqNodeDataPtr siblingDataPtr = NULL;
-   int isParentLoop = SeqLoops_isParentLoopContainer( _nodeDataPtr );
 
    char* nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
    siblingIteratorPtr = _nodeDataPtr->siblings;
