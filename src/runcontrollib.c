@@ -139,16 +139,25 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datest
 {
    char hostname[50];
    char message[300];
+   char jobID[50];
    
    /* This is needed so messages will be logged into CMCNODELOG */
    putenv("CMCNODELOG=on");
    
    memset(hostname, '\0', sizeof hostname);
    gethostname(hostname,sizeof hostname);
+
+   memset(jobID, "\0", sizeof message);
+   if (getenv("JOB_ID") != NULL){
+         sprintf(jobID,"%s",getenv("JOB_ID"));
+   }
+   if (getenv("LOADL_STEP_ID") != NULL){
+         sprintf(jobID,"%s",getenv("LOADL_STEP_ID"));
+   }
    
    memset(message,'\0',sizeof message);
    //sprintf(message,"BEGINS host=%s",hostname);
-   sprintf(message,"host=%s",hostname);
+   sprintf(message,"host=%s job_ID=%s",hostname,jobID);
    //nodelogger(job,'X',message);
    /* nodelogger(job,"begin",message); */
    nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp);
