@@ -278,17 +278,22 @@ void SeqUtil_stringAppend( char** source, char* data )
 {
    char* newDataPtr = NULL;
    if ( *source != NULL ) {
-      newDataPtr = malloc( strlen(*source) + strlen( data ) + 1 );
+      if( ! (newDataPtr = malloc( strlen(*source) + strlen( data ) + 1 )  )) {
+         printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
+	 return;
+      }
       strcpy( newDataPtr, *source );
       strcat( newDataPtr, data );
    } else {
-      newDataPtr = malloc( strlen( data ) + 1 );
+      if( ! (newDataPtr = malloc( strlen( data ) + 1 ) ) ) {
+         printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
+	 return;
+      }
       strcpy( newDataPtr, data );
    }
 
    free( *source );
    *source = newDataPtr;
-
 }
 
 int SeqUtil_tokenCount( char* source, char* tokenSeparator )

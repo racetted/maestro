@@ -84,16 +84,6 @@ void SeqNode_setContainer ( SeqNodeDataPtr node_ptr, const char* container ) {
       strcpy( node_ptr->container, container );
    }
 }
-/* not needed anymore since this can be derived from module */
-/*
-void SeqNode_setMasterfile ( SeqNodeDataPtr node_ptr, const char* masterfile ) {
-   if ( masterfile != NULL ) {
-      free( node_ptr->masterfile );
-      node_ptr->masterfile = malloc( strlen(masterfile) + 1 );
-      strcpy( node_ptr->masterfile, masterfile );
-   }
-}
-*/
 
 void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
    char *tmpstrtok=NULL;
@@ -411,7 +401,6 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->container = NULL;
    nodePtr->intramodule_container = NULL;
    nodePtr->module = NULL;
-   nodePtr->masterfile = NULL;
    nodePtr->cpu = NULL;
    nodePtr->npex = NULL;
    nodePtr->npey = NULL;
@@ -440,7 +429,6 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setContainer( nodePtr, "" );
    SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
-   /* SeqNode_setMasterfile( nodePtr, "" ); */
    SeqNode_setCpu( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
    SeqNode_setMachine( nodePtr, "dorval-ib" );
@@ -539,9 +527,9 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
    }
    if ( showAll || showResPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s.def\n", node_ptr->taskPath );
+         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s.xml\n", node_ptr->name);
       } else {
-         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s/%s/container.def\n", node_ptr->intramodule_container, node_ptr->nodeName );
+         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s/container.xml\n", node_ptr->name );
       }
    }
 
@@ -651,7 +639,6 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->container ) ;
       free( seqNodeDataPtr->intramodule_container ) ;
       free( seqNodeDataPtr->module ) ;
-      free( seqNodeDataPtr->masterfile ) ;
       free( seqNodeDataPtr->alias ) ;
       free( seqNodeDataPtr->args ) ;
       free( seqNodeDataPtr->errormsg ) ;
@@ -694,7 +681,6 @@ void seqNodeUnitTest () {
    SeqNode_setModule( nodeDataPtr, "assim_module" );
    SeqNode_setNodeName( nodeDataPtr, "test_nodename" );
    SeqNode_setContainer( nodeDataPtr, "testsuite/assimilation/00" );
-   /* SeqNode_setMasterfile ( nodeDataPtr, "/users/dor/afsi/dor/sul/.suites/testsuite/sequencing/flow/testsuite.xml" ); */
    SeqNode_addNodeDependency( nodeDataPtr, NodeDependancy, "testsuite/assimilation/00/testnode", "afsisul", "testpath", "testsuite", "complete" ,"", "", "");
    SeqNode_addNodeDependency( nodeDataPtr, NodeDependancy, "testsuite/assimilation/00/testnode1", "afsisul", "testpath1", "testsuite", "complete","", "", "" );
    /*

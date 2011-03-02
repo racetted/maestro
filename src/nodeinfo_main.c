@@ -39,19 +39,18 @@ main ( int argc, char * argv[] )
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgs = NULL;
-   char node[100];
-   char filters[100];
+   char *node = NULL;
+   char filters[256];
    int errflg = 0, nodeFound = 0;
    int c, gotLoops=0, showRootOnly = 0;
-   //SeqUtil_DEBUG( "testing SeqUtil_DEBUG testvar=%s\n", "testvar_value" );
    if ( argc == 1 || argc == 2) {
       printUsage();
    }
-   memset(node,'\0',sizeof node);
    strcpy(filters,"all");
    while ((c = getopt(argc, (char* const*) argv, "n:f:l:d")) != -1) {
          switch(c) {
          case 'n':
+	    node = malloc( strlen( optarg ) + 1 );
             strcpy(node,optarg);
             nodeFound = 1;
             break;
@@ -79,7 +78,6 @@ main ( int argc, char * argv[] )
    if ( nodeFound == 0 && strstr( filters, "root" ) == NULL ) {
       printUsage();
    }
-   //test();
 
    nodeDataPtr = nodeinfo( node, filters );
    if (gotLoops){
@@ -87,5 +85,6 @@ main ( int argc, char * argv[] )
    }
    SeqNode_printNode( nodeDataPtr, filters );
    SeqNode_freeNode( nodeDataPtr );
+   free( node );
    return 0;
 }
