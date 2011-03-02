@@ -147,7 +147,7 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datest
    memset(hostname, '\0', sizeof hostname);
    gethostname(hostname,sizeof hostname);
 
-   memset(jobID, "\0", sizeof message);
+   memset(jobID, "\0", sizeof jobID);
    if (getenv("JOB_ID") != NULL){
          sprintf(jobID,"%s",getenv("JOB_ID"));
    }

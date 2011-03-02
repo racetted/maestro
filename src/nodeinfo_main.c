@@ -81,7 +81,8 @@ main ( int argc, char * argv[] )
    }
    //test();
 
-   nodeDataPtr = nodeinfo( node, filters );
+   nodeDataPtr = nodeinfo( node, filters, loopsArgs );
+    
    if (gotLoops){
       SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgs );
    }

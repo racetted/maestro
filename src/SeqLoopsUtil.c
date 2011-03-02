@@ -235,7 +235,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr, SeqNameValues
    baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
    nodeSpecPtr = _nodeDataPtr->data;
 
-   printf("SeqLoops_childExtensions extension:%s baseExtension:%s \n",_nodeDataPtr->extension, baseExtension );
+   printf("SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
    loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
    if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
       loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );

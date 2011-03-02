@@ -598,7 +598,8 @@ static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNam
    char filename[SEQ_MAXFIELD];
    char *extension = NULL, *extWrite = NULL;
    int abortedChild = 0;
-   LISTNODEPTR siblingIteratorPtr = NULL;
+   LISTNODEPTR siblingIteratorPtr = NULL, extensionList = NULL;
+
 
    char* nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
    siblingIteratorPtr = _nodeDataPtr->siblings;
@@ -616,6 +617,16 @@ static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNam
    sprintf(filename,"%s/%s%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
    abortedChild = isFileExists( filename, "processLoopContainerBegin()" ) ;
 
+/*   extensionList = (LISTNODEPTR) SeqLoops_childExtensions( _nodeDataPtr, LOOP_ARGS );
+   if( extensionList != NULL ) {
+      while( extensionList != NULL && abortedChild == 0 ) {
+         sprintf(filename,"%s/%s.%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->name, extensionList->data, _nodeDataPtr->datestamp);
+         SeqUtil_TRACE( "maestro.processLoopContainerBegin() loop aborted? checking for:%s \n", filename);
+         abortedChild = ! ( isFileExists( filename, "processLoopContainerBegin()" ) ) ;
+         extensionList = extensionList->nextPtr;
+      }
+   }
+*/
    if( siblingIteratorPtr != NULL && abortedChild == 0 ) {
       /* need to process multile childs within loop context */
       while(  siblingIteratorPtr != NULL && abortedChild == 0 ) {
@@ -893,7 +904,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
 	       /* check if it's a discretionary job, bypass if yes */ 
 	       sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data); 
                SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
-	       siblingDataPtr = nodeinfo( tmp, "type,res" );
+	       siblingDataPtr = nodeinfo( tmp, "type,res", NULL );
 	       if ( siblingDataPtr->catchup == SEQ_CATCHUP_DISCR ) {
                   SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary task: %s\n", siblingIteratorPtr->data );
                   siblingIteratorPtr = siblingIteratorPtr->nextPtr;
@@ -967,7 +978,7 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, SeqNameV
             /* check if it's a discretionary job, bypass if yes */
             sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
             SeqUtil_TRACE( "maestro.processLoopContainerEnd() getting sibling info: %s\n", tmp );
-            siblingDataPtr = nodeinfo( tmp, "type,res" );
+            siblingDataPtr = nodeinfo( tmp, "type,res", NULL );
             if ( siblingDataPtr->catchup == SEQ_CATCHUP_DISCR ) {
 	       undoneChild = 0;
                SeqUtil_TRACE( "maestro.processLoopContainerEnd() bypassing discretionary task: %s\n", siblingIteratorPtr->data );
@@ -1395,6 +1406,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          SeqUtil_TRACE( "maestro.validateDependencies() nodeinfo_depend_type=Node\n" );
          depScope = IntraSuite;
          depName = SeqNameValues_getValue( nameValuesPtr, "NAME" );
+	 SeqUtil_TRACE( "maestro.validateDependencies() nodeinfo_depend_name=%s\n", depName );
          depIndex = SeqNameValues_getValue( nameValuesPtr, "INDEX" );
          depStatus = SeqNameValues_getValue( nameValuesPtr, "STATUS" );
          depUser = SeqNameValues_getValue( nameValuesPtr, "USER" );
@@ -1425,6 +1437,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
             tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
             SeqUtil_stringAppend( &loopIndexString, tmpExt );
             SeqUtil_stringAppend( &depNameMsg, loopIndexString);
+            SeqUtil_TRACE( "maestro.validateDependencies() depNameMsg=%s\n", depNameMsg );
             free(tmpExt);
          }
          /* if I'm a loop iteration, process it */
@@ -1667,7 +1680,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       strcpy(OCSUB,"ord_soumet");
    }
    SeqUtil_TRACE( "maestro() using submit script=%s\n", OCSUB );
-   nodeDataPtr = nodeinfo( _node, "all" );
+   nodeDataPtr = nodeinfo( _node, "all", _loops );
+
+   /*in initnode mode, NPASS tasks will not take a loop argument so that they delete it all*/
 
    if( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask ) {
        SeqLoops_validateLoopNptArgs( nodeDataPtr, _loops, 0 );

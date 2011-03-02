@@ -127,7 +127,7 @@ main (int argc, char * argv[])
 
       printf("validDate = %s \n", validDate);
 
-      nodeDataPtr = nodeinfo( node, "all" );
+      nodeDataPtr = nodeinfo( node, "all", loopsArgsPtr );
       if (hasLoops){
           SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgsPtr );
       }

@@ -73,15 +73,16 @@ SeqNodeType getNodeType ( const xmlChar *_node_name ) {
    return nodeType;
 }
 
-void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
+void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loops ) {
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
    xmlChar *depType = NULL, *depUser = NULL, *depExp, *depName = NULL, 
       *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    xmlChar *depPath = NULL;
+   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
    xmlAttrPtr propertiesPtr;
-   int i=0;
+   int i=0, current_index_flag=0;
    if (_result) {
       nodeset = _result->nodesetval;
       for (i=0; i < nodeset->nodeNr; i++) {
@@ -97,22 +98,81 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
             depName = xmlGetProp( nodePtr, "dep_name" );
             depIndex = xmlGetProp( nodePtr, "index" );
             depLocalIndex = xmlGetProp( nodePtr, "local_index" );
+            /* look for keywords in index fields */
+
+            tmpstrtok = (char*) strtok( depIndex, "," );
+            while ( tmpstrtok != NULL ) {
+                SeqUtil_TRACE( "nodeinfo.parseDepends() tmpstrtok = %s\n", tmpstrtok);
+                if (fullDepIndex==NULL){
+	         /* initialise empty string */
+                    SeqUtil_stringAppend(&fullDepIndex, "");
+		} else {
+		 /* add comma between items */
+                     SeqUtil_stringAppend(&fullDepIndex, ",");
+		}
+       	        if (strcmp(tmpstrtok,"CURRENT_INDEX") == 0){
+		     current_index_flag=1;
+		     SeqUtil_TRACE( "nodeinfo.parseDepends() replacing CURRENT_INDEX with \n");
+		     SeqNameValues_printList(_loops);
+                     SeqUtil_stringAppend(&fullDepIndex,SeqLoops_getLoopArgs(_loops));
+		} else {
+                     SeqUtil_stringAppend(&fullDepIndex,tmpstrtok);
+		}
+		/* next token */ 
+	        tmpstrtok = (char*) strtok( NULL, "," );
+            }
+	    /* check if current index codeword has been used in the depIndex part, if not, it is an error, it must be used in both*/
+	    if (depLocalIndex != NULL) {
+	        if (current_index_flag && ((strstr(depLocalIndex,"CURRENT_INDEX")))==NULL){
+	            raiseError("CURRENT_INDEX keyword must be used in both local_index and index fields\n");
+	        }  
+
+	        if (current_index_flag == 0 && strstr(depLocalIndex,"CURRENT_INDEX")!=NULL){
+	            raiseError("CURRENT_INDEX keyword must be used in both local_index and index fields\n");
+	        }
+            } else {
+                if (current_index_flag){
+	            raiseError("CURRENT_INDEX keyword must be used in both local_index and index fields\n");
+		}		   
+	    }
+
+            tmpstrtok = (char*) strtok( depLocalIndex, "," );
+            while ( tmpstrtok != NULL ) {
+                SeqUtil_TRACE( "nodeinfo.parseDepends() tmpstrtok = %s\n", tmpstrtok);
+                if (fullDepLocalIndex==NULL){
+	         /* initialise empty string */
+                    SeqUtil_stringAppend(&fullDepLocalIndex, "");
+		} else {
+		 /* add comma between items */
+                     SeqUtil_stringAppend(&fullDepLocalIndex, ",");
+		}
+       	        if (strcmp(tmpstrtok,"CURRENT_INDEX") == 0){
+		     SeqNameValues_printList(_loops);
+                     SeqUtil_stringAppend(&fullDepLocalIndex,SeqLoops_getLoopArgs(_loops));
+		} else {
+                     SeqUtil_stringAppend(&fullDepLocalIndex,tmpstrtok);
+		}
+		/* next token */ 
+	        tmpstrtok = (char*) strtok( NULL, "," );
+            }
+
             depPath = xmlGetProp( nodePtr, "path" );
             depHour = xmlGetProp( nodePtr, "hour" );
             depStatus = xmlGetProp( nodePtr, "status" );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depName: %s\n", depName );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );
+            SeqUtil_TRACE( "nodeinfo.parseDepends() fullDepIndex: %s\n", fullDepIndex );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depPath: %s\n", depPath );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep user: %s\n", depUser );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
-            SeqUtil_TRACE( "nodeinfo.parseDepends() depLocalIndex: %s\n", depLocalIndex );
+            SeqUtil_TRACE( "nodeinfo.parseDepends() fullDepLocalIndex: %s\n", fullDepLocalIndex );
 	    if ( strcmp( depType, "npass_task" ) == 0 ) { 
-               SeqNode_addNodeDependency ( _nodeDataPtr, NpassDependancy, depName, depPath, depUser, depExp, depStatus, depIndex, depLocalIndex, depHour );
+               SeqNode_addNodeDependency ( _nodeDataPtr, NpassDependancy, depName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
             } else {
                SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, depName, \
-	                depPath, depUser, depExp, depStatus, depIndex, depLocalIndex, depHour );
+	                depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
 	    }
             SeqUtil_TRACE( "nodeinfo.parseDepends() done\n" );
             xmlFree( depName );
@@ -122,6 +182,9 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
             xmlFree( depUser );
             xmlFree( depExp );
             xmlFree( depHour );
+            free(fullDepIndex);
+	    free(fullDepLocalIndex);
+	    free(tmpstrtok);
          } else {
             SeqUtil_TRACE( "nodeinfo.parseDepends() unprocessed dependency type:%s\n", depType);
          }
@@ -347,7 +410,7 @@ void getRootNode( SeqNodeDataPtr _nodeDataPtr, const char *_seq_exp_home ) {
 
    /*
    */
-void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char *_seq_exp_home ) {
+void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char *_seq_exp_home, SeqNameValuesPtr _loops  ) {
    char xml_file[256], currentFlowNode[256];
    char query[256],submitsQuery[256];
 
@@ -554,7 +617,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_jobPath, const char
       strcpy ( query, "(child::DEPENDS_ON)");
    
       result = getnodeset (doc, query, context);
-      parseDepends( result, _nodeDataPtr ); 
+      parseDepends( result, _nodeDataPtr, _loops ); 
       xmlXPathFreeObject (result);
    
       /* retrieve submits node */
@@ -682,7 +745,7 @@ void test() {
    printf( "Count of / source=%s value=%d\n", "test/node/value", SeqUtil_tokenCount( "test/node/value","/" ));
 }
 
-SeqNodeDataPtr nodeinfo ( const char* node, const char* filters ) {
+SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops ) {
 
    char* seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    SeqNodeDataPtr  nodeDataPtr = NULL;
@@ -709,11 +772,12 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters ) {
    if ( SHOW_ROOT_ONLY ) {
       getRootNode ( nodeDataPtr, seq_exp_home );
    } else {
-      getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
+      getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home, _loops );
    }
    if( SHOW_ALL || SHOW_RESSOURCE || SHOW_RESPATH ) {
       getSchedulerInfo( nodeDataPtr, (char*) newNode, seq_exp_home );
    }
+
    free( tmpfilters ); 
    return nodeDataPtr;
 }
