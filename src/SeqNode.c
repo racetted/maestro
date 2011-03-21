@@ -302,7 +302,7 @@ void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, c
                          char* dep_user, char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
-   SeqUtil_TRACE( "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_user=%s, dep_exp=%s, dep_status=%s dep_index=%s, local_index=%s\n",
+   SeqUtil_TRACE( "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_user=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s\n",
       dep_node_name, dep_node_path, dep_user, dep_exp, dep_status, dep_index, local_index );
    deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
    deps_ptr->type = type;

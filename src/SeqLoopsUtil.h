@@ -10,7 +10,7 @@ char* SeqLoops_getExtensionBase ( SeqNodeDataPtr _nodeDataPtr );
 SeqNameValuesPtr SeqLoops_convertExtension ( SeqLoopsPtr loops_ptr, char* extension );
 char* SeqLoops_ContainerExtension( SeqLoopsPtr loops_ptr, SeqNameValuesPtr loop_args_ptr ) ;
 char* SeqLoops_NodeExtension( const char* node_name, SeqNameValuesPtr loop_args_ptr );
-LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr loop_args_ptr );
+LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr );
 int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr );
 char* SeqLoops_getExtPattern ( char* extension ) ;
 char* SeqLoops_getLoopArgs( SeqNameValuesPtr _loop_args );

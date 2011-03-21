@@ -35,8 +35,8 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
    tmpstrtok = (char*) strtok( tmp_args, "," );
    while ( tmpstrtok != NULL ) {
       /* any alphanumeric characters and special chars
-         _:/- are supported */
-      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._:/-]", &loopName, &loopValue );
+         _:/-* are supported */
+      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._:/-*]", &loopName, &loopValue );
 
       /*printf( "SeqLoops_parseArgs loopName:%s rigthValue:%s\n", loopName, loopValue );*/
       /*printf( "SeqLoops_parseArgs adding to list: %s\n", tmpstrtok );*/
@@ -224,9 +224,10 @@ char* SeqLoops_NodeExtension( const char* node_name, SeqNameValuesPtr loop_args_
 
 
 /* return the loop container extension values that the current node is in.
-   to be used to check if a loop parent node is done,
+ * Current node must be a loop node.
+   To be used to check if a loop parent node is done,
    assuming that extension is set in  _nodeDataPtr->extension */
-LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr loop_args_ptr ) {
+LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
    int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
@@ -235,7 +236,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr, SeqNameValues
    baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
    nodeSpecPtr = _nodeDataPtr->data;
 
-   printf("SeqLoops_childExtensions extension:%s baseExtension:%s \n",_nodeDataPtr->extension, baseExtension );
+   printf("SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
    loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
    if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
       loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
@@ -267,6 +268,82 @@ int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
    }
    SeqUtil_TRACE( "SeqLoops_isParentLoopContainer.isParentLoopContainer() return value = %d\n", value );
    return value;
+}
+
+/*
+ * returns a list containing ALL the loop extensions for a node that is
+ * a child of a loop container or loop containers. For instance, this 
+ * function is used to support dependency wildcard when a node is dependant on all
+ * the iterations of a node that is a child of a loop container
+ */
+LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr ) {
+   SeqNameValuesPtr nodeSpecPtr = NULL;
+   char tmp[100], *baseExtension = NULL;
+   int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
+   LISTNODEPTR loopExtensions = NULL, tmpLoopExts = NULL;
+   SeqNameValuesPtr loopsDataPtr = NULL;
+   SeqLoopsPtr loopsPtr = _nodeDataPtr->loops; 
+
+   memset( tmp, '\0', sizeof tmp );
+   baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
+   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions baseExtension:%s\n", baseExtension);  
+
+   /* the node could be part of many loops
+    * as we moved down the chain of loops, the list of extensions will grow*/
+   while (loopsPtr != NULL) {
+      SeqUtil_TRACE("node.loop_parent.name=%s\n", loopsPtr->loop_name);  
+      loopsDataPtr = loopsPtr->values;
+      if (loopsDataPtr != NULL ) {
+         SeqUtil_TRACE("node.loop_parent.%s=%s\n", loopsDataPtr->name, loopsDataPtr->value );
+         loopsDataPtr = loopsDataPtr->nextPtr;
+         loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
+         if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
+            loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
+         }
+         loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+         loopCount = loopStart;
+         SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+
+	 /* loop through parent extensions and add extensions of the new loop to it */
+	 do {
+            /* iterate through all values of the current loop */
+            while( loopCount <= loopEnd ) {
+               if( loopExtensions != NULL ) {
+	          sprintf( tmp, "%s%s%d", loopExtensions->data, EXT_TOKEN, loopCount );
+               } else {
+	          sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
+	       }
+	       /* build the tmp list of extensions */
+	       SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added:%s\n", tmp );
+               SeqListNode_insertItem( &tmpLoopExts, tmp );
+               loopCount = loopCount + loopStep;
+            }
+	    /* if not done, do next */
+            if( loopExtensions != NULL ) {
+	       loopExtensions = loopExtensions->nextPtr;
+               loopCount = loopStart;
+            }
+         } while( loopExtensions != NULL );
+
+	 /* delete the previous list of extensions */
+	 SeqListNode_deleteWholeList( &loopExtensions );
+
+         /* store the new list of extensions */
+	 loopExtensions = tmpLoopExts; 
+
+	 tmpLoopExts = NULL;
+      }
+      /* re-init loop values */
+      loopCount = 0; loopStep = 1; loopStart = 0; loopEnd = 0;
+      /* get next parent loop container */
+      loopsPtr = loopsPtr->nextPtr;
+   }
+   /*
+   printf("SeqLoops_getLoopContainerExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
+   */
+   free( baseExtension );
+
+   return loopExtensions;
 }
 
 /* add escape characters in front of the loop separator character (+)
