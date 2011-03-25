@@ -24,7 +24,6 @@
 #define SEQ_CATCHUP_DISCR 9
 static const char* CATCHUP_DISCR_MSG = "DISCRETIONARY: this job is not scheduled to run";
 static const char* CATCHUP_UNSUBMIT_MSG = "CATCHUP mode: this job will not be submitted";
-static const char* EMPTY_STRING = "";
 
 static char OCSUB[256];
 static char SEQ_EXP_HOME[256];
@@ -1475,6 +1474,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
 	 /* verify status files and write waiting files */
          if( strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) {
 	    if( depScope == IntraSuite ) {
+	       printf( "maestro.validateDependencies()  calling processDepStatus depName=%s depIndexString=%s depDatestamp=%s depStatus=%s\n", depName, depIndexString, depDatestamp, depStatus );
 	       isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndexString, depDatestamp, depStatus, SEQ_EXP_HOME, isDepIndexWildcard );
             } else {
 	       isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndexString, depDatestamp, depStatus, depExp, isDepIndexWildcard );
@@ -1619,13 +1619,16 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
  * _dep_exp:      exp of dependant node if not IntraSuite scope
  * _is_wildcard:  is wildcard use in index field
  */
-int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_scope, const char* _dep_name, const char* _dep_index,
+int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_scope, const char* _dep_name,const  char* _dep_index,
                           const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, int _is_wildcard  ) {
    char statusFile[SEQ_MAXFIELD];
    int undoneIteration = 0, isWaiting = 0;
-   char *waitingMsg = NULL, *depIndexPtr;
+   char *waitingMsg = NULL, *depIndexPtr = NULL;
    SeqNodeDataPtr *depNodeDataPtr = NULL;
    LISTNODEPTR extensions = NULL;
+
+   printf( "processDepStatus _dep_name=%s _dep_index=%s _dep_datestamp=%s _dep_status=%s _dep_exp=%s\n", 
+      _dep_name, _dep_index, _dep_datestamp, _dep_status, _dep_exp ); 
 
    if( _dep_index == NULL ) {
       SeqUtil_stringAppend( &depIndexPtr, "" );
@@ -1633,8 +1636,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
       SeqUtil_stringAppend( &depIndexPtr, "." );
       SeqUtil_stringAppend( &depIndexPtr, strdup( _dep_index ) ); 
    }
-   SeqUtil_TRACE( "processDepStatus _dep_name=%s _dep_index=%s _dep_datestamp=%s _dep_status=%s _dep_exp=%s\n", 
+   /*
+    SeqUtil_TRACE( "processDepStatus _dep_name=%s _dep_index=%s _dep_datestamp=%s _dep_status=%s _dep_exp=%s\n", 
       _dep_name, _dep_index, _dep_datestamp, _dep_status, _dep_exp ); 
+    */
    memset( statusFile, '\0', sizeof statusFile);
 
    if( ! _is_wildcard ) {
