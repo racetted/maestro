@@ -313,20 +313,39 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
        memset( cmd, '\0' , sizeof cmd);
        printf("Following lockfiles are being deleted: \n");
        SeqUtil_TRACE( "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
-       sprintf(cmd, "find %s/%s/%s -name \"*%s*%s.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       sprintf(cmd, "find %s/%s/%s -name \"*%s.*%s.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
        system(cmd);
        SeqUtil_TRACE( "maestro.go_initialize() deleting begin lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s -name \"*%s*%s.begin\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       sprintf(cmd, "find %s/%s/%s -name \"*%s.*%s.begin\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
        system(cmd);
        SeqUtil_TRACE( "maestro.go_initialize() deleting abort lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s -name \"*%s*%s.abort.*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       sprintf(cmd, "find %s/%s/%s -name \"*%s.*%s.abort.*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
        system(cmd);
        SeqUtil_TRACE( "maestro.go_initialize() deleting submit lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s -name \"*%s*%s.submit\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       sprintf(cmd, "find %s/%s/%s -name \"*%s.*%s.submit\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
        system(cmd);
        SeqUtil_TRACE( "maestro.go_initialize() deleting waiting lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s -name \"*%s*%s.waiting\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp  );
+       sprintf(cmd, "find %s/%s/%s -name \"*%s.*%s.waiting\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp  );
        system(cmd);
+
+     /* for npass tasks  */
+       printf("Following lockfiles are being deleted: \n");
+       SeqUtil_TRACE( "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
+       sprintf(cmd, "find %s/%s/%s -name \"*%s+*.*%s.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       system(cmd);
+       SeqUtil_TRACE( "maestro.go_initialize() deleting begin lockfiles starting at node=%s\n", _nodeDataPtr->name); 
+       sprintf(cmd, "find %s/%s/%s -name \"*%s+*.*%s.begin\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       system(cmd);
+       SeqUtil_TRACE( "maestro.go_initialize() deleting abort lockfiles starting at node=%s\n", _nodeDataPtr->name); 
+       sprintf(cmd, "find %s/%s/%s -name \"*%s+*.*%s.abort.*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       system(cmd);
+       SeqUtil_TRACE( "maestro.go_initialize() deleting submit lockfiles starting at node=%s\n", _nodeDataPtr->name); 
+       sprintf(cmd, "find %s/%s/%s -name \"*%s+*.*%s.submit\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp );
+       system(cmd);
+       SeqUtil_TRACE( "maestro.go_initialize() deleting waiting lockfiles starting at node=%s\n", _nodeDataPtr->name); 
+       sprintf(cmd, "find %s/%s/%s -name \"*%s+*.*%s.waiting\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName, _nodeDataPtr->datestamp  );
+       system(cmd);
+
    }
 
    /* delete every iterations if no extension specified for npasstask */
