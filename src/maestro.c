@@ -59,7 +59,7 @@ static void clearAllFinalStates (SeqNodeDataPtr _nodeDataPtr, char * fullNodeNam
 /* submission utilities */
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* signal );
 static void submitNodeList ( const LISTNODEPTR listToSubmit, SeqNameValuesPtr loop_args_ptr); 
-static void submitLoopSetNodeList ( const LISTNODEPTR listToSubmit, 
+static void submitLoopSetNodeList ( const SeqNodeDataPtr _nodeDataPtr, 
                                 SeqNameValuesPtr container_args_ptr, SeqNameValuesPtr set_args_ptr); 
 
 /* dependancy related */
@@ -197,7 +197,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
       if( ((char*) SeqLoops_getLoopAttribute( LOOP_ARGS, _nodeDataPtr->nodeName )) != NULL ) {
          extensionBase = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
          newArgs = (SeqNameValuesPtr) SeqLoops_convertExtension( _nodeDataPtr->loops, extensionBase );
-         printf( "********** calling maestro -s abortx -f stop -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(LOOP_ARGS) );
+         printf( "********** go_abort() calling maestro -s abortx -f stop -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(LOOP_ARGS) );
          maestro ( _nodeDataPtr->name, "abortx", "stop", newArgs, 0 );
       }
    }
@@ -438,7 +438,8 @@ Inputs:
 
 static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPtr) {
    char *extensionBase = NULL, *nodeBase = NULL;
-   SeqNameValuesPtr newArgs = NULL, loopArgs = NULL, loopSetArgs = NULL;
+   SeqNameValuesPtr loopArgs = NULL, loopSetArgs = NULL, tmpArgs = NULL;
+   int loop_args_foundIt=0;
    SeqUtil_TRACE( "maestro.go_begin() node=%s signal=%s flow=%s loopargs=%s\n", _nodeDataPtr->name, _signal, _flow, SeqLoops_getLoopArgs(LOOP_ARGS));
    nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
 
@@ -459,7 +460,24 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
          loopSetArgs = (SeqNameValuesPtr) SeqLoops_getLoopSetArgs( _nodeDataPtr, LOOP_ARGS );
 	 loopArgs =  (SeqNameValuesPtr) SeqLoops_getContainerArgs( _nodeDataPtr, LOOP_ARGS );
 	 /* submit the set iterations */
-         submitLoopSetNodeList(_nodeDataPtr->submits, loopArgs, loopSetArgs);
+	 /* if loop args of the current loop container is not defined, submit a set of loops with arguments, else submit the nodes normally*/
+
+         tmpArgs=LOOP_ARGS;
+         while (tmpArgs != NULL && !loop_args_foundIt) {
+             SeqUtil_TRACE( "processLoopContainerBegin() tmpArgs=%s node=%s\n", tmpArgs->name, _nodeDataPtr->nodeName);
+             if (strcmp(_nodeDataPtr->nodeName,tmpArgs->name)==0) {
+                 loop_args_foundIt=1;
+             } else {
+ 		 tmpArgs = tmpArgs -> nextPtr;
+  	     }
+	 } 
+	 if (loop_args_foundIt){
+              submitNodeList(_nodeDataPtr->submits, LOOP_ARGS);
+	 } else {
+              SeqUtil_TRACE( "maestro.go_begin() doing loop iteration submissions\n", _nodeDataPtr->name, _signal );
+	      submitLoopSetNodeList(_nodeDataPtr, loopArgs, loopSetArgs);
+         }
+
 	   /* non-loop containers */
    } else if (_nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask 
              && _nodeDataPtr->type != Case && (strcmp(_flow, "continue") == 0) ) {
@@ -476,18 +494,7 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
    if ( strcmp(_nodeDataPtr->container, "") != 0 ) {
       processContainerBegin(_nodeDataPtr); 
    }
-
-   /* this will set the loop into begin state */
-   if( _nodeDataPtr->type == Loop ) {
-      if( ((char*) SeqLoops_getLoopAttribute( LOOP_ARGS, _nodeDataPtr->nodeName )) != NULL ) {
-         extensionBase = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
-         newArgs = (SeqNameValuesPtr) SeqLoops_convertExtension( _nodeDataPtr->loops, extensionBase );
-         printf( "********** calling maestro -s begin -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs) );
-         maestro ( _nodeDataPtr->name, "begin", "stop", newArgs, 0 );
-      }
-   }
-
-   SeqNameValues_deleteWholeList( &newArgs );
+   SeqNameValues_deleteWholeList( &tmpArgs );
    SeqNameValues_deleteWholeList( &loopArgs );
    actionsEnd( _signal, _flow ,_nodeDataPtr->name );
    return(0);
@@ -570,22 +577,35 @@ Inputs:
 static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr ) {
 
    char filename[SEQ_MAXFIELD];
-   LISTNODEPTR siblingIteratorPtr = NULL;
-   SeqNameValuesPtr loopArgs = LOOP_ARGS;
+   LISTNODEPTR siblingIteratorPtr = NULL, extensions = NULL;
+   SeqNameValuesPtr loopArgs = LOOP_ARGS, newArgs = NULL;
    int abortedSibling = 0;
-   char *nodeBase = NULL;
+   char *nodeBase = NULL, extensionBase = NULL;
    if ( _nodeDataPtr->catchup == SEQ_CATCHUP_DISCR ) {   
       SeqUtil_TRACE( "maestro.processContainerBegin() bypassing discreet node:%s\n", _nodeDataPtr->name );
       return;
    }
-
    nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
    if ( _nodeDataPtr->type != CaseItem ) {
       if( _nodeDataPtr->loops != NULL ) {
-         /* process loops containers */
+         /* node is part of a loop */
          processLoopContainerBegin(_nodeDataPtr, loopArgs);
-
       } else {
+         /*node is not part of a loop*/
+
+         if ( _nodeDataPtr->type == Loop ) {
+                 /* check other iterations of the loop to see if begin passes */
+                 extensions = (LISTNODEPTR) SeqLoops_childExtensions( _nodeDataPtr );
+                 if( extensions != NULL ) {
+                      while( extensions != NULL && abortedSibling == 0 ) {
+                          sprintf(filename,"%s/%s.%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->name, extensions->data, _nodeDataPtr->datestamp);
+                          SeqUtil_TRACE( "maestro.processContainerBegins() loop still aborted? checking for:%s\n", filename);
+                          abortedSibling = isFileExists( filename, "processContainerBegin()" ) ;
+                          extensions = extensions->nextPtr;
+                      }
+                 }
+	 }
+
          siblingIteratorPtr = _nodeDataPtr->siblings;
          /* process the siblings */
          while( siblingIteratorPtr != NULL && abortedSibling == 0 ) {
@@ -597,8 +617,19 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr ) {
             siblingIteratorPtr = siblingIteratorPtr->nextPtr;
          }
          if( abortedSibling == 0 ) {
-            printf( "********** calling maestro -s beginx -n %s -f stop \n", nodeBase);
+            printf( "********** processContainerBegin() calling maestro -s beginx -n %s -f stop \n", nodeBase);
             maestro (nodeBase, "beginx", "stop" ,NULL, 0); 
+
+            /* this will set the loop into begin state */
+            if( _nodeDataPtr->type == Loop ) {
+                  if( ((char*) SeqLoops_getLoopAttribute( LOOP_ARGS, _nodeDataPtr->nodeName )) != NULL ) {
+                       extensionBase = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
+                       newArgs = (SeqNameValuesPtr) SeqLoops_convertExtension( _nodeDataPtr->loops, extensionBase );
+                       printf( "********** processContainerBegin() calling maestro -s beginx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs) );
+                       maestro ( _nodeDataPtr->name, "begin", "stop", newArgs, 0 );
+                  }
+            }
+
          }
       }
    }
@@ -607,6 +638,8 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr ) {
       maestro (nodeBase, "beginx", "stop", NULL, 0); 
    }
    free( nodeBase );
+   free( extensionBase );
+   SeqNameValues_deleteWholeList( &newArgs );
    SeqUtil_TRACE( "maestro.processContainerBegin() return value=%d\n", (abortedSibling == 1 ? 0 : 1) );
 }
 
@@ -623,28 +656,70 @@ Inputs:
 
 static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr loop_args_ptr) {
    char filename[SEQ_MAXFIELD];
-   char *extension = NULL, *extWrite = NULL;
-   int abortedChild = 0;
+   char *extension = NULL, *extWrite = NULL, *extensionBase = NULL;
+   int abortedChild = 0, loop_args_foundIt = 0;
+   SeqNameValuesPtr newArgs = NULL, tmpArgs = NULL;
    LISTNODEPTR siblingIteratorPtr = NULL, extensionList = NULL;
 
+   SeqUtil_TRACE( "processLoopContainerBegin() node=%s extension=%s\n", _nodeDataPtr->nodeName, _nodeDataPtr->extension );
+   SeqNameValues_printList(loop_args_ptr);
 
    char* nodeBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
    siblingIteratorPtr = _nodeDataPtr->siblings;
    memset( filename, '\0', sizeof filename );
    
    /* do we need to modify the loop extension */
-   extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
-   SeqUtil_TRACE( "processLoopContainerBegin() nodeBase=%s extension=%s\n", nodeBase, extension );
+   if (_nodeDataPtr->type == Loop) { 
+        tmpArgs=_nodeDataPtr->loops->values;
+        extension = strdup( _nodeDataPtr->extension ); 
+        while (tmpArgs != NULL && !loop_args_foundIt) {
+            SeqUtil_TRACE( "processLoopContainerBegin() tmpArgs=%s node=%s\n", tmpArgs->name, _nodeDataPtr->nodeName);
+            if (strcmp(_nodeDataPtr->nodeName,tmpArgs->name)==0) {
+                loop_args_foundIt=1;
+	        free(extension);
+                extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr ); 
+            } else {
+		tmpArgs = tmpArgs -> nextPtr;
+	    }
+	} 
+   } else {
+        extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr ); 
+   }
+
+   SeqUtil_TRACE( "processLoopContainerBegin() new extension=%s\n",extension );
+
    if( strlen( extension ) > 0 ) {
       SeqUtil_stringAppend( &extWrite, "." );
       SeqUtil_stringAppend( &extWrite, extension );
    } else {
       SeqUtil_stringAppend( &extWrite, "" );
    }
+
+/*
    sprintf(filename,"%s/%s%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
    abortedChild = isFileExists( filename, "processLoopContainerBegin()" ) ;
+*/
+
+   /* check the loop's other iterations */
+
+   if ( _nodeDataPtr->type == Loop ) {
+         /* check other iterations of the loop to see if begin passes */
+         extensionList = (LISTNODEPTR) SeqLoops_childExtensions( _nodeDataPtr );
+         SeqUtil_TRACE( "maestro.processLoopContainerBegins() checking iterations around loop node\n");
+         if( extensionList != NULL ) {
+              while( extensionList != NULL && abortedChild == 0 ) {
+                  sprintf(filename,"%s/%s.%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->name, extensionList->data, _nodeDataPtr->datestamp);
+                  abortedChild = isFileExists( filename, "processLoopContainerBegin()" ) ;
+                  extensionList = extensionList->nextPtr;
+              }
+         }
+    }
+
+
+   /* check the loop children */
 
    if( siblingIteratorPtr != NULL && abortedChild == 0 ) {
+      SeqUtil_TRACE( "maestro.processLoopContainerBegins() checking siblings\n");
       /* need to process multile childs within loop context */
       while(  siblingIteratorPtr != NULL && abortedChild == 0 ) {
          sprintf(filename,"%s/%s/%s%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
@@ -654,17 +729,30 @@ static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr, SeqNam
    }
 
    if( abortedChild == 0 ) {
-      //printf( "processLoopContainerEnd() sending \"maestro end %s%s\n", nodeBase, extension );
         //if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ) {
 	if( _nodeDataPtr->type == NpassTask ) {
          /* remove the loop argument for the current loop first */
          SeqNameValues_deleteItem(&loop_args_ptr, _nodeDataPtr->nodeName );
       }
-      printf( "********** calling maestro -s begin -n %s with loop args=%s\n", nodeBase, SeqLoops_getLoopArgs(loop_args_ptr)  );
+      printf( "********** processLoopContainerBegin() calling maestro -s beginx -n %s with loop args=%s\n", nodeBase, SeqLoops_getLoopArgs(loop_args_ptr)  );
       maestro ( nodeBase, "beginx", "stop", loop_args_ptr, 0 );
+      /* this will set the loop into begin state */
+      if( _nodeDataPtr->type == Loop ) {
+            if( ((char*) SeqLoops_getLoopAttribute( LOOP_ARGS, _nodeDataPtr->nodeName )) != NULL ) {
+                 extensionBase = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
+                 newArgs = (SeqNameValuesPtr) SeqLoops_convertExtension( _nodeDataPtr->loops, extensionBase );
+                 printf( "********** processContainerLoopBegin() calling maestro -s beginx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs) );
+                 maestro ( _nodeDataPtr->name, "beginx", "stop", newArgs, 0 );
+            }
+      }
+
    }
    free( nodeBase );
+   free( extensionBase );
+   free( extension );
    free( extWrite );
+   SeqNameValues_deleteWholeList( &newArgs );
+   SeqNameValues_deleteWholeList( &tmpArgs );
 }
 
 /*
@@ -933,7 +1021,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
             }
          }
          if( undoneChild == 0 ) {
-            printf( "********** calling maestro -s endx -n %s -f %s\n", nodeBase, _flow );
+            printf( "********** processContainerEnd() calling maestro -s endx -n %s -f %s\n", nodeBase, _flow );
             maestro (nodeBase, "endx", _flow ,NULL, 0); 
          }
       }
@@ -1014,7 +1102,7 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, SeqNameV
          /* remove the loop argument for the current loop first */
          SeqNameValues_deleteItem(&loop_args_ptr, _nodeDataPtr->nodeName );
       }
-      printf( "********** calling maestro -s endx -n %s with loop args=%s\n", nodeBase, SeqLoops_getLoopArgs(loop_args_ptr) );
+      printf( "********** processLoopContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", nodeBase, SeqLoops_getLoopArgs(loop_args_ptr) );
       maestro ( nodeBase, "endx", _flow, loop_args_ptr, 0 );
    }
    free( nodeBase );
@@ -1172,9 +1260,8 @@ Inputs:
   container_args_ptr -  pointer to container loops
   loopset_index - list of index for the set iterations
 */
-static void submitLoopSetNodeList ( const LISTNODEPTR listToSubmit, 
+static void submitLoopSetNodeList ( const SeqNodeDataPtr _nodeDataPtr, 
                                     SeqNameValuesPtr container_args_ptr, SeqNameValuesPtr loopset_index ) {
-   LISTNODEPTR listIteratorPtr = NULL;
    SeqNameValuesPtr myLoopArgsPtr = loopset_index;
    SeqNameValuesPtr cmdLoopArg = NULL;
    SeqUtil_TRACE( "maestro.submitLoopSetNodeList() container_args_ptr=%s loopset_index=%s\n", SeqLoops_getLoopArgs(container_args_ptr), SeqLoops_getLoopArgs( loopset_index ) );
@@ -1186,18 +1273,13 @@ static void submitLoopSetNodeList ( const LISTNODEPTR listToSubmit,
       /* then add the current loop argument */
       SeqNameValues_insertItem( &cmdLoopArg, myLoopArgsPtr->name, myLoopArgsPtr->value );
       /*now submit the child nodes */
-      listIteratorPtr = listToSubmit;
-      while (listIteratorPtr != NULL) {
-	 SeqUtil_TRACE( "submitLoopSetNodeList calling maestro -n %s -s submit -l %s -f continue\n", listIteratorPtr->data, SeqLoops_getLoopArgs( cmdLoopArg));
-         maestro ( listIteratorPtr->data, "submit", "continue" , cmdLoopArg, 0 );
-         listIteratorPtr =  listIteratorPtr->nextPtr;
-      }
+      SeqUtil_TRACE( "submitLoopSetNodeList calling maestro -n %s -s submit -l %s -f continue\n", _nodeDataPtr->name, SeqLoops_getLoopArgs( cmdLoopArg));
+      maestro ( _nodeDataPtr->name, "submit", "continue" , cmdLoopArg, 0 );
       cmdLoopArg = NULL;
       myLoopArgsPtr = myLoopArgsPtr->nextPtr;
    }
 }
 
-/*
 /*
 setWaitingState
 

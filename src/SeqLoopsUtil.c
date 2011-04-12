@@ -300,7 +300,6 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, ch
                 SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopsPtr null \n");  
             }
   	    while (loopsPtr != NULL && !foundIt ) {
-                 SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions 3 \n");  
                  loopsDataPtr =  loopsPtr->values;
                  if (loopsDataPtr != NULL ) {
                      SeqUtil_TRACE("%s\n", loopsPtr->loop_name);
