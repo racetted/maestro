@@ -491,6 +491,9 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    xmlXPathObjectPtr result = NULL;
    xmlXPathContextPtr context = NULL;
 
+   /* add loop arg list to node */
+   SeqNode_setLoopArgs(_nodeDataPtr,_loops);
+
    SeqUtil_TRACE( "getNodeResources _nodePath=%s type=%d\n", _nodePath, _nodeDataPtr->type );
 
    /* build the xmlfile path */

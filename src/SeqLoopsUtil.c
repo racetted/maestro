@@ -90,14 +90,16 @@ SeqNameValuesPtr SeqLoops_convertExtension ( SeqLoopsPtr loops_ptr, char* extens
    SeqNameValuesPtr nameValuesPtr = NULL;
    char *token = NULL;
    char *leaf = NULL;
-   token = (char*) strtok( extension, EXT_TOKEN );
-   while ( token != NULL ) {
-      free( leaf );
-      leaf = (char*) SeqUtil_getPathLeaf( loops_ptr->loop_name );
-      SeqNameValues_insertItem( &nameValuesPtr, leaf, token );
+   if (extension != NULL){
+       token = (char*) strtok( extension, EXT_TOKEN );
+       while ( token != NULL ) {
+          free( leaf );
+          leaf = (char*) SeqUtil_getPathLeaf( loops_ptr->loop_name );
+          SeqNameValues_insertItem( &nameValuesPtr, leaf, token );
 
-      loops_ptr = loops_ptr->nextPtr;
-      token = (char*) strtok( NULL, EXT_TOKEN );
+          loops_ptr = loops_ptr->nextPtr;
+          token = (char*) strtok( NULL, EXT_TOKEN );
+       }
    }
    /*printf( "SeqLoops_convertExtension namevalues:\n" ); */
    SeqNameValues_printList( nameValuesPtr );

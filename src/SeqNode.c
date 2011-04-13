@@ -167,6 +167,13 @@ void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args ) {
    }
 }
 
+void SeqNode_setLoopArgs ( SeqNodeDataPtr node_ptr, SeqNameValuesPtr _loop_args ) {
+   if ( _loop_args != NULL ) {
+      SeqNameValues_deleteWholeList( &(node_ptr->loop_args) );
+      node_ptr->loop_args = SeqNameValues_clone( _loop_args );
+
+   }
+}
 void SeqNode_setAlias ( SeqNodeDataPtr node_ptr, const char* alias ) {
    if ( alias != NULL ) {
       free( node_ptr->alias );
@@ -419,6 +426,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->abort_actions = NULL;
    nodePtr->siblings = NULL;
    nodePtr->loops = NULL;
+   nodePtr->loop_args = NULL;
    nodePtr->data = NULL;
    nodePtr->taskPath = NULL;
    nodePtr->suiteName = NULL;
@@ -665,7 +673,10 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->submits) );
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->abort_actions) );
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->siblings) );
-      SeqNode_freeNameValues( seqNodeDataPtr->data );
+      SeqNameValues_deleteWholeList( &(seqNodeDataPtr->data ));
+      SeqNameValues_deleteWholeList( &(seqNodeDataPtr->loop_args ));
+/*      SeqNode_freeNameValues( seqNodeDataPtr->data );
+      SeqNode_freeNameValues( seqNodeDataPtr->loop_args ); */
       free( seqNodeDataPtr );
    }
 }

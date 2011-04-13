@@ -100,6 +100,9 @@ typedef struct _SeqNodeData {
    /* name-value pairs to store node specific attribute data */
    SeqNameValuesPtr data;
 
+   /* name-value pairs to store node specific loop arguments */
+   SeqNameValuesPtr loop_args;
+
    /* relative node path within suite task dir structure */
    char* taskPath;
 
