@@ -1030,10 +1030,10 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
          if( undoneChild == 0 ) {
             if ( _nodeDataPtr->type == Loop && (char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL ) {
                  printf( "********** processContainerEnd() calling maestro -s endx -n %s \n", _nodeDataPtr->name);
-                 maestro ( _nodeDataPtr->name, "endx", "stop",NULL, 0 );
+                 maestro ( _nodeDataPtr->name, "endx", _flow ,NULL, 0 );
              } else {
                  printf( "********** processContainerBegin() calling maestro -s endx -n %s\n", _nodeDataPtr->container );
-                 maestro (  _nodeDataPtr->container, "endx", "stop", NULL, 0 );
+                 maestro (  _nodeDataPtr->container, "endx", _flow, NULL, 0 );
              }
          }
       }
@@ -1116,10 +1116,10 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_f
        if ( _nodeDataPtr->type == Loop && (char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL ) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
             printf( "********** processLoopContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
-            maestro ( _nodeDataPtr->name, "endx", "stop", newArgs, 0 );
+            maestro ( _nodeDataPtr->name, "endx", _flow, newArgs, 0 );
        } else {
           printf( "********** processLoopContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->container, SeqLoops_getLoopArgs(newArgs)  );
-          maestro ( _nodeDataPtr->container, "endx", "stop", newArgs, 0 );
+          maestro ( _nodeDataPtr->container, "endx", _flow, newArgs, 0 );
        }
    }
 
