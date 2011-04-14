@@ -99,9 +99,25 @@ void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp)
 *****************************************************************************/
 void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
 {
+   char jobID[50];
+   char message[300];
+
    /* This is needed so messages will be logged into CMCNODELOG */
    putenv("CMCNODELOG=on");
-   nodelogger(node_ptr->name,_signal,node_ptr->extension,"",datestamp);
+
+   memset(jobID, '\0', sizeof jobID);
+   if (getenv("JOB_ID") != NULL){
+         sprintf(jobID,"%s",getenv("JOB_ID"));
+   }
+   if (getenv("LOADL_STEP_ID") != NULL){
+         sprintf(jobID,"%s",getenv("LOADL_STEP_ID"));
+   }
+
+   memset(message,'\0',sizeof message);
+   sprintf(message,"job_ID=%s",jobID);
+
+   nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp);
+
 }
 
 
@@ -147,7 +163,7 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datest
    memset(hostname, '\0', sizeof hostname);
    gethostname(hostname,sizeof hostname);
 
-   memset(jobID, "\0", sizeof jobID);
+   memset(jobID, '\0', sizeof jobID);
    if (getenv("JOB_ID") != NULL){
          sprintf(jobID,"%s",getenv("JOB_ID"));
    }
