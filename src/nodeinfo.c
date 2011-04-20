@@ -207,6 +207,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
             free(fullDepIndex);
 	    free(fullDepLocalIndex);
 	    free(tmpstrtok);
+	    SeqNameValues_deleteWholeList( &localArgs );
+	    SeqNameValues_deleteWholeList( &depArgs );
          } else {
          SeqUtil_TRACE( "nodeinfo.parseDepends() no dependency found.\n" );
          }
