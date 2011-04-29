@@ -560,7 +560,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
          if ( depsPtr->type == NodeDependancy ) {
             printf("node.depend.type=Node\n");
          } else if ( depsPtr->type == DateDependancy ) { 
-            printf("node.depend.type=D  ate\n");
+            printf("node.depend.type=Date\n");
          }
          while (nameValuesPtr != NULL ) {
             if( strlen( nameValuesPtr->value ) > 0 ) 
