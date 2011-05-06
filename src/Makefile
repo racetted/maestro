@@ -1,8 +1,8 @@
 # common section definition
 include ../config/config.mk
 
-CFLAGS = -optc=-g -includes $(INCDIR) $(XML_DIR)/include/libxml2 \
-	-librmn -defines=-DM$(MACH)=1
+#CFLAGS = -optc=-g -librmn -defines=-DM$(MACH)=1
+CFLAGS = -optc=-g -defines=-DM$(MACH)=1
 
 all: prep log_server runcontrol
 
@@ -15,12 +15,12 @@ runcontrol: prep $(OBJECTS) log_server
 	   if test $(MACHINE) = "Linux"; then \
 	      ARCH_EXTRA="-bidon c -main main_$${component}"; \
 	   fi; \
-	   r.compile $(CFLAGS) -libpath $(LIBDIR) $(XTERN_LIB) $(XML_DIR)/lib -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
+	   r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(XML_LIB_DIR) $(LIBDIR) $(XTERN_LIB) -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
 	   cp $${component} $(BINDIR) ; \
 	done;
 
 runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h
-	r.compile $(CFLAGS) -librmn -src runcontrollib.c
+	r.compile $(CFLAGS) -includes $(INCDIR) -libpath $(XTERN_LIB) -src runcontrollib.c
 
 SeqNode.o:	SeqNode.c SeqNode.h
 	$(CC) -g -c SeqNode.c;
@@ -39,6 +39,9 @@ SeqLoopsUtil.o:	SeqLoopsUtil.c
 SeqDatesUtil.o:	SeqDatesUtil.c
 	r.compile $(CFLAGS) -src SeqDatesUtil.c
 
+XmlUtils.o: XmlUtils.c
+	r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR) -src XmlUtils.c
+
 SeqUtil.o:	SeqUtil.c
 	$(CC) -g -c SeqUtil.c
 
@@ -48,8 +51,11 @@ nodelogger.o:	nodelogger.c nodelogger.h
 tictac.o:	tictac.c tictac.h
 	r.compile $(CFLAGS) -src tictac.c
 
+expcatchup.o:	expcatchup.c expcatchup.h
+	r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR) -src expcatchup.c
+
 nodeinfo.o:	nodeinfo.c nodeinfo.h runcontrollib.h
-	r.compile $(CFLAGS) -src nodeinfo.c
+	r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR)  -src nodeinfo.c
 
 maestro.o:	maestro.c maestro.h nodeinfo.h runcontrollib.h nodelogger.h tictac.h
 	echo CFLAGS=$(CFLAGS) ; \
