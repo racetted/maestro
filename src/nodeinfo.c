@@ -93,7 +93,6 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
            *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    xmlChar *depPath = NULL;
    char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
-
    xmlAttrPtr propertiesPtr;
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL ;
    int i=0, current_index_flag=0;

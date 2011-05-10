@@ -297,10 +297,8 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, ch
         SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions dealing with argument %s=%s\n", depArgs->name, depArgs->value);  
 	if( strstr( depArgs->value, "*" ) != NULL ) {
 	/* wildcard found */
+            SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions getting loop information from node %s\n", _nodeDataPtr -> name );  
             loopsPtr = _nodeDataPtr->loops; 
-	    if (loopsPtr == NULL) {
-                SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopsPtr null \n");  
-            }
   	    while (loopsPtr != NULL && !foundIt ) {
                  loopsDataPtr =  loopsPtr->values;
                  if (loopsDataPtr != NULL ) {
@@ -321,6 +319,20 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, ch
 		     }
                   }
             }
+
+            /* if targetting a loop node as a dependency, _nodeDataPtr->data will have the loop attributes */
+            loopsDataPtr=_nodeDataPtr->data; 
+	    if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
+               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions targetting a loop node\n");  
+	       loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
+               if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
+                   loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
+               }
+               loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+               loopCount = loopStart;
+               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+	    }
+
 	    /*reset for next loop to find*/
 	    foundIt=0;
 
