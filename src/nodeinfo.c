@@ -11,6 +11,7 @@
 #include <libxml/xpathInternals.h>
 #include "nodeinfo.h"
 #include "SeqUtil.h"
+#include "XmlUtils.h"
 
 
 int SHOW_ALL = 0;
@@ -22,33 +23,6 @@ int SHOW_RESPATH = 0;
 
 /* root node of xml resource file */
 const char* NODE_RES_XML_ROOT = "/NODE_RESOURCES";
-
-xmlDocPtr
-getdoc (char *_docname) {
-   xmlDocPtr doc;
-   doc = xmlParseFile(_docname);
-   
-   if (doc == NULL ) {
-      fprintf(stderr,"Document not parsed successfully. \n");
-      return NULL;
-   }
-
-   return doc;
-}
-
-xmlXPathObjectPtr
-getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context){
-   
-   xmlXPathObjectPtr result;
-    SeqUtil_TRACE ("nodeinfo.getnodeset() xpath query: %s\n", _xpathQuery );
-   result = xmlXPathEvalExpression(_xpathQuery, _context);
-
-   if(xmlXPathNodeSetIsEmpty(result->nodesetval)) {
-      SeqUtil_TRACE("No result\n");
-      return NULL;
-   }
-   return result;
-}
 
 
 SeqNodeType getNodeType ( const xmlChar *_node_name ) {
@@ -118,7 +92,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
    xmlChar *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,
            *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    xmlChar *depPath = NULL;
-    char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
+   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
+
    xmlAttrPtr propertiesPtr;
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL ;
    int i=0, current_index_flag=0;
@@ -126,6 +101,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
       nodeset = _result->nodesetval;
       SeqUtil_TRACE( "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
+         /* reset variables to null after being freed at the end of the loop for reuse*/
+         fullDepIndex=NULL;
+         fullDepLocalIndex=NULL;
+
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
          SeqUtil_TRACE( "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
@@ -397,14 +376,14 @@ void getRootNode( SeqNodeDataPtr _nodeDataPtr, const char *_seq_exp_home ) {
    sprintf( xmlFile, "%s/EntryModule/flow.xml", _seq_exp_home);
 
    /* parse the xml file */
-   doc = getdoc(xmlFile);
+   doc = XmlUtils_getdoc(xmlFile);
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
 
    /* get the first MODULE name attribute */
    sprintf ( query, "(/MODULE/@name)");
-   if( (result = getnodeset (query, context)) == NULL ) {
+   if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
       raiseError("MODULE not found in XML master file! (getRootNode)\n");
    }
    nodeset = result->nodesetval;
@@ -449,7 +428,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    }
 
    /* parse the xml file */
-   doc = getdoc(xmlFile);
+   doc = XmlUtils_getdoc(xmlFile);
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -457,7 +436,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    /* validate NODE_RESOURCES node */
    sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeLoopContainersAttr query: %s\n", query );
-   if ( (result = getnodeset (query, context)) == NULL ) {
+   if ( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
       xmlXPathFreeObject (result);
       raiseError("NODE_RESOURCES element not found in XML master file! (getNodeLoopContainersAttr)\n");
    }
@@ -466,7 +445,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    /* build and run loop query */
    sprintf ( query, "(%s/LOOP/@*)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeLoopContainersAttr query: %s\n", query );
-   if( (result = getnodeset (query, context)) != NULL ) {
+   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
       parseLoopAttributes( result, fixedNodePath, _nodeDataPtr );
    }
    xmlXPathFreeObject (result);
@@ -525,7 +504,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    }
 
    /* parse the xml file */
-   doc = getdoc(xmlFile);
+   doc = XmlUtils_getdoc(xmlFile);
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -533,7 +512,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* validate NODE_RESOURCES node */
    sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
-   if ( (result = getnodeset (query, context)) == NULL ) {
+   if ( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
       xmlXPathFreeObject (result);
       raiseError("NODE_RESOURCES element not found in XML master file! (getNodeResources)\n");
    }
@@ -543,7 +522,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    if (  _nodeDataPtr->type == Loop ) {
       sprintf ( query, "(%s/LOOP/@*)", NODE_RES_XML_ROOT );
       SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
-      if( (result = getnodeset (query, context)) != NULL ) {
+      if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseNodeSpecifics( _nodeDataPtr->type, result, _nodeDataPtr );
       }
    }
@@ -551,7 +530,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* get the batch system resources */
    sprintf ( query, "(%s/BATCH/@*)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
-   if( (result = getnodeset (query, context)) != NULL ) {
+   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
       parseBatchResources( result, _nodeDataPtr ); 
    }
    xmlXPathFreeObject (result);
@@ -560,7 +539,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* there could be more than one DEPENDS_ON tag */
    sprintf ( query, "(%s/child::DEPENDS_ON)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
-   if( (result = getnodeset (query, context)) != NULL ) {
+   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
       parseDepends( result, _nodeDataPtr, _loops ); 
    }
    xmlXPathFreeObject (result);
@@ -568,7 +547,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* get the abort actions */
    sprintf ( query, "(%s/ABORT_ACTION/@*)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
-   if( (result = getnodeset (query, context)) != NULL ) {
+   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
       parseAbortActions( result, _nodeDataPtr ); 
    }
 
@@ -605,7 +584,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    sprintf( xmlFile, "%s/EntryModule/flow.xml", _seq_exp_home);
 
    /* parse the xml file */
-   doc = getdoc(xmlFile);
+   doc = XmlUtils_getdoc(xmlFile);
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -631,7 +610,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       }
       /* run the normal query */
-      if( (result = getnodeset (query, context)) == NULL ) {
+      if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
          raiseError("Node %s not found in XML master file! (getFlowInfo)\n", _nodePath);
       }
 
@@ -667,13 +646,13 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          doc = NULL;
 
          /* parse the new xml file */
-         doc = getdoc(xmlFile);
+         doc = XmlUtils_getdoc(xmlFile);
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);
          sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
 
-         if( (result = getnodeset (query, context)) == NULL ) {
+         if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
              printf ( "ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
              exit(1);
          }
@@ -750,7 +729,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
   
    /* retrieve node specific attributes */
    strcpy ( query, "(@*)");
-   result = getnodeset (query, context);
+   result = XmlUtils_getnodeset (query, context);
    parseNodeSpecifics( _nodeDataPtr->type, result, _nodeDataPtr );
    xmlXPathFreeObject (result);
 
@@ -758,14 +737,14 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       /* retrieve submits node */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** submits **********\n");
       strcpy ( query, "(child::SUBMITS)");
-      result = getnodeset (query, context);
+      result = XmlUtils_getnodeset (query, context);
       parseSubmits( result, _nodeDataPtr ); 
       xmlXPathFreeObject (result);
    
       /* retrieve node's siblings */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** node siblings **********\n");
       strcpy (query, "(preceding-sibling::*[@name])");
-      result =  getnodeset (query, context);
+      result =  XmlUtils_getnodeset (query, context);
       if (result) {
          SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** preceding siblings found**********\n");
       }
@@ -773,7 +752,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       xmlXPathFreeObject (result);
    
       strcpy (query, "(following-sibling::*[@name])");
-      result =  getnodeset (query, context);
+      result =  XmlUtils_getnodeset (query, context);
       if (result) {
          SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** following siblings found**********\n");
       }

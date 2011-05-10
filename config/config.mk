@@ -28,5 +28,8 @@ else
       MACH=op_b
       SSM_MACH_ID=aix53-ppc-64
       SSMPACKAGE=maestro_$(VERSION)_$(SSM_MACH_ID)
+      # only temp until it is insalled on /usr/lib
+      #XML_INCLUDE_DIR=/data/run_control/afsisul/software/aix/include/libxml2/
+      #XML_LIB_DIR=/data/run_control/afsisul/software/aix/lib
    endif
 endif

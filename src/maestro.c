@@ -11,6 +11,7 @@
 #include "nodeinfo.h"
 #include "SeqLoopsUtil.h"
 #include "SeqDatesUtil.h"
+#include "expcatchup.h"
 
 #define SEQ_MAXFIELD 1000
 #define TRUE 1
@@ -20,8 +21,6 @@
 # level 8 is reserved for normal everyday runs
 # level 9 includes normal PLUS discretionary jobs
 */
-#define SEQ_CATCHUP_NORMAL 8
-#define SEQ_CATCHUP_DISCR 9
 static const char* CATCHUP_DISCR_MSG = "DISCRETIONARY: this job is not scheduled to run";
 static const char* CATCHUP_UNSUBMIT_MSG = "CATCHUP mode: this job will not be submitted";
 
@@ -188,7 +187,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    }
 
    /* check if node has a container to propagate the message up */
-   if ( strcmp(_nodeDataPtr->container, "") != 0 && _nodeDataPtr->catchup != SEQ_CATCHUP_DISCR ) {
+   if ( strcmp(_nodeDataPtr->container, "") != 0 && _nodeDataPtr->catchup != CatchupDiscretionary ) {
        processContainerAbort(_nodeDataPtr);
    }
 
@@ -611,7 +610,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr ) {
    char filename[SEQ_MAXFIELD];
    LISTNODEPTR siblingIteratorPtr = NULL, extensions = NULL;
    int abortedSibling = 0;
-   if ( _nodeDataPtr->catchup == SEQ_CATCHUP_DISCR ) {   
+   if ( _nodeDataPtr->catchup == CatchupDiscretionary ) {   
       SeqUtil_TRACE( "maestro.processContainerBegin() bypassing discreet node:%s\n", _nodeDataPtr->name );
       return;
    }
@@ -1018,7 +1017,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
 	       sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data); 
                SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
 	       siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL );
-	       if ( siblingDataPtr->catchup == SEQ_CATCHUP_DISCR ) {
+	       if ( siblingDataPtr->catchup == CatchupDiscretionary ) {
                   SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary task: %s\n", siblingIteratorPtr->data );
                   siblingIteratorPtr = siblingIteratorPtr->nextPtr;
 	       } else {
@@ -1095,7 +1094,7 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_f
             sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
             SeqUtil_TRACE( "maestro.processLoopContainerEnd() getting sibling info: %s\n", tmp );
             siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL );
-            if ( siblingDataPtr->catchup == SEQ_CATCHUP_DISCR ) {
+            if ( siblingDataPtr->catchup == CatchupDiscretionary ) {
 	       undoneChild = 0;
                SeqUtil_TRACE( "maestro.processLoopContainerEnd() bypassing discretionary task: %s\n", siblingIteratorPtr->data );
                siblingIteratorPtr = siblingIteratorPtr->nextPtr;
@@ -1148,23 +1147,27 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char *tmpCfgFile = NULL;
    char cmd[1000];
    char *loopArgs = NULL, *extName = NULL;
-   int catchup = SEQ_CATCHUP_NORMAL;
+   int catchup = CatchupNormal;
    int status = 0;
+   
    SeqUtil_TRACE( "maestro.go_submit() node=%s signal=%s flow=%s ignoreAllDeps=%d\n ", _nodeDataPtr->name, _signal, _flow, ignoreAllDeps );
    actions( (char*) _signal, _flow, _nodeDataPtr->name );
    memset(nodeFullPath,'\0',sizeof nodeFullPath);
    memset(listingDir,'\0',sizeof listingDir);
    sprintf( nodeFullPath, "%s/modules/%s.tsk", SEQ_EXP_HOME, _nodeDataPtr->taskPath );
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
+   
+   /* get exp catchup value */
+   catchup = catchup_get(SEQ_EXP_HOME);
    /* check catchup value of the node */
-   printf("node catchup= %d , normal catchup = %d , discretionary catchup = %d  \n",_nodeDataPtr->catchup, catchup, SEQ_CATCHUP_DISCR );
+   printf("node catchup= %d , exp catchup = %d , discretionary catchup = %d  \n",_nodeDataPtr->catchup, catchup, CatchupDiscretionary );
    if (_nodeDataPtr->catchup > catchup && !ignoreAllDeps ) {
-      if (_nodeDataPtr->catchup == SEQ_CATCHUP_DISCR ) {
+      if (_nodeDataPtr->catchup == CatchupDiscretionary ) {
          printf("nodelogger: -n %s -l %s \"%s\"\n", _nodeDataPtr->name, _nodeDataPtr->extension, CATCHUP_DISCR_MSG );
-         nodelogger( _nodeDataPtr->name ,"catchup", _nodeDataPtr->extension, CATCHUP_DISCR_MSG,_nodeDataPtr->datestamp);
+         nodelogger( _nodeDataPtr->name ,"discret", _nodeDataPtr->extension, CATCHUP_DISCR_MSG,_nodeDataPtr->datestamp);
       } else {
          printf("nodelogger: -n %s -l %s \"%s\"\n", _nodeDataPtr->name, _nodeDataPtr->extension, CATCHUP_UNSUBMIT_MSG );
-         nodelogger( _nodeDataPtr->name ,"info", _nodeDataPtr->extension, CATCHUP_UNSUBMIT_MSG,_nodeDataPtr->datestamp);
+         nodelogger( _nodeDataPtr->name ,"catchup", _nodeDataPtr->extension, CATCHUP_UNSUBMIT_MSG,_nodeDataPtr->datestamp);
       }
       return(0);
    }

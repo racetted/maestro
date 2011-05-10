@@ -15,7 +15,7 @@ xmlDocPtr XmlUtils_getdoc (char *_docname) {
 }
 
 xmlXPathObjectPtr
-XmlUtils_getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context){
+XmlUtils_getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
    
    xmlXPathObjectPtr result;
     SeqUtil_TRACE ("XmlUtils_getnodeset(): xpath query: %s\n", _xpathQuery );
