@@ -118,7 +118,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
    xmlChar *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,
            *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    xmlChar *depPath = NULL;
-    char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
+   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
    xmlAttrPtr propertiesPtr;
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL ;
    int i=0, current_index_flag=0;
@@ -126,6 +126,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
       nodeset = _result->nodesetval;
       SeqUtil_TRACE( "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
+         /* reset variables to null after being freed at the end of the loop for reuse*/
+	 fullDepIndex=NULL;
+	 fullDepLocalIndex=NULL;
+
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
          SeqUtil_TRACE( "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
