@@ -728,8 +728,9 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
   
    /* retrieve node specific attributes */
    strcpy ( query, "(@*)");
-   result = XmlUtils_getnodeset (query, context);
-   parseNodeSpecifics( _nodeDataPtr->type, result, _nodeDataPtr );
+   if ( (result = XmlUtils_getnodeset (query, context)) != NULL){
+      parseNodeSpecifics( _nodeDataPtr->type, result, _nodeDataPtr );
+   }
    xmlXPathFreeObject (result);
 
    if( SHOW_ALL ) {

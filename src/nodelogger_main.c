@@ -112,7 +112,6 @@ main (int argc, char * argv[])
           free(signal);
           free(datestamp);
           free(validDate);
-          free(seq_exp_home);
           exit(1);
       }
 
@@ -139,7 +138,6 @@ main (int argc, char * argv[])
       free(signal);
       free(validDate);
       free(datestamp);
-      free(seq_exp_home);
       SeqNode_freeNode( nodeDataPtr );
 
   } else {
