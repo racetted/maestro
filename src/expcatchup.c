@@ -88,9 +88,14 @@ void catchup_set( char* _expHome, int _catchupValue ) {
    sprintf( catchupXmlFile, "%s%s", _expHome, CATCHUP_XML_FILE );
 
    SeqUtil_TRACE( "catchup_set(): catchupXmlFile=%s\n", catchupXmlFile );
+   if( access( catchupXmlFile, W_OK ) == -1 ) {
+      fprintf( stderr, "ERROR: creating xml file: %s.\n", catchupXmlFile );
+      exit(1);
+   }
+
    /* Create a new XmlWriter with no compression. */
    if ( (writer = xmlNewTextWriterFilename(catchupXmlFile, 0)) == NULL ) {
-      fprintf( stderr, "ERROR: creating xml writer." );
+      fprintf( stderr, "ERROR: creating xml writer.\n" );
       exit(1);
    }
    
