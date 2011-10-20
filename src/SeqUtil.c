@@ -68,11 +68,11 @@ void SeqUtil_checkExpHome (char * _expHome) {
    if ( _expHome != NULL ) {
       dirp = opendir(_expHome);
       if (dirp == NULL) {
-         raiseError("ERROR: invalid EXP_HOME=%s\n",_expHome);
+         raiseError("ERROR: invalid SEQ_EXP_HOME=%s\n",_expHome);
       }
       closedir(dirp);
    } else {
-      raiseError("ERROR: EXP_HOME not set!\n");
+      raiseError("ERROR: SEQ_EXP_HOME not set!\n");
    }
 
 }
