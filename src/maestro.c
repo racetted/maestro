@@ -1478,6 +1478,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
 	       raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
             }
 	    submitDepArgs = NULL;
+	    depUser[0] = '\0'; depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
          }
          fclose(waitedFile);
 
