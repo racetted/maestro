@@ -955,7 +955,7 @@ static void clearAllOtherStates (const SeqNodeDataPtr _nodeDataPtr, char * fullN
 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.waiting",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
+   if ( access(filename, R_OK) == 0 && strcmp( current_state, "waiting" ) != 0 ) {
       SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
       removeFile(filename);
    }
@@ -1205,9 +1205,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       SeqUtil_stringAppend( &fullExtName, _nodeDataPtr->extension );
    }
 
-   /*  clear states here also in case setBeginState is not called (discreet or catchup) */
-   clearAllOtherStates( _nodeDataPtr, fullExtName, "maestro.go_submit()", "" ); 
-
    /* get exp catchup value */
    catchup = catchup_get(SEQ_EXP_HOME);
    /* check catchup value of the node */
@@ -1222,8 +1219,12 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       }
       return(0);
    }
+
    /* check ignoreAllDeps first so that it does not write the waiting file */
    if( ignoreAllDeps == 1 || validateDependencies( _nodeDataPtr ) == 0 ) {
+      /*  clear states here also in case setBeginState is not called (discreet or catchup) */
+      clearAllOtherStates( _nodeDataPtr, fullExtName, "maestro.go_submit()", "submit" ); 
+
       /* dependencies are satisfied */
       loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
    
@@ -1292,13 +1293,16 @@ static void setSubmitState(const SeqNodeDataPtr _nodeDataPtr) {
 
    /* create the node end lock file */
    memset(filename,'\0',sizeof filename);
-
    sprintf(filename,"%s/%s.%s.submit",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 
-   SeqUtil_TRACE( "maestro.go_submit() created lockfile %s\n", filename);
-   touch(filename);
+
+   if ( access(filename, R_OK) != 0 ) {
+      touch(filename);
+      SeqUtil_TRACE( "maestro.setSubmitState() created lockfile %s\n", filename);
+   } else {
+      printf( "setSubmitState() not recreating existing lock file:%s\n", filename );
+   }
 
    free( extName );
-
 }
 
 /*
@@ -1385,10 +1389,14 @@ static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waite
 
    /* clear any other state */
    //clearAllFinalStates( _nodeDataPtr, extName, "waiting" ); 
-   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setWaitingState()", "" ); 
+   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setWaitingState()", "waiting" ); 
 
-   SeqUtil_TRACE( "maestro.setWaitingState() created lockfile %s\n", filename);
-   touch(filename);
+   if ( access(filename, R_OK) != 0 ) {
+      SeqUtil_TRACE( "maestro.setWaitingState() created lockfile %s\n", filename);
+      touch(filename);
+   } else {
+      printf( "setWaitingState() not recreating existing lock file:%s\n", filename );
+   }
 
    free( extName );
    free( waitMsg );
