@@ -53,7 +53,8 @@ static void setInitState(const SeqNodeDataPtr _nodeDataPtr);
 static void setEndState(const char *_signal, const SeqNodeDataPtr _nodeDataPtr);
 static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_action);
 static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waited_one, const char* waited_status);
-static void clearAllFinalStates (SeqNodeDataPtr _nodeDataPtr, char * fullNodeName, char * originator );
+/* static void clearAllFinalStates (SeqNodeDataPtr _nodeDataPtr, char * fullNodeName, char * originator ); */
+static void clearAllOtherStates( SeqNodeDataPtr _nodeDataPtr, char *fullNodeName, char *originator, char *current_signal); 
 
 /* submission utilities */
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* signal );
@@ -264,31 +265,36 @@ static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_acti
    }      
 
    /* clear any other state */
-   clearAllFinalStates( _nodeDataPtr, extName, "initialize" ); 
+   //clearAllFinalStates( _nodeDataPtr, extName, "initialize" ); 
+   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setAbortState()", current_action ); 
 
-   /* clear intermidiary states */
-   /* remove the node abort.cont lock file */
-   memset(filename,'\0',sizeof filename);
-   sprintf(filename,"%s/%s.%s.abort.cont",_nodeDataPtr->workdir, extName , _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.setAbortState() removed lockfile %s\n", filename);
-      removeFile(filename);
-   }
-
-   /* remove the node abort.rerun lock file */
-   memset(filename,'\0',sizeof filename);
-   sprintf(filename,"%s/%s.%s.abort.rerun",_nodeDataPtr->workdir, extName, _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.setAbortState() removed lockfile %s\n", filename);
-      removeFile(filename);
-   }
-
+   /* create the lock file only if not exists */
    /* create the node status file */
    memset(filename,'\0',sizeof filename);
-
    sprintf(filename,"%s/%s.%s.abort.%s",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp, current_action); 
-   SeqUtil_TRACE( "maestro.setAbortState() created lockfile %s\n", filename);
-   touch(filename);
+   if ( access( filename, R_OK) != 0) {
+      SeqUtil_TRACE( "maestro.setAbortState() created lockfile %s\n", filename);
+      touch(filename);
+   }
+
+   /* clear intermidiary states only if not currrent_action*/
+   /* remove the node abort.cont lock file */
+   /* TO BE REMOVED  */
+   /*
+   memset(filename,'\0',sizeof filename);
+   sprintf(filename,"%s/%s.%s.abort.cont",_nodeDataPtr->workdir, extName , _nodeDataPtr->datestamp); 
+   if ( access(filename, R_OK) == 0 && strcmp( current_action, "cont" ) != 0 )  {
+      SeqUtil_TRACE( "maestro.setAbortState() removed lockfile %s\n", filename);
+      removeFile(filename);
+   }
+
+   memset(filename,'\0',sizeof filename);
+   sprintf(filename,"%s/%s.%s.abort.rerun",_nodeDataPtr->workdir, extName, _nodeDataPtr->datestamp); 
+   if ( access(filename, R_OK) == 0 && strcmp( current_action, "rerun" ) != 0) {
+      SeqUtil_TRACE( "maestro.setAbortState() removed lockfile %s\n", filename);
+      removeFile(filename);
+   }
+   */
 
    /* for npasstask, we need to create a lock file without the extension
     * so that its container gets the same state */
@@ -300,7 +306,8 @@ static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_acti
       } else {
          sprintf(filename,"%s/%s.%s.abort",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
       }
-      touch(filename);
+      /* do it only if not exists */
+      if ( access(filename, R_OK) != 0 ) touch(filename);
    }
 
    free( extName );
@@ -429,10 +436,12 @@ static void setInitState(const SeqNodeDataPtr _nodeDataPtr) {
       SeqUtil_TRACE("maestro.go_initialize()() Looking for status files: %s\n", extName);
 
       /* clear any other state */
-      clearAllFinalStates( _nodeDataPtr, extName, "initialize" ); 
+      //clearAllFinalStates( _nodeDataPtr, extName, "initialize" ); 
+      clearAllOtherStates( _nodeDataPtr, extName, "maestro.setInitState()", ""); 
 
       /* clear intermidiary states */
       /* remove the node abort.cont lock file */
+      /* TO BE REMOVED
       memset(filename,'\0',sizeof filename);
       sprintf(filename,"%s/%s.%s.abort.cont",_nodeDataPtr->workdir, extName , _nodeDataPtr->datestamp); 
       if ( access(filename, R_OK) == 0 ) {
@@ -440,13 +449,13 @@ static void setInitState(const SeqNodeDataPtr _nodeDataPtr) {
          removeFile(filename);
       }
    
-      /* remove the node abort.cont lock file */
       memset(filename,'\0',sizeof filename);
       sprintf(filename,"%s/%s.%s.abort.rerun",_nodeDataPtr->workdir, extName, _nodeDataPtr->datestamp); 
       if ( access(filename, R_OK) == 0 ) {
          SeqUtil_TRACE( "maestro.go_initialize() removed lockfile %s\n", filename);
          removeFile(filename);
       }
+      */
       free( extName );
       extName = NULL;
       nodeList = nodeList->nextPtr;
@@ -553,12 +562,13 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }
-   /* create the node begin lock file name */
+   /* clear any other state */
+   // clearAllFinalStates( _nodeDataPtr, extName, "begin" ); 
+   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setBeginState()", "begin"); 
+
+   /* begin lock file */
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 
-
-   SeqUtil_TRACE( "maestro.setBeginState() checking for lockfile %s\n", filename);
-
 
    /* For a container, we don't send the log file entry again if the
       status file already exists and if the signal is beginx */
@@ -572,14 +582,18 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
       nodebegin( _signal, _nodeDataPtr, _nodeDataPtr->datestamp );
    }
 
-   /* clear any other state */
-   clearAllFinalStates( _nodeDataPtr, extName, "begin" ); 
-
-   SeqUtil_TRACE( "maestro.go_begin() created lockfile %s\n", filename);
-   touch(filename);
+   /* we will only create the lock file if it does not already exists */
+   SeqUtil_TRACE( "maestro.setBeginState() checking for lockfile %s\n", filename);
+   if ( access(filename, R_OK) != 0 ) {
+      /* create the node begin lock file name */
+      touch(filename);
+      SeqUtil_TRACE( "maestro.setBeginState() created lockfile %s\n", filename);
+   } else {
+      printf( "setBeginState() not recreating existing lock file:%s\n", filename );
+   }
 
    /* for npasstask, we need to create a lock file without the extension
-    * so that its container gets the same state */
+   * so that its container gets the same state */
    if( _nodeDataPtr->type == NpassTask) {
       /* sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); */
       extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
@@ -588,7 +602,7 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
       } else {
          sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
       }
-      touch(filename);
+      if( access(filename, R_OK) != 0 ) touch(filename);
    }
 
    free( extName );
@@ -845,7 +859,6 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }      
 
-   /* create the node end lock file name*/
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 
 
@@ -862,11 +875,16 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    }
 
    /* clear any other state */
-   clearAllFinalStates( _nodeDataPtr, extName, "end" ); 
+   //clearAllFinalStates( _nodeDataPtr, extName, "end" ); 
+   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setEndState()", "end"); 
 
-   SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
-   touch(filename);
-
+   /* create the node end lock file name if not exists*/
+   if ( access(filename, R_OK) != 0 ) {
+      SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
+      touch(filename);
+   } else {
+      printf( "setEndState() not recreating existing lock file:%s\n", filename );
+   }
    /* for npasstask, we need to create a lock file without the extension
     * so that its container gets the same state */
    if( _nodeDataPtr->type == NpassTask) {
@@ -877,17 +895,21 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
          sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
       }
       SeqUtil_TRACE( "maestro.go_end() entering npass lockfile logic, args: workdir=%s name=%s loop_ext=%s datestamp=%s\n",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp );
-      SeqUtil_TRACE( "maestro.go_end() creating npass lockfile=%s\n", filename);
-      touch(filename);
+      if ( access(filename, R_OK) != 0 ) {
+         SeqUtil_TRACE( "maestro.go_end() creating npass lockfile=%s\n", filename);
+         touch(filename);
+      } else {
+         printf( "setEndState() not recreating existing lock file:%s\n", filename );
+      }
    }
    free( extName );
    free( extension );
 }
 
 /* 
-clearAllFinalStates
+clearAllOtherStates
 
-Clears all the terminal states files.
+Clears all the states files except current one.
 
 Inputs:
   fullNodeName - pointer to the node's full name (i.e. /testsuite/assimilation/00/randomjob )
@@ -896,44 +918,64 @@ Inputs:
 */
 
 
-static void clearAllFinalStates (const SeqNodeDataPtr _nodeDataPtr, char * fullNodeName, char * originator ) {
+static void clearAllOtherStates (const SeqNodeDataPtr _nodeDataPtr, char * fullNodeName, char * originator, char* current_state ) {
 
    char filename[SEQ_MAXFIELD];
    memset(filename,'\0',sizeof filename);
 
+   SeqUtil_TRACE( "maestro.clearAllOtherStatess() originator=%s node=%s\n", originator, fullNodeName);
+
    /* remove the node begin lock file */
    sprintf(filename,"%s/%s.%s.begin",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.go_%s() removed lockfile %s\n", originator, filename);
+   if ( access(filename, R_OK) == 0 && strcmp( current_state, "begin" ) != 0 ) {
+      SeqUtil_TRACE( "maestro.maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
       removeFile(filename);
    }
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.go_%s() removed lockfile %s\n", originator, filename);
+   if ( access(filename, R_OK) == 0 && strcmp( current_state, "end" ) != 0 ) {
+      SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
       removeFile(filename);
    }
 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.abort.stop",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.go_%s() removed lockfile %s\n", originator, filename);
+   if ( access(filename, R_OK) == 0 && strcmp( current_state, "stop" ) != 0 ) {
+      SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
       removeFile(filename);
    }
 
    memset(filename,'\0',sizeof filename);
-/* Notice that clearing submit will cause a concurrency vs NFS problem when we add dependency */
+   /* Notice that clearing submit will cause a concurrency vs NFS problem when we add dependency */
    sprintf(filename,"%s/%s.%s.submit",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
-   if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.go_%s() removed lockfile %s\n", originator, filename);
+   if ( access(filename, R_OK) == 0 && strcmp( current_state, "submit" ) != 0 ) {
+      SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
       removeFile(filename);
    }
 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.waiting",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
    if ( access(filename, R_OK) == 0 ) {
-      SeqUtil_TRACE( "maestro.go_%s() removed lockfile %s\n", originator, filename);
+      SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
       removeFile(filename);
+   }
+
+   /* delete abort intermediate states only in init, abort or end */
+   if ( strcmp( current_state, "init" ) == 0 || strcmp( current_state, "end" ) == 0 ||
+        strcmp( current_state, "stop" ) == 0 ) {
+      memset(filename,'\0',sizeof filename);
+      sprintf(filename,"%s/%s.%s.abort.rerun",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
+      if ( access(filename, R_OK) == 0 && strcmp( current_state, "rerun" ) != 0 ) {
+         SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
+         removeFile(filename);
+      }
+
+      memset(filename,'\0',sizeof filename);
+      sprintf(filename,"%s/%s.%s.abort.cont",_nodeDataPtr->workdir,fullNodeName, _nodeDataPtr->datestamp); 
+      if ( access(filename, R_OK) == 0 && strcmp( current_state, "cont" ) != 0 ) {
+         SeqUtil_TRACE( "maestro.clearAllOtherStatess() %s removed lockfile %s\n", originator, filename);
+         removeFile(filename);
+      }
    }
 }
 
@@ -1146,7 +1188,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char listingDir[SEQ_MAXFIELD];
    char *tmpCfgFile = NULL;
    char cmd[1000];
-   char *loopArgs = NULL, *extName = NULL;
+   char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL;
    int catchup = CatchupNormal;
    int status = 0;
    
@@ -1157,6 +1199,15 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    sprintf( nodeFullPath, "%s/modules/%s.tsk", SEQ_EXP_HOME, _nodeDataPtr->taskPath );
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
    
+   SeqUtil_stringAppend( &fullExtName, _nodeDataPtr->name );
+   if( strlen( _nodeDataPtr->extension ) > 0 ) {
+      SeqUtil_stringAppend( &fullExtName, "." );
+      SeqUtil_stringAppend( &fullExtName, _nodeDataPtr->extension );
+   }
+
+   /*  clear states here also in case setBeginState is not called (discreet or catchup) */
+   clearAllOtherStates( _nodeDataPtr, fullExtName, "maestro.go_submit()", "" ); 
+
    /* get exp catchup value */
    catchup = catchup_get(SEQ_EXP_HOME);
    /* check catchup value of the node */
@@ -1171,21 +1222,20 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       }
       return(0);
    }
-   if( validateDependencies( _nodeDataPtr ) == 0 || ignoreAllDeps == 1 ) {
+   /* check ignoreAllDeps first so that it does not write the waiting file */
+   if( ignoreAllDeps == 1 || validateDependencies( _nodeDataPtr ) == 0 ) {
       /* dependencies are satisfied */
       loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
    
       setSubmitState( _nodeDataPtr ) ;
       tmpCfgFile = generateConfig( _nodeDataPtr, _flow );
 
-      /* go and submit the job */
-
       SeqUtil_stringAppend( &extName, _nodeDataPtr->nodeName );
       if( strlen( _nodeDataPtr->extension ) > 0 ) {
-           SeqUtil_stringAppend( &extName, "." );
-           SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
+         SeqUtil_stringAppend( &extName, "." );
+         SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
       }
-
+      /* go and submit the job */
       if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
          sprintf(cmd,"%s -sys maestro -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -args \"%s\"",OCSUB, nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,      _nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, _nodeDataPtr->args);
          printf( "%s\n", cmd );
@@ -1209,6 +1259,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    actionsEnd( (char*) _signal, _flow, _nodeDataPtr->name );
    free( tmpCfgFile );
    free( extName );
+   free( fullExtName );
    return(status);
 }
 
@@ -1236,7 +1287,8 @@ static void setSubmitState(const SeqNodeDataPtr _nodeDataPtr) {
    }      
 
    /* clear any other state */
-   clearAllFinalStates( _nodeDataPtr, extName, "submit" ); 
+   //clearAllFinalStates( _nodeDataPtr, extName, "submit" ); 
+   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setSubmitState()", "submit" ); 
 
    /* create the node end lock file */
    memset(filename,'\0',sizeof filename);
@@ -1332,7 +1384,8 @@ static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waite
    nodewait( _nodeDataPtr, waitMsg, _nodeDataPtr->datestamp);  
 
    /* clear any other state */
-   clearAllFinalStates( _nodeDataPtr, extName, "waiting" ); 
+   //clearAllFinalStates( _nodeDataPtr, extName, "waiting" ); 
+   clearAllOtherStates( _nodeDataPtr, extName, "maestro.setWaitingState()", "" ); 
 
    SeqUtil_TRACE( "maestro.setWaitingState() created lockfile %s\n", filename);
    touch(filename);
