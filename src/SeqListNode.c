@@ -72,7 +72,29 @@ void SeqListNode_deleteWholeList(LISTNODEPTR *sPtr)
    free(*sPtr);
    *sPtr=NULL;
  }
+}
 
+
+/********************************************************************************
+* SeqListNode_isItemExists: returns true if the data already exists in the list
+*                           otherwise returns false
+********************************************************************************/
+int SeqListNode_isItemExists(LISTNODEPTR sPtr, char *data)
+{
+   LISTNODEPTR currentPtr = sPtr;
+   int found = 0;
+
+   /* position ourselve at beginning of list */
+   while (currentPtr != NULL && found == 0) {
+      if ( strcmp( currentPtr->data, data ) == 0 ) {
+         /* item exists */
+	 found = 1;
+	 break;
+      }
+      currentPtr = currentPtr->nextPtr;
+   }
+
+   return found;
 }
 
 /********************************************************************************
