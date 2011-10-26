@@ -24,7 +24,6 @@ int SHOW_RESPATH = 0;
 /* root node of xml resource file */
 const char* NODE_RES_XML_ROOT = "/NODE_RESOURCES";
 
-
 SeqNodeType getNodeType ( const xmlChar *_node_name ) {
    SeqNodeType nodeType = Task;
    SeqUtil_TRACE( "nodeinfo.getNodeType() node name: %s\n", _node_name);
@@ -101,9 +100,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
       SeqUtil_TRACE( "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
          /* reset variables to null after being freed at the end of the loop for reuse*/
-         fullDepIndex=NULL;
-         fullDepLocalIndex=NULL;
-
+	 fullDepIndex=NULL;
+	 fullDepLocalIndex=NULL;
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
          SeqUtil_TRACE( "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
@@ -182,7 +180,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
             xmlFree( depUser );
             xmlFree( depExp );
             xmlFree( depHour );
-            free(fullDepIndex);
+	    free(fullDepIndex);
 	    free(fullDepLocalIndex);
 	    free(tmpstrtok);
 	    SeqNameValues_deleteWholeList( &localArgs );
@@ -565,12 +563,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    char *tmpstrtok = NULL, *tmpJobPath = NULL, *suiteName = NULL, *module = NULL;
    char *taskPath = NULL, *intramodulePath = NULL;
    int i = 0, count=0, totalCount = 0;
-   xmlDocPtr doc = NULL;
+   xmlDocPtr doc = NULL, previousDoc=NULL;
    xmlAttrPtr propertiesPtr = NULL;
    xmlNodeSetPtr nodeset = NULL;
    xmlXPathObjectPtr result = NULL, submitsResult = NULL;
    xmlNodePtr currentNodePtr = NULL;
-   xmlXPathContextPtr context = NULL;
+   xmlXPathContextPtr context = NULL, previousContext=NULL;
  
    SeqUtil_TRACE( "nodeinfo.getFlowInfo() task:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
@@ -639,9 +637,18 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          sprintf ( xmlFile, "%s/modules/%s/flow.xml",_seq_exp_home, tmpstrtok ); 
          SeqUtil_TRACE( "nodeinfo Found new XML source from module:%s/%s path:%s\n", taskPath, tmpstrtok , xmlFile);
 
-         xmlXPathFreeContext(context);
+	 /* keep record of previous xml file for use in siblings query*/
+
+         if (previousContext != NULL){
+             xmlXPathFreeContext(previousContext);
+	 }
+	 if (previousDoc != NULL){
+             xmlFreeDoc(previousDoc); 
+	 }
+
+         previousContext=context;
+	 previousDoc=doc; 
          context = NULL;
-         xmlFreeDoc(doc); 
          doc = NULL;
 
          /* parse the new xml file */
@@ -744,7 +751,11 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       /* retrieve node's siblings */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** node siblings **********\n");
       strcpy (query, "(preceding-sibling::*[@name])");
-      result =  XmlUtils_getnodeset (query, context);
+      if ( _nodeDataPtr->type == Module) {
+          result =  XmlUtils_getnodeset (query, previousContext);
+      } else {
+          result =  XmlUtils_getnodeset (query, context);
+      }
       if (result) {
          SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** preceding siblings found**********\n");
       }
@@ -752,7 +763,11 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       xmlXPathFreeObject (result);
    
       strcpy (query, "(following-sibling::*[@name])");
-      result =  XmlUtils_getnodeset (query, context);
+      if ( _nodeDataPtr->type == Module) {
+          result =  XmlUtils_getnodeset (query, previousContext);
+      } else {
+          result =  XmlUtils_getnodeset (query, context);
+      }
       if (result) {
          SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** following siblings found**********\n");
       }
@@ -763,7 +778,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    SeqNode_setSuiteName( _nodeDataPtr, suiteName ); 
    SeqNode_setModule( _nodeDataPtr, module );
    SeqNode_setIntramoduleContainer( _nodeDataPtr, intramodulePath );
-   
+   if (previousContext != NULL){
+      xmlXPathFreeContext(previousContext);
+   }
+   if (previousDoc != NULL){
+      xmlFreeDoc(previousDoc); 
+   }
    xmlXPathFreeContext(context);
    xmlFreeDoc(doc);
    xmlCleanupParser();
