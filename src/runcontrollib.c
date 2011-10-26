@@ -216,7 +216,17 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
    int  i=0, errno=0 ;
    char buf[130], *job = NULL, *loopExt = NULL;
    char* thisAbortType = NULL;
+   char jobID[50];
+
+   memset(jobID, '\0', sizeof jobID);
+   if (getenv("JOB_ID") != NULL){
+         sprintf(jobID,"%s",getenv("JOB_ID"));
+   }
+   if (getenv("LOADL_STEP_ID") != NULL){
+         sprintf(jobID,"%s",getenv("LOADL_STEP_ID"));
+   }
    
+
    thisAbortType = strdup(abort_type);
    while( abort_type[i] != '\0' ) {
       thisAbortType[i] = toupper( abort_type[i] );
@@ -235,16 +245,16 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
    if ( strncmp(abort_type,"ABORTNB",7) == 0 ) {
       nodelogger(job,_signal,loopExt,abortnb,datestamp);
    } else if ( strncmp(thisAbortType,"ABORT",5) == 0 ) {
-      sprintf(buf,"%s %s",aborted, runc);
+      sprintf(buf,"%s %s, job_ID=%s",aborted, runc, jobID);
       nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"CONT",4) == 0 ) {
-      sprintf(buf,"%s %s",aborted, jobc);
+      sprintf(buf,"%s %s, job_ID=%s",aborted, jobc, jobID);
       nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"RERUN",5) == 0 ) {
-      sprintf(buf,"%s %s", aborted, rerun);
+      sprintf(buf,"%s %s, job_ID=%s", aborted, rerun, jobID);
       nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"STOP",4) == 0 ) {
-      sprintf(buf,"%s %s", aborted, jobs);
+      sprintf(buf,"%s %s, job_ID=%s", aborted, jobs, jobID);
       nodelogger(job,_signal,loopExt,buf,datestamp);
    } else if ( strncmp(thisAbortType,"XXJOB",5) == 0 ) {
       nodelogger(job,"info",loopExt,xxjob,datestamp);
@@ -254,7 +264,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
 	}
 
 	if ( errno != 0 ) {
-      sprintf(buf,"MSG NO. = %d", errno);
+      sprintf(buf,"MSG NO. = %d, job_ID=%s", errno, jobID);
       nodelogger(job,_signal,loopExt,buf,datestamp);
 	}
    free(thisAbortType);
