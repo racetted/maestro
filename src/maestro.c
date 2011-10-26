@@ -439,23 +439,6 @@ static void setInitState(const SeqNodeDataPtr _nodeDataPtr) {
       //clearAllFinalStates( _nodeDataPtr, extName, "initialize" ); 
       clearAllOtherStates( _nodeDataPtr, extName, "maestro.setInitState()", ""); 
 
-      /* clear intermidiary states */
-      /* remove the node abort.cont lock file */
-      /* TO BE REMOVED
-      memset(filename,'\0',sizeof filename);
-      sprintf(filename,"%s/%s.%s.abort.cont",_nodeDataPtr->workdir, extName , _nodeDataPtr->datestamp); 
-      if ( access(filename, R_OK) == 0 ) {
-         SeqUtil_TRACE( "maestro.go_initialize() removed lockfile %s\n", filename);
-         removeFile(filename);
-      }
-   
-      memset(filename,'\0',sizeof filename);
-      sprintf(filename,"%s/%s.%s.abort.rerun",_nodeDataPtr->workdir, extName, _nodeDataPtr->datestamp); 
-      if ( access(filename, R_OK) == 0 ) {
-         SeqUtil_TRACE( "maestro.go_initialize() removed lockfile %s\n", filename);
-         removeFile(filename);
-      }
-      */
       free( extName );
       extName = NULL;
       nodeList = nodeList->nextPtr;
@@ -1036,7 +1019,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
    LISTNODEPTR siblingIteratorPtr = NULL;
    SeqNodeDataPtr siblingDataPtr = NULL;
    SeqNameValuesPtr loopArgs = _nodeDataPtr->loop_args;
-   int undoneChild = 0;
+   int undoneChild = 0, catchup=CatchupNormal;
    memset( endfile, '\0', sizeof endfile );
    memset( continuefile, '\0', sizeof continuefile );
    memset( tmp, '\0', sizeof tmp);
@@ -1046,6 +1029,8 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
          /* process loops containers */
          processLoopContainerEnd( _nodeDataPtr, _flow );
       } else {
+         /*get exp catchup*/
+         catchup = catchup_get (SEQ_EXP_HOME);
          siblingIteratorPtr = _nodeDataPtr->siblings;
          /* process the siblings */
          while( siblingIteratorPtr != NULL && undoneChild == 0 ) {
@@ -1059,8 +1044,8 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
 	       sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data); 
                SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
 	       siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL );
-	       if ( siblingDataPtr->catchup == CatchupDiscretionary ) {
-                  SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary task: %s\n", siblingIteratorPtr->data );
+	       if ( siblingDataPtr->catchup > catchup ) {
+                  SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
                   siblingIteratorPtr = siblingIteratorPtr->nextPtr;
 	       } else {
                   SeqUtil_TRACE( "maestro.processContainerEnd() missing end file=%s or abort.continue file=%s\n", endfile, continuefile );
@@ -1102,7 +1087,7 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_f
    char continuefile[SEQ_MAXFIELD];
    char tmp[SEQ_MAXFIELD];
    char *extension = NULL, *extWrite = NULL;
-   int undoneChild = 0;
+   int undoneChild = 0, catchup=CatchupNormal;
    LISTNODEPTR siblingIteratorPtr = NULL;
    SeqNodeDataPtr siblingDataPtr = NULL;
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
@@ -1121,11 +1106,12 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_f
    } else {
       SeqUtil_stringAppend( &extWrite, "" );
    }
-
    sprintf(endfile,"%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
    sprintf(continuefile,"%s/%s%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
    undoneChild = ! (isFileExists( endfile, "processLoopContainerEnd()" ) || isFileExists( continuefile, "processLoopContainerEnd()") );
    if( siblingIteratorPtr != NULL && undoneChild == 0 ) {
+      /*get the exp catchup*/
+      catchup = catchup_get (SEQ_EXP_HOME);
       /* need to process multile childs within loop context */
       while(  siblingIteratorPtr != NULL && undoneChild == 0 ) {
          sprintf(endfile,"%s/%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
@@ -1136,9 +1122,9 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_f
             sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
             SeqUtil_TRACE( "maestro.processLoopContainerEnd() getting sibling info: %s\n", tmp );
             siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL );
-            if ( siblingDataPtr->catchup == CatchupDiscretionary ) {
+            if ( siblingDataPtr->catchup > catchup ) {
 	       undoneChild = 0;
-               SeqUtil_TRACE( "maestro.processLoopContainerEnd() bypassing discretionary task: %s\n", siblingIteratorPtr->data );
+               SeqUtil_TRACE( "maestro.processLoopContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
                siblingIteratorPtr = siblingIteratorPtr->nextPtr;
             }
          } else {
@@ -1796,9 +1782,9 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_scope, const char* _dep_name,const  char* _dep_index,
                           const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp ) {
    char statusFile[SEQ_MAXFIELD];
-   int undoneIteration = 0, isWaiting = 0, depWildcard=0;
+   int undoneIteration = 0, isWaiting = 0, depWildcard=0, depCatchup=CatchupNormal;
    char *waitingMsg = NULL, *depIndexPtr = NULL, *extString = NULL;
-   SeqNodeDataPtr *depNodeDataPtr = NULL;
+   SeqNodeDataPtr depNodeDataPtr = NULL;
    LISTNODEPTR extensions = NULL;
    SeqNameValuesPtr loopArgsPtr = NULL;
 
@@ -1828,6 +1814,18 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
     
    memset( statusFile, '\0', sizeof statusFile);
 
+   /* get info from the dependant node */
+   depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp );
+   
+   /* get exp catchup value */
+   depCatchup = catchup_get(_dep_exp);
+   /* check catchup value of the node */
+   printf("dependant node catchup= %d , exp catchup = %d , discretionary catchup = %d  \n",depNodeDataPtr->catchup, depCatchup, CatchupDiscretionary );
+   if (depNodeDataPtr->catchup > depCatchup) {
+      printf("dependant node catchup (%d) is higher than the experiment catchup (%d), skipping dependency \n",depNodeDataPtr->catchup, depCatchup);  
+      return(0);
+   }
+
    if( ! depWildcard ) {
       /* no wilcard, we check only one iteration */
       if( _dep_exp != NULL ) { 
@@ -1838,9 +1836,6 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
       undoneIteration = ! isFileExists( statusFile, "maestro.processDepStatus()" );
    } else {
       /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
-
-      /* get info from the dependant node, should be a child of loop container */
-      depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp );
  
       /* get all the node extensions to be checked */
       extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensions( depNodeDataPtr, _dep_index );
