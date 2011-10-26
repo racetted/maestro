@@ -1406,6 +1406,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    SeqNameValuesPtr loopArgsPtr = NULL;
    char *extName = NULL, *submitDepArgs = NULL;
    int submitCode = 0;
+   LISTNODEPTR cmdList = NULL;
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -1446,23 +1447,18 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                    sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", 
 		                        depExp, depDatestamp, depNode, submitDepArgs );
 	       }
-	       printf( "submitDependencies cmd: %s\n", submitCmd );
-               submitCode = system(submitCmd);
             } else {
                /* for now, we treat the rest as same exp, same user */
-               /* maestro ( depNode, "submit", "continue" , loopArgsPtr ); */
 	       if ( getenv("SEQ_BIN") != NULL ) {
                   sprintf( submitCmd, "(export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
                } else {
                   sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, submitDepArgs );
 	       }
-	       printf( "submitDependencies cmd: %s\n", submitCmd );
-               submitCode = system(submitCmd);
             }
-	       printf( "submitDependencies submitCode: %d\n", submitCode);
-            if( submitCode != 0 ) {
-	       raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
-            }
+	    /* add nodes to be submitted if not already there */
+	    if ( SeqListNode_isItemExists( cmdList, submitCmd ) == 0 ) {
+	       SeqListNode_insertItem( &cmdList, submitCmd );
+	    }
 	    submitDepArgs = NULL;
 	    depUser[0] = '\0'; depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
          }
@@ -1474,6 +1470,18 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
          raiseError( "maestro cannot read file: %s (submitDependencies) \n", filename );
       }
    }
+
+   /*  go and submit the nodes from the cmd list */
+   while ( cmdList != NULL ) {
+      printf( "maestro.submitDependencies() calling submit cmd: %s\n", cmdList->data );
+      submitCode = system( cmdList->data );
+      printf( "maestro.submitDependencies() submitCode: %d\n", submitCode);
+      if( submitCode != 0 ) {
+         raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
+      }
+      cmdList = cmdList->nextPtr;
+   }
+   SeqListNode_deleteWholeList( &cmdList );
    free(extName);
 }
 
