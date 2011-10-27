@@ -12,10 +12,16 @@
 #include "SeqLoopsUtil.h"
 #include "SeqDatesUtil.h"
 #include "expcatchup.h"
+#include <sys/types.h> 
+#include <sys/stat.h> 
+#include <fcntl.h> 
 
 #define SEQ_MAXFIELD 1000
 #define TRUE 1
 #define FALSE 0
+#define CONTAINER_FLOOD_LIMIT 10
+#define CONTAINER_FLOOD_TIMER 15
+
 
 /*
 # level 8 is reserved for normal everyday runs
@@ -1235,7 +1241,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          sprintf(tmpfile,"%s/sequencing/tmpfile/container.tsk",SEQ_EXP_HOME);
          touch(tmpfile);         
          _nodeDataPtr->submits == NULL ? strcpy( noendwrap, "" ) : strcpy( noendwrap, "-noendwrap" ) ;
-         sprintf(cmd,"%s -sys maestro -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -args \"%s\"",OCSUB,tmpfile,_nodeDataPtr->name, extName, _nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, _nodeDataPtr->args);
+	 sprintf(cmd,"%s -sys maestro -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -args \"%s\"",OCSUB,tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, _nodeDataPtr->args);
          printf( "%s\n", cmd );
          SeqUtil_TRACE("maestro.go_submit() cmd_length=%d %s\n",strlen(cmd), cmd);
          status=system(cmd);
@@ -1327,12 +1333,19 @@ static void submitLoopSetNodeList ( const SeqNodeDataPtr _nodeDataPtr,
                                     SeqNameValuesPtr container_args_ptr, SeqNameValuesPtr loopset_index ) {
    SeqNameValuesPtr myLoopArgsPtr = loopset_index;
    SeqNameValuesPtr cmdLoopArg = NULL;
+   int counter=0;
    SeqUtil_TRACE( "maestro.submitLoopSetNodeList() container_args_ptr=%s loopset_index=%s\n", SeqLoops_getLoopArgs(container_args_ptr), SeqLoops_getLoopArgs( loopset_index ) );
    while ( myLoopArgsPtr != NULL) {
       /* first get the parent container loop arguments */
       if( container_args_ptr != NULL ) {
          cmdLoopArg = SeqNameValues_clone( container_args_ptr );
       }
+      /*flood control, wait CONTAINER_FLOOD_TIMER seconds between sets of submits*/ 
+      if (counter >= CONTAINER_FLOOD_LIMIT){
+          counter = 0; 
+          usleep(1000000 * CONTAINER_FLOOD_TIMER);
+      }
+
       /* then add the current loop argument */
       SeqNameValues_insertItem( &cmdLoopArg, myLoopArgsPtr->name, myLoopArgsPtr->value );
       /*now submit the child nodes */
@@ -1340,6 +1353,7 @@ static void submitLoopSetNodeList ( const SeqNodeDataPtr _nodeDataPtr,
       maestro ( _nodeDataPtr->name, "submit", "continue" , cmdLoopArg, 0 );
       cmdLoopArg = NULL;
       myLoopArgsPtr = myLoopArgsPtr->nextPtr;
+      ++counter;
       
    }
 }
