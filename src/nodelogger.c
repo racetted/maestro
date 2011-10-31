@@ -17,8 +17,6 @@
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-#include <dirent.h>
-
 
 #if defined(Mop_f)
 
@@ -41,6 +39,7 @@
 static int nodelogger_exit_status = 0;
 static char nodelogger_buf_socketdown[] = "socket is down and out";
 static char nodelogger_buf[NODELOG_BUFSIZE];
+/* static char nodelogger_batch_host[] = "castor.cmc.ec.gc.ca"; */
 char nodelogger_batch_host[MAXHOSTNAMELEN];
 static char NODELOG_JOB[NODELOG_BUFSIZE];
 static char NODELOG_MESSAGE[NODELOG_BUFSIZE];
@@ -53,9 +52,6 @@ static char nodelogger_lockfile[NODELOG_FILE_LENGTH];
 static char nodelogger_debugfile[NODELOG_FILE_LENGTH];
 static char nodelogger_timelog[NODELOG_FILE_LENGTH];
 static char nodelogger_svr_file[NODELOG_FILE_LENGTH];
-static char maestro_config_dir[NODELOG_FILE_LENGTH];
-static char nodelogger_bck_lnk_dir[NODELOG_FILE_LENGTH];
-
 static char username[20];
 static char LOG_PATH[200];
 
@@ -64,7 +60,6 @@ static int PORT_NUM;
 
 static FILE  *nodelogger_dbugfile;
 
-static int process_bucket_path(char *bucket_path, int sock);
 static int open_socket();
 static int write_line(int sock);
 static void gen_message (char *job, char *type, char* loop_ext, char *message);
@@ -122,14 +117,6 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
    char line[1024];
    FILE *infoFile = NULL;
 
-   DIR *link_dir;
-   struct dirent *item;
-   ssize_t readlink_result;
-   char link_path[NODELOG_FILE_LENGTH];
-   size_t link_path_size=NODELOG_FILE_LENGTH;
-   char link_name[NODELOG_FILE_LENGTH];
-   int flush_succeeded = 0;
-
    if( loop_ext == NULL ) {
       loop_ext=strdup("");
    }
@@ -143,8 +130,6 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
    memset(nodelogger_debugfile,'\0',NODELOG_FILE_LENGTH);
    memset(nodelogger_timelog,'\0',NODELOG_FILE_LENGTH);
    memset(nodelogger_svr_file,'\0',NODELOG_FILE_LENGTH);
-   memset(maestro_config_dir,'\0',NODELOG_FILE_LENGTH);
-   memset(nodelogger_bck_lnk_dir,'\0',NODELOG_FILE_LENGTH);
 
    memset(LOG_PATH,'\0',sizeof LOG_PATH);
    memset(username,'\0',sizeof username);
@@ -170,19 +155,12 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
    /* to statically allocated memory which may be overwritten by subsequent calls.*/
    basec = strdup(seq_exp_home);
    experience = basename(basec);
-
-
-   sprintf(nodelogger_socketdown,"%s%s%s",seq_exp_home, "/logs/","logger_socketdown");
-   sprintf(nodelogger_bucket,"%s%s%s",seq_exp_home, "/logs/","logger_bucket");
-   sprintf(nodelogger_lockfile,"%s%s%s",seq_exp_home, "/logs/","logger_lockfile");
-   sprintf(nodelogger_debugfile,"%s%s%s",seq_exp_home, "/logs/","logger_dbugfile");
+   sprintf(nodelogger_socketdown,"%s%s%s","/tmp/",username,".cmc_socketdown");
+   sprintf(nodelogger_bucket,"%s%s%s","/tmp/",username,".cmc_bucket");
+   sprintf(nodelogger_lockfile,"%s%s%s","/tmp/",username,".cmc_log_lockfile");
+   sprintf(nodelogger_debugfile,"%s%s%s","/tmp/",username,".cmc_log_dbugfile");
    strcpy(nodelogger_svr_file, getenv("HOME"));
    strcat(nodelogger_svr_file,"/.suites/.nodelogger_client");
-   strcpy(maestro_config_dir, getenv("HOME"));
-   strcat(maestro_config_dir,"/.maestro");
-   strcpy(nodelogger_bck_lnk_dir, maestro_config_dir);
-   strcat(nodelogger_bck_lnk_dir,"/bucket_links");
-   
 
    /* gets server info port & host from file_svr_info */
    if ((infoFile = fopen(nodelogger_svr_file,"r")) != NULL ) {
@@ -268,7 +246,8 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
                 if (NODELOG_DEBUG) fclose(nodelogger_dbugfile);
                 return; 
 	    }
-
+            if (NODELOG_DEBUG) fclose(nodelogger_dbugfile);
+            return;
 	}
     }
 
@@ -292,35 +271,20 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
 	/* check if the bucket is empty or not. If it contains data,
 	 * process the contents {or at least try} 
 	 */
-
-        if (stat(nodelogger_bck_lnk_dir,&stbuf) != -1 ) {
-          /*loop on links in nodelogger_bck_lnk_dir and process buckets at those destinations*/
-     
-          link_dir = opendir (nodelogger_bck_lnk_dir);
-          if (link_dir != NULL) {
-            while (item = readdir (link_dir)) {
-              sprintf(link_name, "%s/%s", nodelogger_bck_lnk_dir,item->d_name);
-              readlink_result=readlink(link_name, link_path, link_path_size);
-
-              if ( readlink_result != -1 ) {
-                link_path[readlink_result]='\0';
-                /*process bucket in a specific path*/
-                send_success=process_bucket_path(link_path, sock);
-                if ( send_success == 0 ) { /*it worked*/
-                  unlink(link_name);
-                  flush_succeeded = 1;
-                }
+	if (stat(nodelogger_bucket,&stbuf) == -1 ) {
+	    if (NODELOG_DEBUG) dbug_write("nodelogger-warning: unable to stat ", nodelogger_bucket);
+	    if ( creat(nodelogger_bucket, NODELOG_S_FPERM ) < 1 )
+	    {
+		fprintf(stderr,"nodelogger: unable to create %s\n",nodelogger_bucket);
+	    }
+	} else {
+	    if (stbuf.st_size > 0) {
+		send_success = process_bucket(sock);
                 if (nodelogger_exit_status == 1) {
-                  return;
-                }
-              }
-            }
-            (void) closedir (link_dir);
-            if (flush_succeeded) {
-              return;
-            }
-          }
-        }
+                   return;
+		 }
+	    }
+	}
 
 	/* generate a formatted msg into "nodelogger_buf" */
 	gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
@@ -367,29 +331,6 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
     close(nodelogger_bucketid);
 
     if (NODELOG_DEBUG) fclose(nodelogger_dbugfile);
-}
-
-static int process_bucket_path(char *bucket_path, int sock){
-   char nodelogger_bucket_backup[NODELOG_FILE_LENGTH];
-   struct stat stbuf;
-   int send_success;
-
-   strcpy(nodelogger_bucket_backup, nodelogger_bucket);
-   sprintf(nodelogger_bucket, "%s/%s", bucket_path, "logger_bucket");
-
-   if (stat(nodelogger_bucket,&stbuf) == -1 ) {
-     if (NODELOG_DEBUG) dbug_write("nodelogger-warning: unable to stat ", nodelogger_bucket);
-     if ( creat(nodelogger_bucket, NODELOG_S_FPERM ) < 1 )
-        {
-        fprintf(stderr,"nodelogger: unable to create %s\n",nodelogger_bucket);
-        }
-   } else {
-     if (stbuf.st_size > 0) {
-       send_success = process_bucket(sock);
-     }
-   }
-   strcpy(nodelogger_bucket, nodelogger_bucket_backup);
-   return(send_success);
 }
 
 static int open_socket()
@@ -703,21 +644,6 @@ static int open_lock_bucket ()
 static int save_msg_2_bucket ()
 {
 
-    struct stat stbuf;
-    char *link_dest=NULL;
-    char *bucket=NULL;
-    char unique_link_name[NODELOG_FILE_LENGTH];
-    int fd;
-    DIR *link_dir;
-    struct dirent *item;
-    char link_path[NODELOG_FILE_LENGTH]; 
-    size_t link_path_size=NODELOG_FILE_LENGTH;
-    int same_link_exists=0;
-    ssize_t readlink_result;
-    char link_name[NODELOG_FILE_LENGTH];
-
-    memset(unique_link_name,'\0',NODELOG_FILE_LENGTH);
-
     /* simply append nodelogger_buf to the bucket */
 
     if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:","");
@@ -735,63 +661,6 @@ static int save_msg_2_bucket ()
 
     write(nodelogger_bucketid, nodelogger_buf, sizeof(nodelogger_buf));
     if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:"," message appended to bucket");
-
-    /*saving link to bucket in $HOME/.maestro/bucket_links directory */
-
-    /*if bucket links directory doesn't exist, create it*/
-    if (stat(nodelogger_bck_lnk_dir,&stbuf) == -1 ) {
-      /* if "$HOME/.maestro" directory doesn't exist, create it*/
-      if (stat(maestro_config_dir,&stbuf) == -1 ) {
-        if (mkdir(maestro_config_dir,0755) == -1) {
-        fprintf(stderr,"Couldn't create directory : %s, errno=%d\n",maestro_config_dir, errno); 
-          return(1);
-        }
-      }
-      if (mkdir(nodelogger_bck_lnk_dir,0755) == -1) {
-      fprintf(stderr,"Couldn't create directory : %s, errno=%d\n",nodelogger_bck_lnk_dir, errno); 
-        return(1);
-      }
-    }
-
-
-    /* make a duplicate of nodelogger_bucket because dirname may return pointers */
-    /* to statically allocated memory which may be overwritten by subsequent calls.*/
-
-    bucket = strdup(nodelogger_bucket);
-    link_dest=dirname(bucket);
-
-    /*loop on links in nodelogger_bck_lnk_dir and verify with readlink that the destination doesn't already have a link*/
-     
-    link_dir = opendir (nodelogger_bck_lnk_dir);
-    if (link_dir != NULL) {
-      while (item = readdir (link_dir)) {
-        sprintf(link_name, "%s/%s", nodelogger_bck_lnk_dir,item->d_name);
-        readlink_result=readlink(link_name, link_path, link_path_size);
-
-        if ( readlink_result != -1 ) {
-          link_path[readlink_result]='\0';
-          if ( strcmp(link_path, link_dest) == 0 ) {
-            same_link_exists=1;
-            continue;
-          }
-        }
-      }
-      (void) closedir (link_dir);
-    }
-
-    if ( ! same_link_exists ) {
-      strcpy(unique_link_name, nodelogger_bck_lnk_dir);
-      strcat(unique_link_name, "/logs.XXXXXX");
-
-      fd=mkstemp(unique_link_name);
-      close(fd);
-      unlink(unique_link_name);
-
-      if (symlink(link_dest, unique_link_name) == -1) {
-        fprintf(stderr,"Couldn't create link : %s in %s, errno=%d\n",link_dest, unique_link_name, errno); 
-        return(1);
-      }
-    }
 
     close(nodelogger_bucketid);
     close(nodelogger_lockfileid);
@@ -827,9 +696,13 @@ static int check_socket ()
         memset(mesg,'\0',sizeof mesg);
         memset(command,'\0',sizeof command);
         sprintf(mesg,"%s%s%s","info: socket responding....",nodelogger_socketdown," emptied");
-        gen_message("", "info", "", mesg);
-        write_line(sock);
-
+        seq_exp_home=getenv("SEQ_EXP_HOME");
+        if (seq_exp_home != NULL) {
+           sprintf(command,"%s=%s; nodelogger exnodelogger x \"%s\"","export",seq_exp_home,mesg);
+        } else {
+           sprintf(command,"nodelogger exnodelogger x \"%s\"",mesg);
+        }
+	system(command);
 	if (NODELOG_DEBUG) dbug_write("check_socket:",mesg);
 	alarm(0);
 	close(sock);
@@ -843,3 +716,10 @@ static void die()
     if (NODELOG_DEBUG) dbug_write("die:","");
     nodelogger_exit_status = 1;
 }
+
+
+
+
+
+
+
