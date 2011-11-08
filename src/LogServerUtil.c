@@ -222,6 +222,7 @@ void Set_buf_message (char *buf,char *firsin) {
   char *split,*usager = NULL,rep[MAX_CAR],*tmplog=NULL, *logdir=NULL;
   char *log_message   = NULL,*path = NULL;
 
+  if(strlen(buf) == 0 ) return; 
   log_message = strdup (buf);
   printf( "Set_buf_message buf:%s\n", log_message );
   split  = strtok (log_message,":");
@@ -239,6 +240,9 @@ void Set_buf_message (char *buf,char *firsin) {
   } else {
     printf( "Experiment Log Directory=%s does not exists!\n", logdir );
   }
+  free(usager);
+  free(log_message);
+  free(tmplog);
 }
 
 /*--------------------------------------------------------------------------------*\
