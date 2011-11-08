@@ -82,6 +82,7 @@ static void die();
 void signal_handler( int signum)
 {
    printf("nodelogger: Caught signal %d but continuing...\n",signum);
+   if (NODELOG_DEBUG) dbug_write("nodelogger: Caught signal but continuing...\n", "");
 }
 
 int check_op_cmcfi(int gid)
@@ -273,7 +274,6 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
                 if (NODELOG_DEBUG) fclose(nodelogger_dbugfile);
                 return; 
 	    }
-
 	}
     }
 
@@ -358,7 +358,6 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
                return;
 	     }
 	}
-
     } else {
 	/* generate a formatted msg into "nodelogger_buf" */
 	if (NODELOG_DEBUG) dbug_write("open bucket failed","");
@@ -372,6 +371,7 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
     close(nodelogger_bucketid);
 
     if (NODELOG_DEBUG) fclose(nodelogger_dbugfile);
+
 }
 
 static int process_bucket_path(char *bucket_path, int sock){
@@ -440,6 +440,7 @@ static int open_socket()
 	printf("Cannot connect socket, no connection available!\n");
         printf("LOG SERVER HOST=%s\n",nodelogger_batch_host);
         printf("PORT=%d\n",PORT_NUM);
+        if (NODELOG_DEBUG) dbug_write("open_socket: Cannot connect socket, no connection available!\n", "");
 	return(-1);
     }
  
@@ -721,27 +722,28 @@ static int save_msg_2_bucket ()
     int same_link_exists=0;
     ssize_t readlink_result;
     char link_name[NODELOG_FILE_LENGTH];
+    char tmpMsg[NODELOG_BUFSIZE];
 
     memset(unique_link_name,'\0',NODELOG_FILE_LENGTH);
 
     /* simply append nodelogger_buf to the bucket */
 
     if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:","");
-
-    /* if nodelogger_bucketid is not already open, it will have a value of -999 */
-    if ( nodelogger_bucketid == -999 ) {
-      alarm(20);
-      if (open_lock_bucket() == 1) {
-	alarm(0);
-	return(1);
-      }
-      alarm(0);
+    if (open_lock_bucket() == 1) {
+       alarm(0);
+       return(1);
     }
+
     lseek(nodelogger_bucketid, 0, SEEK_END);
 
-    write(nodelogger_bucketid, nodelogger_buf, sizeof(nodelogger_buf));
+    if( write(nodelogger_bucketid, nodelogger_buf, sizeof(nodelogger_buf))  == -1 ) {
+       memset( tmpMsg, '\0', sizeof(NODELOG_BUFSIZE));
+       sprintf( tmpMsg, "%d", errno);
+       if ( NODELOG_DEBUG ) dbug_write("save_msg_2_bucket writing error -1:", tmpMsg);
+       return(1);
+    }
 
-    if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:"," message appended to bucket");
+    if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:", " message appended to bucket");
 
     /*saving link to bucket in $HOME/.maestro/bucket_links directory */
 
@@ -833,16 +835,19 @@ static int check_socket ()
 	alarm(30);
         memset(mesg,'\0',sizeof mesg);
         memset(command,'\0',sizeof command);
-        sprintf(mesg,"%s","info: nodelogger_svr socket active...previous log entries re-submitted.");
+        sprintf(mesg,"%s","info: log server socket active...previous log entries resent.");
         gen_message("", "info", "", mesg);
         write_line(sock);
 
 	if (NODELOG_DEBUG) dbug_write("check_socket:",mesg);
 	alarm(0);
 	close(sock);
+    } else {
+       return(1);
     }
+
     if (nodelogger_exit_status == 1) return(1);
-return(0);
+   return(0);
 }
 
 static void die()
