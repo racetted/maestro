@@ -1230,7 +1230,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       }
       /* go and submit the job */
       if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
-         sprintf(cmd,"%s -sys maestro -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -args \"%s\"",OCSUB, nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,      _nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, _nodeDataPtr->args);
+         sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -args \"%s\"",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,      _nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, _nodeDataPtr->args);
          printf( "%s\n", cmd );
          SeqUtil_TRACE("maestro.go_submit() cmd_length=%d %s\n",strlen(cmd), cmd);
          status = system(cmd);
@@ -1241,7 +1241,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          sprintf(tmpfile,"%s/sequencing/tmpfile/container.tsk",SEQ_EXP_HOME);
          touch(tmpfile);         
          _nodeDataPtr->submits == NULL ? strcpy( noendwrap, "" ) : strcpy( noendwrap, "-noendwrap" ) ;
-	 sprintf(cmd,"%s -sys maestro -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -args \"%s\"",OCSUB,tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, _nodeDataPtr->args);
+	 sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -args \"%s\"",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,_nodeDataPtr->cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, _nodeDataPtr->args);
          printf( "%s\n", cmd );
          SeqUtil_TRACE("maestro.go_submit() cmd_length=%d %s\n",strlen(cmd), cmd);
          status=system(cmd);
@@ -1723,6 +1723,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    }
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
+   fprintf( tmpFile, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
    fprintf( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
    fprintf( tmpFile, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
    if ( _nodeDataPtr-> npex != NULL ) {
@@ -1937,6 +1938,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       closedir(dirp);
    } else {
       raiseError( "SEQ_EXP_HOME not set!\n" );
+   }
+   if ( getenv("SEQ_WRAPPER") == NULL ) {
+      raiseError( "SEQ_WRAPPER not set!\n" );
    }
 
    if ( strcmp(_flow, "continue") == 0 || strcmp(_flow,"stop") == 0 ) {

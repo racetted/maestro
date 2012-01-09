@@ -5,15 +5,14 @@
 # common section definition
 include ../config/config.mk
 
-ssm: 
+ssm:	profile.sh 
 	echo "Creating SSM package $(SSMPACKAGE)..."
 	if [ ! -d $(SSMPACKAGE) ]; then \
 	   mkdir $(SSMPACKAGE); \
 	fi;
 	cp -r $(SWDEST)/* $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
-	cp -r pre-publish $(SSMPACKAGE)/.ssm.d;
-	cp -r post-install $(SSMPACKAGE)/.ssm.d;
+	cp -r pre-publish post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
 	cp ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
 	ssmprep --basePath $(shell pwd)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;
@@ -25,5 +24,12 @@ ssm:
 	echo "Description: Unified Task Sequencer" >> $(SSMPACKAGE)/.ssm.d/control; \
 	tar cvf - $(SSMPACKAGE) | gzip -> $(SSMPACKAGE).ssm
 
+profile.sh:
+	touch profile ;\
+	echo "export SEQ_WRAPPER=${SEQ_WRAPPER}" >$@ ;\
+	cat profile >>$@
+
+
 clean:
-	rm -r $(SSMPACKAGE).ssm $(SSMPACKAGE)
+	rm -rf $(SSMPACKAGE).ssm $(SSMPACKAGE) profile.sh
+

@@ -15,12 +15,12 @@ runcontrol: prep $(OBJECTS) log_server
 	   if test $(MACHINE) = "Linux"; then \
 	      ARCH_EXTRA="-bidon c -main main_$${component}"; \
 	   fi; \
-	   r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(XML_LIB_DIR) $(LIBDIR) $(XTERN_LIB) -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
+	   s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(XML_LIB_DIR) $(LIBDIR) $(XTERN_LIB) -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
 	   cp $${component} $(BINDIR) ; \
 	done;
 
 runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h
-	r.compile $(CFLAGS) -includes $(INCDIR) -libpath $(XTERN_LIB) -src runcontrollib.c
+	s.compile $(CFLAGS) -includes $(INCDIR) -libpath $(XTERN_LIB) -src runcontrollib.c
 
 SeqNode.o:	SeqNode.c SeqNode.h
 	$(CC) -g -c SeqNode.c;
@@ -37,29 +37,29 @@ SeqLoopsUtil.o:	SeqLoopsUtil.c
 	$(CC) -g -c SeqLoopsUtil.c
 
 SeqDatesUtil.o:	SeqDatesUtil.c
-	r.compile $(CFLAGS) -src SeqDatesUtil.c
+	s.compile $(CFLAGS) -src SeqDatesUtil.c
 
 XmlUtils.o: XmlUtils.c
-	r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR) -src XmlUtils.c
+	s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR) -src XmlUtils.c
 
 SeqUtil.o:	SeqUtil.c
 	$(CC) -g -c SeqUtil.c
 
 nodelogger.o:	nodelogger.c nodelogger.h
-	r.compile $(CFLAGS) -src nodelogger.c
+	s.compile $(CFLAGS) -src nodelogger.c
 
 tictac.o:	tictac.c tictac.h
-	r.compile $(CFLAGS) -src tictac.c
+	s.compile $(CFLAGS) -src tictac.c
 
 expcatchup.o:	expcatchup.c expcatchup.h
-	r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR) -src expcatchup.c
+	s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR) -src expcatchup.c
 
 nodeinfo.o:	nodeinfo.c nodeinfo.h runcontrollib.h
-	r.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR)  -src nodeinfo.c
+	s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR)  -src nodeinfo.c
 
 maestro.o:	maestro.c maestro.h nodeinfo.h runcontrollib.h nodelogger.h tictac.h
 	echo CFLAGS=$(CFLAGS) ; \
-	r.compile $(CFLAGS) -libappl maestro -src maestro.c
+	s.compile $(CFLAGS) -libappl maestro -src maestro.c
 
 prep:
 	if [ ! -d $(SWDEST) ] ; then \
@@ -73,4 +73,4 @@ log_server: nodelogger_svr.c initvar.c LogServerUtil.c SeqUtil.c SeqListNode.c
 	cp nodelogger_svr $(BINDIR) 
 
 clean:
-	rm -f *.o; rm -f $(COMPONENTS)
+	rm -f *.o; rm -f $(COMPONENTS) nodelogger_svr
