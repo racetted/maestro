@@ -12,6 +12,7 @@
 #include <libgen.h>
 #include "runcontrollib.h"
 #include "nodelogger.h"
+#include "SeqUtil.h"
 extern char *__loc1; /* needed for regex */
 
 
@@ -131,14 +132,18 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestam
 void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
 {
    char message[300];
+   char *cpu = NULL;
 
    memset(message,'\0',sizeof message);
+   cpu = (char *) SeqUtil_cpuCalculate(node_ptr->npex,node_ptr->npey,node_ptr->omp,node_ptr->cpu_multiplier);
+
    /* This is needed so messages will be logged into CMCNODELOG */
    putenv("CMCNODELOG=on");
-
-   sprintf(message,"machine=%s queue=%s cpu=%s Memory=%s Wallclock Limit=%d mpi=%d",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi);
+   
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi);
 
    printf("nodesubmit.Message=%s",message);
+   free(cpu);
 
    nodelogger(node_ptr->name,"submit",node_ptr->extension,message,datestamp);
 }

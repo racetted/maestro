@@ -119,6 +119,26 @@ void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
    }
 }
 
+void SeqNode_setCpuMultiplier ( SeqNodeDataPtr node_ptr, const char* cpu_multiplier ) {
+  char *tmpMult=NULL;
+  char *tmpMultTok=NULL;
+  int mult=1;
+  tmpMult = strdup(cpu_multiplier);
+  if ( cpu_multiplier != NULL ) {
+    tmpMultTok = (char*) strtok( tmpMult, "x" );
+    while ( tmpMultTok != NULL ) {
+      mult = mult * atoi(tmpMultTok);
+      tmpMultTok = (char*) strtok( NULL, "x" );
+    }
+    sprintf(tmpMult,"%d",mult);
+    free( node_ptr->cpu_multiplier );
+    node_ptr->cpu_multiplier = malloc( strlen(cpu_multiplier) + 1 );
+    strcpy( node_ptr->cpu_multiplier, tmpMult );
+    free (tmpMultTok);
+  }
+   free (tmpMult);
+}
+
 void SeqNode_setMachine ( SeqNodeDataPtr node_ptr, const char* machine ) {
    if ( machine != NULL ) {
       free( node_ptr->machine );
@@ -419,6 +439,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->catchup = 4;
    nodePtr->wallclock = 3;
    nodePtr->mpi = 0;
+   nodePtr->cpu_multiplier = NULL;
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
    nodePtr->depends = NULL;
@@ -438,6 +459,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
    SeqNode_setCpu( nodePtr, "1" );
+   SeqNode_setCpuMultiplier( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
    SeqNode_setMachine( nodePtr, "dorval-ib" );
    SeqNode_setMemory( nodePtr, "40M" );

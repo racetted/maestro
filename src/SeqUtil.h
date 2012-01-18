@@ -19,6 +19,7 @@ int SeqUtil_isDirExists( const char* path_name ) ;
 char *SeqUtil_getPathLeaf (const char *full_path) ;
 char *SeqUtil_getPathBase (const char *full_path) ;
 int SeqUtil_mkdir( const char* dir_name, int is_recursive ) ;
+char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ) ;
 void SeqUtil_stringAppend( char** source, char* data );
 int SeqUtil_tokenCount( char* source, char* tokenSeparator );
 char* SeqUtil_fixPath ( const char* source );

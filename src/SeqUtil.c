@@ -272,6 +272,19 @@ int SeqUtil_mkdir( const char* dir_name, int is_recursive ) {
    return(0);
 }
 
+char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ){
+  char *chreturn=NULL;
+  int nMpi=1;
+  if ( ! (chreturn = malloc( strlen(npex) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
+    printf( "SeqUtil_cpuCalculate malloc: Out of memory!\n");
+    return(NULL);
+  }
+  nMpi = atoi(npex) * atoi(cpu_multiplier);
+  if ( npey != NULL){ nMpi = nMpi * atoi(npey); }
+  sprintf(chreturn,"%d",nMpi);
+  if ( omp != NULL){ sprintf(chreturn,"%sx%s",chreturn,omp); }
+  return(chreturn);
+}
 
 /* dynamic string cat, content of source is freed */
 void SeqUtil_stringAppend( char** source, char* data )

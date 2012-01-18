@@ -65,6 +65,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
          SeqUtil_TRACE( "nodeinfo.parseBatchResources() value=%s\n", nodePtr->children->content );
 	 if ( strcmp( nodeName, "cpu" ) == 0 ) {
             SeqNode_setCpu( _nodeDataPtr, nodePtr->children->content );
+	 } else if ( strcmp( nodeName, "cpu_multiplier" ) == 0 ) {
+	    SeqNode_setCpuMultiplier( _nodeDataPtr, nodePtr->children->content );
          } else if ( strcmp( nodeName, "machine" ) == 0 ) {
             SeqNode_setMachine( _nodeDataPtr, nodePtr->children->content );
          } else if ( strcmp( nodeName, "queue" ) == 0 ) {
