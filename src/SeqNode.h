@@ -77,6 +77,8 @@ typedef struct _SeqNodeData {
    char* npex;
    char* npey;
    char* omp;
+   /*extra soumet arguments provided via command-line, resource file or interface*/
+   char* soumetArgs;
    char* alias;
    char* args;
    char* datestamp;

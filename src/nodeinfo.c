@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-
 #include <string.h>
 #include <stdarg.h>
 #include <pwd.h>
@@ -52,6 +51,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
    xmlNodeSetPtr nodeset = NULL;
    xmlNodePtr nodePtr = NULL;
    const xmlChar *nodeName = NULL;
+   char *tmpString = NULL; 
 
    int i=0;
    SeqUtil_TRACE( "nodeinfo.parseBatchResources() called\n" );
@@ -73,6 +73,12 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
             SeqNode_setMemory( _nodeDataPtr, nodePtr->children->content );
          } else if ( strcmp( nodeName, "mpi" ) == 0 ) {
              _nodeDataPtr->mpi = atoi( nodePtr->children->content );
+         } else if ( strcmp( nodeName, "soumet_args" ) == 0 ) {
+              /* add soumet args in the following order: 1) resource file 2) args sent by command line, who will override 1*/
+             SeqUtil_stringAppend( &tmpString, nodePtr->children->content);
+             SeqUtil_stringAppend( &tmpString, _nodeDataPtr->soumetArgs );
+             SeqNode_setSoumetArgs( _nodeDataPtr, tmpString);
+             free(tmpString);
          } else if ( strcmp( nodeName, "wallclock" ) == 0 ) {
              _nodeDataPtr->wallclock = atoi( nodePtr->children->content );
          } else if ( strcmp( nodeName, "catchup" ) == 0 ) {
@@ -795,7 +801,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    free(currentFlowNode);
 }
 
-SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home ) {
+SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs ) {
 
    char* seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    SeqNodeDataPtr  nodeDataPtr = NULL;
@@ -823,6 +829,9 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
+   /*pass the content of the command-line (or interface) extra soumet args to the node*/
+   SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
+
    if ( SHOW_ROOT_ONLY ) {
       getRootNode ( nodeDataPtr, seq_exp_home );
    } else {

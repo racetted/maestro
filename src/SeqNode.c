@@ -167,6 +167,15 @@ void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args ) {
    }
 }
 
+void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
+   if ( soumetArgs != NULL ) {
+      printf("extra args 2 %s \n", soumetArgs);
+      free( node_ptr->soumetArgs );
+      node_ptr->soumetArgs = malloc( strlen(soumetArgs) + 1 );
+      strcpy( node_ptr->soumetArgs, soumetArgs );
+   }
+}
+
 void SeqNode_setLoopArgs ( SeqNodeDataPtr node_ptr, SeqNameValuesPtr _loop_args ) {
    if ( _loop_args != NULL ) {
       SeqNameValues_deleteWholeList( &(node_ptr->loop_args) );
@@ -421,6 +430,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->mpi = 0;
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
+   nodePtr->soumetArgs = NULL;
    nodePtr->depends = NULL;
    nodePtr->submits = NULL;
    nodePtr->abort_actions = NULL;
@@ -442,6 +452,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setMachine( nodePtr, "dorval-ib" );
    SeqNode_setMemory( nodePtr, "40M" );
    SeqNode_setArgs( nodePtr, "" );
+   SeqNode_setSoumetArgs( nodePtr, "" );
    SeqNode_setAlias( nodePtr, "" );
    SeqNode_setInternalPath( nodePtr, "" );
    SeqNode_setExtension( nodePtr, "" );
@@ -649,6 +660,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->module ) ;
       free( seqNodeDataPtr->alias ) ;
       free( seqNodeDataPtr->args ) ;
+      free( seqNodeDataPtr->soumetArgs ) ;
       free( seqNodeDataPtr->errormsg ) ;
       free( seqNodeDataPtr->cpu ) ;
       free( seqNodeDataPtr->taskPath ) ;

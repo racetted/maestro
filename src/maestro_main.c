@@ -45,7 +45,7 @@ main (int argc, char * argv [])
 
 {
    extern char *optarg;
-   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL;
+   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL;
    int errflg = 0, status = 0;
    int c, ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
@@ -58,7 +58,7 @@ main (int argc, char * argv [])
    }
    flow = malloc( 9 * sizeof(char) + 1 );
    sprintf( flow, "%s", "continue" );
-   while ((c = getopt(argc, argv, "n:s:f:l:id")) != -1) {
+   while ((c = getopt(argc, argv, "n:s:f:l:o:id")) != -1) {
       switch(c) {
          case 'n':
             node = malloc( strlen( optarg ) + 1 );
@@ -85,6 +85,10 @@ main (int argc, char * argv [])
 	 case 'i':
 	    ignoreAllDeps=1;
 	    break;
+	 case 'o':
+            extraArgs = malloc( strlen( optarg ) + 1 );
+            strcpy(extraArgs,optarg);
+	    break;
          case '?':
             printSeqUsage();
       }
@@ -103,11 +107,12 @@ main (int argc, char * argv [])
       /* SeqNameValues_printList( loopsArgs ); */
    }
    /* printf( "node=%s signal=%s\n", node, sign ); */
-   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps );
+   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs );
 
    free(flow);
    free(node);
    free(sign);
+   free(extraArgs);
    exit(status);
 }
 

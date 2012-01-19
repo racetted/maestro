@@ -79,7 +79,7 @@ main ( int argc, char * argv[] )
       printUsage();
    }
 
-   nodeDataPtr = nodeinfo( node, filters, loopsArgs, NULL );
+   nodeDataPtr = nodeinfo( node, filters, loopsArgs, NULL, NULL );
     
    if (gotLoops){
       SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgs );
