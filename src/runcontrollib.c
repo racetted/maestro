@@ -135,8 +135,12 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
    memset(message,'\0',sizeof message);
    /* This is needed so messages will be logged into CMCNODELOG */
    putenv("CMCNODELOG=on");
-
+   /* containers use TRUE_HOST for execution */
+   if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {
    sprintf(message,"machine=%s queue=%s cpu=%s Memory=%s Wallclock Limit=%d mpi=%d",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi);
+   } else {
+   sprintf(message,"machine=%s queue=%s cpu=%s Memory=%s Wallclock Limit=%d mpi=%d in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi);
+   }
 
    printf("nodesubmit.Message=%s",message);
 
