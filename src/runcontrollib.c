@@ -269,5 +269,6 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
 	}
    free(thisAbortType);
 }
-/****************************************************************/
+
+
 

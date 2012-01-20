@@ -1220,7 +1220,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       /* dependencies are satisfied */
       loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
    
-      setSubmitState( _nodeDataPtr ) ;
       tmpCfgFile = generateConfig( _nodeDataPtr, _flow );
 
       SeqUtil_stringAppend( &extName, _nodeDataPtr->nodeName );
@@ -1236,8 +1235,9 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          error_status = system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
          if (!error_status){
+             setSubmitState( _nodeDataPtr ) ;
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
-         }
+         } 
       } else {
          memset( noendwrap, '\0', sizeof( noendwrap ) );
          memset(tmpfile,'\0',sizeof tmpfile);
@@ -1250,8 +1250,9 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          error_status=system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
          if (!error_status){
+             setSubmitState( _nodeDataPtr ) ;
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
-         }
+         } 
       }
       /* don't forget to remove config file later on */
    }

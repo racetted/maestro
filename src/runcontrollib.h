@@ -51,7 +51,6 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp);
 /* extern void nodeabort(int num, ...); */
 void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp);
 
-
 /****************************************************************************
 * NAME: nodebegin
 * PURPOSE: send 'begin' message to operational logging system.
