@@ -1722,6 +1722,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
 
    SeqUtil_stringAppend( &filename, extName );
    sprintf(pidbuf, "%d", getpid() ); 
+   SeqUtil_stringAppend( &filename, "." );
    SeqUtil_stringAppend( &filename, pidbuf );
    SeqUtil_stringAppend( &filename, ".cfg" );
    /* open for write & overwrites whatever if file exists */
@@ -1783,6 +1784,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    }
 
    fprintf( tmpFile, "export SEQ_XFER=%s\n", flow );
+   fprintf( tmpFile, "export SEQ_TMP_CFG=%s\n", filename);
    fprintf( tmpFile, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
 
    fclose(tmpFile);
