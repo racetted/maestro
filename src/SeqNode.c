@@ -189,7 +189,6 @@ void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args ) {
 
 void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
    if ( soumetArgs != NULL ) {
-      printf("extra args 2 %s \n", soumetArgs);
       free( node_ptr->soumetArgs );
       node_ptr->soumetArgs = malloc( strlen(soumetArgs) + 1 );
       strcpy( node_ptr->soumetArgs, soumetArgs );
