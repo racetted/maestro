@@ -131,7 +131,7 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestam
 ****************************************************************/
 void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
 {
-   char message[300];
+   char message[400];
    char *cpu = NULL;
 
    memset(message,'\0',sizeof message);
@@ -141,9 +141,9 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
    putenv("CMCNODELOG=on");
    /* containers use TRUE_HOST for execution */
    if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
    } else {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
    }
 
    printf("nodesubmit.Message=%s",message);

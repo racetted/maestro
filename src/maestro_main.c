@@ -21,7 +21,7 @@ static void printSeqUsage()
    
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      maestro -n node -s signal [-i] [-d] [-l loopargs] [-f flow] \n");
+   printf("      maestro -n node -s signal [-i] [-d] [-l loopargs] [-f flow] [-o extra_soumet_args]  \n");
    printf("         where:\n");
    printf("         node is full path of task or family node (mandatory):\n");
    printf("         signal is one of:\n");
@@ -30,6 +30,7 @@ static void printSeqUsage()
    printf("         -d is to run in debug mode\n");
    printf("         flow is continue (default) or stop, representing whether the flow should continue after this node\n");
    printf("         loopargs is the comma-separated list of loop arguments. ex: -l loopa=1,loopb=2\n");
+   printf("         extra_soumet_args are arguments being given to ord_soumet by the job (ex. -waste=50)\n");
 
    printf("      SEQ_EXP_HOME=%s\n",seq_exp_home);
    printf("Example: maestro -s submit -n regional/assimilation/00/task_0 -f continue\n");

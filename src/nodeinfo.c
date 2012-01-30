@@ -78,6 +78,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
          } else if ( strcmp( nodeName, "soumet_args" ) == 0 ) {
               /* add soumet args in the following order: 1) resource file 2) args sent by command line, who will override 1*/
              SeqUtil_stringAppend( &tmpString, nodePtr->children->content);
+             SeqUtil_stringAppend( &tmpString, " ");
              SeqUtil_stringAppend( &tmpString, _nodeDataPtr->soumetArgs );
              SeqNode_setSoumetArgs( _nodeDataPtr, tmpString);
              free(tmpString);

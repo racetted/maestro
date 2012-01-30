@@ -547,9 +547,11 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       printf("node.mpi=%d\n", node_ptr->mpi);
       printf("node.wallclock=%d\n", node_ptr->wallclock );
       printf("node.cpu=%s\n", node_ptr->cpu );
+      printf("node.cpu_multiplier=%s\n", node_ptr->cpu_multiplier );
       printf("node.machine=%s\n", node_ptr->machine );
       printf("node.queue=%s\n", node_ptr->queue );
       printf("node.memory=%s\n", node_ptr->memory );
+      printf("node.soumetArgs=%s\n", node_ptr->soumetArgs );
    }
    if( showAll || showCfgPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
