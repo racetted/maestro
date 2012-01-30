@@ -16,7 +16,8 @@
 include config/config.mk
 
 all: install
-install:
-	cd src; gmake clean; gmake; cd ..
-	cd ssm; gmake ssm; cd ..
+install: clean
+	cd src; $(MAKE); cd ..
+	cd ssm; $(MAKE) ssm; cd ..
 clean:
+	cd src; $(MAKE) clean

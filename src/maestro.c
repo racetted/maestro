@@ -1733,6 +1733,8 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    if ((tmpFile = fopen(filename,"w+")) == NULL) {
       raiseError( "maestro cannot write to file:%s\n",filename );
    }
+   fprintf( tmpFile, "eval $(ssmuse sh -d %s -p maestro_%s)\n", getenv("SEQ_MAESTRO_DOMAIN"), getenv("SEQ_MAESTRO_VERSION"));
+   fprintf( tmpFile, "eval $(ssmuse sh -d %s -p maestro-utils_%s)\n", getenv("SEQ_UTILS_DOMAIN"), getenv("SEQ_UTILS_VERSION"));
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    fprintf( tmpFile, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));

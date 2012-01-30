@@ -24,11 +24,11 @@ ssm:	profile.sh
 	echo "Description: Unified Task Sequencer" >> $(SSMPACKAGE)/.ssm.d/control; \
 	tar cvf - $(SSMPACKAGE) | gzip -> $(SSMPACKAGE).ssm
 
-profile.sh:
+profile.sh: Makefile
 	touch profile ;\
 	echo "export SEQ_WRAPPER=${SEQ_WRAPPER}" >$@ ;\
+	echo "export SEQ_MAESTRO_VERSION=${VERSION}" >>$@ ;\
 	cat profile >>$@
-
 
 clean:
 	rm -rf $(SSMPACKAGE).ssm $(SSMPACKAGE) profile.sh
