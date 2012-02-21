@@ -1628,7 +1628,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
    while( depsPtr != NULL && isWaiting == 0 ) {
       nameValuesPtr =  depsPtr->dependencyItem;
 
-      if ( depsPtr->type == NodeDependancy || depsPtr->type == NpassDependancy ) {
+      if ( depsPtr->type == NodeDependancy) {
          SeqUtil_TRACE( "maestro.validateDependencies() nodeinfo_depend_type=Node\n" );
          depScope = IntraSuite;
          depName = SeqNameValues_getValue( nameValuesPtr, "NAME" );

@@ -119,7 +119,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
          if ( depType == NULL ) { 
             raiseError( "type attributes is mandatory for DEPENDS_ON xml element." );
          }
-         if ( strcmp( depType, "task" ) == 0 || strcmp( depType, "npass_task" ) == 0 ) {
+         if ( strcmp( depType, "node" ) == 0 ) {
             depUser = xmlGetProp( nodePtr, "user" );
             depExp = xmlGetProp( nodePtr, "exp" );
             depName = xmlGetProp( nodePtr, "dep_name" );
@@ -176,11 +176,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
-	    if ( strcmp( depType, "npass_task" ) == 0 ) { 
-               SeqNode_addNodeDependency ( _nodeDataPtr, NpassDependancy, depName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
-            } else {
-               SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, depName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
-	    }
+            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, depName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
+	    
             SeqUtil_TRACE( "nodeinfo.parseDepends() done\n" );
             xmlFree( depName );
             xmlFree( depIndex );

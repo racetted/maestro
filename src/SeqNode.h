@@ -5,7 +5,6 @@
 
 typedef enum _SeqDependsType {
    NodeDependancy,
-   NpassDependancy,
    DateDependancy
 } SeqDependsType;
 
