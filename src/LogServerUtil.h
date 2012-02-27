@@ -73,6 +73,7 @@
 #define  MAX_LINE       1024 
 #define  MAX_CH         512 
 #define  MAX_CAR        256 
+#define  MAX_CONN       3000
 
   
 /*-----------------------------------------------------------------------

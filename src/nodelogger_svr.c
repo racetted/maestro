@@ -117,10 +117,10 @@ void process_cmds () {
 
    getsockname(sock, (struct  sockaddr *)&server_eff, (unsigned int*) &sizeserver_eff);
    port =  ntohs(server_eff.sin_port);
-   printf("process_cmds: port=%d SOMAXCONN=%d\n",port,SOMAXCONN);
+   printf("process_cmds: port=%d Max Connections=%d\n",port,MAX_CONN);
 
    update_svr_file( port );
-  (void) listen(sock,SOMAXCONN);
+   (void) listen(sock,MAX_CONN);
 
   while(1) {
     if ((sockz = accept(sock, (struct  sockaddr *)&server,(unsigned int*)  &sizeserver)) < 0){
@@ -132,6 +132,7 @@ void process_cmds () {
       }
     } else {
       memset(buf,'\0', sizeof buf);
+      /* TODO set a 30 secs alarm on read on socket, perhaps change call to recv and select w/ timeval struct timeout instead of read? something to not leave socket on read when it is supposed to be finished */
       while ( read(sockz, buf, sizeof buf) > 0 ) {
         Set_buf_message (buf,firsin);
         if ((logfile = open(firsin, O_WRONLY|O_APPEND|O_CREAT, 00666)) != -1 ){
