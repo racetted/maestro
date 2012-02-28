@@ -20,4 +20,5 @@ install: clean
 	cd src; $(MAKE); cd ..
 	cd ssm; $(MAKE) ssm; cd ..
 clean:
-	cd src; $(MAKE) clean
+	cd src; $(MAKE) clean; cd ..
+	cd ssm; $(MAKE) clean; cd ..
