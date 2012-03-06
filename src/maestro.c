@@ -48,7 +48,6 @@ static int go_submit(const char *signal, char *_flow ,const SeqNodeDataPtr nodeD
 static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr);
 static void processContainerAbort ( const SeqNodeDataPtr _nodeDataPtr);
 static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow );
-static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_flow);
 static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr);
 static int isLoopComplete ( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 
@@ -514,11 +513,11 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
         submitNodeList(_nodeDataPtr->submits, _nodeDataPtr->loop_args);
    } 
 
-   if (_nodeDataPtr->type == Case && strcmp(_flow, "continue") == 0 ) {
-   /* run the script that will handle the case decision and submit that node 
-       submitNodeList(_nodeDataPtr->whateverwecomeupwith)
-   */
+   /* submit nodes waiting for this one to begin */
+   if  (strcmp(_flow, "continue") == 0) {
+       submitDependencies( _nodeDataPtr, "begin" );
    }
+
 
    if ( strcmp(_nodeDataPtr->container, "") != 0 ) {
       processContainerBegin(_nodeDataPtr); 
@@ -780,7 +779,6 @@ Inputs:
 
 static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr) {
    char *extensionBase = NULL; 
-   int checkContainerEnd = 1;
    SeqNameValuesPtr newArgs = NULL;
    SeqUtil_TRACE( "maestro.go_end() node=%s signal=%s\n", _nodeDataPtr->name, _signal );
    
@@ -790,36 +788,22 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
    if ( (_nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask) && (strcmp(_flow, "continue") == 0)) {
         submitNodeList(_nodeDataPtr->submits, _nodeDataPtr->loop_args);
    } else if (_nodeDataPtr->type == Loop ) {
-      if( isLoopComplete ( _nodeDataPtr, _nodeDataPtr->loop_args ) ) {
-         /* no loop attribute for the current node means we're done,
-            no need to send maestro end again or else it's an infinite loop */
-         if( ((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName )) != NULL ) {
-            extensionBase = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
-            newArgs = (SeqNameValuesPtr) SeqLoops_convertExtension( _nodeDataPtr->loops, extensionBase );
-            SeqNameValues_printList( newArgs );
-            maestro ( _nodeDataPtr->name, _signal, _flow, newArgs, 0, NULL );
-         }
-      } else {
-	 /* if loop is not done, no need to check parent end */
-         checkContainerEnd  = 0;
-         /* get next loop extension to submit only if we have an extension for the current loop and it
-            has not reached the end */
-         if( ((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName )) != NULL && 
-             !SeqLoops_isLastIteration( _nodeDataPtr, _nodeDataPtr->loop_args ) ) {
+      /*is the current loop argument in loop args list and it's not the last one ? */
+      if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL && ! SeqLoops_isLastIteration( _nodeDataPtr, _nodeDataPtr->loop_args )) {
             if( (newArgs = (SeqNameValuesPtr) SeqLoops_nextLoopArgs( _nodeDataPtr, _nodeDataPtr->loop_args )) != NULL && (strcmp(_flow, "continue") == 0)) {
                maestro (_nodeDataPtr->name, "submit", _flow, newArgs, 0, NULL);
             }
          }
       }
-   }
-
    /* check if the container has been completed by the end of this */
-   if ( strcmp( _nodeDataPtr->container, "" ) != 0 && checkContainerEnd ) {
+   if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
       processContainerEnd( _nodeDataPtr, _flow );
    }
 
    /* submit nodes waiting for this one to end */
-   submitDependencies( _nodeDataPtr, "end" );
+   if  (strcmp(_flow, "continue") == 0) {
+       submitDependencies( _nodeDataPtr, "end" );
+   }
 
    free( extensionBase );
    SeqNameValues_deleteWholeList( &newArgs );
@@ -1019,76 +1003,7 @@ Inputs:
 
 static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow ) {
 
-   char endfile[SEQ_MAXFIELD];
-   char continuefile[SEQ_MAXFIELD];
-   char tmp[SEQ_MAXFIELD];
-   LISTNODEPTR siblingIteratorPtr = NULL;
-   SeqNodeDataPtr siblingDataPtr = NULL;
-   SeqNameValuesPtr loopArgs = _nodeDataPtr->loop_args;
-   int undoneChild = 0, catchup=CatchupNormal;
-   memset( endfile, '\0', sizeof endfile );
-   memset( continuefile, '\0', sizeof continuefile );
-   memset( tmp, '\0', sizeof tmp);
 
-   if ( _nodeDataPtr->type != CaseItem ) {
-      if( _nodeDataPtr->loops != NULL ) {
-         /* process loops containers */
-         processLoopContainerEnd( _nodeDataPtr, _flow );
-      } else {
-         /*get exp catchup*/
-         catchup = catchup_get (SEQ_EXP_HOME);
-         siblingIteratorPtr = _nodeDataPtr->siblings;
-         /* process the siblings */
-         while( siblingIteratorPtr != NULL && undoneChild == 0 ) {
-            sprintf(endfile,"%s/%s/%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, _nodeDataPtr->datestamp);
-            sprintf(continuefile,"%s/%s/%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, _nodeDataPtr->datestamp);
-            if (( access(endfile, R_OK) == 0 ) || ( access(continuefile, R_OK) == 0 ) )  {
-               SeqUtil_TRACE( "maestro.processContainerEnd() found end file=%s or abort.continue file=%s \n", endfile, continuefile );
-               siblingIteratorPtr = siblingIteratorPtr->nextPtr;
-            } else {
-	       /* check if it's a discretionary job, bypass if yes */ 
-	       sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data); 
-               SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
-	       siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL, NULL );
-	       if ( siblingDataPtr->catchup > catchup ) {
-                  SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
-                  siblingIteratorPtr = siblingIteratorPtr->nextPtr;
-	       } else {
-                  SeqUtil_TRACE( "maestro.processContainerEnd() missing end file=%s or abort.continue file=%s\n", endfile, continuefile );
-                  undoneChild = 1;
-	       }
-            }
-         }
-         if( undoneChild == 0 ) {
-            if ( _nodeDataPtr->type == Loop && (char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL ) {
-                 printf( "********** processContainerEnd() calling maestro -s endx -n %s \n", _nodeDataPtr->name);
-                 maestro ( _nodeDataPtr->name, "endx", _flow ,NULL, 0, NULL );
-             } else {
-                 printf( "********** processContainerBegin() calling maestro -s endx -n %s\n", _nodeDataPtr->container );
-                 maestro (  _nodeDataPtr->container, "endx", _flow, NULL, 0, NULL );
-             }
-         }
-      }
-   }
-   else {
-       /* caseItem always finish their container since only one should execute */
-      maestro (_nodeDataPtr->container, "end", _flow, NULL, 0, NULL); 
-   }
-   SeqUtil_TRACE( "maestro.processContainerEnd() return value=%d\n", (undoneChild == 1 ? 0 : 1) );
-}
-
-/* 
-processLoopContainerEnd
-
- Treats the end of a loop container by checking the status of the loop members.
-
-Inputs:
-  _nodeDataPtr - pointer to the node targetted by the execution
-  _flow - pointer to the flow input argument (continue or stop)
-  
-*/
-
-static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_flow) {
    char endfile[SEQ_MAXFIELD];
    char continuefile[SEQ_MAXFIELD];
    char tmp[SEQ_MAXFIELD];
@@ -1098,66 +1013,63 @@ static void processLoopContainerEnd( const SeqNodeDataPtr _nodeDataPtr, char *_f
    SeqNodeDataPtr siblingDataPtr = NULL;
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
 
-   siblingIteratorPtr = _nodeDataPtr->siblings;
-   memset( endfile, '\0', sizeof endfile );
-   memset( continuefile, '\0', sizeof continuefile );
-   memset( tmp, '\0', sizeof tmp );
-
-   /* do we need to modify the loop extension */
-   extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
-   SeqUtil_TRACE( "processLoopContainerEnd() container=%s extension=%s\n", _nodeDataPtr->container, extension );
-   if( strlen( extension ) > 0 ) {
-      SeqUtil_stringAppend( &extWrite, "." );
-      SeqUtil_stringAppend( &extWrite, extension );
-   } else {
-      SeqUtil_stringAppend( &extWrite, "" );
-   }
-   sprintf(endfile,"%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
-   sprintf(continuefile,"%s/%s%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
-   undoneChild = ! (isFileExists( endfile, "processLoopContainerEnd()" ) || isFileExists( continuefile, "processLoopContainerEnd()") );
-   if( siblingIteratorPtr != NULL && undoneChild == 0 ) {
-      /*get the exp catchup*/
-      catchup = catchup_get (SEQ_EXP_HOME);
-      /* need to process multile childs within loop context */
-      while(  siblingIteratorPtr != NULL && undoneChild == 0 ) {
-         sprintf(endfile,"%s/%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
-         sprintf(continuefile,"%s/%s/%s%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
-         undoneChild = ! (isFileExists( endfile, "processLoopContainerEnd()") || isFileExists( continuefile, "processLoopContainerEnd()") );
-	 if ( undoneChild  ) {
-            /* check if it's a discretionary job, bypass if yes */
-            sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
-            SeqUtil_TRACE( "maestro.processLoopContainerEnd() getting sibling info: %s\n", tmp );
-            siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL, NULL );
-            if ( siblingDataPtr->catchup > catchup ) {
-	       undoneChild = 0;
-               SeqUtil_TRACE( "maestro.processLoopContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
-               siblingIteratorPtr = siblingIteratorPtr->nextPtr;
-            }
-         } else {
-            siblingIteratorPtr = siblingIteratorPtr->nextPtr;
-         }
-      }
-   }
-
-   if( undoneChild == 0 ) {
-
-       if( _nodeDataPtr->type == NpassTask ) {
-           /* remove the loop argument for the current loop first */
-           SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
-       }
-       /* if loop has its argument defined, end the loop without that argument, else begin the container over it*/
-       if ( _nodeDataPtr->type == Loop && (char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL ) {
+    /* deal with L(i) ending -> end of L if all iterations are done and Npass(i) -> Npass */
+   if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+        if (( _nodeDataPtr->type == Loop && isLoopComplete ( _nodeDataPtr, _nodeDataPtr->loop_args )) || (_nodeDataPtr->type == NpassTask ) ) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
-            printf( "********** processLoopContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
+            printf( "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
             maestro ( _nodeDataPtr->name, "endx", _flow, newArgs, 0, NULL );
+        }
+   } else {
+       siblingIteratorPtr = _nodeDataPtr->siblings;
+       SeqUtil_TRACE( "processContainerEnd() container=%s extension=%s\n", _nodeDataPtr->container, _nodeDataPtr->extension );
+       if( strlen( _nodeDataPtr->extension ) > 0 ) {
+          SeqUtil_stringAppend( &extWrite, "." );
+          SeqUtil_stringAppend( &extWrite, _nodeDataPtr->extension );
        } else {
-          printf( "********** processLoopContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->container, SeqLoops_getLoopArgs(newArgs)  );
+          SeqUtil_stringAppend( &extWrite, "" );
+       }
+       sprintf(endfile,"%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
+       sprintf(continuefile,"%s/%s%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->name, extWrite, _nodeDataPtr->datestamp);
+
+       memset( endfile, '\0', sizeof endfile );
+       memset( continuefile, '\0', sizeof continuefile );
+       memset( tmp, '\0', sizeof tmp );
+
+       siblingIteratorPtr = _nodeDataPtr->siblings;
+       if( siblingIteratorPtr != NULL && undoneChild == 0 ) {
+          /*get the exp catchup*/
+          catchup = catchup_get (SEQ_EXP_HOME);
+          /* need to process multile childs within loop context */
+          while(  siblingIteratorPtr != NULL && undoneChild == 0 ) {
+             sprintf(endfile,"%s/%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
+             sprintf(continuefile,"%s/%s/%s%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
+             undoneChild = ! (isFileExists( endfile, "processContainerEnd()") || isFileExists( continuefile, "processContainerEnd()") );
+             if ( undoneChild  ) {
+             /* check if it's a discretionary job, bypass if yes */
+                 sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
+                 SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
+                 siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL, NULL );
+                 if ( siblingDataPtr->catchup > catchup ) {
+                     undoneChild = 0;
+                     SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
+                     siblingIteratorPtr = siblingIteratorPtr->nextPtr;
+                 }
+             } else {
+                 siblingIteratorPtr = siblingIteratorPtr->nextPtr;
+             }
+          }
+       }
+
+       if( undoneChild == 0 ) {
+          printf( "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->container, SeqLoops_getLoopArgs(newArgs)  );
           maestro ( _nodeDataPtr->container, "endx", _flow, newArgs, 0, NULL );
        }
-   }
-
+    }
    SeqNode_freeNameValues(newArgs); 
+   free( extension);
    free( extWrite );
+
 }
 
 /*
