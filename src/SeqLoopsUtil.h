@@ -19,7 +19,6 @@ SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
-int SeqLoops_validateLoopNptArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args, int no_npt_check );
 char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args );
 SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, char * depIndex ); 

@@ -848,7 +848,6 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    }
 
    /* clear any other state */
-   //clearAllFinalStates( _nodeDataPtr, extName, "end" ); 
    clearAllOtherStates( _nodeDataPtr, extName, "maestro.setEndState()", "end"); 
 
    /* create the node end lock file name if not exists*/
@@ -857,23 +856,6 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
       touch(filename);
    } else {
       printf( "setEndState() not recreating existing lock file:%s\n", filename );
-   }
-   /* for npasstask, we need to create a lock file without the extension
-    * so that its container gets the same state */
-   if( _nodeDataPtr->type == NpassTask) {
-      extension = (char*) SeqLoops_getExtensionBase( _nodeDataPtr );
-      if( strlen( extension ) > 0 ) {
-         sprintf(filename,"%s/%s.%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp); 
-      } else {
-         sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp); 
-      }
-      SeqUtil_TRACE( "maestro.go_end() entering npass lockfile logic, args: workdir=%s name=%s loop_ext=%s datestamp=%s\n",_nodeDataPtr->workdir, _nodeDataPtr->name, extension, _nodeDataPtr->datestamp );
-      if ( access(filename, R_OK) != 0 ) {
-         SeqUtil_TRACE( "maestro.go_end() creating npass lockfile=%s\n", filename);
-         touch(filename);
-      } else {
-         printf( "setEndState() not recreating existing lock file:%s\n", filename );
-      }
    }
    free( extName );
    free( extension );
@@ -1013,7 +995,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
    SeqNodeDataPtr siblingDataPtr = NULL;
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
 
-    /* deal with L(i) ending -> end of L if all iterations are done and Npass(i) -> Npass */
+    /* deal with L(i) ending -> end of L if all iterations are done, or Npass(i) -> Npass */
    if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
         if (( _nodeDataPtr->type == Loop && isLoopComplete ( _nodeDataPtr, _nodeDataPtr->loop_args )) || (_nodeDataPtr->type == NpassTask ) ) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
@@ -1021,6 +1003,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
             maestro ( _nodeDataPtr->name, "endx", _flow, newArgs, 0, NULL );
         }
    } else {
+       /* all other cases will check siblings for end status */
        siblingIteratorPtr = _nodeDataPtr->siblings;
        SeqUtil_TRACE( "processContainerEnd() container=%s extension=%s\n", _nodeDataPtr->container, _nodeDataPtr->extension );
        if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -1040,24 +1023,23 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
        if( siblingIteratorPtr != NULL && undoneChild == 0 ) {
           /*get the exp catchup*/
           catchup = catchup_get (SEQ_EXP_HOME);
-          /* need to process multile childs within loop context */
+          /* check siblings's status for end or abort.continue or higher catchup */
           while(  siblingIteratorPtr != NULL && undoneChild == 0 ) {
              sprintf(endfile,"%s/%s/%s%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
              sprintf(continuefile,"%s/%s/%s%s.%s.abort.cont", _nodeDataPtr->workdir, _nodeDataPtr->container, siblingIteratorPtr->data, extWrite, _nodeDataPtr->datestamp);
              undoneChild = ! (isFileExists( endfile, "processContainerEnd()") || isFileExists( continuefile, "processContainerEnd()") );
-             if ( undoneChild  ) {
-             /* check if it's a discretionary job, bypass if yes */
+             if ( undoneChild ) {
+             /* check if it's a discretionary or catchup higher than job's value, bypass if yes */
                  sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
                  SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
                  siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL, NULL );
                  if ( siblingDataPtr->catchup > catchup ) {
+                     /*reset undoneChild since we're skipping this node*/
                      undoneChild = 0;
                      SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
-                     siblingIteratorPtr = siblingIteratorPtr->nextPtr;
                  }
-             } else {
-                 siblingIteratorPtr = siblingIteratorPtr->nextPtr;
              }
+             siblingIteratorPtr = siblingIteratorPtr->nextPtr;
           }
        }
 
@@ -1897,13 +1879,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    SeqUtil_TRACE( "maestro() nodeinfo done, loop_args=\n");
    SeqNameValues_printList(nodeDataPtr->loop_args);
 
-   /*in initnode mode, NPASS tasks will not take a loop argument so that they delete it all*/
-
-   if( strcmp( _signal, "initnode" ) == 0 && nodeDataPtr->type == NpassTask ) {
-       SeqLoops_validateLoopNptArgs( nodeDataPtr, _loops, 0 );
-   } else {
-       SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
-   }
+   SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
 
    SeqNode_setWorkdir( nodeDataPtr, workdir );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );
