@@ -200,8 +200,6 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
     memset(NODELOG_DATE,'\0',NODELOG_BUFSIZE);
     strcpy(NODELOG_DATE,datestamp);
 
-
-    umask(000);
     tmpenv = getenv("CMCNODELOG");
 
     if ( tmpenv != NULL )

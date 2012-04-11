@@ -202,7 +202,6 @@ main (argc, argv)
 int argc;
 char *argv[];
 {
-   umask(000);
    signal(SIGINT, (void(*)()) termine);
    signal(SIGQUIT, (void(*)()) termine);
    signal(SIGTERM, (void(*)()) termine);
