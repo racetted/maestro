@@ -1111,6 +1111,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    if( ignoreAllDeps == 1 || validateDependencies( _nodeDataPtr ) == 0 ) {
       /*  clear states here also in case setBeginState is not called (discreet or catchup) */
       clearAllOtherStates( _nodeDataPtr, fullExtName, "maestro.go_submit()", "submit" ); 
+      setSubmitState( _nodeDataPtr ) ;
 
       /* dependencies are satisfied */
       loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
@@ -1132,7 +1133,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          error_status = system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
          if (!error_status){
-             setSubmitState( _nodeDataPtr ) ;
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
          } 
       } else {
@@ -1147,7 +1147,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          error_status=system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
          if (!error_status){
-             setSubmitState( _nodeDataPtr ) ;
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
          } 
       }
