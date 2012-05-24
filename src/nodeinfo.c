@@ -41,7 +41,7 @@ SeqNodeType getNodeType ( const xmlChar *_node_name ) {
    } else if ( strcmp( _node_name, "CASE_ITEM" ) == 0 ) {
       nodeType = CaseItem;
    } else {
-      printf( "ERROR: nodeinfo.getNodeType()  unprocessed xml node name:%s\n", _node_name);
+      raiseError("ERROR: nodeinfo.getNodeType()  unprocessed xml node name:%s\n", _node_name);
    }
    SeqUtil_TRACE( "nodeinfo.getNodeType() type=%d\n", nodeType );
    return nodeType;
@@ -87,7 +87,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
          } else if ( strcmp( nodeName, "catchup" ) == 0 ) {
              _nodeDataPtr->catchup = atoi( nodePtr->children->content );
          } else {
-             printf ( "nodeinfo.parseBatchResources() WARNING: Unprocessed attribute=%s\n", nodeName);
+             raiseError("nodeinfo.parseBatchResources() ERROR: Unprocessed attribute=%s\n", nodeName);
          }
       }
    }
@@ -665,8 +665,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
 
          if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-             printf ( "ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
-             exit(1);
+             raiseError ("ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
          }
          nodeset = result->nodesetval;
          currentNodePtr = nodeset->nodeTab[0];
