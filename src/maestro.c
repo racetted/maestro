@@ -1831,6 +1831,24 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    SeqUtil_setDebug(1);
    printf( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" );
    printf( "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs);
+
+   if ( _loops != NULL ) {
+       SeqUtil_stringAppend(&tmp, " -l ");
+       SeqUtil_stringAppend(&tmp, SeqLoops_getLoopArgs(_loops));
+   }
+   if ( ignoreAllDeps ) {
+       SeqUtil_stringAppend(&tmp, " -i 1");
+   }
+   if( _extraArgs != NULL ) {
+       SeqUtil_stringAppend(&tmp, " -o ");
+       SeqUtil_stringAppend(&tmp, _extraArgs);
+   } 
+   if ( tmp != NULL ){
+       printf( "Command called:\nmaestro -s %s -n %s -f %s %s \n",_signal, _node, _flow, tmp);
+   } else {
+       printf( "Command called:\nmaestro -s %s -n %s -f %s \n",_signal , _node, _flow);
+   } 
+
    SeqUtil_TRACE( "maestro() ignoreAllDeps=%d \n",ignoreAllDeps );
 
    memset(workdir,'\0',sizeof workdir);
