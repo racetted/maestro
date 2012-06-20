@@ -662,7 +662,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);
-         sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
+         sprintf ( query, "(/MODULE)", tmpstrtok );
 
          if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
              raiseError ("ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
