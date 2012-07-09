@@ -69,6 +69,7 @@ typedef struct _SeqNodeData {
    int   catchup;
    int   mpi;
    int   wallclock;
+   int   isLastNPTArg;
    char* queue;
    char* machine;
    char* memory;

@@ -11,7 +11,6 @@
 #include "SeqUtil.h"
 
 int SEQ_TRACE = 0;
-int SEQ_DEBUG = 0;
 
 void raiseError(const char* fmt, ... );
 
@@ -27,26 +26,18 @@ SeqUtil_trace
 void SeqUtil_TRACE (char * fmt, ...) {
    
    va_list ap;
-   if ( SEQ_TRACE == 1 ) {
+   if ( SEQ_TRACE != 0 ) {
       va_start (ap, fmt);
       vfprintf (stdout, fmt, ap);
       va_end (ap);
    }
 }
 
-void SeqUtil_setDebug (int _debug) {
-   SEQ_DEBUG = _debug;
-}
-
-int SeqUtil_isDebug (int _debug) {
-   return SEQ_DEBUG;
-}
-
-void SeqUtil_setTrace (int _trace) {
+void SeqUtil_setTraceLevel (int _trace) {
    SEQ_TRACE = _trace;
 }
 
-int SeqUtil_isTraceOn (int _trace) {
+int SeqUtil_getTraceLevel () {
    return SEQ_TRACE;
 }
 
@@ -307,6 +298,43 @@ void SeqUtil_stringAppend( char** source, char* data )
 
    free( *source );
    *source = newDataPtr;
+}
+
+char *SeqUtil_resub (const char *regex_text, const char *repl_text, const char *str)
+{
+    static char buffer[4096];
+    const int n_matches = 50, MAX_ERROR_MSG=100;
+    regmatch_t m[n_matches];
+    regex_t r;
+
+    int status = regcomp( &r, regex_text, REG_EXTENDED|REG_NEWLINE );
+    if (status != 0) {
+      char error_message[MAX_ERROR_MSG];
+      regerror( status, &r, error_message, MAX_ERROR_MSG );
+      printf ("SeqUtil_regcomp error compiling '%s': %s\n", regex_text, error_message);
+      return NULL;
+    }
+    strncpy(buffer,str,strlen(str));
+    while (1) {
+        int i = 0;
+        int nomatch = regexec( &r, buffer, n_matches, m, 0 );
+        if (nomatch) {
+	  regfree( &r );
+	  return buffer;
+        }
+        for (i = 0; i < n_matches; i++) {
+            int start;
+	    int finish;
+            if (m[i].rm_so == -1) {
+                break;
+            }
+	    start = m[i].rm_so;
+	    finish = m[i].rm_eo;
+	    sprintf( buffer+start, "%s%s", repl_text, buffer+finish );
+        }
+    }
+    regfree( &r );
+    return NULL;
 }
 
 int SeqUtil_tokenCount( char* source, char* tokenSeparator )

@@ -447,6 +447,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->catchup = 4;
    nodePtr->wallclock = 3;
    nodePtr->mpi = 0;
+   nodePtr->isLastNPTArg = 0;
    nodePtr->cpu_multiplier = NULL;
    nodePtr->alias = NULL;
    nodePtr->args = NULL;

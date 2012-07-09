@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <glob.h>
 #include "SeqUtil.h"
 #include "tictac.h"
 #include "nodeinfo.h"
@@ -50,6 +51,7 @@ static void processContainerAbort ( const SeqNodeDataPtr _nodeDataPtr);
 static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow );
 static void processLoopContainerBegin( const SeqNodeDataPtr _nodeDataPtr);
 static int isLoopComplete ( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
+static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr );
 
 /* State functions: these deal with the status files */
 static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr);
@@ -824,7 +826,8 @@ Inputs:
 static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    char filename[SEQ_MAXFIELD];
-   char *extName = NULL, *extension = NULL ;
+   char *extName = NULL, *extension = NULL, *nptExt = NULL, containerLoopExt = NULL ;
+   SeqNameValuesPtr containerLoopArgsList = NULL;
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -857,8 +860,33 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    } else {
       printf( "setEndState() not recreating existing lock file:%s\n", filename );
    }
+
+   if ( _nodeDataPtr->type == NpassTask && _nodeDataPtr->isLastNPTArg ) {
+      /*container arguments*/
+       containerLoopArgsList = SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+
+       if ( containerLoopArgsList != NULL) {
+            containerLoopExt =  (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList);
+            SeqUtil_stringAppend( &nptExt, containerLoopExt );
+            free(containerLoopExt);
+       }
+       SeqUtil_stringAppend( &nptExt, "+last" );
+       memset(filename,'\0',sizeof filename);
+       sprintf(filename,"%s/%s.%s.%s.end",_nodeDataPtr->workdir,_nodeDataPtr->name, nptExt, _nodeDataPtr->datestamp); 
+       free( nptExt);
+
+       /* create the node end lock file name if not exists*/
+       if ( access(filename, R_OK) != 0 ) {
+          SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
+          touch(filename);
+       } else {
+          printf( "setEndState() not recreating existing lock file:%s\n", filename );
+       }
+   }
+
    free( extName );
    free( extension );
+   SeqNameValues_deleteWholeList( &containerLoopArgsList);
 }
 
 /* 
@@ -973,6 +1001,79 @@ static int isLoopComplete ( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr 
 }
 
 /* 
+isNpassComplete
+
+ returns 1 if all iteration of the npass task is complete in terms of iteration status file
+ returns 0 otherwise
+
+Inputs:
+  _nodeDataPtr - pointer to the node targetted by the execution
+*/
+
+static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
+   char statePattern[SEQ_MAXFIELD];
+   glob_t glob_last, glob_begin, glob_submit, glob_abort;
+   int undoneIteration = 0;
+   SeqNameValuesPtr containerLoopArgsList = NULL;
+   char *filename=NULL, *extension=NULL, *containerLoopExt=NULL;
+   size_t lastDot, length, i;
+
+   /* search for last end states. */
+   containerLoopArgsList = SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+   if ( containerLoopArgsList != NULL) {
+       extension =  (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList); 
+   }
+   SeqUtil_stringAppend( &extension,"+last" );
+
+   memset( statePattern, '\0', sizeof statePattern );
+   /*sprintf( statePattern,"%s/%s.*.%s.(begin|submit|abort.stop)",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);*/
+   sprintf( statePattern,"%s/%s.%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->name, extension , _nodeDataPtr->datestamp);
+   glob(statePattern, GLOB_NOSORT,0 ,&glob_last);
+   undoneIteration = !(glob_last.gl_pathc);
+   if (undoneIteration)  SeqUtil_TRACE("maestro.isNpassComplete - last iteration not found. \n"); 
+   globfree(&glob_last);
+  
+   if (! undoneIteration) {
+     /* search for submit states. */
+      memset( statePattern, '\0', sizeof statePattern );
+     /*sprintf( statePattern,"%s/%s.*.%s.(begin|submit|abort.stop)",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);*/
+     sprintf( statePattern,"%s/%s.*.%s.submit",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);
+     printf("Using glob regex statement: %s \n",statePattern); 
+     glob(statePattern, GLOB_NOSORT,0 ,&glob_submit);
+     undoneIteration = glob_submit.gl_pathc;
+     if (undoneIteration) SeqUtil_TRACE("maestro.isNpassComplete - found submit: %s \n",glob_submit.gl_pathv[0]); 
+     globfree(&glob_submit);
+   }
+   if (! undoneIteration) {
+     /* search for begin states. */
+     memset( statePattern, '\0', sizeof statePattern );
+     /*sprintf( statePattern,"%s/%s.*.%s.(begin|submit|abort.stop)",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);*/
+     sprintf( statePattern,"%s/%s.*.%s.begin",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);
+     glob(statePattern, GLOB_NOSORT,0 ,&glob_begin);
+     undoneIteration = glob_begin.gl_pathc;
+     if (undoneIteration) SeqUtil_TRACE("maestro.isNpassComplete - found begin: %s \n",glob_begin.gl_pathv[0]); 
+     globfree(&glob_begin);
+   }
+   if (! undoneIteration) {
+     /* search for abort.stop states. */
+     memset( statePattern, '\0', sizeof statePattern );
+     /*sprintf( statePattern,"%s/%s.*.%s.(begin|submit|abort.stop)",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);*/
+     sprintf( statePattern,"%s/%s.*.%s.abort.stop",_nodeDataPtr->workdir, _nodeDataPtr->name, _nodeDataPtr->datestamp);
+     glob(statePattern, GLOB_NOSORT,0 ,&glob_abort);
+     undoneIteration = glob_abort.gl_pathc;
+     if (undoneIteration) SeqUtil_TRACE("maestro.isNpassComplete - found abort.stop: %s \n",glob_abort.gl_pathv[0]); 
+     globfree(&glob_abort);
+   }
+
+  free(containerLoopExt);
+  SeqNameValues_deleteWholeList( &containerLoopArgsList);
+
+  SeqUtil_TRACE( "maestro.isNpassComplete() return value=%d\n", (! undoneIteration) );
+  return ! undoneIteration;
+} 
+
+
+/* 
 processContainerEnd
 
  Treats the end of a container by checking the status of the siblings around the targetted node.
@@ -994,10 +1095,11 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
    LISTNODEPTR siblingIteratorPtr = NULL;
    SeqNodeDataPtr siblingDataPtr = NULL;
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
+   printf( "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
 
     /* deal with L(i) ending -> end of L if all iterations are done, or Npass(i) -> Npass */
    if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
-        if (( _nodeDataPtr->type == Loop && isLoopComplete ( _nodeDataPtr, _nodeDataPtr->loop_args )) || (_nodeDataPtr->type == NpassTask ) ) {
+        if (( _nodeDataPtr->type == Loop && isLoopComplete ( _nodeDataPtr, _nodeDataPtr->loop_args )) || (_nodeDataPtr->type == NpassTask && isNpassComplete (_nodeDataPtr)) ) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
             printf( "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
             maestro ( _nodeDataPtr->name, "endx", _flow, newArgs, 0, NULL );
@@ -1322,14 +1424,29 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char depUser[12], depExp[256], depNode[256], depArgs[SEQ_MAXFIELD], depDatestamp[20];
    char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD];
    SeqNameValuesPtr loopArgsPtr = NULL;
-   char *extName = NULL, *submitDepArgs = NULL;
-   int submitCode = 0;
+   char *extName = NULL, *submitDepArgs = NULL, *tmpExt = NULL, *tmpValue=NULL, *tmp2Value=NULL;
+   int submitCode = 0, stringLength=0;
    LISTNODEPTR cmdList = NULL;
 
+   /* remove ^last from extension if it's in there */
+   loopArgsPtr = _nodeDataPtr->loop_args;
+   /* Check for ^last NPT arg */
+   if (_nodeDataPtr->isLastNPTArg){
+      tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
+      /*remove the ^last*/
+      stringLength=strlen(tmpValue)-5;
+      tmp2Value=malloc(stringLength+1); 
+      memset(tmp2Value,'\0', stringLength+1);
+      strncpy(tmp2Value, tmpValue, stringLength); 
+      SeqUtil_stringAppend( &tmp2Value, "" );
+      SeqUtil_TRACE("SeqLoops_submitDependencies Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
+      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmp2Value);
+   }
+   tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
+      SeqUtil_stringAppend( &extName, tmpExt );
    }      
 
    memset(filename,'\0',sizeof depUser);
@@ -1401,6 +1518,11 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    }
    SeqListNode_deleteWholeList( &cmdList );
    free(extName);
+   free(tmpValue);
+   free(tmp2Value);
+   free(tmpExt);
+   free(submitDepArgs);
+   
 }
 
 /*
@@ -1602,10 +1724,11 @@ Inputs:
 char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    char *extName = NULL;
    char *filename = NULL;
+   int stringLength = 0; 
    char pidbuf[100];
-   char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL;
+   char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
    FILE *tmpFile = NULL;
-   SeqNameValuesPtr loopArgsPtr = _nodeDataPtr->loop_args, containerLoopArgsList = NULL;
+   SeqNameValuesPtr loopArgsPtr=NULL , containerLoopArgsList = NULL;
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
@@ -1631,6 +1754,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    fprintf( tmpFile, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
+   fprintf( tmpFile, "export SEQ_TRACE_LEVEL=%s\n", SeqUtil_getTraceLevel());
    fprintf( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
    fprintf( tmpFile, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
    if ( _nodeDataPtr-> npex != NULL ) {
@@ -1676,6 +1800,21 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
       fprintf( tmpFile, "export SEQ_CONTAINER_LOOP_EXT=\"\"\n" );
    } 
 
+   loopArgsPtr = _nodeDataPtr->loop_args;
+   /* Check for :last NPT arg */
+   if (_nodeDataPtr->isLastNPTArg){
+      tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
+      /*remove the :last, raise flag that node has a :last*/
+      stringLength=strlen(tmpValue)-5;
+      tmp2Value=malloc(stringLength+1); 
+      memset(tmp2Value,'\0', stringLength+1);
+      strncpy(tmp2Value, tmpValue, stringLength); 
+      SeqUtil_stringAppend( &tmp2Value, "" );
+      SeqUtil_TRACE("SeqLoops_GenerateConfig Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
+      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmp2Value);
+      SeqLoops_printLoopArgs(_nodeDataPtr->loop_args,"test"); 
+   }
+
    /* Loop args exported as env variables */
    while (loopArgsPtr != NULL) {
       fprintf( tmpFile, "export %s=%s \n", loopArgsPtr->name, loopArgsPtr->value );
@@ -1688,6 +1827,8 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
 
    fclose(tmpFile);
    free(tmpdir);
+   free(tmpValue);
+   free(tmp2Value);
    free(loopArgs);
    free(loopArgsPtr);
    SeqNameValues_deleteWholeList( &containerLoopArgsList);
@@ -1742,7 +1883,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
       SeqUtil_stringAppend( &depIndexPtr, "." );
       SeqUtil_stringAppend( &depIndexPtr, strdup( extString ) ); 
    }
-    
+
    memset( statusFile, '\0', sizeof statusFile);
 
    /* get info from the dependant node */
@@ -1828,7 +1969,10 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    SeqNodeDataPtr nodeDataPtr = NULL;
    int status = 1; /* starting with error condition */
    DIR *dirp = NULL;
-   SeqUtil_setDebug(1);
+   if (getenv("SEQ_TRACE_LEVEL") != NULL){
+       SeqUtil_setTraceLevel(1);
+       SeqUtil_TRACE("maestro() SEQ_TRACE_LEVEL=1 \n");
+   }
    printf( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" );
    printf( "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs);
 
@@ -1879,9 +2023,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    strcpy( USERNAME, getpwuid(getuid())->pw_name );
    strcpy( EXPNAME, (char*) SeqUtil_getPathLeaf(seq_exp_home) );
 
-   SeqUtil_TRACE( "maestro() SEQ_EXP_HOME=%s\n", seq_exp_home );
-   strcpy( SEQ_EXP_HOME, seq_exp_home );
-   sprintf(workdir,"%s/sequencing/status", seq_exp_home);
+   strcpy( SEQ_EXP_HOME, (char*)SeqUtil_fixPath(seq_exp_home));
+   SeqUtil_TRACE( "maestro() SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
+   sprintf(workdir,"%s/sequencing/status", SEQ_EXP_HOME);
 
    /* This is needed so messages will be logged into CMCNODELOG */
    putenv("CMCNODELOG=on");

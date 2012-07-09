@@ -36,7 +36,7 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
    while ( tmpstrtok != NULL ) {
       /* any alphanumeric characters and special chars
          _:/-* are supported */
-      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._:/-*]", &loopName, &loopValue );
+      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._^/-*]", &loopName, &loopValue );
 
       /*printf( "SeqLoops_parseArgs loopName:%s rigthValue:%s\n", loopName, loopValue );*/
       /*printf( "SeqLoops_parseArgs adding to list: %s\n", tmpstrtok );*/
@@ -544,6 +544,16 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
    SeqLoopsPtr loopsPtr = _nodeDataPtr->loops;
    SeqNameValuesPtr loopArgsTmpPtr = NULL;
    char *loopExtension = NULL;
+   char *tmpValue=NULL; 
+
+   /* Check for :last NPT arg */
+   tmpValue=SeqNameValues_getValue(_loop_args, _nodeDataPtr->nodeName); 
+   if  (_nodeDataPtr->type == NpassTask && tmpValue != NULL){
+         /*raise flag that node has a ^last*/
+         if ( strstr (tmpValue, "^last" ) !=NULL) {
+            _nodeDataPtr->isLastNPTArg=1; 
+         }
+    }
 
    /* validate loop containers */
    if( loopsPtr != NULL ) {
@@ -572,6 +582,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
    }
    SeqNode_setExtension( _nodeDataPtr, loopExtension );
    free( loopExtension );
+   free( tmpValue); 
    return(1);
 }
 
