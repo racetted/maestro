@@ -7,7 +7,7 @@ static void printUsage()
    printf("Usage:\n");
    printf("      getdef [-d] file key\n");
    printf("         where:\n");
-   printf("         file     is full path of of the definition file\n");
+   printf("         file     is full path of of the definition file (or shortcut: 'resources')\n");
    printf("         key      is name of the key to search for\n");
    printf("Example: getdef ${SEQ_EXP_HOME}/resources/resources.def loop_max\n");
    exit(1);
@@ -19,7 +19,7 @@ main_getdef ( int argc, char * argv[] )
 main ( int argc, char * argv[] )
 #endif
 {
-   char *value;
+   char *value,*deffile=NULL,*seq_exp_home=NULL;
    int file,key,c;
 
    if ( argc < 3 ) {
@@ -32,15 +32,28 @@ main ( int argc, char * argv[] )
        SeqUtil_setTraceLevel(1);
        break;
      case '?':
-       printUsage();
+       printUsage(); 
      }
    }
-   if ( (value = SeqUtil_getdef( argv[file], argv[key] )) == NULL ){
+
+   if (strcmp(argv[file],"resources") == 0){
+     if ((seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL){
+       fprintf( stderr, "ERROR: Shortcut %s unavailable when SEQ_EXP_HOME is undefined\n",argv[file]);
+       exit(1);
+     }
+     deffile = (char *) malloc(strlen(seq_exp_home)+strlen("/resources/resources.def")+2);
+     sprintf(deffile,"%s/resources/resources.def",seq_exp_home);}
+   else{
+     deffile = (char *) malloc(strlen(argv[file])+1);
+     strcpy(deffile,argv[file]);
+   }
+   if ( (value = SeqUtil_getdef( deffile, argv[key] )) == NULL ){
      fprintf( stderr, "ERROR: Unable to find key %s in %s\n", argv[key], argv[file] );
      exit(1);}
    else{
      printf( "%s\n", value );
    }
    free(value);
+   free(deffile);
    free(0);
 }
