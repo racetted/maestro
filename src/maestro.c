@@ -17,7 +17,6 @@
 #include <sys/stat.h> 
 #include <fcntl.h> 
 
-#define SEQ_MAXFIELD 1000
 #define TRUE 1
 #define FALSE 0
 #define CONTAINER_FLOOD_LIMIT 10

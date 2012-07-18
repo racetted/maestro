@@ -466,7 +466,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
  */
 
 void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home, SeqNameValuesPtr _loops ) {
-   char *xmlFile = NULL;
+   char *xmlFile = NULL, *defFile = NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
    int i,extraSpace = 0;
@@ -514,7 +514,10 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    context = xmlXPathNewContext(doc);
 
    /* resolve environment variables found in XML file */
-   XmlUtils_resolveEnv(xmlFile,context);
+   defFile = malloc ( strlen ( _seq_exp_home ) + strlen("/resources/resources.def") + 1 );
+   sprintf( defFile, "%s/resources/resources.def", _seq_exp_home );
+   XmlUtils_resolve(xmlFile,context,defFile);
+   free(defFile);
 
    /* validate NODE_RESOURCES node */
    sprintf ( query, "(%s)", NODE_RES_XML_ROOT );

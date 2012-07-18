@@ -10,7 +10,7 @@ INCDIR=$(SWDEST)/include
 BINDIR=$(SWDEST)/bin
 OBJECTS=SeqUtil.o SeqNode.o SeqListNode.o SeqNameValues.o SeqLoopsUtil.o SeqDatesUtil.o \
 runcontrollib.o nodelogger.o maestro.o nodeinfo.o tictac.o expcatchup.o XmlUtils.o
-COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup
+COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef
 XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
 LIBNAME="xml2 runcontrol z rmn_012"

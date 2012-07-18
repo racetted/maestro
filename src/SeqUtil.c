@@ -399,3 +399,37 @@ char* SeqUtil_getExpPath( const char* username, const char* exp ) {
    printf( "SeqUtil_getExpPath returning value: %s\n", expPath );
    return expPath;
 }
+
+/* parser for .def simple text definition files (free return pointer in caller)*/
+char* SeqUtil_getdef( const char* filename, const char* key ) {
+  FILE* deffile;
+  char *retval=NULL;
+  char line[SEQ_MAXFIELD],defkey[SEQ_MAXFIELD],defval[SEQ_MAXFIELD];
+
+  if ( (deffile = fopen( filename, "r" )) != NULL ){
+    memset(defkey,'\0',sizeof defkey);
+    memset(defval,'\0',sizeof defval);
+    while ( fgets( line, sizeof(line), deffile ) != NULL ) {
+      if ( strstr( line, "#" ) != NULL ) {
+	continue;
+      }
+      if ( sscanf( line, " %[^= ] = %s ", defkey, defval ) == 2 ){	
+	if ( strcmp( key, defkey ) == 0 ) {
+	  fclose(deffile);
+	  if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
+	    raiseError("SeqUtil_getdef malloc: Out of memory!\n");
+	  }
+	  strcpy(retval,defval);
+	  SeqUtil_TRACE("SeqUtil_getdef(): found definition %s=%s in %s\n",defkey,retval,filename);
+	  return retval;
+	}
+      }
+      defkey[0] = '\0';
+      defval[0] = '\0';
+    }
+    fclose(deffile);}
+  else{
+    SeqUtil_TRACE("SeqUtil_getdef(): unable to open definition file %s\n",filename);
+  }
+  return NULL;
+}

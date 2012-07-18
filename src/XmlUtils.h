@@ -10,6 +10,6 @@ xmlDocPtr XmlUtils_getdoc (char *_docname);
 xmlXPathObjectPtr
 XmlUtils_getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context);
 
-void XmlUtils_resolveEnv (char *_docname, xmlXPathContextPtr _context);
+void XmlUtils_resolve (char *_docname, xmlXPathContextPtr _context, char *_deffile);
 
 #endif
