@@ -29,5 +29,7 @@ char* SeqUtil_fixPath ( const char* source );
 char* SeqUtil_getExpPath( const char* username, const char* exp ) ;
 int match(const char *string, char *pattern) ;
 char* SeqUtil_getdef( const char* filename, const char* key ) ;
+char* SeqUtil_parsedef( const char* filename, const char* key ) ;
+char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ) ;
 
 #endif
