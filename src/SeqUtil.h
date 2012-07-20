@@ -1,6 +1,7 @@
 #ifndef _SEQ_UTIL
 #define _SEQ_UTIL
 
+#include "SeqNode.h"
 #include "SeqListNode.h"
 #include "regex.h"
 
@@ -31,5 +32,6 @@ int match(const char *string, char *pattern) ;
 char* SeqUtil_getdef( const char* filename, const char* key ) ;
 char* SeqUtil_parsedef( const char* filename, const char* key ) ;
 char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ) ;
+char* SeqUtil_striplast( const char* str ) ;
 
 #endif

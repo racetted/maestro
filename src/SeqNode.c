@@ -777,3 +777,15 @@ char *argv[];
    nodeData.depends[1] = &nameValues2;
    nodeData.dependsLen = 2;
    */
+
+/* return node extension with ^last extension stripped */
+char* SeqNode_extension( const SeqNodeDataPtr _nodeDataPtr ) {
+  char  *extName=NULL;
+
+   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
+   if( strlen( SeqUtil_striplast( _nodeDataPtr->extension ) ) > 0 ) {
+      SeqUtil_stringAppend( &extName, "." );
+      SeqUtil_stringAppend( &extName, SeqUtil_striplast( _nodeDataPtr->extension ) );
+   }
+   return extName;
+}

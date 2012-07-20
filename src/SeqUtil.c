@@ -6,9 +6,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <pwd.h>
-#include "SeqListNode.h"
 #include <errno.h>        /* errno */
 #include "SeqUtil.h"
+#include "SeqNameValues.h"
 
 int SEQ_TRACE = 0;
 
@@ -505,3 +505,18 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
   free(strtmp);
   return newstr;
 }  
+
+/* remove ^last from extension if it's in there */
+char* SeqUtil_striplast( const char* str ) {
+  char *noLast=NULL;
+  int stringLength=0;
+
+  if (strstr(str,"^last")){
+    stringLength=strlen(str)-5;
+  }
+  noLast=malloc(stringLength+1); 
+  memset(noLast,'\0', stringLength+1);
+  strncpy(noLast, str, stringLength); 
+  SeqUtil_stringAppend( &noLast, "" );
+  return(noLast);
+}

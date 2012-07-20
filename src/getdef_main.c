@@ -19,8 +19,13 @@ main_getdef ( int argc, char * argv[] )
 main ( int argc, char * argv[] )
 #endif
 {
-   char *value,*deffile=NULL,*seq_exp_home=NULL;
+   char *value,*deffile=NULL,*seq_exp_home=NULL,*disabled=NULL;
+   char *disabled_env="SEQ_GETDEF_DISABLED";
    int file,key,c;
+
+   if ((disabled=getenv(disabled_env)) != NULL){
+     raiseError("ERROR: Attempt to use %s outside experiment.cfg (%s set)\n",argv[0],disabled_env);
+   }
 
    if ( argc < 3 ) {
       printUsage();
@@ -38,8 +43,7 @@ main ( int argc, char * argv[] )
 
    if (strcmp(argv[file],"resources") == 0){
      if ((seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL){
-       fprintf( stderr, "ERROR: Shortcut %s unavailable when SEQ_EXP_HOME is undefined\n",argv[file]);
-       exit(1);
+       raiseError("ERROR: Shortcut %s unavailable when SEQ_EXP_HOME is undefined\n",argv[file]);
      }
      deffile = (char *) malloc(strlen(seq_exp_home)+strlen("/resources/resources.def")+2);
      sprintf(deffile,"%s/resources/resources.def",seq_exp_home);}
@@ -48,8 +52,7 @@ main ( int argc, char * argv[] )
      strcpy(deffile,argv[file]);
    }
    if ( (value = SeqUtil_getdef( deffile, argv[key] )) == NULL ){
-     fprintf( stderr, "ERROR: Unable to find key %s in %s\n", argv[key], argv[file] );
-     exit(1);}
+     raiseError("ERROR: Unable to find key %s in %s\n", argv[key], argv[file]);}
    else{
      printf( "%s\n", value );
    }

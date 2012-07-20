@@ -264,11 +264,7 @@ static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_acti
    char *extName = NULL, *extension = NULL ;
    char filename[SEQ_MAXFIELD];
 
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }      
+   extName = SeqNode_extension( _nodeDataPtr );    
 
    /* clear any other state */
    //clearAllFinalStates( _nodeDataPtr, extName, "initialize" ); 
@@ -546,11 +542,9 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    SeqUtil_TRACE( "maestro.setBeginState() on node:%s extension: %s\n", _nodeDataPtr->name, _nodeDataPtr->extension );
+ 
+   extName = SeqNode_extension( _nodeDataPtr );
 
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }
    /* clear any other state */
    // clearAllFinalStates( _nodeDataPtr, extName, "begin" ); 
    clearAllOtherStates( _nodeDataPtr, extName, "maestro.setBeginState()", "begin"); 
@@ -828,11 +822,7 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    char *extName = NULL, *extension = NULL, *nptExt = NULL, containerLoopExt = NULL ;
    SeqNameValuesPtr containerLoopArgsList = NULL;
 
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }      
+   extName = SeqNode_extension( _nodeDataPtr, 0 );    
 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 
@@ -1278,11 +1268,7 @@ static void setSubmitState(const SeqNodeDataPtr _nodeDataPtr) {
    char *extName = NULL ;
    char filename[SEQ_MAXFIELD];
 
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }      
+   extName = SeqNode_extension( _nodeDataPtr );      
 
    /* clear any other state */
    //clearAllFinalStates( _nodeDataPtr, extName, "submit" ); 
@@ -1379,11 +1365,7 @@ static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waite
 
    waitMsg = malloc ( strlen( waited_one ) + strlen( waited_status ) + 2);
 
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }      
+   extName = SeqNode_extension( _nodeDataPtr );     
 
    /* create the node waiting lock file name*/
    memset(filename,'\0',sizeof filename);
@@ -1420,33 +1402,26 @@ Inputs:
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* _signal ) {
    char line[512];
    FILE* waitedFile = NULL;
+   SeqNameValuesPtr loopArgsPtr = NULL;
    char depUser[12], depExp[256], depNode[256], depArgs[SEQ_MAXFIELD], depDatestamp[20];
    char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD];
-   SeqNameValuesPtr loopArgsPtr = NULL;
-   char *extName = NULL, *submitDepArgs = NULL, *tmpExt = NULL, *tmpValue=NULL, *tmp2Value=NULL;
-   int submitCode = 0, stringLength=0;
+   char *extName = NULL, *submitDepArgs = NULL, *tmpExt = NULL, *tmpValue=NULL;
+   int submitCode = 0;
    LISTNODEPTR cmdList = NULL;
 
-   /* remove ^last from extension if it's in there */
    loopArgsPtr = _nodeDataPtr->loop_args;
-   /* Check for ^last NPT arg */
    if (_nodeDataPtr->isLastNPTArg){
-      tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
-      /*remove the ^last*/
-      stringLength=strlen(tmpValue)-5;
-      tmp2Value=malloc(stringLength+1); 
-      memset(tmp2Value,'\0', stringLength+1);
-      strncpy(tmp2Value, tmpValue, stringLength); 
-      SeqUtil_stringAppend( &tmp2Value, "" );
-      SeqUtil_TRACE("SeqLoops_submitDependencies Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
-      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmp2Value);
+      tmpValue = SeqUtil_striplast( SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName) );
+      SeqUtil_TRACE("SeqLoops_submitDependencies Found ^last argument, replacing %s for %s for node %s \n", 
+		    SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName), tmpValue, _nodeDataPtr->nodeName); 
+      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmpValue);
    }
    tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, tmpExt );
-   }      
+   } 
 
    memset(filename,'\0',sizeof depUser);
    memset(depUser,'\0',sizeof depUser);
@@ -1516,10 +1491,9 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       cmdList = cmdList->nextPtr;
    }
    SeqListNode_deleteWholeList( &cmdList );
-   free(extName);
-   free(tmpValue);
-   free(tmp2Value);
    free(tmpExt);
+   free(tmpValue);
+   free(extName);
    free(submitDepArgs);
    
 }
@@ -1753,7 +1727,9 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
    fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
    fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    fprintf( tmpFile, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
-   fprintf( tmpFile, "export SEQ_TRACE_LEVEL=%s\n", SeqUtil_getTraceLevel());
+   if (SeqUtil_getTraceLevel() != NULL){
+     fprintf( tmpFile, "export SEQ_TRACE_LEVEL=%s\n", SeqUtil_getTraceLevel());
+   }
    fprintf( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
    fprintf( tmpFile, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
    if ( _nodeDataPtr-> npex != NULL ) {
