@@ -822,7 +822,7 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    char *extName = NULL, *extension = NULL, *nptExt = NULL, containerLoopExt = NULL ;
    SeqNameValuesPtr containerLoopArgsList = NULL;
 
-   extName = SeqNode_extension( _nodeDataPtr, 0 );    
+   extName = SeqNode_extension( _nodeDataPtr, 0 );
 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s.%s.end",_nodeDataPtr->workdir,extName, _nodeDataPtr->datestamp); 

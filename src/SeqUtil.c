@@ -509,14 +509,15 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
 /* remove ^last from extension if it's in there */
 char* SeqUtil_striplast( const char* str ) {
   char *noLast=NULL;
-  int stringLength=0;
+  int stringLength;
 
-  if (strstr(str,"^last")){
-    stringLength=strlen(str)-5;
+  stringLength = strlen( str );
+  if (strstr( str, "^last" )){
+    stringLength -= 5;
   }
-  noLast=malloc(stringLength+1); 
-  memset(noLast,'\0', stringLength+1);
-  strncpy(noLast, str, stringLength); 
+  noLast = malloc( stringLength+1 ); 
+  memset( noLast,'\0', stringLength+1 );
+  strncpy( noLast, str, stringLength ); 
   SeqUtil_stringAppend( &noLast, "" );
-  return(noLast);
+  return( noLast );
 }

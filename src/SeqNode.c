@@ -782,10 +782,10 @@ char *argv[];
 char* SeqNode_extension( const SeqNodeDataPtr _nodeDataPtr ) {
   char  *extName=NULL;
 
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( SeqUtil_striplast( _nodeDataPtr->extension ) ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, SeqUtil_striplast( _nodeDataPtr->extension ) );
-   }
-   return extName;
+  SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
+  if( strlen( SeqUtil_striplast( _nodeDataPtr->extension ) ) > 0 ) {
+    SeqUtil_stringAppend( &extName, "." );
+    SeqUtil_stringAppend( &extName, SeqUtil_striplast( _nodeDataPtr->extension ) );
+  }
+  return extName;
 }
