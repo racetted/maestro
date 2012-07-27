@@ -8,11 +8,8 @@
 #include <pwd.h>
 #include <errno.h>        /* errno */
 #include "SeqUtil.h"
-<<<<<<< HEAD
 #include <time.h>  /*nsleep*/
-=======
 #include "SeqNameValues.h"
->>>>>>> 4e550c1fe197f3ddf4c6d73128aea081c8defbdc
 
 int SEQ_TRACE = 0;
 
