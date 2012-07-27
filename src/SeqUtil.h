@@ -1,8 +1,12 @@
 #ifndef _SEQ_UTIL
 #define _SEQ_UTIL
 
+#include "SeqNode.h"
 #include "SeqListNode.h"
 #include "regex.h"
+
+#define SEQ_MAXFIELD 1000
+
 void raiseError(const char* fmt, ... );
 void SeqUtil_TRACE (char * fmt, ...) ;
 void SeqUtil_setTraceLevel (int _trace) ;
@@ -26,5 +30,9 @@ char* SeqUtil_fixPath ( const char* source );
 char* SeqUtil_getExpPath( const char* username, const char* exp ) ;
 void SeqUtil_waitForFile( char* filename, int secondsLimit, int intervalTime); 
 int match(const char *string, char *pattern) ;
+char* SeqUtil_getdef( const char* filename, const char* key ) ;
+char* SeqUtil_parsedef( const char* filename, const char* key ) ;
+char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ) ;
+char* SeqUtil_striplast( const char* str ) ;
 
 #endif

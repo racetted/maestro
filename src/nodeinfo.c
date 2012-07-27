@@ -374,6 +374,7 @@ void parseNodeSpecifics (SeqNodeType _nodeType, xmlXPathObjectPtr _result, SeqNo
    for (i=0; i < nodeset->nodeNr; i++) {
       nodePtr = nodeset->nodeTab[i];
       nodeName = nodePtr->name;
+
       /* name attribute is not node specific */
       if ( nodePtr->children != NULL && strcmp((char*)nodeName,"name") != 0 ) {
          SeqUtil_TRACE( "nodeinfo.parseNodeSpecifics() %s=%s\n", nodeName, nodePtr->children->content );
@@ -519,10 +520,10 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
  */
 
 void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home, SeqNameValuesPtr _loops ) {
-   char *xmlFile = NULL;
+   char *xmlFile = NULL, *defFile = NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
-   int extraSpace = 0;
+   int i,extraSpace = 0;
 
    xmlDocPtr doc = NULL;
    xmlNodeSetPtr nodeset = NULL;
@@ -565,6 +566,12 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
+
+   /* resolve environment variables found in XML file */
+   defFile = malloc ( strlen ( _seq_exp_home ) + strlen("/resources/resources.def") + 1 );
+   sprintf( defFile, "%s/resources/resources.def", _seq_exp_home );
+   XmlUtils_resolve(xmlFile,context,defFile);
+   free(defFile);
 
    /* validate NODE_RESOURCES node */
    sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
