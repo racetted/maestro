@@ -9,6 +9,7 @@
 #include "SeqListNode.h"
 #include <errno.h>        /* errno */
 #include "SeqUtil.h"
+#include <time.h>  /*nsleep*/
 
 int SEQ_TRACE = 0;
 
@@ -398,4 +399,24 @@ char* SeqUtil_getExpPath( const char* username, const char* exp ) {
    }
    printf( "SeqUtil_getExpPath returning value: %s\n", expPath );
    return expPath;
+}
+
+/* waits for the presence of a file (checking every timeInterval) or max time elapses */
+
+void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
+
+   struct timespec interval;
+   int counter = 0; 
+
+   while (access(filename, R_OK) != 0) {
+      interval.tv_sec = timeInterval;
+      if (nanosleep(&interval, NULL) == -1) {
+         raiseError("SeqUtil_waitForFile timer interrupted, aborting.");
+      } else {
+         counter=counter+timeInterval; 
+         if (counter >= secondsLimit){ 
+            raiseError("SeqUtil_waitForFile timed out, aborting.");
+         }
+      }
+   }
 }

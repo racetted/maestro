@@ -285,6 +285,60 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    }
 }
 
+/* set the node's worker path */
+void parseWorkerPath (char * pathToNode, const char * _seq_exp_home, SeqNodeDataPtr _nodeDataPtr ) {
+   xmlDocPtr doc = NULL;
+   xmlXPathObjectPtr result = NULL;
+   xmlXPathContextPtr context = NULL;
+   xmlNodeSetPtr nodeset = NULL;
+   xmlNodePtr nodePtr = NULL;
+   const xmlChar *nodeName = NULL;
+   char query[256], *xmlFile=NULL ;
+   int foundPath=0, i=0;
+
+   memset(query,'\0',sizeof query);
+
+   xmlFile = malloc( strlen(_seq_exp_home) + strlen("/resources/") + strlen(pathToNode) + strlen("/container.xml") + 1);
+
+   /* build the xmlfile path */
+   sprintf( xmlFile, "%s/resources/%s/container.xml", _seq_exp_home, pathToNode);
+
+   /* parse the xml file */
+   doc = XmlUtils_getdoc(xmlFile);
+
+   if (doc==NULL) raiseError("File %s does not exist, but should contain necessary WORKER tag with path attribute for a work_unit container \n", xmlFile); 
+
+   /* the context is used to walk trough the nodes */
+   context = xmlXPathNewContext(doc);
+
+  /* get the batch system resources */
+   sprintf ( query, "(%s/WORKER/@*)", NODE_RES_XML_ROOT );
+   SeqUtil_TRACE ( "nodeinfo.parseWorkerPath query: %s\n", query );
+   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+         nodeset = result->nodesetval;
+	 for (i=0; i < nodeset->nodeNr; i++) {
+            nodePtr = nodeset->nodeTab[i];
+            nodeName = nodePtr->name;
+            SeqUtil_TRACE( "nodeinfo.parseWorkerPath() nodePtr->name=%s\n", nodePtr->name);
+            SeqUtil_TRACE( "nodeinfo.parseWorkerPath() value=%s\n", nodePtr->children->content );
+   	    if ( strcmp( nodeName, "path" ) == 0 ) {
+               SeqNode_setWorkerPath( _nodeDataPtr, nodePtr->children->content );
+	       foundPath=1;
+            }
+      }
+   }
+
+   if (!foundPath) raiseError("File %s does not contain necessary WORKER tag with path attribute for a work_unit container \n", xmlFile); 
+
+   xmlXPathFreeObject (result);
+   free(xmlFile);
+   xmlXPathFreeContext(context);
+   xmlFreeDoc(doc);
+   xmlCleanupParser();
+
+
+}
+
 void parseAbortActions (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    xmlNodeSetPtr nodeset = NULL;
    xmlNodePtr nodePtr = NULL;
@@ -572,9 +626,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    xmlDocPtr doc = NULL, previousDoc=NULL;
    xmlAttrPtr propertiesPtr = NULL;
    xmlNodeSetPtr nodeset = NULL;
-   xmlXPathObjectPtr result = NULL, submitsResult = NULL;
-   xmlNodePtr currentNodePtr = NULL;
+   xmlXPathObjectPtr result = NULL, submitsResult = NULL, attributesResult = NULL;
+   xmlNodePtr currentNodePtr = NULL, nodePtr=NULL;
    xmlXPathContextPtr context = NULL, previousContext=NULL;
+   const xmlChar *nodeName = NULL;
  
    SeqUtil_TRACE( "nodeinfo.getFlowInfo() task:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
@@ -612,22 +667,40 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          sprintf ( submitsQuery, "(child::SUBMITS[@sub_name='%s'])", tmpstrtok );
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       }
+      
       /* run the normal query */
       if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
          raiseError("Node %s not found in XML master file! (getFlowInfo)\n", _nodePath);
       }
-
+       
       /* At this point I should only have one node in the result set
       I'm getting the node to set it in the context so that
       I can retrieve other nodes relative to the current one
       i.e. depends/submits/etc
       */
+
       nodeset = result->nodesetval;
       currentNodePtr = nodeset->nodeTab[0];
-      /* set the current node for the context
-         change only if the current is of a container type family/case/case_item */
       _nodeDataPtr->type = getNodeType( currentNodePtr->name );
-       context->node = currentNodePtr;
+      context->node = currentNodePtr;
+
+          /* retrieve node specific attributes */
+      if ( (attributesResult = XmlUtils_getnodeset ("(@*)", context)) != NULL){
+         nodeset=attributesResult->nodesetval;
+         for (i=0; i < nodeset->nodeNr; i++) {
+            currentNodePtr = nodeset->nodeTab[i];
+            nodeName = currentNodePtr->name;
+	    if ( strcmp( nodeName, "work_unit" ) == 0 ) {
+               if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask )  {
+	          raiseError("Work unit mode is only for containers (single_reserv=1)");
+	       } else {
+	          if (currentFlowNode==NULL) raiseError("Work unit mode cannot be on the root node (single_reserv=1)");
+	          parseWorkerPath(currentFlowNode, _seq_exp_home, _nodeDataPtr );
+	       }
+   	    }
+         }
+      xmlXPathFreeObject (attributesResult);
+      }
 
       /* read the new flow file described in the module */
       if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 

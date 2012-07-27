@@ -187,6 +187,14 @@ void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args ) {
    }
 }
 
+void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath ) {
+   if ( workerPath != NULL ) {
+      free( node_ptr->workerPath );
+      node_ptr->workerPath = malloc( strlen(workerPath) + 1 );
+      strcpy( node_ptr->workerPath, workerPath );
+   }
+}
+
 void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
    if ( soumetArgs != NULL ) {
       free( node_ptr->soumetArgs );
@@ -464,6 +472,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->extension = NULL;
    nodePtr->datestamp = NULL;
    nodePtr->workdir = NULL;
+   nodePtr->workerPath= NULL;
    SeqNode_setName( nodePtr, "" );
    SeqNode_setContainer( nodePtr, "" );
    SeqNode_setIntramoduleContainer( nodePtr, "" );
@@ -475,6 +484,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setMemory( nodePtr, "40M" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
+   SeqNode_setWorkerPath( nodePtr, "");
    SeqNode_setAlias( nodePtr, "" );
    SeqNode_setInternalPath( nodePtr, "" );
    SeqNode_setExtension( nodePtr, "" );
@@ -552,6 +562,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       printf("node.machine=%s\n", node_ptr->machine );
       printf("node.queue=%s\n", node_ptr->queue );
       printf("node.memory=%s\n", node_ptr->memory );
+      printf("node.workerPath=%s\n", node_ptr->workerPath );
       printf("node.soumetArgs=%s\n", node_ptr->soumetArgs );
    }
    if( showAll || showCfgPath ) {

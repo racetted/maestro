@@ -80,6 +80,7 @@ typedef struct _SeqNodeData {
    char* omp;
    /*extra soumet arguments provided via command-line, resource file or interface*/
    char* soumetArgs;
+   char* workerPath;
    char* alias;
    char* args;
    char* datestamp;

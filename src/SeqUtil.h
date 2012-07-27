@@ -24,6 +24,7 @@ void SeqUtil_stringAppend( char** source, char* data );
 int SeqUtil_tokenCount( char* source, char* tokenSeparator );
 char* SeqUtil_fixPath ( const char* source );
 char* SeqUtil_getExpPath( const char* username, const char* exp ) ;
+void SeqUtil_waitForFile( char* filename, int secondsLimit, int intervalTime); 
 int match(const char *string, char *pattern) ;
 
 #endif
