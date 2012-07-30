@@ -10,6 +10,8 @@
 #include "SeqUtil.h"
 #include <time.h>  /*nsleep*/
 #include "SeqNameValues.h"
+#include "SeqListNode.h"
+
 
 int SEQ_TRACE = 0;
 
