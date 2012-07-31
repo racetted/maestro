@@ -1,7 +1,7 @@
 # this file contains common config that is sourced by all makefiles
 WHO_I_AM=$(shell whoami)
 VERSION=1.2.0
-SEQ_WRAPPER=maestro_1.0.0
+SEQ_WRAPPER=maestro_1.1.0
 MACHINE=$(shell uname -s)
 HARDWARE=$(shell uname -m | tr '_' '-')
 SWDEST=$(shell pwd)/../bin/$(BASE_ARCH)
