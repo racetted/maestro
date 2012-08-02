@@ -6,12 +6,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <pwd.h>
-#include "SeqListNode.h"
 #include <errno.h>        /* errno */
 #include "SeqUtil.h"
+#include <time.h>  /*nsleep*/
+#include "SeqNameValues.h"
+#include "SeqListNode.h"
+
 
 int SEQ_TRACE = 0;
-int SEQ_DEBUG = 0;
 
 void raiseError(const char* fmt, ... );
 
@@ -27,26 +29,18 @@ SeqUtil_trace
 void SeqUtil_TRACE (char * fmt, ...) {
    
    va_list ap;
-   if ( SEQ_TRACE == 1 ) {
+   if ( SEQ_TRACE != 0 ) {
       va_start (ap, fmt);
       vfprintf (stdout, fmt, ap);
       va_end (ap);
    }
 }
 
-void SeqUtil_setDebug (int _debug) {
-   SEQ_DEBUG = _debug;
-}
-
-int SeqUtil_isDebug (int _debug) {
-   return SEQ_DEBUG;
-}
-
-void SeqUtil_setTrace (int _trace) {
+void SeqUtil_setTraceLevel (int _trace) {
    SEQ_TRACE = _trace;
 }
 
-int SeqUtil_isTraceOn (int _trace) {
+int SeqUtil_getTraceLevel () {
    return SEQ_TRACE;
 }
 
@@ -309,6 +303,43 @@ void SeqUtil_stringAppend( char** source, char* data )
    *source = newDataPtr;
 }
 
+char *SeqUtil_resub (const char *regex_text, const char *repl_text, const char *str)
+{
+    static char buffer[4096];
+    const int n_matches = 50, MAX_ERROR_MSG=100;
+    regmatch_t m[n_matches];
+    regex_t r;
+
+    int status = regcomp( &r, regex_text, REG_EXTENDED|REG_NEWLINE );
+    if (status != 0) {
+      char error_message[MAX_ERROR_MSG];
+      regerror( status, &r, error_message, MAX_ERROR_MSG );
+      printf ("SeqUtil_regcomp error compiling '%s': %s\n", regex_text, error_message);
+      return NULL;
+    }
+    strncpy(buffer,str,strlen(str));
+    while (1) {
+        int i = 0;
+        int nomatch = regexec( &r, buffer, n_matches, m, 0 );
+        if (nomatch) {
+	  regfree( &r );
+	  return buffer;
+        }
+        for (i = 0; i < n_matches; i++) {
+            int start;
+	    int finish;
+            if (m[i].rm_so == -1) {
+                break;
+            }
+	    start = m[i].rm_so;
+	    finish = m[i].rm_eo;
+	    sprintf( buffer+start, "%s%s", repl_text, buffer+finish );
+        }
+    }
+    regfree( &r );
+    return NULL;
+}
+
 int SeqUtil_tokenCount( char* source, char* tokenSeparator )
 {
    int count = 0;
@@ -370,4 +401,146 @@ char* SeqUtil_getExpPath( const char* username, const char* exp ) {
    }
    printf( "SeqUtil_getExpPath returning value: %s\n", expPath );
    return expPath;
+}
+
+/* waits for the presence of a file (checking every timeInterval) or max time elapses */
+
+void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
+
+   struct timespec interval;
+   int counter = 0; 
+
+   while (access(filename, R_OK) != 0) {
+      interval.tv_sec = timeInterval;
+      if (nanosleep(&interval, NULL) == -1) {
+         raiseError("SeqUtil_waitForFile timer interrupted, aborting.");
+      } else {
+         counter=counter+timeInterval; 
+         if (counter >= secondsLimit){ 
+            raiseError("SeqUtil_waitForFile timed out, aborting.");
+         }
+      }
+   }
+} 
+
+char* SeqUtil_getdef( const char* filename, const char* key ) {
+  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def";
+
+  if ( (home = getenv("HOME")) == NULL ){
+    raiseError("SeqUtil_getdef $HOME not defined\n");
+  }
+  ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
+  sprintf( ovpath, "%s%s", home, ovext );
+  SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
+  if ( (retval = SeqUtil_parsedef(ovpath,key)) == NULL ){
+    SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,filename);
+    retval = SeqUtil_parsedef(filename,key);
+  }
+  free(ovpath);
+  return retval;
+}
+
+/* parser for .def simple text definition files (free return pointer in caller)*/
+char* SeqUtil_parsedef( const char* filename, const char* key ) {
+  FILE* deffile;
+  char *retval=NULL;
+  char line[SEQ_MAXFIELD],defkey[SEQ_MAXFIELD],defval[SEQ_MAXFIELD];
+
+  if ( (deffile = fopen( filename, "r" )) != NULL ){
+    memset(defkey,'\0',sizeof defkey);
+    memset(defval,'\0',sizeof defval);
+    while ( fgets( line, sizeof(line), deffile ) != NULL ) {
+      if ( strstr( line, "#" ) != NULL ) {
+	continue;
+      }
+      if ( sscanf( line, " %[^= ] = %s ", defkey, defval ) == 2 ){	
+	if ( strcmp( key, defkey ) == 0 ) {
+	  fclose(deffile);
+	  if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
+	    raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
+	  }
+	  strcpy(retval,defval);
+	  SeqUtil_TRACE("SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
+	  return retval;
+	}
+      }
+      defkey[0] = '\0';
+      defval[0] = '\0';
+    }
+    fclose(deffile);}
+  else{
+    SeqUtil_TRACE("SeqUtil_parsedef(): unable to open definition file %s\n",filename);
+  }
+  return NULL;
+}
+
+/* Substitutes a ${.} formatted keyword in a string. To use a definition file (format defined by
+   SeqUtils_getdef(), provide the _deffile name; a NULL value passed to _deffile 
+   causes the resolver to search in the environment for the key definition.  If 
+   _srcfile is NULL, information about the str source is not printed in case of an error.*/
+char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ) {
+  char *strtmp=NULL,*substr=NULL,*var=NULL,*env=NULL,*post=NULL,*source=NULL;
+  char *saveptr1,*saveptr2;
+  static char newstr[SEQ_MAXFIELD];
+  int start,isvar;
+
+  if (_deffile == NULL){
+    SeqUtil_stringAppend( &source, "environment" );}
+  else{
+    SeqUtil_stringAppend( &source, "definition" );
+  }
+  SeqUtil_TRACE("XmlUtils_resolve(): performing %s replacements\n",source);
+
+  strtmp = (char *) malloc( strlen(_str) + 1 ) ;
+  strcpy(strtmp,_str);
+  substr = strtok_r(strtmp,"${",&saveptr1);
+  start=0;
+  while (substr != NULL){
+    isvar = (strstr(substr,"}") == NULL) ? 0 : 1;
+    var = strtok_r(substr,"}",&saveptr2);
+    if (strcmp(source,"environment") == 0){
+      env = getenv(var);}
+    else{
+      env = SeqUtil_getdef(_deffile,var);
+    }
+    post = strtok_r(NULL," ",&saveptr2);
+    if (env == NULL){
+      if (isvar > 0){
+	raiseError("Variable %s referenced by %s but is not set in %s\n",var,_srcfile,source);}
+      else{
+	strncpy(newstr+start,var,strlen(var));
+	start += strlen(var);
+      }
+    }
+    else{
+      SeqUtil_TRACE("XmlUtils_resolve(): replacing %s with %s value %s\n",var,source,env);
+      strncpy(newstr+start,env,strlen(env));
+      start += strlen(env);
+    }
+    if (post != NULL){
+      strncpy(newstr+start,post,strlen(post));
+      start += strlen(post);
+    }
+    newstr[start]=0;
+    substr = strtok_r(NULL,"${",&saveptr1);
+  }
+  free(source);
+  free(strtmp);
+  return newstr;
+}  
+
+/* remove ^last from extension if it's in there */
+char* SeqUtil_striplast( const char* str ) {
+  char *noLast=NULL;
+  int stringLength;
+
+  stringLength = strlen( str );
+  if (strstr( str, "^last" )){
+    stringLength -= 5;
+  }
+  noLast = malloc( stringLength+1 ); 
+  memset( noLast,'\0', stringLength+1 );
+  strncpy( noLast, str, stringLength ); 
+  SeqUtil_stringAppend( &noLast, "" );
+  return( noLast );
 }

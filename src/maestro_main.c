@@ -81,7 +81,7 @@ main (int argc, char * argv [])
             gotLoops = 1;
             break;
          case 'd':
-            SeqUtil_setTrace(1);
+            SeqUtil_setTraceLevel(1);
             break;
 	 case 'i':
 	    ignoreAllDeps=1;

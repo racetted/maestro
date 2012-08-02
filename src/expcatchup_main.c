@@ -73,7 +73,7 @@ main (int argc, char * argv [])
          fprintf (stderr, "ERROR:Argument s and g are mutually exclusive!\n");
          exit(1);
       }
-      if ( isDebugArg ) SeqUtil_setTrace(1);
+      if ( isDebugArg ) SeqUtil_setTraceLevel(1);
       if ( isSetArg ) catchup_set( expHome,catchupValue);
       if ( isGetArg ) {
          catchupValue = catchup_get( expHome );

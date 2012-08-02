@@ -1,7 +1,7 @@
 # this file contains common config that is sourced by all makefiles
 WHO_I_AM=$(shell whoami)
-VERSION=1.1.0.2
-SEQ_WRAPPER=maestro_1.0.0
+VERSION=1.2.0
+SEQ_WRAPPER=maestro_1.1.0
 MACHINE=$(shell uname -s)
 HARDWARE=$(shell uname -m | tr '_' '-')
 SWDEST=$(shell pwd)/../bin/$(BASE_ARCH)
@@ -10,7 +10,7 @@ INCDIR=$(SWDEST)/include
 BINDIR=$(SWDEST)/bin
 OBJECTS=SeqUtil.o SeqNode.o SeqListNode.o SeqNameValues.o SeqLoopsUtil.o SeqDatesUtil.o \
 runcontrollib.o nodelogger.o maestro.o nodeinfo.o tictac.o expcatchup.o XmlUtils.o
-COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup
+COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef
 XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
 LIBNAME="xml2 runcontrol z rmn_012"

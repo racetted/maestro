@@ -41,7 +41,7 @@ SeqNodeType getNodeType ( const xmlChar *_node_name ) {
    } else if ( strcmp( _node_name, "CASE_ITEM" ) == 0 ) {
       nodeType = CaseItem;
    } else {
-      printf( "ERROR: nodeinfo.getNodeType()  unprocessed xml node name:%s\n", _node_name);
+      raiseError("ERROR: nodeinfo.getNodeType()  unprocessed xml node name:%s\n", _node_name);
    }
    SeqUtil_TRACE( "nodeinfo.getNodeType() type=%d\n", nodeType );
    return nodeType;
@@ -87,7 +87,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
          } else if ( strcmp( nodeName, "catchup" ) == 0 ) {
              _nodeDataPtr->catchup = atoi( nodePtr->children->content );
          } else {
-             printf ( "nodeinfo.parseBatchResources() WARNING: Unprocessed attribute=%s\n", nodeName);
+             raiseError("nodeinfo.parseBatchResources() ERROR: Unprocessed attribute=%s\n", nodeName);
          }
       }
    }
@@ -285,6 +285,60 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    }
 }
 
+/* set the node's worker path */
+void parseWorkerPath (char * pathToNode, const char * _seq_exp_home, SeqNodeDataPtr _nodeDataPtr ) {
+   xmlDocPtr doc = NULL;
+   xmlXPathObjectPtr result = NULL;
+   xmlXPathContextPtr context = NULL;
+   xmlNodeSetPtr nodeset = NULL;
+   xmlNodePtr nodePtr = NULL;
+   const xmlChar *nodeName = NULL;
+   char query[256], *xmlFile=NULL ;
+   int foundPath=0, i=0;
+
+   memset(query,'\0',sizeof query);
+
+   xmlFile = malloc( strlen(_seq_exp_home) + strlen("/resources/") + strlen(pathToNode) + strlen("/container.xml") + 1);
+
+   /* build the xmlfile path */
+   sprintf( xmlFile, "%s/resources/%s/container.xml", _seq_exp_home, pathToNode);
+
+   /* parse the xml file */
+   doc = XmlUtils_getdoc(xmlFile);
+
+   if (doc==NULL) raiseError("File %s does not exist, but should contain necessary WORKER tag with path attribute for a work_unit container \n", xmlFile); 
+
+   /* the context is used to walk trough the nodes */
+   context = xmlXPathNewContext(doc);
+
+  /* get the batch system resources */
+   sprintf ( query, "(%s/WORKER/@*)", NODE_RES_XML_ROOT );
+   SeqUtil_TRACE ( "nodeinfo.parseWorkerPath query: %s\n", query );
+   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+         nodeset = result->nodesetval;
+	 for (i=0; i < nodeset->nodeNr; i++) {
+            nodePtr = nodeset->nodeTab[i];
+            nodeName = nodePtr->name;
+            SeqUtil_TRACE( "nodeinfo.parseWorkerPath() nodePtr->name=%s\n", nodePtr->name);
+            SeqUtil_TRACE( "nodeinfo.parseWorkerPath() value=%s\n", nodePtr->children->content );
+   	    if ( strcmp( nodeName, "path" ) == 0 ) {
+               SeqNode_setWorkerPath( _nodeDataPtr, nodePtr->children->content );
+	       foundPath=1;
+            }
+      }
+   }
+
+   if (!foundPath) raiseError("File %s does not contain necessary WORKER tag with path attribute for a work_unit container \n", xmlFile); 
+
+   xmlXPathFreeObject (result);
+   free(xmlFile);
+   xmlXPathFreeContext(context);
+   xmlFreeDoc(doc);
+   xmlCleanupParser();
+
+
+}
+
 void parseAbortActions (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    xmlNodeSetPtr nodeset = NULL;
    xmlNodePtr nodePtr = NULL;
@@ -320,6 +374,7 @@ void parseNodeSpecifics (SeqNodeType _nodeType, xmlXPathObjectPtr _result, SeqNo
    for (i=0; i < nodeset->nodeNr; i++) {
       nodePtr = nodeset->nodeTab[i];
       nodeName = nodePtr->name;
+
       /* name attribute is not node specific */
       if ( nodePtr->children != NULL && strcmp((char*)nodeName,"name") != 0 ) {
          SeqUtil_TRACE( "nodeinfo.parseNodeSpecifics() %s=%s\n", nodeName, nodePtr->children->content );
@@ -465,10 +520,10 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
  */
 
 void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home, SeqNameValuesPtr _loops ) {
-   char *xmlFile = NULL;
+   char *xmlFile = NULL, *defFile = NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
-   int extraSpace = 0;
+   int i,extraSpace = 0;
 
    xmlDocPtr doc = NULL;
    xmlNodeSetPtr nodeset = NULL;
@@ -511,6 +566,12 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
+
+   /* resolve environment variables found in XML file */
+   defFile = malloc ( strlen ( _seq_exp_home ) + strlen("/resources/resources.def") + 1 );
+   sprintf( defFile, "%s/resources/resources.def", _seq_exp_home );
+   XmlUtils_resolve(xmlFile,context,defFile);
+   free(defFile);
 
    /* validate NODE_RESOURCES node */
    sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
@@ -572,9 +633,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    xmlDocPtr doc = NULL, previousDoc=NULL;
    xmlAttrPtr propertiesPtr = NULL;
    xmlNodeSetPtr nodeset = NULL;
-   xmlXPathObjectPtr result = NULL, submitsResult = NULL;
-   xmlNodePtr currentNodePtr = NULL;
+   xmlXPathObjectPtr result = NULL, submitsResult = NULL, attributesResult = NULL;
+   xmlNodePtr currentNodePtr = NULL, nodePtr=NULL;
    xmlXPathContextPtr context = NULL, previousContext=NULL;
+   const xmlChar *nodeName = NULL;
  
    SeqUtil_TRACE( "nodeinfo.getFlowInfo() task:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
@@ -612,22 +674,40 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          sprintf ( submitsQuery, "(child::SUBMITS[@sub_name='%s'])", tmpstrtok );
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       }
+      
       /* run the normal query */
       if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
          raiseError("Node %s not found in XML master file! (getFlowInfo)\n", _nodePath);
       }
-
+       
       /* At this point I should only have one node in the result set
       I'm getting the node to set it in the context so that
       I can retrieve other nodes relative to the current one
       i.e. depends/submits/etc
       */
+
       nodeset = result->nodesetval;
       currentNodePtr = nodeset->nodeTab[0];
-      /* set the current node for the context
-         change only if the current is of a container type family/case/case_item */
       _nodeDataPtr->type = getNodeType( currentNodePtr->name );
-       context->node = currentNodePtr;
+      context->node = currentNodePtr;
+
+          /* retrieve node specific attributes */
+      if ( (attributesResult = XmlUtils_getnodeset ("(@*)", context)) != NULL){
+         nodeset=attributesResult->nodesetval;
+         for (i=0; i < nodeset->nodeNr; i++) {
+            currentNodePtr = nodeset->nodeTab[i];
+            nodeName = currentNodePtr->name;
+	    if ( strcmp( nodeName, "work_unit" ) == 0 ) {
+               if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask )  {
+	          raiseError("Work unit mode is only for containers (single_reserv=1)");
+	       } else {
+	          if (currentFlowNode==NULL) raiseError("Work unit mode cannot be on the root node (single_reserv=1)");
+	          parseWorkerPath(currentFlowNode, _seq_exp_home, _nodeDataPtr );
+	       }
+   	    }
+         }
+      xmlXPathFreeObject (attributesResult);
+      }
 
       /* read the new flow file described in the module */
       if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
@@ -662,11 +742,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);
-         sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
+         sprintf ( query, "(/MODULE)", tmpstrtok );
 
          if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-             printf ( "ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
-             exit(1);
+             raiseError ("ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
          }
          nodeset = result->nodesetval;
          currentNodePtr = nodeset->nodeTab[0];

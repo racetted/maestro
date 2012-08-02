@@ -58,7 +58,7 @@ main ( int argc, char * argv[] )
             strcpy(filters,optarg);
             break;
          case 'd':
-            SeqUtil_setTrace(1);
+            SeqUtil_setTraceLevel(1);
             break;
          case 'l':
             /* loops argument */
