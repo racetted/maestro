@@ -2010,16 +2010,16 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    char *seq_exp_home = NULL, *seq_soumet = NULL, *tmp = NULL;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL;
    SeqNodeDataPtr nodeDataPtr = NULL;
-   int status = 1; /* starting with error condition */
+   int status = 1, traceLevel=0; /* starting with error condition */
    DIR *dirp = NULL;
    if (getenv("SEQ_TRACE_LEVEL") == NULL){
        printf("SEQ_TRACE_LEVEL set to 0\n"); 
        SeqUtil_setTraceLevel(0);
    } else {
-       SeqUtil_TRACE("SEQ_TRACE_LEVEL set to %d \n ", SeqUtil_getTraceLevel()); 
+       traceLevel=atoi(getenv("SEQ_TRACE_LEVEL")); 
+       SeqUtil_setTraceLevel(traceLevel);
+       printf("SEQ_TRACE_LEVEL set to %d\n", traceLevel); 
    }
-
-
 
    printf( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" );
    printf( "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs);
