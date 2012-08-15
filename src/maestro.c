@@ -691,11 +691,8 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
       /*container arguments*/
 
        if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
-            printf( "************************ DOMINIC *****************\n");
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
             containerLoopExt = (char*) SeqLoops_getExtFromLoopArgs(newArgs);
-            printf( "************************ DOMINIC *****************:%s\n", containerLoopExt );
-
             SeqUtil_stringAppend( &nptExt, containerLoopExt );
             free(containerLoopExt);
             SeqUtil_stringAppend( &nptExt, "+last" );
