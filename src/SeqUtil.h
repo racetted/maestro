@@ -34,5 +34,7 @@ char* SeqUtil_getdef( const char* filename, const char* key ) ;
 char* SeqUtil_parsedef( const char* filename, const char* key ) ;
 char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ) ;
 char* SeqUtil_striplast( const char* str ) ;
+void SeqUtil_stripSubstring(char ** string, char * substring);
+char * SeqUtil_relativePathEvaluation( char* depName, SeqNodeDataPtr _nodeDataPtr); 
 
 #endif

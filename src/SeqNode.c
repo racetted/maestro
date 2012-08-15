@@ -69,6 +69,14 @@ void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module ) {
    }
 }
 
+void SeqNode_setPathToModule ( SeqNodeDataPtr node_ptr, const char* pathToModule ) {
+   if ( pathToModule != NULL ) {
+      free( node_ptr->pathToModule );
+      node_ptr->pathToModule = malloc( strlen(pathToModule) + 1 );
+      strcpy( node_ptr->pathToModule, pathToModule );
+   }
+}
+
 void SeqNode_setIntramoduleContainer ( SeqNodeDataPtr node_ptr, const char* intramodule_container ) {
    if( intramodule_container != NULL ) {
       free( node_ptr->intramodule_container );
@@ -468,6 +476,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->loop_args = NULL;
    nodePtr->data = NULL;
    nodePtr->taskPath = NULL;
+   nodePtr->pathToModule = NULL;
    nodePtr->suiteName = NULL;
    nodePtr->extension = NULL;
    nodePtr->datestamp = NULL;
@@ -477,6 +486,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setContainer( nodePtr, "" );
    SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
+   SeqNode_setPathToModule( nodePtr, "" );
    SeqNode_setCpu( nodePtr, "1" );
    SeqNode_setCpuMultiplier( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
