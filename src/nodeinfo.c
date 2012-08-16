@@ -93,14 +93,14 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
    }
 }
 
-void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loops ) {
+void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
    xmlChar *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,
            *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    xmlChar *depPath = NULL;
-   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL; 
+   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL, *parsedDepName=NULL; 
    xmlAttrPtr propertiesPtr;
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL ;
    int i=0, current_index_flag=0;
@@ -122,7 +122,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
          if ( strcmp( depType, "node" ) == 0 ) {
             depUser = xmlGetProp( nodePtr, "user" );
             depExp = xmlGetProp( nodePtr, "exp" );
+
             depName = xmlGetProp( nodePtr, "dep_name" );
+            parsedDepName=SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
+
             depIndex = xmlGetProp( nodePtr, "index" );
             depLocalIndex = xmlGetProp( nodePtr, "local_index" );
             /* look for keywords in index fields */
@@ -133,8 +136,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
 	           tmpIterator = depArgs; 
 	           while (tmpIterator != NULL) {
 	               if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0){
-		           if (SeqNameValues_getValue(_loops, tmpIterator->name) != NULL){
-			       SeqNameValues_setValue( &depArgs, tmpIterator->name, SeqNameValues_getValue(_loops, tmpIterator->name));
+		           if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL){
+			       SeqNameValues_setValue( &depArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			       /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
  		           }
 		       }
@@ -152,8 +155,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
 	           tmpIterator = localArgs; 
 	           while (tmpIterator != NULL) {
 	               if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0){
-		           if (SeqNameValues_getValue(_loops, tmpIterator->name) != NULL){
-               	               SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_loops, tmpIterator->name));
+		           if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL){
+               	               SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			      /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
  		           }
 		       }
@@ -168,6 +171,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
             depHour = xmlGetProp( nodePtr, "hour" );
             depStatus = xmlGetProp( nodePtr, "status" );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depName: %s\n", depName );
+            SeqUtil_TRACE( "nodeinfo.parseDepends() dep parsedDepName: %s\n", parsedDepName );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );
             SeqUtil_TRACE( "nodeinfo.parseDepends() fullDepIndex: %s \n", fullDepIndex);
             SeqUtil_TRACE( "nodeinfo.parseDepends() fullDepLocalIndex: %s\n", fullDepLocalIndex );
@@ -176,7 +180,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
-            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, depName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
+            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
 	    
             SeqUtil_TRACE( "nodeinfo.parseDepends() done\n" );
             xmlFree( depName );
@@ -186,6 +190,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, SeqNa
             xmlFree( depUser );
             xmlFree( depExp );
             xmlFree( depHour );
+            free(parsedDepName);
 	    free(fullDepIndex);
 	    free(fullDepLocalIndex);
 	    free(tmpstrtok);
@@ -519,7 +524,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
  * is located under $SEQ_EXP_HOME/resources/ It follows the experiment node tree.
  */
 
-void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home, SeqNameValuesPtr _loops ) {
+void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home) {
    char *xmlFile = NULL, *defFile = NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
@@ -529,9 +534,6 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    xmlNodeSetPtr nodeset = NULL;
    xmlXPathObjectPtr result = NULL;
    xmlXPathContextPtr context = NULL;
-
-   /* add loop arg list to node */
-   SeqNode_setLoopArgs(_nodeDataPtr,_loops);
 
    SeqUtil_TRACE( "getNodeResources _nodePath=%s type=%d\n", _nodePath, _nodeDataPtr->type );
 
@@ -604,7 +606,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    sprintf ( query, "(%s/child::DEPENDS_ON)", NODE_RES_XML_ROOT );
    SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
    if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-      parseDepends( result, _nodeDataPtr, _loops ); 
+      parseDepends( result, _nodeDataPtr); 
    }
    xmlXPathFreeObject (result);
 
@@ -628,7 +630,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    char query[512],submitsQuery[512];
 
    char *tmpstrtok = NULL, *tmpJobPath = NULL, *suiteName = NULL, *module = NULL;
-   char *taskPath = NULL, *intramodulePath = NULL;
+   char *taskPath = NULL, *intramodulePath = NULL, *pathToModule=NULL;
    int i = 0, count=0, totalCount = 0;
    xmlDocPtr doc = NULL, previousDoc=NULL;
    xmlAttrPtr propertiesPtr = NULL;
@@ -657,6 +659,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    tmpJobPath = (char*) malloc( strlen( _nodePath ) + 1 );
 
    strcpy( tmpJobPath, _nodePath );
+
    tmpstrtok = (char*) strtok( tmpJobPath, "/" );
    while ( tmpstrtok != NULL ) {
       /* build the query */      
@@ -712,10 +715,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       /* read the new flow file described in the module */
       if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
        
-         /* reset the intramodule path */
-         free(intramodulePath);
-         intramodulePath = NULL;
-	 SeqUtil_stringAppend( &intramodulePath, "/" );
+         /* reset the intramodule path if the current module node isn't the final target*/
+         if ( count != totalCount ) {
+             free(intramodulePath);
+             intramodulePath = NULL;
+	     SeqUtil_stringAppend( &intramodulePath, "/" );
+         }
 
          /* read the flow file located in the module depot */
 	 free(xmlFile);
@@ -811,10 +816,17 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    /* at this point we're done validating the nodes */
    /* point the context to the last node retrieved so that we can
       do relative queries */
+   pathToModule=strdup(_nodeDataPtr->container);
+   SeqUtil_stripSubstring(&pathToModule,intramodulePath); 
+   SeqUtil_stringAppend(&pathToModule, "/"); 
+   SeqUtil_stringAppend(&pathToModule, module); 
+   SeqNode_setPathToModule(_nodeDataPtr, pathToModule); 
+
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** Node Information **********\n" );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() node path:%s\n", _nodePath );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() container=%s\n", _nodeDataPtr->container );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() intramodule_container=%s\n", intramodulePath );
+   SeqUtil_TRACE ( "nodeinfo.getFlowInfo() pathToModule=%s\n", pathToModule );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() taskPath=%s\n", taskPath );
    SeqNode_setInternalPath( _nodeDataPtr, taskPath );
   
@@ -831,6 +843,15 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       strcpy ( query, "(child::SUBMITS)");
       result = XmlUtils_getnodeset (query, context);
       parseSubmits( result, _nodeDataPtr ); 
+      xmlXPathFreeObject (result);
+    
+      /* retrieve depends node */
+
+      SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** internal depends **********\n");
+      sprintf ( query, "(child::DEPENDS_ON)");
+      if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+         parseDepends( result, _nodeDataPtr ); 
+      }
       xmlXPathFreeObject (result);
    
       /* retrieve node's siblings */
@@ -914,8 +935,10 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    if ( SHOW_ROOT_ONLY ) {
       getRootNode ( nodeDataPtr, seq_exp_home );
    } else {
+      /* add loop arg list to node */
+      SeqNode_setLoopArgs( nodeDataPtr,_loops);
       getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
-      getNodeResources (nodeDataPtr, (char*) newNode, seq_exp_home, _loops);
+      getNodeResources (nodeDataPtr, (char*) newNode, seq_exp_home);
    }
 
    free( tmpfilters ); 

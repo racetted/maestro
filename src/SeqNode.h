@@ -65,6 +65,7 @@ typedef struct _SeqNodeData {
    char* container;
    char* intramodule_container;
    char* module;
+   char* pathToModule;
    int   silent;
    int   catchup;
    int   mpi;
