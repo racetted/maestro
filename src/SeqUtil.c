@@ -551,7 +551,7 @@ void SeqUtil_stripSubstring( char ** string, char * substring) {
   int substringPos=0, stringLength=0, substringLength=0; 
   char * tmpString =NULL , *tmpSub = NULL; 
   
-  if (*string != NULL && substring != NULL){
+  if ((*string != NULL) && (substring != NULL) && (strcmp(substring,"") != 0)){
       stringLength=strlen(*string);
       substringLength=strlen(substring);
       tmpSub=strstr( *string, substring );

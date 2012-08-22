@@ -715,12 +715,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       /* read the new flow file described in the module */
       if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
        
-         /* reset the intramodule path if the current module node isn't the final target*/
-         if ( count != totalCount ) {
-             free(intramodulePath);
-             intramodulePath = NULL;
-	     SeqUtil_stringAppend( &intramodulePath, "/" );
-         }
+         /* reset the intramodule path */
+         free(intramodulePath);
+         intramodulePath = NULL;
+	 SeqUtil_stringAppend( &intramodulePath, "" );
 
          /* read the flow file located in the module depot */
 	 free(xmlFile);
