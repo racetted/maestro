@@ -847,8 +847,14 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** internal depends **********\n");
       sprintf ( query, "(child::DEPENDS_ON)");
-      if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-         parseDepends( result, _nodeDataPtr ); 
+      if (_nodeDataPtr->type==Module){
+	  if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
+             parseDepends( result, _nodeDataPtr ); 
+	  }
+      } else {
+	  if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+             parseDepends( result, _nodeDataPtr ); 
+	  }
       }
       xmlXPathFreeObject (result);
    
