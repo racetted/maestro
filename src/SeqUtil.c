@@ -545,16 +545,18 @@ char* SeqUtil_striplast( const char* str ) {
   return( noLast );
 }
 
-/*remove substring from a string, modifies the string argument*/
+/*removes first occurance of the substring from a string, modifies the string argument */
 void SeqUtil_stripSubstring( char ** string, char * substring) {
  
   int substringPos=0, stringLength=0, substringLength=0; 
-  char * tmpString =NULL , *tmpSub = NULL; 
+  char * tmpString =NULL , * tmpSub = NULL; 
   
+
   if ((*string != NULL) && (substring != NULL) && (strcmp(substring,"") != 0)){
       stringLength=strlen(*string);
       substringLength=strlen(substring);
-      tmpSub=strstr( *string, substring );
+      
+      tmpSub=strstr(*string, substring);
       if (tmpSub != NULL) {
          substringPos=stringLength - strlen(tmpSub);
          if (! (tmpString=malloc(stringLength - substringLength + 1 )) ){
@@ -567,6 +569,7 @@ void SeqUtil_stripSubstring( char ** string, char * substring) {
          *string = tmpString; 
       }
   }
+  SeqUtil_TRACE("SeqUtil_stripSubstring(): resulting string %s \n",string);
 } 
 
 

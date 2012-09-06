@@ -627,10 +627,10 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    */
 void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home ) {
    char *xmlFile = NULL, *currentFlowNode = NULL;
-   char query[512],submitsQuery[512];
+   char query[512],submitsQuery[512], pathToModule[SEQ_MAXFIELD];
 
    char *tmpstrtok = NULL, *tmpJobPath = NULL, *suiteName = NULL, *module = NULL;
-   char *taskPath = NULL, *intramodulePath = NULL, *pathToModule=NULL;
+   char *taskPath = NULL, *intramodulePath = NULL, *tmpPTM=NULL;
    int i = 0, count=0, totalCount = 0;
    xmlDocPtr doc = NULL, previousDoc=NULL;
    xmlAttrPtr propertiesPtr = NULL;
@@ -718,7 +718,6 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          /* reset the intramodule path */
          free(intramodulePath);
          intramodulePath = NULL;
-	 SeqUtil_stringAppend( &intramodulePath, "" );
 
          /* read the flow file located in the module depot */
 	 free(xmlFile);
@@ -811,14 +810,18 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       xmlXPathFreeObject (submitsResult);
    }
 
-   /* at this point we're done validating the nodes */
-   /* point the context to the last node retrieved so that we can
-      do relative queries */
-   pathToModule=strdup(_nodeDataPtr->container);
-   SeqUtil_stripSubstring(&pathToModule,intramodulePath); 
-   SeqUtil_stringAppend(&pathToModule, "/"); 
-   SeqUtil_stringAppend(&pathToModule, module); 
-   SeqNode_setPathToModule(_nodeDataPtr, pathToModule); 
+  /* SeqUtil_stripSubstring(&pathToModule,intramodulePath,1); */
+   memset(pathToModule, '\0', sizeof(pathToModule)); 
+   if (intramodulePath != NULL) { 
+       /* if container and intramodule path are equal, you're in the Entry module, so pathToModule is empty */
+      if (strcmp(intramodulePath, _nodeDataPtr->container) != 0) {   
+           tmpPTM=malloc(strlen(_nodeDataPtr->container) - strlen(intramodulePath)+1); 
+           (void)strncpy(pathToModule,_nodeDataPtr->container,strlen(_nodeDataPtr->container) - strlen(intramodulePath)); 
+      }
+   } else {
+     strcpy(pathToModule,_nodeDataPtr->container); 
+   }
+   sprintf(pathToModule,"%s/%s",pathToModule,module); 
 
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** Node Information **********\n" );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() node path:%s\n", _nodePath );
@@ -827,6 +830,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() pathToModule=%s\n", pathToModule );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() taskPath=%s\n", taskPath );
    SeqNode_setInternalPath( _nodeDataPtr, taskPath );
+
+   /* at this point we're done validating the nodes */
+   /* point the context to the last node retrieved so that we can
+      do relative queries */
   
    /* retrieve node specific attributes */
    strcpy ( query, "(@*)");
@@ -901,6 +908,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    free(tmpJobPath);
    free(module);
    free(taskPath);
+   free(tmpPTM);
    free(xmlFile);
    free(currentFlowNode);
 }
