@@ -284,23 +284,26 @@ char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp,
 void SeqUtil_stringAppend( char** source, char* data )
 {
    char* newDataPtr = NULL;
-   if ( *source != NULL ) {
-      if( ! (newDataPtr = malloc( strlen(*source) + strlen( data ) + 1 )  )) {
-         printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
-	 return;
+   /*do not change source if data is null*/
+   if (data != NULL) {
+      if ( *source != NULL ) {
+         if( ! (newDataPtr = malloc( strlen(*source) + strlen( data ) + 1 )  )) {
+            printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
+	    return;
+         }
+         strcpy( newDataPtr, *source );
+         strcat( newDataPtr, data );
+      } else {
+         if( ! (newDataPtr = malloc( strlen( data ) + 1 ) ) ) {
+            printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
+   	    return;
+         }
+         strcpy( newDataPtr, data );
       }
-      strcpy( newDataPtr, *source );
-      strcat( newDataPtr, data );
-   } else {
-      if( ! (newDataPtr = malloc( strlen( data ) + 1 ) ) ) {
-         printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
-	 return;
-      }
-      strcpy( newDataPtr, data );
-   }
 
-   free( *source );
-   *source = newDataPtr;
+      free( *source );
+      *source = newDataPtr;
+  }
 }
 
 char *SeqUtil_resub (const char *regex_text, const char *repl_text, const char *str)
@@ -545,16 +548,18 @@ char* SeqUtil_striplast( const char* str ) {
   return( noLast );
 }
 
-/*remove substring from a string, modifies the string argument*/
+/*removes first occurance of the substring from a string, modifies the string argument */
 void SeqUtil_stripSubstring( char ** string, char * substring) {
  
   int substringPos=0, stringLength=0, substringLength=0; 
-  char * tmpString =NULL , *tmpSub = NULL; 
+  char * tmpString =NULL , * tmpSub = NULL; 
   
+
   if ((*string != NULL) && (substring != NULL) && (strcmp(substring,"") != 0)){
       stringLength=strlen(*string);
       substringLength=strlen(substring);
-      tmpSub=strstr( *string, substring );
+      
+      tmpSub=strstr(*string, substring);
       if (tmpSub != NULL) {
          substringPos=stringLength - strlen(tmpSub);
          if (! (tmpString=malloc(stringLength - substringLength + 1 )) ){
@@ -567,6 +572,7 @@ void SeqUtil_stripSubstring( char ** string, char * substring) {
          *string = tmpString; 
       }
   }
+  SeqUtil_TRACE("SeqUtil_stripSubstring(): resulting string %s \n",string);
 } 
 
 
