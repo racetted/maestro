@@ -822,6 +822,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
      strcpy(pathToModule,_nodeDataPtr->container); 
    }
    sprintf(pathToModule,"%s/%s",pathToModule,module); 
+   SeqNode_setPathToModule(_nodeDataPtr, pathToModule);
 
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** Node Information **********\n" );
    SeqUtil_TRACE ( "nodeinfo.getFlowInfo() node path:%s\n", _nodePath );

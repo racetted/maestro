@@ -105,11 +105,8 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
 
    SeqUtil_TRACE( "maestro.go_abort() node=%s signal=%s flow=%s\n", _nodeDataPtr->name, _signal, _flow );
    actions( _signal, _flow, _nodeDataPtr->name );
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }
+
+   extName = SeqNode_extension( _nodeDataPtr );
 
    /*
    Go through the list of _nodeDataPtr->abort_actions to find the current status.
@@ -119,37 +116,38 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    a lockfile with an extension "rerun". If it bombs again, the extension
    will be "stop". 
    */
-
-   tempPtr = _nodeDataPtr->abort_actions;
-   while ( tempPtr != NULL ) {
-      current_action = (char *) malloc(strlen(tempPtr->data)+1);
-      strcpy(current_action,tempPtr->data);
-      SeqUtil_TRACE( "maestro.go_abort() checking for action %s on node %s \n", current_action, _nodeDataPtr->name); 
-      sprintf(filename,"%s/%s/%s.abort.%s",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName,  current_action);
-      if ( access(filename, R_OK) == 0 ) {
-      /* We've done this action the last time, so we're up to the next one */
-         tempPtr = tempPtr->nextPtr;
-         free(current_action);
-         current_action = NULL;
-         if ( tempPtr != NULL ) {
-             current_action = (char *) malloc(strlen(tempPtr->data)+1);
-             strcpy(current_action,tempPtr->data);
-             SeqUtil_TRACE( "maestro.go_abort() doing action %s on node %s \n", current_action, _nodeDataPtr->name); 
-         }
-         break;
-      } else if ( tempPtr->nextPtr == NULL ) {
-         /* no file was found, and we've reached the end of the list, so we must do the first action */
-         tempPtr = _nodeDataPtr->abort_actions;
+   if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ){
+      tempPtr = _nodeDataPtr->abort_actions;
+      while ( tempPtr != NULL ) {
          current_action = (char *) malloc(strlen(tempPtr->data)+1);
          strcpy(current_action,tempPtr->data);
-         SeqUtil_TRACE( "maestro.go_abort() doing action %s on node %s \n", current_action, _nodeDataPtr->name); 
-         break; 
-      } else {
-         /* next action, we're not at the end of the list yet */
-         tempPtr = tempPtr->nextPtr;
+         SeqUtil_TRACE( "maestro.go_abort() checking for action %s on node %s \n", current_action, _nodeDataPtr->name); 
+         sprintf(filename,"%s/%s/%s.abort.%s",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName,  current_action);
+         SeqUtil_TRACE( "maestro.go_abort() checking for file %s \n", filename); 
+         if ( access(filename, R_OK) == 0 ) {
+         /* We've done this action the last time, so we're up to the next one */
+            tempPtr = tempPtr->nextPtr;
+            free(current_action);
+            current_action = NULL;
+            if ( tempPtr != NULL ) {
+                current_action = (char *) malloc(strlen(tempPtr->data)+1);
+                strcpy(current_action,tempPtr->data);
+                SeqUtil_TRACE( "maestro.go_abort() doing action %s on node %s \n", current_action, _nodeDataPtr->name); 
+            }
+            break;
+         } else if ( tempPtr->nextPtr == NULL ) {
+            /* no file was found, and we've reached the end of the list, so we must do the first action */
+            tempPtr = _nodeDataPtr->abort_actions;
+            current_action = (char *) malloc(strlen(tempPtr->data)+1);
+            strcpy(current_action,tempPtr->data);
+            SeqUtil_TRACE( "maestro.go_abort() doing action %s on node %s \n", current_action, _nodeDataPtr->name); 
+            break; 
+         } else {
+            /* next action, we're not at the end of the list yet */
+            tempPtr = tempPtr->nextPtr;
+         }
       }
    }
-
    /*
    if flow is "stop", set abort_action to stop so as not to continue {icrrun}
    */
@@ -169,19 +167,24 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    /* create status file for current action */
 
    setAbortState ( _nodeDataPtr, current_action );
-
+    
    if ( strcmp( current_action, "rerun" ) == 0 ) {
       /* issue an appropriate message, then rerun the node */
-      printf( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
-      nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,"BOMBED: it has been resubmitted",_nodeDataPtr->datestamp);
-      go_submit( "submit", _flow , _nodeDataPtr, 1 );
+      if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ) {
+         printf( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
+         nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,"BOMBED: it has been resubmitted",_nodeDataPtr->datestamp);
+         go_submit( "submit", _flow , _nodeDataPtr, 1 );
+      }
    } else if (strcmp(current_action,"cont") == 0) {
          /*  issue a log message, then submit the jobs in node->submits */
-         printf( "nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, "cont" );
-         nodeabort( _signal, _nodeDataPtr, "cont", _nodeDataPtr->datestamp);
-         /* submit the rest of the jobs it's supposed to submit (still missing dependency submissions)*/
-         SeqUtil_TRACE( "maestro.go_abort() doing submissions\n", _nodeDataPtr->name, _signal );
-         submitNodeList(_nodeDataPtr->submits, _nodeDataPtr->loop_args);
+         if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ) {
+
+             printf( "nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, "cont" );
+             nodeabort( _signal, _nodeDataPtr, "cont", _nodeDataPtr->datestamp);
+             /* submit the rest of the jobs it's supposed to submit (still missing dependency submissions)*/
+             SeqUtil_TRACE( "maestro.go_abort() doing submissions\n", _nodeDataPtr->name, _signal );
+             submitNodeList(_nodeDataPtr->submits, _nodeDataPtr->loop_args);
+	 }
    } else if (strcmp(current_action,"stop") == 0) {
       /* issue a message that the job has bombed */
          printf("nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, current_action);
@@ -294,7 +297,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
       raiseError( "maestro -s initbranch cannot be called on task nodes. Exiting. \n" );
    }
    setInitState( _nodeDataPtr ); 
-
+   /* TODO this method might not work when doing a foreach container...*/
    SeqUtil_stringAppend( &extName, "" );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
@@ -693,6 +696,7 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
        if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
             containerLoopExt = (char*) SeqLoops_getExtFromLoopArgs(newArgs);
+            SeqUtil_TRACE( "maestro.go_end() containerLoopExt %s\n", containerLoopExt);
             SeqUtil_stringAppend( &nptExt, containerLoopExt );
             free(containerLoopExt);
             SeqUtil_stringAppend( &nptExt, "+last" );
@@ -1067,7 +1071,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char listingDir[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
    char *cpu = NULL;
-   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *workerEndFile=NULL;
+   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *workerEndFile=NULL, *readyFile=NULL;
    char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL;
    int catchup = CatchupNormal;
    int error_status = 0;
@@ -1130,9 +1134,17 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     /*clean up tar file in case it's there*/
              tarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tar")+1);
 	     sprintf(tarFile, "%s/%s.tar", tmpTarPath, extName);
-	     if ( access(tarFile, R_OK) == 0) removeFile(tarFile); 
+             movedTarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+ strlen(".tar")+1);
+	     sprintf(movedTarFile, "%s/%s.tmp.tar", tmpTarPath, extName);
+             movedTmpName=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+1);
+	     sprintf(movedTmpName, "%s/%s.tmp", tmpTarPath, extName);
+	     readyFile=malloc(strlen(tmpTarPath) +strlen("/") + strlen(extName) + strlen(".tar.ready") + 1 );
+	     sprintf(readyFile,"%s/%s.tar.ready", tmpTarPath, extName);
 
-;
+	     if ( access(tarFile, R_OK) == 0) removeFile(tarFile); 
+	     if ( access(movedTarFile, R_OK) == 0) removeFile(movedTarFile); 
+	     if ( access(readyFile, R_OK) == 0) removeFile(readyFile); 
+
 	     /*check if the running worker has not ended. If it has, launch another one.*/
 	     workerEndFile=malloc(strlen(_nodeDataPtr->workdir) + strlen("/") + strlen(_nodeDataPtr->datestamp) + strlen("/") + strlen(_nodeDataPtr->workerPath) + strlen(".end") + 1);
 	     sprintf(workerEndFile,"%s/%s/%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath);
@@ -1142,8 +1154,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	        maestro ( _nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL );
 	     }	
 
-	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -jobtar %s/%s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, tmpTarPath , extName, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
-
+	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -jobtar %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
          } else {
 	     /* normal submit mode */
@@ -1154,6 +1165,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          SeqUtil_TRACE("maestro.go_submit() cmd_length=%d %s\n",strlen(cmd), cmd);
          error_status = system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
+         if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
+             rename(movedTarFile,tarFile);
+	     SeqUtil_TRACE("maestro.go_submit() moving temporary tar file %s to %s \n", movedTarFile, tarFile); 
+	     touch(readyFile);
+	 }
          if (!error_status){
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
          } 
@@ -1174,7 +1190,16 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     /*clean up tar file in case it's there*/
              tarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tar")+1);
 	     sprintf(tarFile, "%s/%s.tar", tmpTarPath, extName);
+             movedTarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+ strlen(".tar")+1);
+	     sprintf(movedTarFile, "%s/%s.tmp.tar", tmpTarPath, extName);
+             movedTmpName=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+1);
+	     sprintf(movedTmpName, "%s/%s.tmp", tmpTarPath, extName);
+	     readyFile=malloc(strlen(tmpTarPath) +strlen("/") + strlen(extName) + strlen(".tar.ready") + 1 );
+	     sprintf(readyFile,"%s/%s.tar.ready", tmpTarPath, extName);
+
 	     if ( access(tarFile, R_OK) == 0) removeFile(tarFile); 
+	     if ( access(movedTarFile, R_OK) == 0) removeFile(movedTarFile); 
+	     if ( access(readyFile, R_OK) == 0) removeFile(readyFile); 
 
 	     /*check if the running worker has not ended. If it has, launch another one.*/
 	     workerEndFile=malloc(strlen(_nodeDataPtr->workdir) + strlen("/") + strlen(_nodeDataPtr->datestamp) + strlen(_nodeDataPtr->workerPath) + strlen("/") + strlen(".end") + 1);
@@ -1183,7 +1208,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     if ( access(workerEndFile, R_OK) == 0) {
 	         maestro (_nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL );
              }
-	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing %s -jobcfg %s -nosubmit -jobtar %s/%s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, tmpTarPath, extName, _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing %s -jobcfg %s -nosubmit -jobtar %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, movedTmpName, _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
 
          } else { /* normal container case */
 	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
@@ -1193,6 +1218,12 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          SeqUtil_TRACE("maestro.go_submit() cmd_length=%d %s\n",strlen(cmd), cmd);
          error_status=system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
+         if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
+             rename(movedTarFile,tarFile);
+	     SeqUtil_TRACE("maestro.go_submit() moving temporary tar file %s to %s \n", movedTarFile, tarFile); 
+	     touch(readyFile);
+	 }
+
          if (!error_status){
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
          } 
@@ -1204,6 +1235,9 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    free( tmpTarPath );
    free( workerEndFile );
    free( tarFile); 
+   free( movedTarFile); 
+   free( movedTmpName); 
+   free( readyFile); 
    free( extName );
    free( fullExtName );
    return(error_status);
