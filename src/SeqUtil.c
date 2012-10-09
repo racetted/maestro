@@ -637,3 +637,22 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
    return returnString; 
 } 
 
+void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
+
+   va_list ap;
+   FILE* tmpFile;
+
+   va_start(ap, text); 
+   if (filename != NULL) {
+      if ((tmpFile = fopen(filename,"a+")) == NULL) {
+         raiseError( "maestro cannot write to file:%s\n",filename );
+      }
+      vfprintf(tmpFile, text, ap);
+      fclose(tmpFile);
+   } else {
+      vfprintf(stdout, text, ap);
+   }
+   va_end(ap);
+}
+
+

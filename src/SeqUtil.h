@@ -36,5 +36,6 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
 char* SeqUtil_striplast( const char* str ) ;
 void SeqUtil_stripSubstring(char ** string, char * substring);
 char * SeqUtil_relativePathEvaluation( char* depName, SeqNodeDataPtr _nodeDataPtr); 
+void SeqUtil_printOrWrite( const char * filename, char * text, ...); 
 
 #endif

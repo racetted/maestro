@@ -927,6 +927,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    } else {
       seq_exp_home = _exp_home;
    }
+
    tmpfilters = strdup( filters );
    tmpstrtok = (char*) strtok( tmpfilters, "," );
    while ( tmpstrtok != NULL ) {
@@ -942,6 +943,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
+   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
 

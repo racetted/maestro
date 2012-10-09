@@ -504,16 +504,20 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->errormsg = NULL;
 }
 
-void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
+void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const char * filename ) {
 
    char *tmpstrtok = NULL, *tmpFilters ;
    int showAll = 0, showCfgPath = 0, showTaskPath = 0, showRessource = 0; 
-   int showType = 0, showNode = 0, showRootOnly = 0, showResPath = 0;
+   int showType = 0, showNode = 0, showRootOnly = 0, showResPath = 0, showVar=0;
    SeqNameValuesPtr nameValuesPtr = NULL ;
    SeqDependenciesPtr depsPtr = NULL;
    LISTNODEPTR submitsPtr = NULL, siblingsPtr = NULL, abortsPtr = NULL;
    SeqLoopsPtr loopsPtr = NULL;
    SeqUtil_TRACE( "SeqNode.SeqNode_printNode() called\n" );
+
+   if( filename != NULL ) {
+      removeFile(filename);
+   }
    if( filters == NULL ) {
       showAll = 1;
    } else {
@@ -522,6 +526,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
       while ( tmpstrtok != NULL ) {
          if ( strcmp( tmpstrtok, "all" ) == 0 ) showAll = 1;
          if ( strcmp( tmpstrtok, "cfg" ) == 0 ) showCfgPath = 1;
+         if ( strcmp( tmpstrtok, "var" ) == 0 ) showVar = 1;
          if ( strcmp( tmpstrtok, "task" ) == 0 ) showTaskPath = 1;
          if ( strcmp( tmpstrtok, "res" ) == 0 ) showRessource = 1;
          if ( strcmp( tmpstrtok, "res_path" ) == 0 ) showResPath = 1;
@@ -532,7 +537,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
          tmpstrtok = (char*) strtok(NULL,",");
       }
 
-      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly || showResPath ) == 0) {
+      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly || showResPath || showVar ) == 0) {
          raiseError("Filters %s unrecognized\n", filters);
       }
 
@@ -540,124 +545,129 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters ) {
 
    /*printf("************ Seq Node Information \n"); */
    if( showAll ) {
-      printf("node.name=%s\n", node_ptr->name );
-      printf( "node.extension=%s\n",  node_ptr->extension);
-      printf("node.leaf=%s\n", node_ptr->nodeName );
-      printf("node.module=%s\n", node_ptr->module );
-      printf("node.container=%s\n", node_ptr->container );
-      printf("node.intramodule_container=%s\n", node_ptr->intramodule_container );
+      SeqUtil_printOrWrite(filename,"node.name=%s\n", node_ptr->name );
+      SeqUtil_printOrWrite(filename, "node.extension=%s\n",  node_ptr->extension);
+      SeqUtil_printOrWrite(filename,"node.leaf=%s\n", node_ptr->nodeName );
+      SeqUtil_printOrWrite(filename,"node.module=%s\n", node_ptr->module );
+      SeqUtil_printOrWrite(filename,"node.container=%s\n", node_ptr->container );
+      SeqUtil_printOrWrite(filename,"node.intramodule_container=%s\n", node_ptr->intramodule_container );
       /*
-      printf("alias=%s\n", node_ptr->alias );
-      printf("args=%s\n", node_ptr->args );
+      SeqUtil_printOrWrite(filename,"alias=%s\n", node_ptr->alias );
+      SeqUtil_printOrWrite(filename,"args=%s\n", node_ptr->args );
       */
    }
    if (showRootOnly) {
-      printf("node.rootnode=%s\n",node_ptr->name);
+      SeqUtil_printOrWrite(filename,"node.rootnode=%s\n",node_ptr->name);
    }
 
    if (showNode) {
-      (node_ptr->extension == NULL || strlen(node_ptr->extension) == 0) ? printf("node.fullnode=%s\n",node_ptr->name) : printf("node.fullnode=%s.%s\n",node_ptr->name,node_ptr->extension);
+      (node_ptr->extension == NULL || strlen(node_ptr->extension) == 0) ? SeqUtil_printOrWrite(filename,"node.fullnode=%s\n",node_ptr->name) : SeqUtil_printOrWrite(filename,"node.fullnode=%s.%s\n",node_ptr->name,node_ptr->extension);
    }
 
    if ( showAll || showType ) {
-        printf("node.type=%s\n", SeqNode_getTypeString( node_ptr->type ) );
+        SeqUtil_printOrWrite(filename,"node.type=%s\n", SeqNode_getTypeString( node_ptr->type ) );
    } 
 
    if( showAll || showRessource ) {
-      printf("node.catchup=%d\n", node_ptr->catchup );
-      printf("node.mpi=%d\n", node_ptr->mpi);
-      printf("node.wallclock=%d\n", node_ptr->wallclock );
-      printf("node.cpu=%s\n", node_ptr->cpu );
-      printf("node.cpu_multiplier=%s\n", node_ptr->cpu_multiplier );
-      printf("node.machine=%s\n", node_ptr->machine );
-      printf("node.queue=%s\n", node_ptr->queue );
-      printf("node.memory=%s\n", node_ptr->memory );
-      printf("node.workerPath=%s\n", node_ptr->workerPath );
-      printf("node.soumetArgs=%s\n", node_ptr->soumetArgs );
+      SeqUtil_printOrWrite(filename,"node.catchup=%d\n", node_ptr->catchup );
+      SeqUtil_printOrWrite(filename,"node.mpi=%d\n", node_ptr->mpi);
+      SeqUtil_printOrWrite(filename,"node.wallclock=%d\n", node_ptr->wallclock );
+      SeqUtil_printOrWrite(filename,"node.cpu=%s\n", node_ptr->cpu );
+      SeqUtil_printOrWrite(filename,"node.cpu_multiplier=%s\n", node_ptr->cpu_multiplier );
+      SeqUtil_printOrWrite(filename,"node.machine=%s\n", node_ptr->machine );
+      SeqUtil_printOrWrite(filename,"node.queue=%s\n", node_ptr->queue );
+      SeqUtil_printOrWrite(filename,"node.memory=%s\n", node_ptr->memory );
+      SeqUtil_printOrWrite(filename,"node.workerPath=%s\n", node_ptr->workerPath );
+      SeqUtil_printOrWrite(filename,"node.soumetArgs=%s\n", node_ptr->soumetArgs );
    }
    if( showAll || showCfgPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-         printf("node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
+         SeqUtil_printOrWrite(filename,"node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
       } else {
-         printf("node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
+         SeqUtil_printOrWrite(filename,"node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
       }
    }
 
    if( (showAll || showTaskPath) && (node_ptr->type == Task || node_ptr->type == NpassTask) ) {
       if ( strcmp( node_ptr->taskPath, "" ) == 0 )
-         printf("node.taskpath=\n");
+         SeqUtil_printOrWrite(filename,"node.taskpath=\n");
       else
-         printf("node.taskpath=${SEQ_EXP_HOME}/modules%s.tsk\n", node_ptr->taskPath );
+         SeqUtil_printOrWrite(filename,"node.taskpath=${SEQ_EXP_HOME}/modules%s.tsk\n", node_ptr->taskPath );
    }
    if ( showAll || showResPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s.xml\n", node_ptr->name);
+         SeqUtil_printOrWrite(filename,"node.resourcepath=${SEQ_EXP_HOME}/resources%s.xml\n", node_ptr->name);
       } else {
-         printf("node.resourcepath=${SEQ_EXP_HOME}/resources%s/container.xml\n", node_ptr->name );
+         SeqUtil_printOrWrite(filename,"node.resourcepath=${SEQ_EXP_HOME}/resources%s/container.xml\n", node_ptr->name );
       }
    }
 
    if( showAll ) {
 
-      printf( "node.flow=${SEQ_EXP_HOME}/modules/%s/flow.xml\n", node_ptr->module );
-      /*printf("************ Node Specific Data \n"); */
+      SeqUtil_printOrWrite(filename, "node.flow=${SEQ_EXP_HOME}/modules/%s/flow.xml\n", node_ptr->module );
+      /*SeqUtil_printOrWrite(filename,"************ Node Specific Data \n"); */
       nameValuesPtr = node_ptr->data;
       while (nameValuesPtr != NULL ) {
-         printf("node.specific.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
+         SeqUtil_printOrWrite(filename,"node.specific.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
          nameValuesPtr = nameValuesPtr->nextPtr;
       }
-      /*printf("************ Node Dependencies \n"); */
+      /*SeqUtil_printOrWrite(filename,"************ Node Dependencies \n"); */
       depsPtr = node_ptr->depends;
    
       while( depsPtr != NULL ) {
          nameValuesPtr =  depsPtr->dependencyItem;
    
-         /*printf("********* Dependency Item \n"); */
+         /*SeqUtil_printOrWrite(filename,"********* Dependency Item \n"); */
          if ( depsPtr->type == NodeDependancy ) {
-            printf("node.depend.type=Node\n");
+            SeqUtil_printOrWrite(filename,"node.depend.type=Node\n");
          } else if ( depsPtr->type == DateDependancy ) { 
-            printf("node.depend.type=Date\n");
+            SeqUtil_printOrWrite(filename,"node.depend.type=Date\n");
          }
          while (nameValuesPtr != NULL ) {
             if( strlen( nameValuesPtr->value ) > 0 ) 
-               printf("node.depend.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
+               SeqUtil_printOrWrite(filename,"node.depend.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
             nameValuesPtr = nameValuesPtr->nextPtr;
          }
          depsPtr  = depsPtr->nextPtr;
       }
    
-      /*printf("************ Node Submits \n"); */
+      /*SeqUtil_printOrWrite(filename,"************ Node Submits \n"); */
       submitsPtr = node_ptr->submits;
       while (submitsPtr != NULL) {
-         printf("node.submit=%s\n", submitsPtr->data);
+         SeqUtil_printOrWrite(filename,"node.submit=%s\n", submitsPtr->data);
          submitsPtr = submitsPtr->nextPtr;
       }
    
-      /*printf("************ Node Abort Actions \n"); */
+      /*SeqUtil_printOrWrite(filename,"************ Node Abort Actions \n"); */
       abortsPtr = node_ptr->abort_actions;
       while (abortsPtr != NULL) {
-         printf("node.abortaction=%s\n", abortsPtr->data);
+         SeqUtil_printOrWrite(filename,"node.abortaction=%s\n", abortsPtr->data);
          abortsPtr = abortsPtr->nextPtr;
       }
-      /*printf("************ Containing Loops \n"); */
+      /*SeqUtil_printOrWrite(filename,"************ Containing Loops \n"); */
       loopsPtr = node_ptr->loops;
       while (loopsPtr != NULL) {
-         /*printf("************ Loop \n"); */
-         printf("node.loop_parent.name=%s\n", loopsPtr->loop_name);  
+         /*SeqUtil_printOrWrite(filename,"************ Loop \n"); */
+         SeqUtil_printOrWrite(filename,"node.loop_parent.name=%s\n", loopsPtr->loop_name);  
          nameValuesPtr = loopsPtr->values;
          while (nameValuesPtr != NULL ) {
-            printf("node.loop_parent.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
+            SeqUtil_printOrWrite(filename,"node.loop_parent.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
             nameValuesPtr = nameValuesPtr->nextPtr;
          }
          loopsPtr = loopsPtr->nextPtr;
       }
-      /*printf("************ Node Siblings \n"); */
+      /*SeqUtil_printOrWrite(filename,"************ Node Siblings \n"); */
       siblingsPtr = node_ptr->siblings;
       while (siblingsPtr != NULL) {
-         printf("node.sibling=%s\n", siblingsPtr->data);
+         SeqUtil_printOrWrite(filename,"node.sibling=%s\n", siblingsPtr->data);
          siblingsPtr = siblingsPtr->nextPtr;
       }
    }
+
+   if (showVar) {
+        SeqNode_generateConfig( node_ptr,"continue", filename); 
+   }
+
    free( tmpFilters );
    SeqUtil_TRACE( "SeqNode.SeqNode_printNode() done\n" );
 }
@@ -708,6 +718,9 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->soumetArgs ) ;
       free( seqNodeDataPtr->errormsg ) ;
       free( seqNodeDataPtr->cpu ) ;
+      free( seqNodeDataPtr->npex ) ;
+      free( seqNodeDataPtr->npey ) ;
+      free( seqNodeDataPtr->omp ) ;
       free( seqNodeDataPtr->cpu_multiplier );
       free( seqNodeDataPtr->taskPath ) ;
       free( seqNodeDataPtr->suiteName ) ;
@@ -716,7 +729,10 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->queue ) ;
       free( seqNodeDataPtr->datestamp) ;
       free( seqNodeDataPtr->workdir) ;
-   
+      free( seqNodeDataPtr->pathToModule) ;
+      free( seqNodeDataPtr->extension) ;
+      free( seqNodeDataPtr->workerPath) ;
+  
       depsPtr = seqNodeDataPtr->depends;
       /* free a link-list of dependency items */
       while( depsPtr != NULL ) {
@@ -733,71 +749,124 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->siblings) );
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->data ));
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->loop_args ));
-/*      SeqNode_freeNameValues( seqNodeDataPtr->data );
-      SeqNode_freeNameValues( seqNodeDataPtr->loop_args ); */
       free( seqNodeDataPtr );
    }
 }
 
-void seqNodeUnitTest () {
-   SeqNodeDataPtr  nodeDataPtr = NULL;
-   /*
-   SeqNodeData nodeData;
-   SeqNode_init( &nodeData );
-   SeqNode_setName( &nodeData, "test_nodename" );
-   */
-   nodeDataPtr = SeqNode_createNode( "testsuite/assimilation/00/get_observations/test_nodename" );
-   SeqNode_setModule( nodeDataPtr, "assim_module" );
-   SeqNode_setNodeName( nodeDataPtr, "test_nodename" );
-   SeqNode_setContainer( nodeDataPtr, "testsuite/assimilation/00" );
-   SeqNode_addNodeDependency( nodeDataPtr, NodeDependancy, "testsuite/assimilation/00/testnode", "afsisul", "testpath", "testsuite", "complete" ,"", "", "");
-   SeqNode_addNodeDependency( nodeDataPtr, NodeDependancy, "testsuite/assimilation/00/testnode1", "afsisul", "testpath1", "testsuite", "complete","", "", "" );
-   /*
-   SeqNode_addNodeDependency( nodeDataPtr, "testsuite/assimilation/00/testnode1", "afsisul", "testsuite", "complete" );
-   SeqNode_addDateDependency ( nodeDataPtr, "2008/02/18-23:50" );
-   */
-   SeqNode_addSubmit( nodeDataPtr, "submits_node_0" );
-   SeqNode_addSubmit( nodeDataPtr, "submits_node_1" );
-   SeqNode_addSibling( nodeDataPtr, "sibling_0" );
-   SeqNode_addSibling( nodeDataPtr, "sibling_1" );
-   SeqNode_addAbortAction( nodeDataPtr, "stop" );
-   SeqNode_addAbortAction( nodeDataPtr, "continue" );
-   SeqNode_addSpecificData( nodeDataPtr, "LOOP_START", "0" );
-   SeqNode_addSpecificData( nodeDataPtr, "LOOP_END", "30" );
-   SeqNode_addSpecificData( nodeDataPtr, "LOOP_STEP", "1" );
-   SeqNode_printNode( nodeDataPtr, "all" );
-   SeqNode_freeNode( nodeDataPtr );
-}
+/* 
+SeqNode_generateConfig
 
-/*
-int main (argc,argv)
-int argc;
-char *argv[];
-{
-   unitTest();
-   return(0);
-}
+Generates a config file that will be passed to ord_soumet so that the
+exported variables are available for the tasks
+
+Inputs:
+  _nodeDataPtr - pointer to the node targetted by the execution
+  flow - pointer to the value of the flow given to the binary ( -f option)
+  filename - char * pointer to where the file must be generated, if null will be output to stdout
+
 */
-   /*
-   SeqNameValues nameValues;
-   nameValues.name = malloc ( sizeof(char) * 16 );
-   nameValues.value = malloc ( sizeof(char) * 16 );
-   strcpy( nameValues.name, "dep_item0_name" );
-   strcpy( nameValues.value, "dep_item0_value" );
-   nameValues.nextPtr = NULL;
+void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename) {
+   char *extName = NULL;
+   int stringLength = 0; 
+   char pidbuf[100];
+   char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
+   SeqNameValuesPtr loopArgsPtr=NULL , containerLoopArgsList = NULL;
+   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
+   if( strlen( _nodeDataPtr->extension ) > 0 ) {
+      SeqUtil_stringAppend( &extName, "." );
+      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
+   }
+   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro_%s)\n", getenv("SEQ_MAESTRO_DOMAIN"), getenv("SEQ_MAESTRO_VERSION"));
+   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro-utils_%s)\n", getenv("SEQ_UTILS_DOMAIN"), getenv("SEQ_UTILS_VERSION"));
+   SeqUtil_printOrWrite( filename, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
+   SeqUtil_printOrWrite( filename, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
+   SeqUtil_printOrWrite( filename, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
+   SeqUtil_printOrWrite( filename, "export SEQ_TRACE_LEVEL=%d\n", SeqUtil_getTraceLevel());
+   SeqUtil_printOrWrite( filename, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
+   SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
+   if ( _nodeDataPtr-> npex != NULL ) {
+   SeqUtil_printOrWrite( filename, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
+   } 
+   if ( _nodeDataPtr-> npey != NULL ) {
+   SeqUtil_printOrWrite( filename, "export SEQ_NPEY=%s\n", _nodeDataPtr->npey);
+   }
+   if ( _nodeDataPtr-> omp != NULL ) {
+   SeqUtil_printOrWrite( filename, "export SEQ_OMP=%s\n", _nodeDataPtr->omp);
+   }
+   SeqUtil_printOrWrite( filename, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
+   SeqUtil_printOrWrite( filename, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
+   loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
+   if( strlen( loopArgs ) > 0 ) {
+      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_ARGS=\"-l %s\"\n", loopArgs );
+   } else {
+      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_ARGS=\"\"\n" );
+   }
 
-   SeqNameValues nameValues2;
-   nameValues2.name = malloc ( sizeof(char) * 16 );
-   nameValues2.value = malloc ( sizeof(char) * 16 );
-   strcpy( nameValues2.name, "dep_item1_name" );
-   strcpy( nameValues2.value, "dep_item1_value" );
-   nameValues2.nextPtr = NULL;
+   if( strlen( _nodeDataPtr->extension ) > 0 ) {
+      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"%s\"\n", _nodeDataPtr->extension );
+   } else {
+      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"\"\n" );
+   } 
 
-   nodeData.depends = malloc ( sizeof(SeqNameValuesPtr) * 2 );
-   nodeData.depends[0] = &nameValues;
-   nodeData.depends[1] = &nameValues2;
-   nodeData.dependsLen = 2;
-   */
+   /*container arguments, used in npass tasks mostly*/
+   containerLoopArgsList = SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+   if ( containerLoopArgsList != NULL) {
+      containerLoopArgs = (char*) SeqLoops_getLoopArgs(containerLoopArgsList);
+      containerLoopExt =  (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList);
+   }
+   if ( containerLoopArgs != NULL ) {
+      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_ARGS=\"-l %s\"\n", containerLoopArgs );
+      free(containerLoopArgs);
+   } else {
+      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_ARGS=\"\"\n" );
+   }
+   if ( containerLoopExt != NULL ) {
+      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_EXT=\"%s\"\n", containerLoopExt);
+      free(containerLoopExt);
+   } else {
+      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_EXT=\"\"\n" );
+   } 
+
+   loopArgsPtr = _nodeDataPtr->loop_args;
+   /* Check for :last NPT arg */
+   if (_nodeDataPtr->isLastNPTArg){
+      tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
+      /*remove the :last, raise flag that node has a :last*/
+      stringLength=strlen(tmpValue)-5;
+      tmp2Value=malloc(stringLength+1); 
+      memset(tmp2Value,'\0', stringLength+1);
+      strncpy(tmp2Value, tmpValue, stringLength); 
+      SeqUtil_stringAppend( &tmp2Value, "" );
+      SeqUtil_TRACE("SeqLoops_GenerateConfig Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
+      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmp2Value);
+      SeqLoops_printLoopArgs(_nodeDataPtr->loop_args,"test"); 
+   }
+
+   /* Loop args exported as env variables */
+   while (loopArgsPtr != NULL) {
+      SeqUtil_printOrWrite( filename, "export %s=%s \n", loopArgsPtr->name, loopArgsPtr->value );
+      loopArgsPtr=loopArgsPtr->nextPtr;
+   }
+   
+   if (flow != NULL ) {
+       SeqUtil_printOrWrite( filename, "export SEQ_XFER=%s\n", flow );
+   } else {
+       SeqUtil_printOrWrite( filename, "export SEQ_XFER=continue\n");
+   }
+       
+   SeqUtil_printOrWrite( filename, "export SEQ_WORKER_PATH=%s\n", _nodeDataPtr->workerPath );
+   if (filename != NULL) {
+       SeqUtil_printOrWrite( filename, "export SEQ_TMP_CFG=%s\n", filename);
+   }
+   SeqUtil_printOrWrite( filename, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
+
+   free(tmpdir);
+   free(tmpValue);
+   free(tmp2Value);
+   free(loopArgs);
+   free(loopArgsPtr);
+   SeqNameValues_deleteWholeList( &containerLoopArgsList);
+}
 
 /* return node extension with ^last extension stripped */
 char* SeqNode_extension( const SeqNodeDataPtr _nodeDataPtr ) {

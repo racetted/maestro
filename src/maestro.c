@@ -81,9 +81,6 @@ char* formatWaitingMsg( SeqDependsScope _dep_scope, const char* _dep_exp,
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope  _dep_scope, const char* _dep_name, const char* _dep_index,
                           const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp );
 
-/* ord_soumet related */
-char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow);
-
 /* 
 go_abort
 
@@ -1070,7 +1067,8 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
-   char *cpu = NULL;
+   char pidbuf[100];
+   char *cpu = NULL, *tmpdir=NULL;
    char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *workerEndFile=NULL, *readyFile=NULL;
    char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL;
    int catchup = CatchupNormal;
@@ -1112,15 +1110,30 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
       /* dependencies are satisfied */
       loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
-   
-      tmpCfgFile = generateConfig( _nodeDataPtr, _flow );
+      
+      SeqUtil_stringAppend( &tmpCfgFile,  getenv("SEQ_EXP_HOME"));
+      SeqUtil_stringAppend( &tmpCfgFile, "/sequencing/tmpfile/" );
+      SeqUtil_stringAppend( &tmpdir, tmpCfgFile );
+      SeqUtil_stringAppend( &tmpdir, _nodeDataPtr->container );
+      SeqUtil_mkdir( tmpdir, 1 );
 
+      SeqUtil_stringAppend( &tmpCfgFile, fullExtName );
+      sprintf(pidbuf, "%d", getpid() ); 
+      SeqUtil_stringAppend( &tmpCfgFile, "." );
+      SeqUtil_stringAppend( &tmpCfgFile, pidbuf );
+      SeqUtil_stringAppend( &tmpCfgFile, ".cfg" );
+       
+      if ( access(tmpCfgFile, R_OK) == 0) removeFile(tmpCfgFile); 
+
+      SeqNode_generateConfig( _nodeDataPtr, _flow, tmpCfgFile);
+      cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier );
+
+      /* get short name w/ extension i.e. job+3 */
       SeqUtil_stringAppend( &extName, _nodeDataPtr->nodeName );
       if( strlen( _nodeDataPtr->extension ) > 0 ) {
          SeqUtil_stringAppend( &extName, "." );
          SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
       }
-      cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier );
 
       /* go and submit the job */
       if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
@@ -1238,8 +1251,8 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    free( movedTarFile); 
    free( movedTmpName); 
    free( readyFile); 
-   free( extName );
    free( fullExtName );
+   free( extName );
    return(error_status);
 }
 
@@ -1704,133 +1717,6 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
    return isWaiting;
 }
 
-/* 
-generateConfig
-
-Generates a config file that will be passed to ord_soumet so that the
-exported variables are available for the tasks
-
-Inputs:
-  _nodeDataPtr - pointer to the node targetted by the execution
-  flow - pointer to the value of the flow given to the binary ( -f option)
-
-*/
-char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
-   char *extName = NULL;
-   char *filename = NULL;
-   int stringLength = 0; 
-   char pidbuf[100];
-   char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
-   FILE *tmpFile = NULL;
-   SeqNameValuesPtr loopArgsPtr=NULL , containerLoopArgsList = NULL;
-   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_stringAppend( &extName, "." );
-      SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
-   }
-   SeqUtil_stringAppend( &filename, SEQ_EXP_HOME );
-   SeqUtil_stringAppend( &filename, "/sequencing/tmpfile/" );
-   SeqUtil_stringAppend( &tmpdir, filename );
-   SeqUtil_stringAppend( &tmpdir, _nodeDataPtr->container );
-   SeqUtil_mkdir( tmpdir, 1 );
-
-   SeqUtil_stringAppend( &filename, extName );
-   sprintf(pidbuf, "%d", getpid() ); 
-   SeqUtil_stringAppend( &filename, "." );
-   SeqUtil_stringAppend( &filename, pidbuf );
-   SeqUtil_stringAppend( &filename, ".cfg" );
-   /* open for write & overwrites whatever if file exists */
-   if ((tmpFile = fopen(filename,"w+")) == NULL) {
-      raiseError( "maestro cannot write to file:%s\n",filename );
-   }
-   fprintf( tmpFile, "eval $(ssmuse sh -d %s -p maestro_%s)\n", getenv("SEQ_MAESTRO_DOMAIN"), getenv("SEQ_MAESTRO_VERSION"));
-   fprintf( tmpFile, "eval $(ssmuse sh -d %s -p maestro-utils_%s)\n", getenv("SEQ_UTILS_DOMAIN"), getenv("SEQ_UTILS_VERSION"));
-   fprintf( tmpFile, "export SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
-   fprintf( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
-   fprintf( tmpFile, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
-   fprintf( tmpFile, "export SEQ_TRACE_LEVEL=%d\n", SeqUtil_getTraceLevel());
-   fprintf( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
-   fprintf( tmpFile, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
-   if ( _nodeDataPtr-> npex != NULL ) {
-   fprintf( tmpFile, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
-   } 
-   if ( _nodeDataPtr-> npey != NULL ) {
-   fprintf( tmpFile, "export SEQ_NPEY=%s\n", _nodeDataPtr->npey);
-   }
-   if ( _nodeDataPtr-> omp != NULL ) {
-   fprintf( tmpFile, "export SEQ_OMP=%s\n", _nodeDataPtr->omp);
-   }
-   fprintf( tmpFile, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
-   fprintf( tmpFile, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
-   loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
-   if( strlen( loopArgs ) > 0 ) {
-      fprintf( tmpFile, "export SEQ_LOOP_ARGS=\"-l %s\"\n", loopArgs );
-   } else {
-      fprintf( tmpFile, "export SEQ_LOOP_ARGS=\"\"\n" );
-   }
-
-   if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      fprintf( tmpFile, "export SEQ_LOOP_EXT=\"%s\"\n", _nodeDataPtr->extension );
-   } else {
-      fprintf( tmpFile, "export SEQ_LOOP_EXT=\"\"\n" );
-   } 
-
-   /*container arguments, used in npass tasks mostly*/
-   containerLoopArgsList = SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
-   if ( containerLoopArgsList != NULL) {
-      containerLoopArgs = (char*) SeqLoops_getLoopArgs(containerLoopArgsList);
-      containerLoopExt =  (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList);
-   }
-   if ( containerLoopArgs != NULL ) {
-      fprintf( tmpFile, "export SEQ_CONTAINER_LOOP_ARGS=\"-l %s\"\n", containerLoopArgs );
-      free(containerLoopArgs);
-   } else {
-      fprintf( tmpFile, "export SEQ_CONTAINER_LOOP_ARGS=\"\"\n" );
-   }
-   if ( containerLoopExt != NULL ) {
-      fprintf( tmpFile, "export SEQ_CONTAINER_LOOP_EXT=\"%s\"\n", containerLoopExt);
-      free(containerLoopExt);
-   } else {
-      fprintf( tmpFile, "export SEQ_CONTAINER_LOOP_EXT=\"\"\n" );
-   } 
-
-   loopArgsPtr = _nodeDataPtr->loop_args;
-   /* Check for :last NPT arg */
-   if (_nodeDataPtr->isLastNPTArg){
-      tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
-      /*remove the :last, raise flag that node has a :last*/
-      stringLength=strlen(tmpValue)-5;
-      tmp2Value=malloc(stringLength+1); 
-      memset(tmp2Value,'\0', stringLength+1);
-      strncpy(tmp2Value, tmpValue, stringLength); 
-      SeqUtil_stringAppend( &tmp2Value, "" );
-      SeqUtil_TRACE("SeqLoops_GenerateConfig Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
-      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmp2Value);
-      SeqLoops_printLoopArgs(_nodeDataPtr->loop_args,"test"); 
-   }
-
-   /* Loop args exported as env variables */
-   while (loopArgsPtr != NULL) {
-      fprintf( tmpFile, "export %s=%s \n", loopArgsPtr->name, loopArgsPtr->value );
-      loopArgsPtr=loopArgsPtr->nextPtr;
-   }
-
-   fprintf( tmpFile, "export SEQ_XFER=%s\n", flow );
-   fprintf( tmpFile, "export SEQ_WORKER_PATH=%d\n", _nodeDataPtr->workerPath );
-   fprintf( tmpFile, "export SEQ_TMP_CFG=%s\n", filename);
-   fprintf( tmpFile, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
-
-   fclose(tmpFile);
-   free(tmpdir);
-   free(tmpValue);
-   free(tmp2Value);
-   free(loopArgs);
-   free(loopArgsPtr);
-   SeqNameValues_deleteWholeList( &containerLoopArgsList);
-
-   return filename;
-}
-
 /* this function is used to process dependency status files. It does the following:
  * - verifies if the dependant node's status file(s) is available
  * - it creates waited_end file if the dependancy is not satisfied  
@@ -1849,7 +1735,7 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_scope, const char* _dep_name,const  char* _dep_index,
                           const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp ) {
    char statusFile[SEQ_MAXFIELD];
-   int undoneIteration = 0, isWaiting = 0, depWildcard=0, depCatchup=CatchupNormal;
+   int undoneIteration = 0, isWaiting = 0, depWildcard=0;
    char *waitingMsg = NULL, *depIndexPtr = NULL, *extString = NULL;
    SeqNodeDataPtr depNodeDataPtr = NULL;
    LISTNODEPTR extensions = NULL;
@@ -1884,12 +1770,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
    /* get info from the dependant node */
    depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL );
    
-   /* get exp catchup value */
-   depCatchup = catchup_get(_dep_exp);
    /* check catchup value of the node */
-   printf("dependant node catchup= %d , exp catchup = %d , discretionary catchup = %d  \n",depNodeDataPtr->catchup, depCatchup, CatchupDiscretionary );
-   if (depNodeDataPtr->catchup > depCatchup) {
-      SeqUtil_TRACE("dependant node catchup (%d) is higher than the experiment catchup (%d), skipping dependency \n",depNodeDataPtr->catchup, depCatchup);  
+   printf("dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
+   if (depNodeDataPtr->catchup == CatchupDiscretionary) {
+      SeqUtil_TRACE("dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
       return(0);
    }
 
@@ -2040,7 +1924,6 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    SeqLoops_validateLoopArgs( nodeDataPtr, _loops );
 
    SeqNode_setWorkdir( nodeDataPtr, workdir );
-   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );
    SeqUtil_TRACE( "maestro() using DATESTAMP=%s\n", nodeDataPtr->datestamp );
    SeqUtil_TRACE( "maestro() node from nodeinfo=%s\n", nodeDataPtr->name );
    SeqUtil_TRACE( "maestro() node task_path from nodeinfo=%s\n", nodeDataPtr->taskPath );
