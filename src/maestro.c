@@ -1849,12 +1849,11 @@ char* generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow) {
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_scope, const char* _dep_name,const  char* _dep_index,
                           const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp ) {
    char statusFile[SEQ_MAXFIELD];
-   int undoneIteration = 0, isWaiting = 0, depWildcard=0, depCatchup=CatchupNormal;
+   int undoneIteration = 0, isWaiting = 0, depWildcard=0;
    char *waitingMsg = NULL, *depIndexPtr = NULL, *extString = NULL;
    SeqNodeDataPtr depNodeDataPtr = NULL;
    LISTNODEPTR extensions = NULL;
    SeqNameValuesPtr loopArgsPtr = NULL;
-
 
    /* if I'm dependant on a loop iteration, need to process it */
    if( _dep_index != NULL && strlen( _dep_index ) > 0 ) {
@@ -1884,12 +1883,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
    /* get info from the dependant node */
    depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL );
    
-   /* get exp catchup value */
-   depCatchup = catchup_get(_dep_exp);
    /* check catchup value of the node */
-   printf("dependant node catchup= %d , exp catchup = %d , discretionary catchup = %d  \n",depNodeDataPtr->catchup, depCatchup, CatchupDiscretionary );
-   if (depNodeDataPtr->catchup > depCatchup) {
-      SeqUtil_TRACE("dependant node catchup (%d) is higher than the experiment catchup (%d), skipping dependency \n",depNodeDataPtr->catchup, depCatchup);  
+   printf("dependant node catchup= %d, discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
+   if (depNodeDataPtr->catchup == CatchupDiscretionary) {
+      SeqUtil_TRACE("dependant node catchup (%d) is set to discretionary, skipping dependency \n",depNodeDataPtr->catchup);  
       return(0);
    }
 
