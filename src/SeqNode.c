@@ -12,6 +12,7 @@ static char* LoopTypeString = "Loop";
 static char* CaseTypeString = "Case";
 static char* CaseItemTypeString = "CaseItem";
 static char* ModuleTypeString = "Module";
+static char* SwitchTypeString = "Switch"; 
 
 /* this function is just a simple enabling of printf calls when
 the user passes -d option */
@@ -38,6 +39,9 @@ char* SeqNode_getTypeString( SeqNodeType _node_type ) {
          break;
       case CaseItem:
          typePtr = CaseItemTypeString;
+         break;
+      case Switch:
+         typePtr = SwitchTypeString;
          break;
       default:
          typePtr = TaskTypeString;
@@ -415,14 +419,24 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr,
    loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
    loopsPtr->type = Numerical;
    loopsPtr->loop_name = strdup( loop_name );
-   /* SeqNameValues_insertItem( &loopsPtr->values, "NAME", loop_name ); */
    SeqNameValues_insertItem( &loopsPtr->values, "TYPE", "Default");
    SeqNameValues_insertItem( &loopsPtr->values, "START", start );
    SeqNameValues_insertItem( &loopsPtr->values, "STEP", step );
    SeqNameValues_insertItem( &loopsPtr->values, "SET", set );
    SeqNameValues_insertItem( &loopsPtr->values, "END", end );
-   /* SeqNameValues_printList( loopsPtr->values ); */
 }
+
+void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, char* switchName, char* switchType, char* returnValue) {
+   SeqLoopsPtr loopsPtr = NULL;
+   SeqUtil_TRACE( "SeqNode_addSwitch() switchName=%s switchType=%s returnValue=%s\n", switchName, switchType, returnValue);
+   loopsPtr = SeqNode_allocateLoopsEntry( _nodeDataPtr );
+   loopsPtr->type = SwitchType;
+   loopsPtr->loop_name = strdup( switchName );
+   SeqNameValues_insertItem( &loopsPtr->values, "TYPE", switchType);
+   SeqNameValues_insertItem( &loopsPtr->values, "VALUE", returnValue );
+}
+
+
 
 void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, char* name, char* value ) {
    char* tmp = NULL;
@@ -480,6 +494,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->suiteName = NULL;
    nodePtr->extension = NULL;
    nodePtr->datestamp = NULL;
+   nodePtr->switchAnswers = NULL;
    nodePtr->workdir = NULL;
    nodePtr->workerPath= NULL;
    SeqNode_setName( nodePtr, "" );
@@ -546,7 +561,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    /*printf("************ Seq Node Information \n"); */
    if( showAll ) {
       SeqUtil_printOrWrite(filename,"node.name=%s\n", node_ptr->name );
-      SeqUtil_printOrWrite(filename, "node.extension=%s\n",  node_ptr->extension);
+      SeqUtil_printOrWrite(filename,"node.extension=%s\n",  node_ptr->extension);
       SeqUtil_printOrWrite(filename,"node.leaf=%s\n", node_ptr->nodeName );
       SeqUtil_printOrWrite(filename,"node.module=%s\n", node_ptr->module );
       SeqUtil_printOrWrite(filename,"node.container=%s\n", node_ptr->container );
@@ -747,6 +762,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->submits) );
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->abort_actions) );
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->siblings) );
+      SeqNameValues_deleteWholeList( &(seqNodeDataPtr->switchAnswers)) ;
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->data ));
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->loop_args ));
       free( seqNodeDataPtr );

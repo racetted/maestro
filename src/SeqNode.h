@@ -20,6 +20,7 @@ typedef enum _SeqNodeType {
    NpassTask,
    Module,
    Loop,
+   Switch,
    Case,
    CaseItem,
 } SeqNodeType;
@@ -43,7 +44,8 @@ typedef SeqDependencyLocator *SeqDependencyLocatorPtr;
 
 typedef enum _SeqLoopType {
    Numerical,
-   Date
+   Date,
+   SwitchType 
 } SeqLoopType;
 
 typedef struct _SeqLoops {
@@ -86,6 +88,9 @@ typedef struct _SeqNodeData {
    char* args;
    char* datestamp;
    char* workdir;
+
+
+   SeqNameValuesPtr switchAnswers; 
 
    /* list of dependencies */
    SeqDependenciesPtr depends;

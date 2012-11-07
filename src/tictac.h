@@ -12,6 +12,6 @@
 ******************************************************************************/
 extern void tictac_setDate( char* _expHome, char* datestamp );
 
-extern char* tictac_getDate( char* _expHome, char* format );
+extern char* tictac_getDate( char* _expHome, char* format, char * datestamp );
 
-extern char* checkValidDatestamp(char *datestamp);
+extern void checkValidDatestamp(char *datestamp);

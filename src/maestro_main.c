@@ -21,13 +21,14 @@ static void printSeqUsage()
    
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      maestro -n node -s signal [-i] [-d] [-l loopargs] [-f flow] [-o extra_soumet_args]  \n");
+   printf("      maestro -n node -s signal [-i] [-d datestamp] [-v] [-l loopargs] [-f flow] [-o extra_soumet_args]  \n");
    printf("         where:\n");
    printf("         node is full path of task or family node (mandatory):\n");
    printf("         signal is one of:\n");
    printf("            submit begin end abort initbranch initnode\n");
    printf("         -i is to ignore dependencies and catchup values\n");
-   printf("         -d is to run in debug mode\n");
+   printf("         -v is to run in debug mode\n");
+   printf("         datestamp is the date on which to execute the command. Defaults: 1) SEQ_DATE 2) latest modified log in $SEQ_EXP_HOME/logs :\n");
    printf("         flow is continue (default) or stop, representing whether the flow should continue after this node\n");
    printf("         loopargs is the comma-separated list of loop arguments. ex: -l loopa=1,loopb=2\n");
    printf("         extra_soumet_args are arguments being given to ord_soumet by the job (ex. -waste=50)\n");
@@ -46,7 +47,7 @@ main (int argc, char * argv [])
 
 {
    extern char *optarg;
-   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL;
+   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL;
    int errflg = 0, status = 0;
    int c, ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
@@ -59,7 +60,7 @@ main (int argc, char * argv [])
    }
    flow = malloc( 9 * sizeof(char) + 1 );
    sprintf( flow, "%s", "continue" );
-   while ((c = getopt(argc, argv, "n:s:f:l:o:id")) != -1) {
+   while ((c = getopt(argc, argv, "n:s:f:l:d:o:iv")) != -1) {
       switch(c) {
          case 'n':
             node = malloc( strlen( optarg ) + 1 );
@@ -71,6 +72,10 @@ main (int argc, char * argv [])
             strcpy(sign,optarg);
             gotSignal = 1;
             break;
+         case 'd':
+            datestamp = malloc( strlen( optarg ) + 1 );
+            strcpy(datestamp,optarg);
+            break;
          case 'f':
             strcpy(flow,optarg);
             break;
@@ -80,7 +85,7 @@ main (int argc, char * argv [])
             strcpy(loops,optarg);
             gotLoops = 1;
             break;
-         case 'd':
+         case 'v':
             SeqUtil_setTraceLevel(1);
             break;
 	 case 'i':
@@ -108,12 +113,13 @@ main (int argc, char * argv [])
       /* SeqNameValues_printList( loopsArgs ); */
    }
    /* printf( "node=%s signal=%s\n", node, sign ); */
-   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs );
+   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs, datestamp );
 
    free(flow);
    free(node);
    free(sign);
    free(extraArgs);
+   free(datestamp);
    exit(status);
 }
 

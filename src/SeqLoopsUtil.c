@@ -63,7 +63,7 @@ char* SeqLoops_getExtensionBase ( SeqNodeDataPtr _nodeDataPtr ) {
    int containerCount = 0;
    SeqLoopsPtr loopsContainerPtr = _nodeDataPtr->loops;
    work_string = strdup(_nodeDataPtr->extension);
-   if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ) {
+   if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ||  _nodeDataPtr->type == Switch  ) {
       while( loopsContainerPtr != NULL ) {
          containerCount++;
          loopsContainerPtr = loopsContainerPtr->nextPtr;
@@ -168,15 +168,15 @@ char* SeqLoops_ContainerExtension( SeqLoopsPtr loops_ptr, SeqNameValuesPtr loop_
       /* inside the SeqLoopsPtr, the loop_name value is stored with the full path node 
          of the loop while the loop_name function argument is only the leaf part */
       loopLeafName = (char*) SeqUtil_getPathLeaf( loopContainerName );
-      /*printf("SeqLoops_ContainerExtension loopLeafName=%s\n", loopLeafName ); */
+      SeqUtil_TRACE("SeqLoops_ContainerExtension loopLeafName=%s\n", loopLeafName ); 
       thisLoopArgPtr = loop_args_ptr;
       while( thisLoopArgPtr != NULL && isError == 0 ) {
-         /*printf("SeqLoops_ContainerExtension loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); */
+         SeqUtil_TRACE("SeqLoops_ContainerExtension loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); 
          if( strcmp( thisLoopArgPtr->name, loopLeafName ) == 0 ) {
             foundLoopArg = 1;
             SeqUtil_stringAppend( &extension, EXT_TOKEN );
             SeqUtil_stringAppend( &extension, thisLoopArgPtr->value );
-            /*printf("SeqLoops_ContainerExtension found loop argument loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); */
+            SeqUtil_TRACE("SeqLoops_ContainerExtension found loop argument loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); 
             break;
          }
          thisLoopArgPtr = thisLoopArgPtr->nextPtr;
@@ -557,6 +557,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
 
    /* validate loop containers */
    if( loopsPtr != NULL ) {
+      SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop pointer found\n" );
       /* check if the user has given us argument for looping */
       if( _loop_args == NULL ) {
          raiseError( "SeqLoops_validateLoopArgs(): No loop arguments found for container loop!\n" );
@@ -570,7 +571,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
    }
 
    /* build extension for current node if loop */
-   if( _nodeDataPtr->type == Loop ||  _nodeDataPtr->type == NpassTask ) {
+   if( _nodeDataPtr->type == Loop ||  _nodeDataPtr->type == NpassTask  ||  _nodeDataPtr->type == Switch ) {
       loopArgsTmpPtr = _loop_args;
       while( loopArgsTmpPtr != NULL ) {
          if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
@@ -580,6 +581,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
          loopArgsTmpPtr  = loopArgsTmpPtr->nextPtr;
       }
    }
+
    SeqNode_setExtension( _nodeDataPtr, loopExtension );
    free( loopExtension );
    free( tmpValue); 
@@ -612,6 +614,8 @@ SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, S
       if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
          break;
       }
+      SeqUtil_TRACE( "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
+
       SeqNameValues_insertItem( &newLoopsArgsPtr,  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
       loopArgsTmpPtr  = loopArgsTmpPtr->nextPtr;
    }

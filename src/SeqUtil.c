@@ -4,6 +4,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <pwd.h>
 #include <errno.h>        /* errno */
@@ -428,10 +429,19 @@ void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
 
 char* SeqUtil_getdef( const char* filename, const char* key ) {
   char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def";
+  char *seq_exp_home=NULL;
+  struct passwd *passwdEnt;
+  struct stat fileStat;
 
-  if ( (home = getenv("HOME")) == NULL ){
-    raiseError("SeqUtil_getdef $HOME not defined\n");
+  /* User ownership of the suite to determine path to overrides.def */
+  if ( (seq_exp_home = getenv("SEQ_EXP_HOME")) == NULL ){
+    raiseError("SeqUtil_getdef $SEQ_EXP_HOME not defined\n");
   }
+  if (stat(seq_exp_home,&fileStat) < 0){
+    raiseError("SeqUtil_getdef unable to stat SEQ_EXP_HOME\n");
+  }
+  passwdEnt = getpwuid(fileStat.st_uid);
+  home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
   sprintf( ovpath, "%s%s", home, ovext );
   SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);

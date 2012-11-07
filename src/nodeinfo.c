@@ -36,6 +36,8 @@ SeqNodeType getNodeType ( const xmlChar *_node_name ) {
       nodeType = NpassTask;
    } else if ( strcmp( _node_name, "LOOP" ) == 0 ) {
       nodeType = Loop;
+   } else if ( strcmp( _node_name, "SWITCH" ) == 0 ) {
+      nodeType = Switch;
    } else if ( strcmp( _node_name, "CASE" ) == 0 ) {
       nodeType = Case;
    } else if ( strcmp( _node_name, "CASE_ITEM" ) == 0 ) {
@@ -518,6 +520,23 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    free( fixedNodePath );
 }
 
+/* this function returns the value of the switch statement. Stack allocated. */
+
+
+char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
+
+    char * returnValue[SEQ_MAXFIELD]; 
+    memset(returnValue,'\0', sizeof(returnValue));
+    if (strcmp(switchType, "datestamp_hour") == 0) {
+	strncpy(returnValue, _nodeDataPtr->datestamp+8,2);   
+        SeqUtil_TRACE( "switchReturn datestamp parser on datestamp = %s\n",  _nodeDataPtr->datestamp );
+    }
+    SeqUtil_TRACE( "switchReturn returnValue = %s\n", returnValue );
+    return strdup(returnValue); 
+}
+
+
+
 /* this function reads the node xml resource file
  * to retrive info such as dependencies, batch resource, abort actions
  * and loop information for loop nodes. The xml resource, if it exists,
@@ -627,11 +646,11 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    */
 void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home ) {
    char *xmlFile = NULL, *currentFlowNode = NULL;
-   char query[512],submitsQuery[512], pathToModule[SEQ_MAXFIELD];
+   char query[512],pathToModule[SEQ_MAXFIELD];
 
    char *tmpstrtok = NULL, *tmpJobPath = NULL, *suiteName = NULL, *module = NULL;
-   char *taskPath = NULL, *intramodulePath = NULL, *tmpPTM=NULL;
-   int i = 0, count=0, totalCount = 0;
+   char *taskPath = NULL, *intramodulePath = NULL, *tmpPTM=NULL, *tmpAnswer=NULL, *tmpSwitchType=NULL;
+   int i = 0, count=0, totalCount = 0, switchResultFound=0;
    xmlDocPtr doc = NULL, previousDoc=NULL;
    xmlAttrPtr propertiesPtr = NULL;
    xmlNodeSetPtr nodeset = NULL;
@@ -662,6 +681,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
    tmpstrtok = (char*) strtok( tmpJobPath, "/" );
    while ( tmpstrtok != NULL ) {
+      switchResultFound=0;
       /* build the query */      
       if ( count == 0 ) {
          /* initial query */
@@ -674,7 +694,6 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       } else {
          /* next queries relative to previous node context */
          sprintf ( query, "(child::*[@name='%s'])", tmpstrtok );
-         sprintf ( submitsQuery, "(child::SUBMITS[@sub_name='%s'])", tmpstrtok );
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       }
       
@@ -708,6 +727,22 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 	          parseWorkerPath(currentFlowNode, _seq_exp_home, _nodeDataPtr );
 	       }
    	    }
+	    if ( strcmp (nodeName, "type") == 0 && _nodeDataPtr->type == Switch) {
+	        tmpSwitchType=strdup(currentNodePtr->children->content);
+	        tmpAnswer=switchReturn(_nodeDataPtr,tmpSwitchType);
+	        sprintf ( query, "(child::SWITCH_ITEM[@name='%s'])", tmpAnswer);
+                /* run the normal query */
+                if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+                    SeqUtil_TRACE("Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+                } else {
+		    /* query returned results */
+		    switchResultFound=1;
+                    nodeset = result->nodesetval;
+                    currentNodePtr = nodeset->nodeTab[0];
+                    context->node = currentNodePtr;
+		}
+                SeqNameValues_insertItem( &_nodeDataPtr->switchAnswers, (char*) SeqUtil_fixPath(currentFlowNode), tmpAnswer);
+	    }
          }
       xmlXPathFreeObject (attributesResult);
       }
@@ -760,7 +795,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          SeqUtil_stringAppend( &currentFlowNode, "/");
          /* Case and case_item are not part of the task_depot */
          /* they are however part of the container path */
-         if (_nodeDataPtr->type == Family ||_nodeDataPtr->type == Loop ) {
+         if (_nodeDataPtr->type == Family ||_nodeDataPtr->type == Loop || _nodeDataPtr->type == Switch ) {
             SeqUtil_stringAppend( &taskPath, "/" );
             SeqUtil_stringAppend( &taskPath, tmpstrtok );
 	    free(intramodulePath);
@@ -800,6 +835,16 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       if ( _nodeDataPtr->type == Loop && tmpstrtok != NULL ) {
          /* get loop info from parent loop xml resource file */
 	 getNodeLoopContainersAttr( _nodeDataPtr, currentFlowNode, _seq_exp_home );
+      }
+       /* adds switch containers except if last node is also loop */
+      if ( _nodeDataPtr->type == Switch &&  tmpstrtok != NULL ) {
+         SeqNode_addSpecificData( _nodeDataPtr, "SWITCH_TYPE", tmpSwitchType );
+         SeqNode_addSwitch(_nodeDataPtr, currentFlowNode, tmpSwitchType, tmpAnswer); 
+	 /*reset switch and answer*/ 
+         free(tmpSwitchType); 
+         free(tmpAnswer);
+	 tmpSwitchType=NULL;
+         tmpAnswer=NULL;
       }
 
       if ( SHOW_ROOT_ONLY == 1 ) {
@@ -868,7 +913,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    
       /* retrieve node's siblings */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** node siblings **********\n");
-      strcpy (query, "(preceding-sibling::*[@name])");
+      
+      if ( _nodeDataPtr->type == Switch && switchResultFound ) {
+          strcpy (query, "(../preceding-sibling::*[@name])");
+      } else {
+          strcpy (query, "(preceding-sibling::*[@name])");
+      }
       if ( _nodeDataPtr->type == Module) {
           result =  XmlUtils_getnodeset (query, previousContext);
       } else {
@@ -880,7 +930,11 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       parseNodeSiblings( result, _nodeDataPtr); 
       xmlXPathFreeObject (result);
    
-      strcpy (query, "(following-sibling::*[@name])");
+      if ( _nodeDataPtr->type == Switch && switchResultFound ) {
+          strcpy (query, "(../following-sibling::*[@name])");
+      } else {
+          strcpy (query, "(following-sibling::*[@name])");
+      }
       if ( _nodeDataPtr->type == Module) {
           result =  XmlUtils_getnodeset (query, previousContext);
       } else {
@@ -907,6 +961,8 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    xmlCleanupParser();
    free(suiteName);
    free(tmpJobPath);
+   free(tmpSwitchType); 
+   free(tmpAnswer); 
    free(module);
    free(taskPath);
    free(tmpPTM);
@@ -914,7 +970,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    free(currentFlowNode);
 }
 
-SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs ) {
+SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
 
    char* seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    SeqNodeDataPtr  nodeDataPtr = NULL;
@@ -943,7 +999,8 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
-   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"") );
+   SeqUtil_TRACE ( "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
+   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"",datestamp) );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
 
@@ -955,6 +1012,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
       getNodeResources (nodeDataPtr, (char*) newNode, seq_exp_home);
    }
+
 
    free( tmpfilters ); 
    return nodeDataPtr;
