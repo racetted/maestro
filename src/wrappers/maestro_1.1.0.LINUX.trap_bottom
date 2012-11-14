@@ -1,0 +1,12 @@
+
+} >> $jobout
+cat $oisday >> $jobout
+echo ${SelfJobRemove} >> $jobout
+echo "nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -i ${jobout}" >> $jobout
+${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -i ${jobout}
+eval ${SelfJobRemove}
+rm -f ${oisday} ${jobout} ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG} 
+if [ -f $HOME/.logout_ksh ]; then
+. $HOME/.logout_ksh
+fi
+trap "" ERR EXIT 12
