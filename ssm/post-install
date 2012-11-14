@@ -1,3 +1,4 @@
+#!/bin/ksh
 domainHome=$1
 packageHome=$2
 profileDirPath=${packageHome}/etc/profile.d

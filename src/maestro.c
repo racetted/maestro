@@ -1196,11 +1196,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	        maestro ( _nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL, _nodeDataPtr->datestamp  );
 	     }	
 
-	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -jobtar %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -jobtar %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
          } else {
 	     /* normal submit mode */
-             sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+             sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, getenv("SEQ_BIN"),_nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 	 }
 
          printf( "%s\n", cmd );
@@ -1250,10 +1250,10 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     if ( access(workerEndFile, R_OK) == 0) {
 	         maestro (_nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL, _nodeDataPtr->datestamp  );
              }
-	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing %s -jobcfg %s -nosubmit -jobtar %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, movedTmpName, _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing %s -jobcfg %s -nosubmit -jobtar %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
 
          } else { /* normal container case */
-	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
          }
 	 
 	 printf( "%s\n", cmd );
