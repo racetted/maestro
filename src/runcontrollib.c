@@ -146,7 +146,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
    sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
    }
 
-   printf("nodesubmit.Message=%s",message);
+   SeqUtil_TRACE("nodesubmit.Message=%s",message);
    free(cpu);
 
    nodelogger(node_ptr->name,"submit",node_ptr->extension,message,datestamp);
@@ -242,7 +242,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
       i++;
    }
    thisAbortType[i]='\0';
-      printf("nodeabort: thisAbortType: %s for datestamp %s\n", thisAbortType, datestamp);
+      SeqUtil_TRACE("nodeabort: thisAbortType: %s for datestamp %s\n", thisAbortType, datestamp);
 
    job = _nodeDataPtr->name;
    loopExt = _nodeDataPtr->extension;
@@ -268,7 +268,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
    } else if ( strncmp(thisAbortType,"XXJOB",5) == 0 ) {
       nodelogger(job,"info",loopExt,xxjob,datestamp);
    }	else {
-		printf("nodeabort: illegal type: %s\n", thisAbortType);
+		SeqUtil_TRACE("nodeabort: illegal type: %s\n", thisAbortType);
 		exit(1);
 	}
 

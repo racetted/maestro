@@ -123,7 +123,7 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
    if( message == NULL ) {
       message=strdup("");
    }
-   printf( "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
+   SeqUtil_TRACE( "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
    memset(nodelogger_socketdown,'\0',NODELOG_FILE_LENGTH);
    memset(nodelogger_bucket,'\0',NODELOG_FILE_LENGTH);
    memset(nodelogger_lockfile,'\0',NODELOG_FILE_LENGTH);
@@ -210,9 +210,9 @@ void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* 
 
     if (strcmp(cmcnodelogger,"ON") != 0)
     {
-	printf("\nWARNING: nodelogger - CMCNODELOG debug mode\n");
+	SeqUtil_TRACE("\nWARNING: nodelogger - CMCNODELOG debug mode\n");
 	gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
-	printf("message=%s\n",nodelogger_buf);
+	SeqUtil_TRACE("message=%s\n",nodelogger_buf);
 	return;
     }
 

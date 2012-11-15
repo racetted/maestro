@@ -155,7 +155,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
 
    if ( current_action == NULL) {
       if( _nodeDataPtr->abort_actions != NULL ) {
-         printf( "nodelogger: %s i \"maestro info: abort action list finished. Aborting with stop.\" \n", _nodeDataPtr->name );
+         SeqUtil_TRACE( "nodelogger: %s i \"maestro info: abort action list finished. Aborting with stop.\" \n", _nodeDataPtr->name );
          nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, "maestro info: abort action list finished. Aborting with stop.",_nodeDataPtr->datestamp);
       }
       current_action = strdup("stop");
@@ -168,7 +168,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    if ( strcmp( current_action, "rerun" ) == 0 ) {
       /* issue an appropriate message, then rerun the node */
       if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ) {
-         printf( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
+         SeqUtil_TRACE( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
          nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,"BOMBED: it has been resubmitted",_nodeDataPtr->datestamp);
          go_submit( "submit", _flow , _nodeDataPtr, 1 );
       }
@@ -176,7 +176,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
          /*  issue a log message, then submit the jobs in node->submits */
          if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ) {
 
-             printf( "nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, "cont" );
+             SeqUtil_TRACE( "nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, "cont" );
              nodeabort( _signal, _nodeDataPtr, "cont", _nodeDataPtr->datestamp);
              /* submit the rest of the jobs it's supposed to submit (still missing dependency submissions)*/
              SeqUtil_TRACE( "maestro.go_abort() doing submissions\n", _nodeDataPtr->name, _signal );
@@ -184,7 +184,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
 	 }
    } else if (strcmp(current_action,"stop") == 0) {
       /* issue a message that the job has bombed */
-         printf("nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, current_action);
+         SeqUtil_TRACE("nodeabort: %s %s %s\n", _nodeDataPtr->name, _signal, current_action);
          nodeabort(_signal, _nodeDataPtr,current_action, _nodeDataPtr->datestamp);
    } else {
       /*
@@ -304,7 +304,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
    /* delete lockfiles in branches under current node */
    if (  strcmp (_signal,"initbranch" ) == 0 ) {
        memset( cmd, '\0' , sizeof cmd);
-       printf("Following lockfiles are being deleted: \n");
+       SeqUtil_TRACE("Following lockfiles are being deleted: \n");
        SeqUtil_TRACE( "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
        sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp ,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
        system(cmd);
@@ -322,7 +322,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
        system(cmd);
 
      /* for npass tasks  */
-       printf("Following lockfiles are being deleted: \n");
+       SeqUtil_TRACE("Following lockfiles are being deleted: \n");
        SeqUtil_TRACE( "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
        sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
        system(cmd);
@@ -544,7 +544,7 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
 
       SeqUtil_TRACE( "maestro.setBeginState() created lockfile %s\n", filename);
    } else {
-      printf( "setBeginState() not recreating existing lock file:%s\n", filename );
+      SeqUtil_TRACE( "setBeginState() not recreating existing lock file:%s\n", filename );
    }
    free( extName );
    free( extension );
@@ -716,7 +716,7 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
       if ( touch(filename) != 0 ) raiseError( "Cannot create lockfile: %s\n", filename );
 
    } else {
-      printf( "setEndState() not recreating existing lock file:%s\n", filename );
+      SeqUtil_TRACE( "setEndState() not recreating existing lock file:%s\n", filename );
    }
 
    if ( _nodeDataPtr->type == NpassTask && _nodeDataPtr->isLastNPTArg ) {
@@ -739,7 +739,7 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
           SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
           if ( touch(filename) != 0 ) raiseError( "Cannot create lockfile: %s\n", filename );
        } else {
-          printf( "setEndState() not recreating existing lock file:%s\n", filename );
+          SeqUtil_TRACE( "setEndState() not recreating existing lock file:%s\n", filename );
        }
    }
 
@@ -1192,7 +1192,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     sprintf(workerEndFile,"%s/%s/%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath);
 	     SeqUtil_TRACE("maestro.go_submit() checking for workerEndFile %s, access return value %d \n", workerEndFile, access(workerEndFile, R_OK) ); 
 	     if ( access(workerEndFile, R_OK) == 0 ) {
-	        printf(" Running maestro -s submit on %s\n", _nodeDataPtr->workerPath); 
+	        SeqUtil_TRACE(" Running maestro -s submit on %s\n", _nodeDataPtr->workerPath); 
 	        maestro ( _nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL, _nodeDataPtr->datestamp  );
 	     }	
 
@@ -1315,7 +1315,7 @@ static void setSubmitState(const SeqNodeDataPtr _nodeDataPtr) {
       if ( touch(filename) != 0 ) raiseError( "Cannot create lockfile: %s\n", filename );
       SeqUtil_TRACE( "maestro.setSubmitState() created lockfile %s\n", filename);
    } else {
-      printf( "setSubmitState() not recreating existing lock file:%s\n", filename );
+      SeqUtil_TRACE( "setSubmitState() not recreating existing lock file:%s\n", filename );
    }
 
    free( extName );
@@ -1413,7 +1413,7 @@ static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waite
       if ( touch(filename) != 0 ) raiseError( "Cannot create lockfile: %s\n", filename );
 
    } else {
-      printf( "setWaitingState() not recreating existing lock file:%s\n", filename );
+      SeqUtil_TRACE( "setWaitingState() not recreating existing lock file:%s\n", filename );
    }
 
    free( extName );
@@ -1475,10 +1475,10 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
          /* remote dependencies */
          sprintf(filename,"%s%s%s/%s.waited_%s", SEQ_EXP_HOME, REMOTE_DEPENDS_DIR, _nodeDataPtr->datestamp, extName, _signal );
       }
-      printf( "maestro.submitDependencies() looking for waited file=%s\n", filename );
+      SeqUtil_TRACE( "maestro.submitDependencies() looking for waited file=%s\n", filename );
 
       if ( access(filename, R_OK) == 0 ) {
-         printf( "maestro.submitDependencies() found waited file=%s\n", filename );
+         SeqUtil_TRACE( "maestro.submitDependencies() found waited file=%s\n", filename );
          /* build a node list for all entries found in the waited file */
          if ((waitedFile = fopen(filename,"r")) != NULL ) {
             while ( fgets( line, sizeof(line), waitedFile ) != NULL ) {
@@ -1529,9 +1529,9 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    }
    /*  go and submit the nodes from the cmd list */
    while ( cmdList != NULL ) {
-      printf( "maestro.submitDependencies() calling submit cmd: %s\n", cmdList->data );
+      SeqUtil_TRACE( "maestro.submitDependencies() calling submit cmd: %s\n", cmdList->data );
       submitCode = system( cmdList->data );
-      printf( "maestro.submitDependencies() submitCode: %d\n", submitCode);
+      SeqUtil_TRACE( "maestro.submitDependencies() submitCode: %d\n", submitCode);
       if( submitCode != 0 ) {
          raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
       }
@@ -1701,7 +1701,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          /* if I'm a loop iteration, process it */
          SeqUtil_stringAppend( &localIndexString, "" );
          if( localIndex != NULL && strlen( localIndex ) > 0 ) {
-            printf( "maestro.validateDependencies() localIndex=%s\n", localIndex );
+            SeqUtil_TRACE( "maestro.validateDependencies() localIndex=%s\n", localIndex );
             SeqLoops_parseArgs(&loopArgsPtr, localIndex);
             tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
             SeqUtil_stringAppend( &localIndexString, tmpExt );
@@ -1798,7 +1798,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
    depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL, NULL );
    
    /* check catchup value of the node */
-   printf("dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
+   SeqUtil_TRACE("dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
    if (depNodeDataPtr->catchup == CatchupDiscretionary) {
       SeqUtil_TRACE("dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
       return(0);
@@ -1840,7 +1840,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope  _dep_sc
       waitingMsg = formatWaitingMsg(  _dep_scope, _dep_exp, _dep_name, depIndexPtr, _dep_datestamp ); 
       setWaitingState( _nodeDataPtr, waitingMsg, _dep_status );
       if( _dep_scope == InterUser ) {
-         printf( "Inter User dependency currently not supported!" );
+         SeqUtil_TRACE( "Inter User dependency currently not supported!" );
       } else {
          writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depIndexPtr, _dep_datestamp, _dep_scope);
       }
@@ -1896,9 +1896,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
        SeqUtil_stringAppend(&tmp, _extraArgs);
    } 
    if ( tmp != NULL ){
-       printf( "Command called:\nmaestro -s %s -n %s -f %s %s \n",_signal, _node, _flow, tmp);
+       SeqUtil_TRACE( "Command called:\nmaestro -s %s -n %s -f %s %s \n",_signal, _node, _flow, tmp);
    } else {
-       printf( "Command called:\nmaestro -s %s -n %s -f %s \n",_signal , _node, _flow);
+       SeqUtil_TRACE( "Command called:\nmaestro -s %s -n %s -f %s \n",_signal , _node, _flow);
    } 
 
    SeqUtil_TRACE( "maestro() ignoreAllDeps=%d \n",ignoreAllDeps );

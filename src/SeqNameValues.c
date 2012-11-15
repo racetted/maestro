@@ -36,7 +36,7 @@ void SeqNameValues_insertItem(SeqNameValuesPtr *listPtrPtr, char *name, char* va
          newPtr->nextPtr=currentPtr;
       }
    } else {
-         printf("SeqNameValues_insertItem() No memory available.\n");
+         SeqUtil_TRACE("SeqNameValues_insertItem() No memory available.\n");
    }
 }
 
@@ -76,10 +76,10 @@ void SeqNameValues_deleteItem(SeqNameValuesPtr *listPtrPtr, char *name)
 void SeqNameValues_printList( SeqNameValuesPtr listPtr ){
    SeqNameValuesPtr myPtr=listPtr;
    if ( myPtr == NULL ) {
-      printf( "List is empty.\n" );
+      SeqUtil_TRACE( "List is empty.\n" );
    } else {
       while ( myPtr != NULL ) {
-         printf("name=%s value=%s\n", myPtr->name, myPtr->value );
+         SeqUtil_TRACE("name=%s value=%s\n", myPtr->name, myPtr->value );
          myPtr = myPtr->nextPtr;
       }
    }
