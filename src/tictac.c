@@ -1,8 +1,5 @@
 #include "tictac.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+
 
 /*****************************************************************************
 * tictac:
@@ -28,23 +25,18 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
 
    char *dateFileName = NULL ;
 
-   FILE *dateFile = NULL;
-
    SeqUtil_checkExpHome(_expHome);
+   SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
 
    checkValidDatestamp(datestamp); 
-
+   SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   printf("Warning: use of tictac -s $datestamp is deprecated. Please use SEQ_DATE environment variable or a -d $datestamp argument to maestro or expbegin calls.\n"); 
    SeqUtil_stringAppend( &dateFileName, _expHome );
-   SeqUtil_stringAppend( &dateFileName, "/ExpDate" );
+   SeqUtil_stringAppend( &dateFileName, "/logs/" );
+   SeqUtil_stringAppend( &dateFileName, datestamp );
+   SeqUtil_stringAppend( &dateFileName, "_nodelog" );
 
-   if ((dateFile=fopen(dateFileName,"w+")) != NULL ) {
-       printf("Datestamp for experiment %s changed to %s \n", _expHome ,datestamp); 
-       fprintf(dateFile,"%s",datestamp);
-   } else {
-         raiseError("ERROR: Date File %s cannot be written into.\n", dateFileName);
-   }
-
-   fclose(dateFile);
+   if ( touch(dateFileName) != 0 ) raiseError( "Cannot touch log file: %s\n", dateFileName );
    free (dateFileName);
 
 }
@@ -65,11 +57,18 @@ Inputs:
 
 extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
 
-   char *dateFileName = NULL, *tmpstrtok = NULL;
-   /* char dateValue[128], cmd[128]; */
+   char *dateFileName = NULL, *tmpstrtok = NULL, *tmpLatestFile=NULL;
+   char statePattern[SEQ_MAXFIELD];
    char dateValue[128], cmd[128];
    char* returnDate = NULL;
+   size_t counter=0;
    FILE *dateFile = NULL;
+   glob_t glob_logs; 
+   struct stat *statbuf = NULL; 
+   time_t latest = 0;
+   memset( statePattern, '\0', sizeof statePattern );
+   sprintf( statePattern,"%s/logs/*_nodelog", _expHome);
+
 
    SeqUtil_checkExpHome (_expHome);
    /* first get from env variable if exists */
@@ -79,28 +78,23 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
       if( getenv("SEQ_DATE") != NULL ) {
          strcpy( dateValue, getenv("SEQ_DATE") );
       } else {
-         /* read from file */
-         SeqUtil_stringAppend( &dateFileName, _expHome );
-         SeqUtil_stringAppend( &dateFileName, "/ExpDate" );
-
-         if ( access(dateFileName, R_OK) == 0 ) {
-            dateFile=fopen(dateFileName,"r"); 
- 
-            if( fgets(dateValue, sizeof(dateValue), dateFile) == NULL ) {
-               raiseError("ERROR: Date File %s is empty or erroneus.\n", dateFileName);
-            }
-         } else {
-            raiseError("ERROR: Date File %s cannot be read.\n", dateFileName);
-         }
-         /* remove the newline character at the end of the returned value
-          * causing bug when it is used to create lock files */
-         if ( strlen(dateValue) > 0 ) {
-            if ( dateValue[strlen(dateValue)-1] == '\n' ) {
-               dateValue[strlen(dateValue)-1] = '\0';
-            }
-         }
-         fclose(dateFile);
-         free (dateFileName);
+         glob(statePattern, GLOB_NOSORT,0 ,&glob_logs);
+         while(counter < glob_logs.gl_pathc) {
+	     statbuf=malloc(sizeof(struct stat));
+	     /* Get entry's information. */
+             if (stat(glob_logs.gl_pathv[counter], statbuf) == -1)
+                 continue;
+             if (difftime(statbuf->st_mtime,latest) > 0) {
+	        latest=statbuf->st_mtime;
+                free(tmpLatestFile);
+		tmpLatestFile=strdup((glob_logs.gl_pathv[counter]));
+	      } 
+	     ++counter;
+	     free(statbuf);
+	 }
+         globfree(&glob_logs);
+         dateFileName = (char*) SeqUtil_getPathLeaf( (const char*) (tmpLatestFile) );
+	 sprintf(dateValue,"%s", (char*) strtok( dateFileName, "_" ));
       }
    }
    tmpstrtok = (char*) strtok( format, "%" );
@@ -127,6 +121,9 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
 
    returnDate = malloc( strlen(dateValue) + 1 );
    strcpy( returnDate, dateValue );
+   free(dateFileName);
+   free(tmpLatestFile);
+
    return returnDate;
 }
 
@@ -145,71 +142,76 @@ Inputs:
 
 extern void checkValidDatestamp(char *datestamp){
 
-char *tmpDateString=NULL;
-int validationInt = 0, dateLength=0;
+   char *tmpDateString=NULL;
+   int validationInt = 0, dateLength=0;
 
-dateLength=strlen(datestamp);
-if ( dateLength < 8 || dateLength > 14 ) 
-    raiseError("ERROR: Datestamp must contain between 8 and 14 characters (YYYYMMDD[HHMMSS]).\n"); 
+   dateLength=strlen(datestamp);
+   if ( dateLength < 8 || dateLength > 14 ) 
+      raiseError("ERROR: Datestamp must contain between 8 and 14 characters (YYYYMMDD[HHMMSS]).\n"); 
 
-while (dateLength < 14) {
-    SeqUtil_stringAppend( &datestamp, "0" );
-    dateLength=strlen(datestamp);
-}
+   SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   tmpDateString= (char*) malloc(5);
+   sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
+   validationInt = atoi(tmpDateString);
 
-tmpDateString= (char*) malloc(5);
-sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
-validationInt = atoi(tmpDateString);
+   if (validationInt < 0  || validationInt > 9999)
+     raiseError("ERROR: Year %d outside set bounds of [0,9999].\n", validationInt); 
 
-if (validationInt < 0  || validationInt > 3000)
-     raiseError("ERROR: Year %d outside set bounds of [0,3000].\n", validationInt); 
+   SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   free(tmpDateString);
 
-free(tmpDateString);
+   tmpDateString= (char*) malloc(3);
+   sprintf(tmpDateString, "%.*s",2,&datestamp[4]);
+   validationInt = atoi(tmpDateString);
 
-tmpDateString= (char*) malloc(3);
-sprintf(tmpDateString, "%.*s",2,&datestamp[4]);
-validationInt = atoi(tmpDateString);
+   if (validationInt < 0  || validationInt > 12)
+      raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
 
-if (validationInt < 0  || validationInt > 12)
-     raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
+    SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   free(tmpDateString);
 
-free(tmpDateString);
+   tmpDateString= (char*) malloc(3);
+   sprintf(tmpDateString, "%.*s",2,&datestamp[6]);
+   validationInt = atoi(tmpDateString);
 
-tmpDateString= (char*) malloc(3);
-sprintf(tmpDateString, "%.*s",2,&datestamp[6]);
-validationInt = atoi(tmpDateString);
+   if (validationInt < 0  || validationInt > 31)
+      raiseError("ERROR: Day %d outside set bounds of [0,31].\n", validationInt); 
+   SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
 
-if (validationInt < 0  || validationInt > 31)
-     raiseError("ERROR: Day %d outside set bounds of [0,31].\n", validationInt); 
+   free(tmpDateString);
 
-free(tmpDateString);
+   if ( dateLength >= 10) {
+      tmpDateString= (char*) malloc(3);
+      sprintf(tmpDateString, "%.*s",2,&datestamp[8]);
+      validationInt = atoi(tmpDateString);
 
-tmpDateString= (char*) malloc(3);
-sprintf(tmpDateString, "%.*s",2,&datestamp[8]);
-validationInt = atoi(tmpDateString);
+      if (validationInt < 0  || validationInt > 23)
+        raiseError("ERROR: Hour %d outside set bounds of [0,23].\n", validationInt); 
 
-if (validationInt < 0  || validationInt > 23)
-     raiseError("ERROR: Hour %d outside set bounds of [0,23].\n", validationInt); 
+      SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+      free(tmpDateString);
+   }
 
-free(tmpDateString);
+   if ( dateLength >= 12) {
 
-tmpDateString= (char*) malloc(3);
-sprintf(tmpDateString, "%.*s",2,&datestamp[10]);
-validationInt = atoi(tmpDateString);
+      tmpDateString= (char*) malloc(3);
+      sprintf(tmpDateString, "%.*s",2,&datestamp[10]);
+      validationInt = atoi(tmpDateString);
 
-if (validationInt < 0  || validationInt > 59)
-     raiseError("ERROR: Minute %d outside set bounds of [0,59].\n", validationInt); 
+      if (validationInt < 0  || validationInt > 59)
+         raiseError("ERROR: Minute %d outside set bounds of [0,59].\n", validationInt); 
 
-free(tmpDateString);
+      free(tmpDateString);
+   }
 
-tmpDateString= (char*) malloc(3);
-sprintf(tmpDateString, "%.*s",2,&datestamp[12]);
-validationInt = atoi(tmpDateString);
+   if ( dateLength == 14) {
+      tmpDateString= (char*) malloc(3);
+      sprintf(tmpDateString, "%.*s",2,&datestamp[12]);
+      validationInt = atoi(tmpDateString);
 
-if (validationInt < 0  || validationInt > 59)
-     raiseError("ERROR: Second %d outside set bounds of [0,59].\n", validationInt); 
-
-free(tmpDateString);
-
+      if (validationInt < 0  || validationInt > 59)
+         raiseError("ERROR: Second %d outside set bounds of [0,59].\n", validationInt); 
+   free(tmpDateString);
+   }
 }
 

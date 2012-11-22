@@ -9,6 +9,7 @@
 #include <libxml/tree.h>
 #include <libxml/xpathInternals.h>
 #include "nodeinfo.h"
+#include "tictac.h"
 #include "SeqUtil.h"
 #include "XmlUtils.h"
 

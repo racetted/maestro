@@ -8,7 +8,6 @@
 #include <pwd.h>
 #include <glob.h>
 #include "SeqUtil.h"
-#include "tictac.h"
 #include "nodeinfo.h"
 #include "SeqLoopsUtil.h"
 #include "SeqDatesUtil.h"
