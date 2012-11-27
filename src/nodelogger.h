@@ -24,5 +24,5 @@
 *       messages, otherwise the  message will be written only to stdout.
 * 
 ******************************************************************************/
-extern void nodelogger(char *job, char *type, char* loop_ext, const char *message, char *datestamp);
+extern void nodelogger(const char *job, const char *type, const char* loop_ext, const char *message, const char *datestamp);
 

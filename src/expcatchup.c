@@ -32,18 +32,17 @@ int catchup_get( char* _expHome) {
    xmlXPathContextPtr context = NULL;
    xmlNodeSetPtr nodeset = NULL;
    const xmlChar *nodeName = NULL;
-   
    xmlNodePtr nodePtr = NULL;
-      
    int catchupValue = CatchupNormal;
+
    catchupXmlFile = malloc( strlen( _expHome ) + strlen( CATCHUP_XML_FILE ) + 1 );
    sprintf( catchupXmlFile, "%s%s", _expHome, CATCHUP_XML_FILE );
    if ( access(catchupXmlFile, R_OK) == 0 ) {
       SeqUtil_TRACE ("catchup_get(): loading xml file:%s\n", catchupXmlFile );
-      docPtr = XmlUtils_getdoc( catchupXmlFile );
+      docPtr = (xmlDocPtr)XmlUtils_getdoc( catchupXmlFile );
       context = xmlXPathNewContext(docPtr);
       SeqUtil_TRACE( "catchup_get(): xml query:%s\n", CATCHUP_QUERY ); 
-      if( (result = XmlUtils_getnodeset (CATCHUP_QUERY, context)) == NULL ) {
+      if( (result = (xmlXPathObjectPtr) XmlUtils_getnodeset (CATCHUP_QUERY, context)) == NULL ) {
          raiseError("CATCHUP value not found in XML master file!\n");
       }
       

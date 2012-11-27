@@ -62,11 +62,11 @@ static FILE  *nodelogger_dbugfile;
 
 static int open_socket();
 static int write_line(int sock);
-static void gen_message (char *job, char *type, char* loop_ext, char *message);
+static void gen_message (const char *job, const char *type, const char* loop_ext, const char *message);
 static void timeout();
 static void timeout_sockdown();
 static int sockdown();
-static void dbug_write (char *message1,char *message2);
+static void dbug_write (const char *message1,const char *message2);
 static int dbug_open();
 static int process_bucket(int sock);
 static int open_lock_bucket();
@@ -98,7 +98,7 @@ int check_op_user(int gid)
   }
 }
 
-void nodelogger(char *job,char* type,char* loop_ext, const char *message, char* datestamp)
+void nodelogger(const char *job,const char* type,const char* loop_ext, const char *message, const char* datestamp)
 {
    int i, sock;
    int send_success = 0;
@@ -401,10 +401,10 @@ static int write_line(int sock)
 }
 
 static void gen_message (node, type, loop_ext, message)
-char *node;
-char *type;
-char *loop_ext;
-char *message;
+const char *node;
+const char *type;
+const char *loop_ext;
+const char *message;
 {
     /* gen_message: write a formatted log message */
 
@@ -462,6 +462,7 @@ static void timeout()
      *          then append the current message to the bucket */
 
     char command[256];
+    int returnValue=0;
 
     if (NODELOG_DEBUG) dbug_write("timeout:","");
 
@@ -471,7 +472,7 @@ static void timeout()
     printf("nodelogger: timeout\n");
     memset(command,'\0',256);
     sprintf(command,"echo nodelogger timeout: `date` >> %s",nodelogger_timelog);
-    system(command);
+    returnValue=system(command);
 
     if (NODELOG_DEBUG) dbug_write("timeout: ","timeout timeout timeout timeout");
     if (NODELOG_DEBUG) fclose(nodelogger_dbugfile);
@@ -491,7 +492,7 @@ static int sockdown()
      *           the castor socket.
      */
 
-    int status_create=0, num;
+    int status_create=0, num, returnValue=0;
     if (NODELOG_DEBUG) dbug_write("sockdown: ","unable to open socket");
 
     /* create/reset the lockfile */
@@ -501,7 +502,7 @@ static int sockdown()
        fprintf(stderr,"nodelogger: unable to create %s\n",nodelogger_socketdown);
     }
 
-    chown (nodelogger_socketdown, 119,204);
+    returnValue=chown (nodelogger_socketdown, 119,204);
     /* write anything to it */
     num = write(status_create, nodelogger_buf_socketdown, strlen(nodelogger_buf_socketdown));
     if ( num <= 0)
@@ -515,8 +516,8 @@ static int sockdown()
 }
 
 static void dbug_write (message1, message2)
-char *message1;
-char *message2;
+const char *message1;
+const char *message2;
 {
 
     /* debug_line: write a formatted log message */
@@ -641,7 +642,7 @@ static int open_lock_bucket ()
 
 static int save_msg_2_bucket ()
 {
-
+    int returnValue=0;
     /* simply append nodelogger_buf to the bucket */
 
     if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:","");
@@ -657,7 +658,7 @@ static int save_msg_2_bucket ()
     }
     lseek(nodelogger_bucketid, 0, SEEK_END);
 
-    write(nodelogger_bucketid, nodelogger_buf, sizeof(nodelogger_buf));
+    returnValue=write(nodelogger_bucketid, nodelogger_buf, sizeof(nodelogger_buf));
     if (NODELOG_DEBUG) dbug_write("save_msg_2_bucket:"," message appended to bucket");
 
     close(nodelogger_bucketid);
@@ -670,7 +671,7 @@ static int check_socket ()
 
     /* check if the socket is responding */
 
-    int sock, status_create=0;
+    int sock, status_create=0, returnValue=0;
     char *seq_exp_home = NULL;
     char mesg[NODELOG_BUFSIZE];
     char command[500];
@@ -695,7 +696,7 @@ static int check_socket ()
         memset(command,'\0',sizeof command);
         sprintf(mesg,"%s%s.","info: log server socket active... previous log entries resent from ", getenv("HOST"));
 	gen_message("", "info", "", mesg);
-        write_line(sock);
+        returnValue=write_line(sock);
         /*
         seq_exp_home=getenv("SEQ_EXP_HOME");
         if (seq_exp_home != NULL) {
@@ -703,7 +704,7 @@ static int check_socket ()
         } else {
            sprintf(command,"nodelogger exnodelogger x \"%s\"",mesg);
         }
-	system(command);
+	returnValue=system(command);
 	*/
 	if (NODELOG_DEBUG) dbug_write("check_socket:",mesg);
 	alarm(0);

@@ -149,7 +149,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
 	       } else {
 	           raiseError( "parseDepends(): dependency index format error\n" );
 	       }
-	       fullDepIndex=strdup(SeqLoops_getLoopArgs(depArgs));
+	       fullDepIndex=strdup((char *)SeqLoops_getLoopArgs(depArgs));
 	    }
 
             if( depLocalIndex != NULL ) {
@@ -168,7 +168,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
 	       } else {
 	           raiseError( "parseDepends(): local dependency index format error\n" );
 	       }
-	       fullDepLocalIndex=strdup(SeqLoops_getLoopArgs(localArgs));
+	       fullDepLocalIndex=strdup((char *)SeqLoops_getLoopArgs(localArgs));
 	    }
             depPath = xmlGetProp( nodePtr, "path" );
             depHour = xmlGetProp( nodePtr, "hour" );
@@ -521,12 +521,11 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    free( fixedNodePath );
 }
 
-/* this function returns the value of the switch statement. Stack allocated. */
-
+/* this function returns the value of the switch statement */
 
 char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
 
-    char * returnValue[SEQ_MAXFIELD]; 
+    char returnValue[SEQ_MAXFIELD]; 
     memset(returnValue,'\0', sizeof(returnValue));
     if (strcmp(switchType, "datestamp_hour") == 0) {
 	strncpy(returnValue, _nodeDataPtr->datestamp+8,2);   
@@ -535,8 +534,6 @@ char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
     SeqUtil_TRACE( "switchReturn returnValue = %s\n", returnValue );
     return strdup(returnValue); 
 }
-
-
 
 /* this function reads the node xml resource file
  * to retrive info such as dependencies, batch resource, abort actions
@@ -663,7 +660,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    SeqUtil_TRACE( "nodeinfo.getFlowInfo() task:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
    /* count is 0-based */
-   totalCount = SeqUtil_tokenCount( _nodePath, "/" ) -1  ;
+   totalCount = (int) SeqUtil_tokenCount( _nodePath, "/" ) -1  ;
    SeqUtil_TRACE( "nodeinfo.getFlowInfo() tokenCount:%i \n", totalCount );
    /* build the xmlfile path */
    suiteName = (char*) SeqUtil_getPathLeaf( _seq_exp_home );

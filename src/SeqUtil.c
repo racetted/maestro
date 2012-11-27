@@ -139,7 +139,7 @@ struct dirent *direntp=NULL;
 *removeFile: Removes the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/
-int removeFile(char *filename) {
+int removeFile(const char *filename) {
    int status=0;
 
    SeqUtil_TRACE( "maestro.removeFile() removing %s\n", filename );
@@ -151,7 +151,7 @@ int removeFile(char *filename) {
 /********************************************************************************
 *touch: simulate a "touch" on a given file 'filename'
 ********************************************************************************/
-int touch(char *filename) {
+int touch(const char *filename) {
    FILE *actionfile;
    
    SeqUtil_TRACE("maestro.touch(): filename=%s\n",filename);
@@ -344,7 +344,7 @@ char *SeqUtil_resub (const char *regex_text, const char *repl_text, const char *
     return NULL;
 }
 
-int SeqUtil_tokenCount( char* source, char* tokenSeparator )
+int SeqUtil_tokenCount( const char* source, const char* tokenSeparator )
 {
    int count = 0;
    char *tmpSource = NULL, *tmpstrtok = NULL; 

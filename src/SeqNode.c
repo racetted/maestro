@@ -825,7 +825,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    } 
 
    /*container arguments, used in npass tasks mostly*/
-   containerLoopArgsList = SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+   containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
    if ( containerLoopArgsList != NULL) {
       containerLoopArgs = (char*) SeqLoops_getLoopArgs(containerLoopArgsList);
       containerLoopExt =  (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList);

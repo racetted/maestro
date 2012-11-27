@@ -126,7 +126,7 @@ void SeqNameValues_setValue( SeqNameValuesPtr* ptr, char* attr_name, char* attr_
       thisPtr = thisPtr->nextPtr;
    }
    if( !found ) {
-      SeqNameValues_insertItem( thisPtr, attr_name, attr_value );
+      SeqNameValues_insertItem( &thisPtr, attr_name, attr_value );
    }
 }
 

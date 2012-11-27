@@ -83,7 +83,7 @@ int match(const char *string, char *pattern)
 *nodewait: send 'wait' message to operational logging system.
 ****************************************************************/
 // void nodewait(char *job,char *jobw)
-void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp)
+void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, const char *datestamp)
 {
    /* This is needed so messages will be logged into CMCNODELOG */ 
    putenv("CMCNODELOG=on"); 
@@ -98,7 +98,7 @@ void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp)
 * It is normally called at the end of an operational job.
 * INPUT: node - full path of the node
 *****************************************************************************/
-void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp)
 {
    char jobID[50];
    char message[300];
@@ -129,7 +129,7 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestam
 *INPUT: job  - the job
 
 ****************************************************************/
-void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
 {
    char message[400];
    char *cpu = NULL;
@@ -160,7 +160,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
 *nodebegin: send 'begin' message to operational logging system.
 *INPUT: job  - the job
 ****************************************************************/
-void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp)
 {
    char hostname[50];
    char message[300];
@@ -211,7 +211,7 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datest
 *              - A message with a corresponding number is sent to the
 *                oprun log.
 ****************************************************************/
-void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp)
+void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const char* abort_type, const char *datestamp)
 {
    static char aborted[] = "ABORTED";
    static char runc[]    = ": run continues";

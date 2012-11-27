@@ -265,7 +265,7 @@ int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
  * function is used to support dependency wildcard when a node is dependant on all
  * the iterations of a node that is a child of a loop container
  */
-LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, char * depIndex ) {
+LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[100], *baseExtension = NULL;
    int foundIt = 0, loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
