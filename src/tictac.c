@@ -79,6 +79,9 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
          strcpy( dateValue, getenv("SEQ_DATE") );
       } else {
          glob(statePattern, GLOB_NOSORT,0 ,&glob_logs);
+	 if (glob_logs.gl_pathc==0) {
+	     raiseError("ERROR: No latest datestamp available in %s/logs. Datestamp must be provided (-d argument).\n", _expHome ); 
+	 }
          while(counter < glob_logs.gl_pathc) {
 	     statbuf=malloc(sizeof(struct stat));
 	     /* Get entry's information. */
