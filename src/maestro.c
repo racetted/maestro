@@ -1833,7 +1833,7 @@ Inputs:
 
 int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char* _extraArgs, char *_datestamp ) {
    char tmpdir[256], workdir[SEQ_MAXFIELD];
-   char *seq_exp_home = NULL, *seq_soumet = NULL, *tmp = NULL;
+   char *seq_soumet = NULL, *tmp = NULL, *returnstring = NULL;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL;
    SeqNodeDataPtr nodeDataPtr = NULL;
    int status = 1, traceLevel=0; /* starting with error condition */
@@ -1870,16 +1870,13 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    memset(SEQ_EXP_HOME,'\0',sizeof SEQ_EXP_HOME);
    memset(USERNAME,'\0',sizeof USERNAME);
    memset(EXPNAME,'\0',sizeof EXPNAME);
-   seq_exp_home = getenv("SEQ_EXP_HOME");
+   if(getenv("SEQ_EXP_HOME") == NULL){
+      raiseError( "SEQ_EXP_HOME not set\n" );
+   }
+   returnstring=realpath(getenv("SEQ_EXP_HOME"),SEQ_EXP_HOME);
 
-   if ( seq_exp_home != NULL ) {
-      dirp = opendir(seq_exp_home);
-      if (dirp == NULL) {
-         raiseError( "invalid SEQ_EXP_HOME=%s\n",seq_exp_home );
-      }
-      closedir(dirp);
-   } else {
-      raiseError( "SEQ_EXP_HOME not set!\n" );
+   if ( returnstring == NULL ) {
+      raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n", getenv("SEQ_EXP_HOME") );
    }
    if ( getenv("SEQ_WRAPPER") == NULL ) {
       raiseError( "SEQ_WRAPPER not set!\n" );
@@ -1892,9 +1889,8 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    } 
 
    strcpy( USERNAME, getpwuid(getuid())->pw_name );
-   strcpy( EXPNAME, (char*) SeqUtil_getPathLeaf(seq_exp_home) );
+   strcpy( EXPNAME, (char*) SeqUtil_getPathLeaf(SEQ_EXP_HOME) );
 
-   strcpy( SEQ_EXP_HOME, (char*)SeqUtil_fixPath(seq_exp_home));
    SeqUtil_TRACE( "maestro() SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );
    sprintf(workdir,"%s/sequencing/status", SEQ_EXP_HOME);
 
