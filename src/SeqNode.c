@@ -785,6 +785,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    char *extName = NULL;
    int stringLength = 0; 
    char pidbuf[100];
+   char shortdate[11];
    char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
    SeqNameValuesPtr loopArgsPtr=NULL , containerLoopArgsList = NULL;
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
@@ -875,6 +876,13 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
        SeqUtil_printOrWrite( filename, "export SEQ_TMP_CFG=%s\n", filename);
    }
    SeqUtil_printOrWrite( filename, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
+   if (strlen(_nodeDataPtr->datestamp) > 10) {
+      strncpy(shortdate,_nodeDataPtr->datestamp,10);
+   } else {
+      strcpy(shortdate,_nodeDataPtr->datestamp);
+   }
+   SeqUtil_printOrWrite( filename, "export SEQ_SHORT_DATE=%s\n", shortdate); 
+
 
    free(tmpdir);
    free(tmpValue);

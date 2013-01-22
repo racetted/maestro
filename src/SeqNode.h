@@ -128,6 +128,7 @@ typedef SeqNodeData *SeqNodeDataPtr;
 SeqNodeDataPtr SeqNode_createNode ( char* name );
 
 extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename);
+extern char * SeqNode_extension (const SeqNodeDataPtr _nodeDataPtr);
 
 
 #endif

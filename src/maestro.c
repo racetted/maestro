@@ -9,6 +9,7 @@
 #include <glob.h>
 #include "SeqUtil.h"
 #include "nodeinfo.h"
+#include "SeqNode.h"
 #include "SeqLoopsUtil.h"
 #include "SeqDatesUtil.h"
 #include "expcatchup.h"
@@ -347,6 +348,13 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
       returnValue=system(cmd);
    }
    nodelogger(_nodeDataPtr->name,"init",_nodeDataPtr->extension,"",_nodeDataPtr->datestamp);
+
+   /* to temporarily fight the problem of misordering of init / begin messages */ 
+   if (  strcmp (_signal,"initbranch" ) == 0 ) {
+      /*sleep .25 secs*/
+      usleep(250000);
+   }
+
    actionsEnd( _signal, _flow, _nodeDataPtr->name );
    free( extName );
    return 0; 
@@ -1095,6 +1103,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
+   char tmpDate[5];
    char pidbuf[100];
    char *cpu = NULL, *tmpdir=NULL;
    char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *workerEndFile=NULL, *readyFile=NULL;
@@ -1162,6 +1171,20 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          SeqUtil_stringAppend( &extName, "." );
          SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
       }
+
+      /* test code to build jobname for longer jn argument 
+      SeqUtil_stringAppend( &jobname, EXPNAME); 
+      if (strlen(_nodeDataPtr->datestamp) > 10) {
+	  memset(tmpDate, '\0', sizeof tmpDate);
+          strncpy(tmpDate,(_nodeDataPtr->datestamp)+6,4); 
+          SeqUtil_stringAppend( &jobname, "_"); 
+          SeqUtil_stringAppend( &jobname, tmpDate); 
+          SeqUtil_stringAppend( &jobname, "_"); 
+      }
+      SeqUtil_stringAppend( &jobname, SeqUtil_resub("/",".", _nodeDataPtr->container ));
+      SeqUtil_stringAppend( &jobname, ".");
+      SeqUtil_stringAppend( &jobname, extName);
+      */
 
       /* go and submit the job */
       if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
