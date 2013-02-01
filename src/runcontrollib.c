@@ -141,9 +141,9 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
    putenv("CMCNODELOG=on");
    /* containers use TRUE_HOST for execution */
    if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method:%s soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin,  node_ptr->soumetArgs);
    } else {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
    }
 
    SeqUtil_TRACE("nodesubmit.Message=%s",message);

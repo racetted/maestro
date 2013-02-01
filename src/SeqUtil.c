@@ -664,5 +664,3 @@ void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
    }
    va_end(ap);
 }
-
-

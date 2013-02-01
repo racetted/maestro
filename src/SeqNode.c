@@ -238,6 +238,14 @@ void SeqNode_setDatestamp( SeqNodeDataPtr node_ptr, const char* datestamp) {
    }
 }
 
+void SeqNode_setSubmitOrigin( SeqNodeDataPtr node_ptr, const char* submitOrigin) {
+   if ( submitOrigin != NULL ) {
+      free( node_ptr->submitOrigin );
+      node_ptr->submitOrigin = malloc( strlen(submitOrigin) + 1 );
+      strcpy( node_ptr->submitOrigin, submitOrigin );
+   }
+}
+
 void SeqNode_setWorkdir( SeqNodeDataPtr node_ptr, const char* workdir) {
    if ( workdir != NULL ) {
       free( node_ptr->workdir);
@@ -494,6 +502,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->suiteName = NULL;
    nodePtr->extension = NULL;
    nodePtr->datestamp = NULL;
+   nodePtr->submitOrigin = NULL;
    nodePtr->switchAnswers = NULL;
    nodePtr->workdir = NULL;
    nodePtr->workerPath= NULL;
@@ -510,6 +519,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
    SeqNode_setWorkerPath( nodePtr, "");
+   SeqNode_setSubmitOrigin( nodePtr, "");
    SeqNode_setAlias( nodePtr, "" );
    SeqNode_setInternalPath( nodePtr, "" );
    SeqNode_setExtension( nodePtr, "" );
@@ -745,6 +755,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->datestamp) ;
       free( seqNodeDataPtr->workdir) ;
       free( seqNodeDataPtr->pathToModule) ;
+      free( seqNodeDataPtr->submitOrigin) ;
       free( seqNodeDataPtr->extension) ;
       free( seqNodeDataPtr->workerPath) ;
   
@@ -793,8 +804,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }
-   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro_%s)\n", getenv("SEQ_MAESTRO_DOMAIN"), getenv("SEQ_MAESTRO_VERSION"));
-   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro-utils_%s)\n", getenv("SEQ_UTILS_DOMAIN"), getenv("SEQ_UTILS_VERSION"));
+   SeqUtil_printOrWrite( filename, ". s.ssmuse.dot %s\n", getenv("SEQ_MAESTRO_SHORTCUT"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    SeqUtil_printOrWrite( filename, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
@@ -876,8 +886,10 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
        SeqUtil_printOrWrite( filename, "export SEQ_TMP_CFG=%s\n", filename);
    }
    SeqUtil_printOrWrite( filename, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
+   memset(shortdate,'\0', strlen(shortdate)+1);
    if (strlen(_nodeDataPtr->datestamp) > 10) {
       strncpy(shortdate,_nodeDataPtr->datestamp,10);
+      shortdate[10]='\0';
    } else {
       strcpy(shortdate,_nodeDataPtr->datestamp);
    }

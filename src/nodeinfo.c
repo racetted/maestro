@@ -1011,7 +1011,6 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       getNodeResources (nodeDataPtr, (char*) newNode, seq_exp_home);
    }
 
-
    free( tmpfilters ); 
    return nodeDataPtr;
 }

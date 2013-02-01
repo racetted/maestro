@@ -1855,10 +1855,11 @@ Inputs:
 */
 
 int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char* _extraArgs, char *_datestamp ) {
-   char tmpdir[256], workdir[SEQ_MAXFIELD];
-   char *seq_soumet = NULL, *tmp = NULL, *returnstring = NULL;
-   char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL;
+   char tmpdir[256], workdir[SEQ_MAXFIELD], normPathCommand[SEQ_MAXFIELD];
+   char *seq_soumet = NULL, *tmp = NULL, *seq_exp_home = NULL;
+   char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL, *tmpFullOrigin=NULL, *tmpLoopExt=NULL, *tmpJobID=NULL, *tmpNodeOrigin=NULL, *tmpHost=NULL;
    SeqNodeDataPtr nodeDataPtr = NULL;
+   FILE *file;
    int status = 1, traceLevel=0; /* starting with error condition */
    DIR *dirp = NULL;
    if (getenv("SEQ_TRACE_LEVEL") != NULL){
@@ -1893,14 +1894,33 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    memset(SEQ_EXP_HOME,'\0',sizeof SEQ_EXP_HOME);
    memset(USERNAME,'\0',sizeof USERNAME);
    memset(EXPNAME,'\0',sizeof EXPNAME);
-   if(getenv("SEQ_EXP_HOME") == NULL){
-      raiseError( "SEQ_EXP_HOME not set\n" );
-   }
-   returnstring=realpath(getenv("SEQ_EXP_HOME"),SEQ_EXP_HOME);
+   memset(normPathCommand,'\0',sizeof normPathCommand);
+   seq_exp_home = getenv("SEQ_EXP_HOME");
+   if ( seq_exp_home != NULL ) {
+    /*  returnstring=realpath(getenv("SEQ_EXP_HOME"),SEQ_EXP_HOME);*/
+     /* Open the command for reading. */
+       if (getenv("SEQ_UTILS_BIN") == NULL){
+         raiseError("SEQ_UTILS_BIN undefined, please check your maestro package is loaded properly\n");
+       }
+       sprintf(normPathCommand,"%s/normpath.py -p %s",getenv("SEQ_UTILS_BIN"),seq_exp_home); 
+       file = popen(normPathCommand, "r");
+       if (file == NULL) {
+         raiseError("Failed to run command %s\n",normPathCommand);
+       }
+       /* Read the output*/
+       fgets(SEQ_EXP_HOME, sizeof(SEQ_EXP_HOME)-1, file);
 
-   if ( returnstring == NULL ) {
-      raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n", getenv("SEQ_EXP_HOME") );
+       /* close */
+       pclose(file);
+
+       if ((dirp = opendir(SEQ_EXP_HOME)) == NULL) { 
+          raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n",SEQ_EXP_HOME );
+       }
+       closedir(dirp);
+   } else {
+      raiseError( "Error: SEQ_EXP_HOME not set. \n");
    }
+
    if ( getenv("SEQ_WRAPPER") == NULL ) {
       raiseError( "SEQ_WRAPPER not set!\n" );
    }
@@ -1962,7 +1982,30 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    }
 
    if ( strcmp(_signal,"submit") == 0 ) {
-   SeqUtil_TRACE( "maestro() ignoreAllDepso2=%d \n",ignoreAllDeps );
+      SeqUtil_TRACE( "maestro() ignoreAllDepso2=%d \n",ignoreAllDeps );
+      /*get origin of the submission*/
+      if ((tmpJobID=getenv("JOB_ID")) == NULL) {
+         tmpLoopExt=getenv("LOADL_STEP_ID");
+      }
+      tmpHost=getenv("HOST");
+      if (tmpJobID != NULL) {
+          SeqUtil_stringAppend( &tmpFullOrigin,"Submitted by jobID=");
+          SeqUtil_stringAppend( &tmpFullOrigin, tmpJobID );
+          if ((tmpNodeOrigin=getenv("SEQ_NAME")) !=NULL) {
+              SeqUtil_stringAppend( &tmpFullOrigin, " Node Name=" );
+              SeqUtil_stringAppend( &tmpFullOrigin, tmpNodeOrigin );
+              if ((tmpLoopExt=getenv("SEQ_LOOP_EXT")) != NULL) {
+                  SeqUtil_stringAppend( &tmpFullOrigin, tmpLoopExt );
+              } 
+          } 
+      } else {
+          SeqUtil_stringAppend( &tmpFullOrigin,"Manual or cron submitted");
+      }
+      SeqUtil_stringAppend( &tmpFullOrigin, " from host " );
+      SeqUtil_stringAppend( &tmpFullOrigin, tmpHost);
+      SeqNode_setSubmitOrigin(nodeDataPtr,tmpFullOrigin);
+      free( tmpFullOrigin );
+
       status=go_submit( _signal, _flow, nodeDataPtr, ignoreAllDeps );
    }
 

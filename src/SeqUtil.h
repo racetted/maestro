@@ -38,4 +38,5 @@ void SeqUtil_stripSubstring(char ** string, char * substring);
 char * SeqUtil_relativePathEvaluation( char* depName, SeqNodeDataPtr _nodeDataPtr); 
 void SeqUtil_printOrWrite( const char * filename, char * text, ...); 
 
+
 #endif

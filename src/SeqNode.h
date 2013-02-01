@@ -87,6 +87,7 @@ typedef struct _SeqNodeData {
    char* alias;
    char* args;
    char* datestamp;
+   char* submitOrigin;
    char* workdir;
 
 
