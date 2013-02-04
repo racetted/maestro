@@ -5,6 +5,10 @@
 #include <assert.h>
 #include "SeqNode.h"
 #include "SeqUtil.h"
+#include "SeqLoopsUtil.h"
+#include "SeqNameValues.h"
+
+
 static char* FamilyTypeString = "Family";
 static char* TaskTypeString = "Task";
 static char* NpassTaskTypeString = "NpassTask";

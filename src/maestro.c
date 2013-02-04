@@ -9,6 +9,7 @@
 #include <glob.h>
 #include "SeqUtil.h"
 #include "nodeinfo.h"
+#include "SeqNameValues.h"
 #include "SeqNode.h"
 #include "SeqLoopsUtil.h"
 #include "SeqDatesUtil.h"
@@ -1470,7 +1471,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             while ( fgets( line, sizeof(line), waitedFile ) != NULL ) {
                SeqUtil_TRACE( "maestro.submitDependencies() from waited file line: %s\n", line );
                sscanf( line, "user=%s exp=%s node=%s datestamp=%s args=%s", 
-                  &depUser, &depExp, &depNode, &depDatestamp, &depArgs );
+                  depUser, depExp, depNode, depDatestamp, depArgs );
                SeqUtil_TRACE( "maestro.submitDependencies() waited file data depUser:%s depExp:%s depNode:%s depDatestamp:%s depArgs:%s\n", 
                   depUser, depExp, depNode, depDatestamp, depArgs );
                if ( strlen( depArgs ) > 0 ) {
@@ -1608,7 +1609,7 @@ static int writeNodeWaitedFile(  const SeqNodeDataPtr _nodeDataPtr, const char* 
          break;
       }
    }
-   if( found == 0 ) { fprintf( waitingFile, tmp_line ); }
+   if ( !found ) fprintf( waitingFile,"%s", tmp_line );
    fclose( waitingFile );
    free( loopArgs );
    free( depBase );
@@ -1908,7 +1909,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
          raiseError("Failed to run command %s\n",normPathCommand);
        }
        /* Read the output*/
-       fgets(SEQ_EXP_HOME, sizeof(SEQ_EXP_HOME)-1, file);
+       if ((fgets(SEQ_EXP_HOME, sizeof(SEQ_EXP_HOME)-1, file)) == NULL) {
+         raiseError("Empty return of command %s\n",normPathCommand);
+       }
 
        /* close */
        pclose(file);

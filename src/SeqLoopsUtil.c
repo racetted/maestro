@@ -25,18 +25,26 @@ static char* EXT_TOKEN = "+";
 
 int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) {
    char *tmpstrtok = NULL, *tmp_args = NULL;
-   char loopName[50], loopValue[50];
+   char *loopName=NULL, *loopValue=NULL;
    int isError = 0;
    
    SeqUtil_TRACE( "SeqLoops_parseArgs cmd_args:%s\n", cmd_args );
+   /*
    memset(loopName,'\0',sizeof loopName);
    memset(loopValue,'\0',sizeof loopValue);
+   */
+   
    tmp_args = strdup( cmd_args );
    tmpstrtok = (char*) strtok( tmp_args, "," );
    while ( tmpstrtok != NULL ) {
       /* any alphanumeric characters and special chars
          _:/-* are supported */
-      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._^/-*]", &loopName, &loopValue );
+      loopName=NULL;
+      loopValue=NULL;
+      loopName=malloc(100);
+      loopValue=malloc(50);
+
+      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._^/-*]", loopName, loopValue );
 
       /* should add more syntax validation such as spaces not allowed... */
       if ( strlen( loopName ) == 0 || strlen( loopValue ) == 0 ) {
@@ -45,6 +53,8 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
          SeqNameValues_insertItem( nameValuesPtr, loopName, loopValue );
       }
       tmpstrtok = (char*) strtok(NULL,",");
+      free(loopName);
+      free(loopValue);
    }
    SeqUtil_TRACE("SeqLoops_parseArgsdone exit status: %d\n", isError ); 
    free( tmp_args );

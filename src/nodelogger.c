@@ -165,7 +165,7 @@ void nodelogger(const char *job,const char* type,const char* loop_ext, const cha
    /* gets server info port & host from file_svr_info */
    if ((infoFile = fopen(nodelogger_svr_file,"r")) != NULL ) {
       if( fgets( line, sizeof(line), infoFile ) != NULL ) {
-         sscanf( line, "seqhost=%s seqport=%d", &nodelogger_batch_host, &PORT_NUM );
+         sscanf( line, "seqhost=%s seqport=%d", nodelogger_batch_host, &PORT_NUM );
       }
       fclose( infoFile );
    } else {

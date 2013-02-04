@@ -1,6 +1,6 @@
 #ifndef _SEQ_LOOP_UTIL
 #define _SEQ_LOOP_UTIL
-
+#include "SeqNode.h"
 
 
 void SeqLoops_setLoopAttribute( SeqNameValuesPtr* loop_attr_ptr, char* attr_name, char* attr_value );
@@ -21,6 +21,7 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args );
 SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
+SeqNameValuesPtr SeqLoops_getContainerArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ); 
 
 #endif

@@ -1,3 +1,4 @@
+#define _REGEX_RE_COMP
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <libgen.h>
+#include <regex.h>
 #include "runcontrollib.h"
 #include "nodelogger.h"
 #include "SeqUtil.h"
