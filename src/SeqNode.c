@@ -518,8 +518,8 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setCpu( nodePtr, "1" );
    SeqNode_setCpuMultiplier( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
-   SeqNode_setMachine( nodePtr, "dorval-ib" );
-   SeqNode_setMemory( nodePtr, "40M" );
+   SeqNode_setMachine( nodePtr, "" );
+   SeqNode_setMemory( nodePtr, "200M" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
    SeqNode_setWorkerPath( nodePtr, "");

@@ -100,6 +100,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    LISTNODEPTR tempPtr=NULL;
    char *current_action=NULL;
    char filename[SEQ_MAXFIELD];
+   char jobID[50];
 
    SeqUtil_TRACE( "maestro.go_abort() node=%s signal=%s flow=%s\n", _nodeDataPtr->name, _signal, _flow );
    actions( _signal, _flow, _nodeDataPtr->name );
@@ -169,8 +170,17 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    if ( strcmp( current_action, "rerun" ) == 0 ) {
       /* issue an appropriate message, then rerun the node */
       if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ) {
+
+         memset(jobID, '\0', sizeof jobID);
+         if (getenv("JOB_ID") != NULL){
+             sprintf(jobID,"%s",getenv("JOB_ID"));
+         }
+         if (getenv("LOADL_STEP_ID") != NULL){
+             sprintf(jobID,"%s",getenv("LOADL_STEP_ID"));
+         }
+
          SeqUtil_TRACE( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
-         nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,"BOMBED: it has been resubmitted",_nodeDataPtr->datestamp);
+         nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,"BOMBED: it has been resubmitted. job_ID=%s",_nodeDataPtr->datestamp, jobID);
          go_submit( "submit", _flow , _nodeDataPtr, 1 );
       }
    } else if (strcmp(current_action,"cont") == 0) {
@@ -1988,7 +1998,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       SeqUtil_TRACE( "maestro() ignoreAllDepso2=%d \n",ignoreAllDeps );
       /*get origin of the submission*/
       if ((tmpJobID=getenv("JOB_ID")) == NULL) {
-         tmpLoopExt=getenv("LOADL_STEP_ID");
+         tmpJobID=getenv("LOADL_STEP_ID");
       }
       tmpHost=getenv("HOST");
       if (tmpJobID != NULL) {
