@@ -19,4 +19,4 @@
 *              maestro(2,"submit","dbstart_12");
 *              maestro(2,"initialize","r112");
 ********************************************************************************/
-extern int maestro( char* node, char* sign, char* flow, SeqNameValuesPtr loops, int ignoreAllDeps, char * _extraArgs);
+extern int maestro( char* _node, char* _sign, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char * _extraArgs, char *_datestamp);

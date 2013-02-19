@@ -12,7 +12,7 @@ ssm:	profile.sh
 	fi;
 	cp -r $(SWDEST)/* $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
-	cp -r pre-publish post-install profile.sh $(SSMPACKAGE)/.ssm.d;
+	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
 	cp ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
 	ssmprep --basePath $(shell pwd)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;

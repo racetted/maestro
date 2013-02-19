@@ -19,7 +19,7 @@ seq_exp_home=getenv("SEQ_EXP_HOME");
 printf("Tictac - date accessor/modifier interface for experiments \n");
 printf("         \n\n");
 printf("Usage:\n");
-printf("      tictac -[s date,f format]\n");
+printf("      tictac -[s date,f format] [-d datestamp] \n");
 printf("         where:\n");
 printf("         date is the date that is to be set (in a YYYYMMDD[HHMMSS] format)\n");
 printf("         format is the format of the date to return\n");
@@ -46,23 +46,30 @@ main (int argc, char * argv [])
 {
    extern char *optarg;
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
-   int c=0;
+   int c=0,returnDate=0;
 
    if (argc >= 2) {
-      while ((c = getopt(argc, argv, "s:f:h")) != -1) {
+      while ((c = getopt(argc, argv, "d:s:f:hv")) != -1) {
             switch(c) {
             case 's':
                expHome = getenv("SEQ_EXP_HOME");
                dateValue = malloc( strlen( optarg ) + 1 );
                strcpy(dateValue,optarg);
-               tictac_setDate( expHome,dateValue);
+               break;
+            case 'd':
+               expHome = getenv("SEQ_EXP_HOME");
+               dateValue = malloc( strlen( optarg ) + 1 );
+               strcpy(dateValue,optarg);
                break;
             case 'f':
                expHome = getenv("SEQ_EXP_HOME");
                format = malloc( strlen( optarg ) + 1 );
                strcpy(format,optarg);
-               tictac_getDate( expHome, format);
+	       returnDate=1;
                break;
+	    case 'v':
+	       SeqUtil_setTraceLevel(1);
+	       break; 
             case 'h':
                printUsage();
                break;
@@ -73,9 +80,20 @@ main (int argc, char * argv [])
             }
       }
 
+      if (returnDate) {
+          tictac_getDate( expHome,format,dateValue);
+      } else {
+	  SeqUtil_TRACE( "maestro.tictac() setting date to=%s\n", dateValue); 
+          tictac_setDate( expHome,dateValue);
+      }
+
+
+
    } else {
       printUsage();
       exit(1);
    }
+   free(dateValue);
+   free(format);
    exit(0);
 }

@@ -1,3 +1,4 @@
+#define _REGEX_RE_COMP
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <libgen.h>
+#include <regex.h>
 #include "runcontrollib.h"
 #include "nodelogger.h"
 #include "SeqUtil.h"
@@ -83,7 +85,7 @@ int match(const char *string, char *pattern)
 *nodewait: send 'wait' message to operational logging system.
 ****************************************************************/
 // void nodewait(char *job,char *jobw)
-void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp)
+void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, const char *datestamp)
 {
    /* This is needed so messages will be logged into CMCNODELOG */ 
    putenv("CMCNODELOG=on"); 
@@ -98,7 +100,7 @@ void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp)
 * It is normally called at the end of an operational job.
 * INPUT: node - full path of the node
 *****************************************************************************/
-void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp)
 {
    char jobID[50];
    char message[300];
@@ -129,7 +131,7 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestam
 *INPUT: job  - the job
 
 ****************************************************************/
-void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
 {
    char message[400];
    char *cpu = NULL;
@@ -141,12 +143,12 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
    putenv("CMCNODELOG=on");
    /* containers use TRUE_HOST for execution */
    if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method:%s soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin,  node_ptr->soumetArgs);
    } else {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->soumetArgs);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
    }
 
-   printf("nodesubmit.Message=%s",message);
+   SeqUtil_TRACE("nodesubmit.Message=%s",message);
    free(cpu);
 
    nodelogger(node_ptr->name,"submit",node_ptr->extension,message,datestamp);
@@ -160,7 +162,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp)
 *nodebegin: send 'begin' message to operational logging system.
 *INPUT: job  - the job
 ****************************************************************/
-void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp)
+void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp)
 {
    char hostname[50];
    char message[300];
@@ -211,7 +213,7 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datest
 *              - A message with a corresponding number is sent to the
 *                oprun log.
 ****************************************************************/
-void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp)
+void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const char* abort_type, const char *datestamp)
 {
    static char aborted[] = "ABORTED";
    static char runc[]    = ": run continues";
@@ -242,7 +244,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
       i++;
    }
    thisAbortType[i]='\0';
-      printf("nodeabort: thisAbortType: %s for datestamp %s\n", thisAbortType, datestamp);
+      SeqUtil_TRACE("nodeabort: thisAbortType: %s for datestamp %s\n", thisAbortType, datestamp);
 
    job = _nodeDataPtr->name;
    loopExt = _nodeDataPtr->extension;
@@ -268,7 +270,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
    } else if ( strncmp(thisAbortType,"XXJOB",5) == 0 ) {
       nodelogger(job,"info",loopExt,xxjob,datestamp);
    }	else {
-		printf("nodeabort: illegal type: %s\n", thisAbortType);
+		SeqUtil_TRACE("nodeabort: illegal type: %s\n", thisAbortType);
 		exit(1);
 	}
 

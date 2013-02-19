@@ -1,3 +1,4 @@
+#!/bin/ksh
 domainHome=$1
 packageHome=$2
 profileDirPath=${packageHome}/etc/profile.d
@@ -7,5 +8,5 @@ mkdir -p ${profileDirPath}
 Platform=`uname -s` ; [[ $Platform = Linux ]] && Platform=${Platform}-`uname -m`
 cp ${packageHome}/.ssm.d/profile.sh ${profilePath}
 echo "export SEQ_BIN=${packageHome}/bin" >> ${profilePath}
-echo "export SEQ_MAESTRO_DOMAIN=${domainHome}" >> ${profilePath}
+#echo "export SEQ_MAESTRO_DOMAIN=${domainHome}" >> ${profilePath}
 chmod 644 ${profilePath}

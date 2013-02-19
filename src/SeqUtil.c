@@ -4,6 +4,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <pwd.h>
 #include <errno.h>        /* errno */
@@ -76,14 +77,14 @@ void SeqUtil_checkExpHome (char * _expHome) {
 *actions: print action message
 ********************************************************************************/
 void actions(char *signal, char* flow, char *node) {
- printf("\n**************** SEQ \"%s\" \"%s\" \"%s\" Action Summary *******************\n",signal, flow, node);
+ SeqUtil_TRACE("\n**************** SEQ \"%s\" \"%s\" \"%s\" Action Summary *******************\n",signal, flow, node);
 }
 
 /********************************************************************************
 *actions: print action message
 ********************************************************************************/
 void actionsEnd(char *signal, char* flow, char* node) {
- printf("\n**************** SEQ \"%s\" \"%s\" \"%s\" Action ENDS *******************\n",signal, flow, node);
+ SeqUtil_TRACE("\n**************** SEQ \"%s\" \"%s\" \"%s\" Action ENDS *******************\n",signal, flow, node);
 }
 
 /********************************************************************************
@@ -138,10 +139,10 @@ struct dirent *direntp=NULL;
 *removeFile: Removes the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/
-int removeFile(char *filename) {
+int removeFile(const char *filename) {
    int status=0;
 
-   printf( "maestro.removeFile() removing %s\n", filename );
+   SeqUtil_TRACE( "maestro.removeFile() removing %s\n", filename );
    status = remove(filename);
    return(status);
 }
@@ -150,10 +151,10 @@ int removeFile(char *filename) {
 /********************************************************************************
 *touch: simulate a "touch" on a given file 'filename'
 ********************************************************************************/
-int touch(char *filename) {
+int touch(const char *filename) {
    FILE *actionfile;
    
-   printf("maestro.touch(): filename=%s\n",filename);
+   SeqUtil_TRACE("maestro.touch(): filename=%s\n",filename);
 
    if ((actionfile = fopen(filename,"r")) != NULL ) {
       fclose(actionfile);
@@ -175,11 +176,11 @@ int touch(char *filename) {
 int isFileExists( const char* lockfile, const char *caller ) {
    if ( access(lockfile, R_OK) == 0 ) {
       /* SeqUtil_TRACE( "SeqUtil.isFileExists() caller:%s found lock file=%s\n", caller, lockfile ); */
-      printf( "caller:%s found lock file=%s\n", caller, lockfile );
+      SeqUtil_TRACE( "caller:%s found lock file=%s\n", caller, lockfile );
       return 1;
    }
    /* SeqUtil_TRACE( "SeqUtil.isFileExists() caller:%s missing lock file=%s\n", caller, lockfile ); */
-   printf( "caller:%s missing lock file=%s\n", caller, lockfile );
+   SeqUtil_TRACE( "caller:%s missing lock file=%s\n", caller, lockfile );
    return 0;
 }
 
@@ -241,7 +242,7 @@ int SeqUtil_mkdir( const char* dir_name, int is_recursive ) {
       while ( split != NULL ) {
          strcat( tmp, "/" );
          if( ! SeqUtil_isDirExists( tmp ) ) {
-            printf ( "SeqUtil_mkdir: creating dir %s\n", tmp );
+            SeqUtil_TRACE ( "SeqUtil_mkdir: creating dir %s\n", tmp );
             if ( mkdir( tmp, 0755 ) == -1 ) {
                fprintf ( stderr, "ERROR: %s\n", strerror(errno) );
                return(EXIT_FAILURE);
@@ -256,7 +257,7 @@ int SeqUtil_mkdir( const char* dir_name, int is_recursive ) {
    } else {
       if( ! SeqUtil_isDirExists( dir_name ) ) {
          if ( mkdir( dir_name, 0755 ) == -1 ) {
-            printf ( "SeqUtil_mkdir: creating dir %s\n", dir_name );
+            SeqUtil_TRACE ( "SeqUtil_mkdir: creating dir %s\n", dir_name );
             fprintf ( stderr, "ERROR: %s\n", strerror(errno) );
             return(EXIT_FAILURE);
          }
@@ -270,7 +271,7 @@ char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp,
   char *chreturn=NULL;
   int nMpi=1;
   if ( ! (chreturn = malloc( strlen(npex) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
-    printf( "SeqUtil_cpuCalculate malloc: Out of memory!\n");
+    SeqUtil_TRACE( "SeqUtil_cpuCalculate malloc: Out of memory!\n");
     return(NULL);
   }
   nMpi = atoi(npex) * atoi(cpu_multiplier);
@@ -288,14 +289,14 @@ void SeqUtil_stringAppend( char** source, char* data )
    if (data != NULL) {
       if ( *source != NULL ) {
          if( ! (newDataPtr = malloc( strlen(*source) + strlen( data ) + 1 )  )) {
-            printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
+            SeqUtil_TRACE( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
 	    return;
          }
          strcpy( newDataPtr, *source );
          strcat( newDataPtr, data );
       } else {
          if( ! (newDataPtr = malloc( strlen( data ) + 1 ) ) ) {
-            printf( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
+            SeqUtil_TRACE( "SeqUtil_stringAppend malloc: Out of memory!\n"); 
    	    return;
          }
          strcpy( newDataPtr, data );
@@ -317,7 +318,7 @@ char *SeqUtil_resub (const char *regex_text, const char *repl_text, const char *
     if (status != 0) {
       char error_message[MAX_ERROR_MSG];
       regerror( status, &r, error_message, MAX_ERROR_MSG );
-      printf ("SeqUtil_regcomp error compiling '%s': %s\n", regex_text, error_message);
+      SeqUtil_TRACE ("SeqUtil_regcomp error compiling '%s': %s\n", regex_text, error_message);
       return NULL;
     }
     strncpy(buffer,str,strlen(str));
@@ -343,7 +344,7 @@ char *SeqUtil_resub (const char *regex_text, const char *repl_text, const char *
     return NULL;
 }
 
-int SeqUtil_tokenCount( char* source, char* tokenSeparator )
+int SeqUtil_tokenCount( const char* source, const char* tokenSeparator )
 {
    int count = 0;
    char *tmpSource = NULL, *tmpstrtok = NULL; 
@@ -402,7 +403,7 @@ char* SeqUtil_getExpPath( const char* username, const char* exp ) {
       SeqUtil_stringAppend( &expPath, "/.suites/" );
       SeqUtil_stringAppend( &expPath, (char*) exp );
    }
-   printf( "SeqUtil_getExpPath returning value: %s\n", expPath );
+   SeqUtil_TRACE( "SeqUtil_getExpPath returning value: %s\n", expPath );
    return expPath;
 }
 
@@ -428,10 +429,19 @@ void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
 
 char* SeqUtil_getdef( const char* filename, const char* key ) {
   char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def";
+  char *seq_exp_home=NULL;
+  struct passwd *passwdEnt;
+  struct stat fileStat;
 
-  if ( (home = getenv("HOME")) == NULL ){
-    raiseError("SeqUtil_getdef $HOME not defined\n");
+  /* User ownership of the suite to determine path to overrides.def */
+  if ( (seq_exp_home = getenv("SEQ_EXP_HOME")) == NULL ){
+    raiseError("SeqUtil_getdef $SEQ_EXP_HOME not defined\n");
   }
+  if (stat(seq_exp_home,&fileStat) < 0){
+    raiseError("SeqUtil_getdef unable to stat SEQ_EXP_HOME\n");
+  }
+  passwdEnt = getpwuid(fileStat.st_uid);
+  home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
   sprintf( ovpath, "%s%s", home, ovext );
   SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
@@ -637,3 +647,20 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
    return returnString; 
 } 
 
+void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
+
+   va_list ap;
+   FILE* tmpFile;
+
+   va_start(ap, text); 
+   if (filename != NULL) {
+      if ((tmpFile = fopen(filename,"a+")) == NULL) {
+         raiseError( "maestro cannot write to file:%s\n",filename );
+      }
+      vfprintf(tmpFile, text, ap);
+      fclose(tmpFile);
+   } else {
+      vfprintf(stdout, text, ap);
+   }
+   va_end(ap);
+}

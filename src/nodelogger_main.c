@@ -118,15 +118,16 @@ main (int argc, char * argv[])
       validDate=malloc(dateSize+1); 
       if ( hasDate == 0) {
       /* getting the experiment date */
-           strcpy(validDate,(char *)tictac_getDate(seq_exp_home,""));
+           strcpy(validDate,(char *)tictac_getDate(seq_exp_home,"", NULL));
       }
       else {
-           strcpy(validDate,(char*)checkValidDatestamp(datestamp)); 
+           checkValidDatestamp(datestamp);
+           strcpy(validDate,datestamp); 
       }
 
       printf("validDate = %s \n", validDate);
 
-      nodeDataPtr = nodeinfo( node, "all", loopsArgsPtr, NULL, NULL );
+      nodeDataPtr = nodeinfo( node, "all", loopsArgsPtr, NULL, NULL, validDate );
       if (hasLoops){
           SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgsPtr );
       }

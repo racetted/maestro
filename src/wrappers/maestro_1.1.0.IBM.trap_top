@@ -1,0 +1,7 @@
+# error code 24 = soft limit wallclock
+trap 'trap ""  24 ERR EXIT;${SEQ_BIN}/maestro -s abort -f continue -n ${SEQ_NODE} ${SEQ_LOOP_ARGS}; ${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -type abort -i $jobout; eval ${SelfJobRemove}; rm -f ${jobout} ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}; exit 1' 24 ERR EXIT
+(
+date 
+if [[ "$LOADL_STEP_TYPE" = "PARALLEL" ]]; then
+   llq -x -l ${LOADL_STEP_ID} | grep Task\ Instance | grep -v '\-1' | awk '{print $3}' | cut -d: -f1,2| sed s/:/\ /g | awk '{print "Task " $2 " on node " $1}'
+fi

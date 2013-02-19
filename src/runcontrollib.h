@@ -13,7 +13,7 @@
 * INPUT: job   - a job
 *        jobw  - 'job' is waiting for 'jobw' to finish.
 *****************************************************************************/
-extern void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *datestamp);
+extern void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, const char *datestamp);
 
 /****************************************************************************
 * NAME: nodeend
@@ -21,13 +21,13 @@ extern void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, char *date
 * It is normally called at the end of an operational job.
 * INPUT: node - full path of the node
 *****************************************************************************/
-extern void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp);
+extern void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp);
 
 /****************************************************************
 *nodesubmit: send 'submit' message to logging system.
 *INPUT: job  - the job
 ****************************************************************/
-void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp);
+void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp);
 
 /****************************************************************************
 * NAME: nodeabort
@@ -49,7 +49,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, char *datestamp);
 * NOTE: the variable numbers of arguments must be  string type
 *****************************************************************************/
 /* extern void nodeabort(int num, ...); */
-void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abort_type, char *datestamp);
+void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const char* abort_type, const char *datestamp);
 
 /****************************************************************************
 * NAME: nodebegin
@@ -58,7 +58,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, char* abo
 * INPUT: job  - the job
 * NOTE: the variable numbers of arguments must be string type
 *****************************************************************************/
-extern void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, char *datestamp);
+extern void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp);
 
 extern void CopyStrTillCarac(char *result, const char *original, char c);
 

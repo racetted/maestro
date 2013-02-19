@@ -17,6 +17,7 @@ runcontrol: prep $(OBJECTS) log_server
 	   fi; \
 	   s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(XML_LIB_DIR) $(LIBDIR) $(XTERN_LIB) -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
 	   cp $${component} $(BINDIR) ; \
+	   cp -r wrappers $(BINDIR)/ ; \
 	done;
 
 runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h

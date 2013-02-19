@@ -10,9 +10,11 @@ static void printUsage()
    
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      nodeinfo -n node [-f filters -l loopargs]\n");
+   printf("      nodeinfo -n node [-f filters -l loopargs -d datestamp -v]\n");
    printf("         where:\n");
    printf("         node     is full path of task or family node (mandatory (except -f root)):\n");
+   printf("         datestamp is the datestamp of the action. Default: SEQ_DATE env var, then latest modified log under $SEQ_EXP_HOME/logs\n");
+   printf("         -v       verbosity level\n");
    printf("         filters  is a comma separated list of filters (optional):\n");
    printf("                  all (default)\n");
    printf("                  task (node task path only)\n");
@@ -22,6 +24,7 @@ static void printUsage()
    printf("                  type (node type only)\n");
    printf("                  node (node name and extention if applicable)\n");
    printf("                  root (root node name)\n");
+   printf("                  var  (variables exported in wrapper)\n");
    printf("         loopargs is a comma separated list of loop arguments (optional):\n");
    /* printf("      SEQ_EXP_HOME=%s\n",seq_exp_home); */
    printf("Example: nodeinfo -n regional/assimilation/00/task_0\n");
@@ -39,7 +42,7 @@ main ( int argc, char * argv[] )
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgs = NULL;
-   char *node = NULL;
+   char *node = NULL, *tmpFile=NULL, *datestamp=NULL ;
    char filters[256];
    int errflg = 0, nodeFound = 0;
    int c, gotLoops=0, showRootOnly = 0;
@@ -47,25 +50,33 @@ main ( int argc, char * argv[] )
       printUsage();
    }
    strcpy(filters,"all");
-   while ((c = getopt(argc, (char* const*) argv, "n:f:l:d")) != -1) {
+   while ((c = getopt(argc, (char* const*) argv, "n:f:l:o:d:v")) != -1) {
          switch(c) {
          case 'n':
 	    node = malloc( strlen( optarg ) + 1 );
             strcpy(node,optarg);
             nodeFound = 1;
             break;
+         case 'd':
+	    datestamp = malloc( strlen( optarg ) + 1 );
+            strcpy(datestamp,optarg);
+            break;
          case 'f':
             strcpy(filters,optarg);
             break;
-         case 'd':
+         case 'v':
             SeqUtil_setTraceLevel(1);
             break;
+	 case 'o':
+	    tmpFile=malloc( strlen( optarg ) + 1 );
+	    strcpy(tmpFile, optarg);
+	    break;
          case 'l':
             /* loops argument */
             gotLoops=1;
             loops = malloc( strlen( optarg ) + 1 );
             strcpy(loops,optarg);
-            if( SeqLoops_parseArgs( &loopsArgs, loops ) == -1 ) {
+	    if( SeqLoops_parseArgs( &loopsArgs, loops ) == -1 ) {
                fprintf( stderr, "ERROR: Invalid loop arguments: %s\n", loops );
                exit(1);
             }
@@ -79,13 +90,16 @@ main ( int argc, char * argv[] )
       printUsage();
    }
 
-   nodeDataPtr = nodeinfo( node, filters, loopsArgs, NULL, NULL );
-    
+   nodeDataPtr = nodeinfo( node, filters, loopsArgs, NULL, NULL, datestamp );
+
    if (gotLoops){
       SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgs );
    }
-   SeqNode_printNode( nodeDataPtr, filters );
+
+   SeqNode_printNode( nodeDataPtr, filters, tmpFile );
    SeqNode_freeNode( nodeDataPtr );
    free( node );
+   free(tmpFile);
+   free(datestamp);
    return 0;
 }
