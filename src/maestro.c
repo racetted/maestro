@@ -180,6 +180,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
              sprintf(jobID,"%s",getenv("LOADL_STEP_ID"));
          }
          
+         memset(tmpString, '\0', sizeof tmpString);
 	 sprintf(tmpString,"BOMBED: it has been resubmitted. job_ID=%s", jobID);
          SeqUtil_TRACE( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
          nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,tmpString,_nodeDataPtr->datestamp, jobID);
