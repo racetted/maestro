@@ -8,6 +8,9 @@
 #include <libxml/xpath.h>
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
+#include "XmlUtils.h"
+
+
 
 
 /*****************************************************************************
@@ -18,7 +21,7 @@
 ******************************************************************************/
 const char* CATCHUP_XML_FILE = "/resources/catchup.xml";
 const char* XML_NODE_NAME = "CATCHUP";
-const char* CATCHUP_QUERY = "/CATCHUP/@value";
+const xmlChar* CATCHUP_QUERY = "/CATCHUP/@value";
 
 /*
  * retrieves the catchup value from the experiment catchup file $SEQ_EXP_HOME/resources/catchup.xml

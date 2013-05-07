@@ -61,7 +61,7 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    char statePattern[SEQ_MAXFIELD];
    char dateValue[128], cmd[128];
    char* returnDate = NULL;
-   size_t counter=0;
+   size_t counter=0, returnValue=0;
    FILE *dateFile = NULL;
    glob_t glob_logs; 
    struct stat *statbuf = NULL; 
@@ -116,7 +116,10 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
          printf("%.*s", 2, &dateValue[12] );
       if (strcmp(tmpstrtok,"CMC")==0) {
          sprintf(cmd, "r.date %.*s", 10, &dateValue[0]);
-         system(cmd);
+         returnValue=system(cmd);
+         if (returnValue) {
+	    raiseError("ERROR: r.date unable to be executed on date %s.\n", dateValue ); 
+         } 
       }
       tmpstrtok = (char*) strtok(NULL,"%");
    }

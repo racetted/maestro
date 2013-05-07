@@ -1,7 +1,7 @@
 # this file contains common config that is sourced by all makefiles
 WHO_I_AM=$(shell whoami)
-VERSION=1.3.0
-SEQ_WRAPPER=maestro_1.1.0
+VERSION=1.3.1
+SEQ_WRAPPER=maestro_$(VERSION)
 MACHINE=$(shell uname -s)
 HARDWARE=$(shell uname -m | tr '_' '-')
 SWDEST=$(shell pwd)/../bin/$(BASE_ARCH)
@@ -13,7 +13,7 @@ runcontrollib.o nodelogger.o maestro.o nodeinfo.o tictac.o expcatchup.o XmlUtils
 COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef
 XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
-LIBNAME="xml2 runcontrol z rmn_012"
+LIBNAME="xml2 runcontrol rmn_012"
 XML_INCLUDE_DIR=/usr/include/libxml2
 XML_LIB_DIR=/usr/lib
 ifeq ($(MACHINE),Linux)

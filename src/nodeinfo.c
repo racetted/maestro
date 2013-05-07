@@ -12,6 +12,7 @@
 #include "tictac.h"
 #include "SeqUtil.h"
 #include "XmlUtils.h"
+#include "SeqLoopsUtil.h"
 
 
 int SHOW_ALL = 0;
@@ -998,7 +999,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
 SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
 
-   char* seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
+   char *seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    SeqNodeDataPtr  nodeDataPtr = NULL;
 
    if( _exp_home == NULL ) {
