@@ -1663,7 +1663,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
    char filename[SEQ_MAXFIELD];
    char *depName = NULL, *depStatus = NULL, *depUser = NULL, *depExp = NULL,
         *depIndex = NULL, *tmpExt = NULL, *depHour = NULL,
-        *expPath = NULL, *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL;
+        *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL;
    char *waitingMsg = NULL, *depDatestamp = NULL;
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
@@ -1725,14 +1725,14 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          }
          free(depName); free(depStatus); free(depExp);
          free(depUser); free(localIndexString);
-	 free(expPath); free(depDatestamp); free(depIndexString);
+	 free(depDatestamp); free(depIndexString);
 	 free(depHour); free(depIndex); free(localIndex);
 
          SeqNameValues_deleteWholeList(&loopArgsPtr);
 
          depName = NULL; depStatus = NULL; depExp=NULL; 
          depUser = NULL; depIndexString = NULL; localIndexString = NULL;
-         expPath = NULL; depDatestamp = NULL; 
+         depDatestamp = NULL; 
 	 depHour = NULL; depIndex = NULL; tmpExt = NULL; localIndex = NULL;
       } else {
          SeqUtil_TRACE("maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");

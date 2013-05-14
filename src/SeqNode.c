@@ -537,7 +537,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
 
    char *tmpstrtok = NULL, *tmpFilters ;
    int showAll = 0, showCfgPath = 0, showTaskPath = 0, showRessource = 0; 
-   int showType = 0, showNode = 0, showRootOnly = 0, showResPath = 0, showVar=0;
+   int showType = 0, showNode = 0, showRootOnly = 0, showResPath = 0, showVar=0, showDependencies=0;
    SeqNameValuesPtr nameValuesPtr = NULL ;
    SeqDependenciesPtr depsPtr = NULL;
    LISTNODEPTR submitsPtr = NULL, siblingsPtr = NULL, abortsPtr = NULL;
@@ -558,6 +558,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
          if ( strcmp( tmpstrtok, "var" ) == 0 ) showVar = 1;
          if ( strcmp( tmpstrtok, "task" ) == 0 ) showTaskPath = 1;
          if ( strcmp( tmpstrtok, "res" ) == 0 ) showRessource = 1;
+         if ( strcmp( tmpstrtok, "dep" ) == 0 ) showDependencies = 1;
          if ( strcmp( tmpstrtok, "res_path" ) == 0 ) showResPath = 1;
          if ( strcmp( tmpstrtok, "type" ) == 0 ) showType = 1;
          if ( strcmp( tmpstrtok, "node" ) == 0 ) showNode= 1;
@@ -566,7 +567,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
          tmpstrtok = (char*) strtok(NULL,",");
       }
 
-      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly || showResPath || showVar ) == 0) {
+      if  (( showAll || showType || showCfgPath || showRessource || showTaskPath || showNode || showRootOnly || showResPath || showVar || showDependencies ) == 0) {
          raiseError("Filters %s unrecognized\n", filters);
       }
 
@@ -640,25 +641,9 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
          SeqUtil_printOrWrite(filename,"node.specific.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
          nameValuesPtr = nameValuesPtr->nextPtr;
       }
-      /*SeqUtil_printOrWrite(filename,"************ Node Dependencies \n"); */
-      depsPtr = node_ptr->depends;
-   
-      while( depsPtr != NULL ) {
-         nameValuesPtr =  depsPtr->dependencyItem;
-   
-         /*SeqUtil_printOrWrite(filename,"********* Dependency Item \n"); */
-         if ( depsPtr->type == NodeDependancy ) {
-            SeqUtil_printOrWrite(filename,"node.depend.type=Node\n");
-         } else if ( depsPtr->type == DateDependancy ) { 
-            SeqUtil_printOrWrite(filename,"node.depend.type=Date\n");
-         }
-         while (nameValuesPtr != NULL ) {
-            if( strlen( nameValuesPtr->value ) > 0 ) 
-               SeqUtil_printOrWrite(filename,"node.depend.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
-            nameValuesPtr = nameValuesPtr->nextPtr;
-         }
-         depsPtr  = depsPtr->nextPtr;
-      }
+
+      /* Dependencies */
+      SeqNode_printDependencies(node_ptr, filename, 0);
    
       /*SeqUtil_printOrWrite(filename,"************ Node Submits \n"); */
       submitsPtr = node_ptr->submits;
@@ -693,6 +678,8 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
       }
    }
 
+   if (showDependencies) SeqNode_printDependencies(node_ptr, filename, 1);
+
    if (showVar) {
         SeqNode_generateConfig( node_ptr,"continue", filename); 
    }
@@ -700,6 +687,36 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    free( tmpFilters );
    SeqUtil_TRACE( "SeqNode.SeqNode_printNode() done\n" );
 }
+
+void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filename, int isPrettyPrint ){
+
+   SeqDependenciesPtr depsPtr = NULL;
+   SeqNameValuesPtr nameValuesPtr = NULL;
+   char *extraString=NULL;
+   int count=1;
+
+   depsPtr = _nodeDataPtr->depends;
+   if (isPrettyPrint) {
+       SeqUtil_stringAppend( &extraString, "");
+   } else {
+       SeqUtil_stringAppend( &extraString, "node.depend.");
+   }
+
+   while( depsPtr != NULL ) {
+      nameValuesPtr =  depsPtr->dependencyItem;
+      if (isPrettyPrint) SeqUtil_printOrWrite(filename,"Dependency #%d\n", count);
+      while (nameValuesPtr != NULL ) {
+         if( strlen( nameValuesPtr->value ) > 0 ) 
+            SeqUtil_printOrWrite(filename,"%s%s=%s\n", extraString ,nameValuesPtr->name, nameValuesPtr->value );
+         nameValuesPtr = nameValuesPtr->nextPtr;
+      }
+      ++count; 
+      if (isPrettyPrint) SeqUtil_printOrWrite(filename,"\n", count);
+
+      depsPtr  = depsPtr->nextPtr;
+   }
+   free(extraString);
+} 
 
 SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    SeqNodeDataPtr nodeDataPtr = NULL;
@@ -808,7 +825,8 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }
-   SeqUtil_printOrWrite( filename, ". s.ssmuse.dot %s\n", getenv("SEQ_MAESTRO_SHORTCUT"));
+   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro_%s)\n", getenv("SEQ_MAESTRO_DOMAIN"), getenv("SEQ_MAESTRO_VERSION"));
+   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro-utils_%s)\n", getenv("SEQ_UTILS_DOMAIN"), getenv("SEQ_UTILS_VERSION"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    SeqUtil_printOrWrite( filename, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
@@ -898,7 +916,6 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       strcpy(shortdate,_nodeDataPtr->datestamp);
    }
    SeqUtil_printOrWrite( filename, "export SEQ_SHORT_DATE=%s\n", shortdate); 
-
 
    free(tmpdir);
    free(tmpValue);

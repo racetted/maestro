@@ -93,7 +93,7 @@ function Sys_AddWrapperHeader
 jobout=${listing_dir}/${jobname}.${SEQ_DATE}.pgmout\$$
 
 set ${Set_ex}
-exec 1>\$jobout >> \$jobout 2>&1
+exec 2>\$jobout >> \$jobout 1>&2
 END
 }
 
@@ -109,8 +109,10 @@ function Sys_AddWrapper
    Sys_AddWrapperHeader ${jobname} ${dest_file} ${listing_dir}
    seqBegin="\${SEQ_BIN}/maestro -s begin -n \${SEQ_NODE} -f \${SEQ_XFER} \${SEQ_LOOP_ARGS}"
    seqEnd="\${SEQ_BIN}/maestro -s end -n \${SEQ_NODE} -f \${SEQ_XFER} \${SEQ_LOOP_ARGS}"
-   topWrapper=${ConfigFile%/*}/wrappers/${sys}.${trap_arch}.${silentPrefix}trap_top
-   bottomWrapper=${ConfigFile%/*}/wrappers/${sys}.${trap_arch}.trap_bottom
+  ## topWrapper=${ConfigFile%/*}/wrappers/${sys}.${trap_arch}.${silentPrefix}trap_top
+  ## bottomWrapper=${ConfigFile%/*}/wrappers/${sys}.${trap_arch}.trap_bottom
+   [[ -f ${config_dir}/wrappers/${sys}.${trap_arch}.trap_top ]] && topWrapper=${config_dir}/wrappers/${sys}.${trap_arch}.trap_top || topWrapper=${altcfgdir}/wrappers/${sys}.${trap_arch}.trap_top
+   [[ -f ${config_dir}/wrappers/${sys}.${trap_arch}.trap_bottom ]] && bottomWrapper=${config_dir}/wrappers/${sys}.${trap_arch}.trap_bottom || bottomWrapper=${altcfgdir}/wrappers/${sys}.${trap_arch}.trap_bottom
 
    # add the trap
    cat ${topWrapper} >> ${dest_file}
