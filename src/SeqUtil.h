@@ -37,6 +37,7 @@ char* SeqUtil_striplast( const char* str ) ;
 void SeqUtil_stripSubstring(char ** string, char * substring);
 char * SeqUtil_relativePathEvaluation( char* depName, SeqNodeDataPtr _nodeDataPtr); 
 void SeqUtil_printOrWrite( const char * filename, char * text, ...); 
+FILE * fopen_nfs (const char *path, const char * perm );
 
 
 #endif

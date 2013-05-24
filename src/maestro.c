@@ -1477,7 +1477,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       }
       SeqUtil_TRACE( "maestro.submitDependencies() looking for waited file=%s\n", filename );
 
-      if ( access(filename, R_OK) == 0 ) {
+      if ( isFileExists(filename,"maestro.submitDependencies()") && access(filename, R_OK) == 0 ) {
          SeqUtil_TRACE( "maestro.submitDependencies() found waited file=%s\n", filename );
          /* build a node list for all entries found in the waited file */
          if ((waitedFile = fopen(filename,"r")) != NULL ) {
