@@ -528,10 +528,22 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
 char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
 
     char returnValue[SEQ_MAXFIELD]; 
+    char year[5], month[3], day[3];
+
     memset(returnValue,'\0', sizeof(returnValue));
     if (strcmp(switchType, "datestamp_hour") == 0) {
 	strncpy(returnValue, _nodeDataPtr->datestamp+8,2);   
         SeqUtil_TRACE( "switchReturn datestamp parser on datestamp = %s\n",  _nodeDataPtr->datestamp );
+    }
+    if (strcmp(switchType, "day_of_week") == 0) {
+        strncpy(year, _nodeDataPtr->datestamp,4); 
+        year[4]='\0';
+        strncpy(month, _nodeDataPtr->datestamp+4,2); 
+        month[2]='\0';
+        strncpy(day, _nodeDataPtr->datestamp+6,2); 
+        day[2]='\0';
+        SeqUtil_TRACE( "switchReturn datestamp parser on day of the week for date: %s%s%s \n",year,month,day);
+	sprintf(returnValue,"%d",SeqDatesUtil_dow(atoi(year), atoi(month), atoi(day)));   
     }
     SeqUtil_TRACE( "switchReturn returnValue = %s\n", returnValue );
     return strdup(returnValue); 
