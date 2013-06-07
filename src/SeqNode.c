@@ -835,6 +835,12 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    SeqUtil_printOrWrite( filename, "export SEQ_TRACE_LEVEL=%d\n", SeqUtil_getTraceLevel());
    SeqUtil_printOrWrite( filename, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
    SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
+   SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_MODULE=%s\n", _nodeDataPtr->module);
+   if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
+       SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_CONTAINER=%s\n", _nodeDataPtr->container); 
+   } else {
+       SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_CONTAINER=%s\n", _nodeDataPtr->name); 
+   }
    if ( _nodeDataPtr-> npex != NULL ) {
    SeqUtil_printOrWrite( filename, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
    } 
