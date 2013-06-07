@@ -186,7 +186,7 @@ int isFileExists( const char* lockfile, const char *caller ) {
     dirp = opendir(directory);
     if (dirp != NULL) {
        while ( (direntp = readdir(dirp)) != NULL && foundFile == 0 ) {
-          if (match(direntp->d_name,filename) == 1) {
+          if (strcmp(direntp->d_name,filename) == 0) {
              SeqUtil_TRACE("maestro.isFileExist() found file matching=%s\n",direntp->d_name );
              foundFile=1;
           }

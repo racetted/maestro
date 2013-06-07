@@ -1715,7 +1715,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
 	 }	
          SeqUtil_TRACE( "maestro.validateDependencies() Dependency Scope: %d depDatestamp=%s\n", depScope, depDatestamp);
 	 /* verify status files and write waiting files */
-         if( strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) {
+         if( (strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) || (strcmp( localIndexString,"" ) == 0) ) { 
 	    if( depScope == IntraSuite ) {
 	       SeqUtil_TRACE( "maestro.validateDependencies()  calling processDepStatus depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depName, depIndex, depDatestamp, depStatus );
 	       isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, SEQ_EXP_HOME);

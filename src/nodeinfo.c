@@ -20,6 +20,7 @@ int SHOW_CFGPATH = 0;
 int SHOW_TASKPATH = 0;
 int SHOW_RESSOURCE = 0;
 int SHOW_ROOT_ONLY = 0;
+int SHOW_DEP = 0;
 int SHOW_RESPATH = 0;
 
 /* root node of xml resource file */
@@ -926,6 +927,22 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    }
    xmlXPathFreeObject (result);
 
+   if ( SHOW_ALL || SHOW_DEP ) {
+       /* retrieve depends node */
+       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** internal depends **********\n");
+       sprintf ( query, "(child::DEPENDS_ON)");
+       if (_nodeDataPtr->type==Module){
+           if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
+               parseDepends( result, _nodeDataPtr ); 
+           }
+        } else {
+           if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+               parseDepends( result, _nodeDataPtr ); 
+           }
+        }
+       xmlXPathFreeObject (result);
+   }
+
    if( SHOW_ALL ) {
       /* retrieve submits node */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** submits **********\n");
@@ -934,21 +951,6 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       parseSubmits( result, _nodeDataPtr ); 
       xmlXPathFreeObject (result);
     
-      /* retrieve depends node */
-
-      SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** internal depends **********\n");
-      sprintf ( query, "(child::DEPENDS_ON)");
-      if (_nodeDataPtr->type==Module){
-	  if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
-             parseDepends( result, _nodeDataPtr ); 
-	  }
-      } else {
-	  if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-             parseDepends( result, _nodeDataPtr ); 
-	  }
-      }
-      xmlXPathFreeObject (result);
-   
       /* retrieve node's siblings */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** node siblings **********\n");
       
@@ -1031,6 +1033,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       if ( strcmp( tmpfilters, "task" ) == 0 ) SHOW_TASKPATH= 1;
       if ( strcmp( tmpfilters, "res" ) == 0 ) SHOW_RESSOURCE = 1;
       if ( strcmp( tmpfilters, "root" ) == 0 ) SHOW_ROOT_ONLY = 1;
+      if ( strcmp( tmpfilters, "dep" ) == 0 ) SHOW_DEP = 1;
       if ( strcmp( tmpfilters, "res_path" ) == 0 ) SHOW_RESPATH = 1;
       tmpstrtok = (char*) strtok(NULL,",");
    }

@@ -695,6 +695,7 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filena
    char *extraString=NULL;
    int count=1;
 
+   SeqUtil_TRACE( "SeqNode.SeqNode_printDependencies() started\n" );
    depsPtr = _nodeDataPtr->depends;
    if (isPrettyPrint) {
        SeqUtil_stringAppend( &extraString, "");
@@ -715,6 +716,7 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filena
 
       depsPtr  = depsPtr->nextPtr;
    }
+   SeqUtil_TRACE( "SeqNode.SeqNode_printDependencies() ended\n" );
    free(extraString);
 } 
 
