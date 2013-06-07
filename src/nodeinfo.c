@@ -12,6 +12,7 @@
 #include "tictac.h"
 #include "SeqUtil.h"
 #include "XmlUtils.h"
+#include "SeqLoopsUtil.h"
 
 
 int SHOW_ALL = 0;
@@ -19,6 +20,7 @@ int SHOW_CFGPATH = 0;
 int SHOW_TASKPATH = 0;
 int SHOW_RESSOURCE = 0;
 int SHOW_ROOT_ONLY = 0;
+int SHOW_DEP = 0;
 int SHOW_RESPATH = 0;
 
 /* root node of xml resource file */
@@ -527,10 +529,22 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
 char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
 
     char returnValue[SEQ_MAXFIELD]; 
+    char year[5], month[3], day[3];
+
     memset(returnValue,'\0', sizeof(returnValue));
     if (strcmp(switchType, "datestamp_hour") == 0) {
 	strncpy(returnValue, _nodeDataPtr->datestamp+8,2);   
         SeqUtil_TRACE( "switchReturn datestamp parser on datestamp = %s\n",  _nodeDataPtr->datestamp );
+    }
+    if (strcmp(switchType, "day_of_week") == 0) {
+        strncpy(year, _nodeDataPtr->datestamp,4); 
+        year[4]='\0';
+        strncpy(month, _nodeDataPtr->datestamp+4,2); 
+        month[2]='\0';
+        strncpy(day, _nodeDataPtr->datestamp+6,2); 
+        day[2]='\0';
+        SeqUtil_TRACE( "switchReturn datestamp parser on day of the week for date: %s%s%s \n",year,month,day);
+	sprintf(returnValue,"%d",SeqDatesUtil_dow(atoi(year), atoi(month), atoi(day)));   
     }
     SeqUtil_TRACE( "switchReturn returnValue = %s\n", returnValue );
     return strdup(returnValue); 
@@ -913,6 +927,22 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    }
    xmlXPathFreeObject (result);
 
+   if ( SHOW_ALL || SHOW_DEP ) {
+       /* retrieve depends node */
+       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** internal depends **********\n");
+       sprintf ( query, "(child::DEPENDS_ON)");
+       if (_nodeDataPtr->type==Module){
+           if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
+               parseDepends( result, _nodeDataPtr ); 
+           }
+        } else {
+           if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+               parseDepends( result, _nodeDataPtr ); 
+           }
+        }
+       xmlXPathFreeObject (result);
+   }
+
    if( SHOW_ALL ) {
       /* retrieve submits node */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** submits **********\n");
@@ -921,21 +951,6 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       parseSubmits( result, _nodeDataPtr ); 
       xmlXPathFreeObject (result);
     
-      /* retrieve depends node */
-
-      SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** internal depends **********\n");
-      sprintf ( query, "(child::DEPENDS_ON)");
-      if (_nodeDataPtr->type==Module){
-	  if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
-             parseDepends( result, _nodeDataPtr ); 
-	  }
-      } else {
-	  if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-             parseDepends( result, _nodeDataPtr ); 
-	  }
-      }
-      xmlXPathFreeObject (result);
-   
       /* retrieve node's siblings */
       SeqUtil_TRACE ( "nodeinfo.getFlowInfo() *********** node siblings **********\n");
       
@@ -998,7 +1013,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
 SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
 
-   char* seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
+   char *seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    SeqNodeDataPtr  nodeDataPtr = NULL;
 
    if( _exp_home == NULL ) {
@@ -1018,6 +1033,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       if ( strcmp( tmpfilters, "task" ) == 0 ) SHOW_TASKPATH= 1;
       if ( strcmp( tmpfilters, "res" ) == 0 ) SHOW_RESSOURCE = 1;
       if ( strcmp( tmpfilters, "root" ) == 0 ) SHOW_ROOT_ONLY = 1;
+      if ( strcmp( tmpfilters, "dep" ) == 0 ) SHOW_DEP = 1;
       if ( strcmp( tmpfilters, "res_path" ) == 0 ) SHOW_RESPATH = 1;
       tmpstrtok = (char*) strtok(NULL,",");
    }

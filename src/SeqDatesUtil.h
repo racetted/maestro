@@ -6,5 +6,6 @@
  *   * in hours, compute resulting date and hour and  return printable format
  *    */
 char* SeqDatesUtil_getPrintableDate( char* printable_date, int increment );
+int SeqDatesUtil_dow(int y, int m, int d);
 
 #endif

@@ -39,7 +39,6 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 #include <pwd.h>
-#include <curses.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>

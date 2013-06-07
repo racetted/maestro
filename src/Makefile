@@ -17,8 +17,12 @@ runcontrol: prep $(OBJECTS) log_server
 	   fi; \
 	   s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(XML_LIB_DIR) $(LIBDIR) $(XTERN_LIB) -libappl $(LIBNAME) -src $${component}_main.c -o $${component} $${ARCH_EXTRA}; \
 	   cp $${component} $(BINDIR) ; \
-	   cp -r wrappers $(BINDIR)/ ; \
 	done;
+	mkdir -p $(BINDIR)/wrappers;
+	cd wrappers; for file in *; do \
+	    cp $${file} $(BINDIR)/wrappers/maestro_$(VERSION).$${file}; \
+	done; \
+	cd ..
 
 runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h
 	s.compile $(CFLAGS) -includes $(INCDIR) -libpath $(XTERN_LIB) -src runcontrollib.c

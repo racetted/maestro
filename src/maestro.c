@@ -1477,7 +1477,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       }
       SeqUtil_TRACE( "maestro.submitDependencies() looking for waited file=%s\n", filename );
 
-      if ( access(filename, R_OK) == 0 ) {
+      if ( isFileExists(filename,"maestro.submitDependencies()") && access(filename, R_OK) == 0 ) {
          SeqUtil_TRACE( "maestro.submitDependencies() found waited file=%s\n", filename );
          /* build a node list for all entries found in the waited file */
          if ((waitedFile = fopen(filename,"r")) != NULL ) {
@@ -1663,7 +1663,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
    char filename[SEQ_MAXFIELD];
    char *depName = NULL, *depStatus = NULL, *depUser = NULL, *depExp = NULL,
         *depIndex = NULL, *tmpExt = NULL, *depHour = NULL,
-        *expPath = NULL, *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL;
+        *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL;
    char *waitingMsg = NULL, *depDatestamp = NULL;
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
@@ -1715,7 +1715,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
 	 }	
          SeqUtil_TRACE( "maestro.validateDependencies() Dependency Scope: %d depDatestamp=%s\n", depScope, depDatestamp);
 	 /* verify status files and write waiting files */
-         if( strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) {
+         if( (strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) || (strcmp( localIndexString,"" ) == 0) ) { 
 	    if( depScope == IntraSuite ) {
 	       SeqUtil_TRACE( "maestro.validateDependencies()  calling processDepStatus depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depName, depIndex, depDatestamp, depStatus );
 	       isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, SEQ_EXP_HOME);
@@ -1725,14 +1725,14 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          }
          free(depName); free(depStatus); free(depExp);
          free(depUser); free(localIndexString);
-	 free(expPath); free(depDatestamp); free(depIndexString);
+	 free(depDatestamp); free(depIndexString);
 	 free(depHour); free(depIndex); free(localIndex);
 
          SeqNameValues_deleteWholeList(&loopArgsPtr);
 
          depName = NULL; depStatus = NULL; depExp=NULL; 
          depUser = NULL; depIndexString = NULL; localIndexString = NULL;
-         expPath = NULL; depDatestamp = NULL; 
+         depDatestamp = NULL; 
 	 depHour = NULL; depIndex = NULL; tmpExt = NULL; localIndex = NULL;
       } else {
          SeqUtil_TRACE("maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");

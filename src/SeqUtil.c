@@ -174,14 +174,28 @@ int touch(const char *filename) {
 
 /* returns 1 if succeeds, 0 failure */
 int isFileExists( const char* lockfile, const char *caller ) {
-   if ( access(lockfile, R_OK) == 0 ) {
-      /* SeqUtil_TRACE( "SeqUtil.isFileExists() caller:%s found lock file=%s\n", caller, lockfile ); */
-      SeqUtil_TRACE( "caller:%s found lock file=%s\n", caller, lockfile );
-      return 1;
-   }
-   /* SeqUtil_TRACE( "SeqUtil.isFileExists() caller:%s missing lock file=%s\n", caller, lockfile ); */
-   SeqUtil_TRACE( "caller:%s missing lock file=%s\n", caller, lockfile );
-   return 0;
+  char* directory=NULL, *filename=NULL;
+  DIR *dirp=NULL;
+  struct dirent *direntp=NULL;
+  int foundFile=0;
+
+    direntp=(struct dirent *) malloc(sizeof(struct dirent));
+    directory=SeqUtil_getPathBase(lockfile);
+    filename=SeqUtil_getPathLeaf(lockfile);
+    SeqUtil_TRACE("maestro.isFileExist() opening directory=%s\n",directory);
+    dirp = opendir(directory);
+    if (dirp != NULL) {
+       while ( (direntp = readdir(dirp)) != NULL && foundFile == 0 ) {
+          if (strcmp(direntp->d_name,filename) == 0) {
+             SeqUtil_TRACE("maestro.isFileExist() found file matching=%s\n",direntp->d_name );
+             foundFile=1;
+          }
+       }
+       closedir(dirp);
+    }
+    free(directory);
+    free(filename);
+    return(foundFile);
 }
 
 int SeqUtil_isDirExists( const char* path_name ) {
@@ -664,3 +678,51 @@ void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
    }
    va_end(ap);
 }
+
+/**
+ * fopen_nfs
+ * use link to make waited_end file available to host
+ */
+FILE * fopen_nfs (const char *path, const char * perm )
+{
+    FILE *fp;
+    char lock[1024];
+    struct stat st;
+    time_t now;
+    double diff_t;
+    int status,ret,loop=0;
+
+    if (perm == NULL || path == NULL) {
+         raiseError("SeqUtil_fopen_nfs() input permission %s or path %s NULL", perm, path );
+    }
+
+    snprintf(lock,sizeof(lock),"%s.wlock",path);
+    SeqUtil_TRACE("LOCK=%s   PATH=%s\n",lock,path);
+
+    time(&now);
+    while ( loop < 300 ) {
+        if ( (status=link(path,lock)) == -1 ) {
+            if ( (lstat(lock,&st)) < 0 ) {
+                    loop++;
+                    continue;
+            } else if ( (diff_t=difftime(now,st.st_mtime)) > 5 ) {
+                    ret=unlink(lock); /* lock file removed after 5sec  */
+            }
+        } else {
+           if ( (status=stat(path,&st)) == 0 ) {
+                if ( st.st_nlink == 2 ) {
+                     /* got the lock */
+                     SeqUtil_TRACE("OPENING:%s\n",lock);
+                     fp=fopen(lock, perm);
+                     return(fp);
+                } else {
+                    SeqUtil_TRACE("ERROR with link\n");
+                }
+           }
+        }
+        usleep(250000);
+        loop++;
+        SeqUtil_TRACE("loop=%d\n",loop);
+    }
+}
+
