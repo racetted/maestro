@@ -19,13 +19,8 @@ main_getdef ( int argc, char * argv[] )
 main ( int argc, char * argv[] )
 #endif
 {
-   char *value,*deffile=NULL,*seq_exp_home=NULL,*disabled=NULL;
-   char *disabled_env="SEQ_GETDEF_DISABLED";
+   char *value,*deffile=NULL,*seq_exp_home=NULL;
    int file,key,c;
-
-   if ((disabled=getenv(disabled_env)) != NULL){
-     raiseError("ERROR: Attempt to use %s outside experiment.cfg (%s set)\n",argv[0],disabled_env);
-   }
 
    if ( argc < 3 ) {
       printUsage();
