@@ -80,24 +80,26 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
       } else {
          glob(statePattern, GLOB_NOSORT,0 ,&glob_logs);
 	 if (glob_logs.gl_pathc==0) {
-	     raiseError("ERROR: No latest datestamp available in %s/logs. Datestamp must be provided (-d argument).\n", _expHome ); 
-	 }
-         while(counter < glob_logs.gl_pathc) {
-	     statbuf=malloc(sizeof(struct stat));
-	     /* Get entry's information. */
-             if (stat(glob_logs.gl_pathv[counter], statbuf) == -1)
-                 continue;
-             if (difftime(statbuf->st_mtime,latest) > 0) {
-	        latest=statbuf->st_mtime;
-                free(tmpLatestFile);
-		tmpLatestFile=strdup((glob_logs.gl_pathv[counter]));
-	      } 
-	     ++counter;
-	     free(statbuf);
-	 }
-         globfree(&glob_logs);
-         dateFileName = (char*) SeqUtil_getPathLeaf( (const char*) (tmpLatestFile) );
-	 sprintf(dateValue,"%s", (char*) strtok( dateFileName, "_" ));
+	     SeqUtil_TRACE("Warning: No latest datestamp available in %s/logs. Datestamp used is 197001010000 (epoch).\n", _expHome ); 
+             sprintf(dateValue,"19700101000000"); 
+	 } else {
+             while(counter < glob_logs.gl_pathc) {
+	         statbuf=malloc(sizeof(struct stat));
+	         /* Get entry's information. */
+                 if (stat(glob_logs.gl_pathv[counter], statbuf) == -1)
+                     continue;
+                 if (difftime(statbuf->st_mtime,latest) > 0) {
+  	            latest=statbuf->st_mtime;
+                    free(tmpLatestFile);
+ 		    tmpLatestFile=strdup((glob_logs.gl_pathv[counter]));
+   	         } 
+    	         ++counter;
+	         free(statbuf);
+	     }
+             globfree(&glob_logs);
+             dateFileName = (char*) SeqUtil_getPathLeaf( (const char*) (tmpLatestFile) );
+             sprintf(dateValue,"%s", (char*) strtok( dateFileName, "_" )); 
+         }
       }
    }
    tmpstrtok = (char*) strtok( format, "%" );
