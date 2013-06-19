@@ -708,8 +708,7 @@ Inputs:
 static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    char filename[SEQ_MAXFIELD];
-   char *extName = NULL, *extension = NULL, *nptExt = NULL, *containerLoopExt = NULL ;
-   SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
+   char *extName = NULL, *extension = NULL;
 
    extName = (char *)SeqNode_extension( _nodeDataPtr );
 
@@ -721,7 +720,6 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    if( _nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask) {
       if( ( strcmp( _signal, "end" ) == 0 ) ||
           ( strcmp( _signal, "endx" ) == 0 && !isFileExists( filename, "setEndState()") ) ) {
-
          nodeend( _signal, _nodeDataPtr, _nodeDataPtr->datestamp );
       }
    } else {
@@ -740,33 +738,8 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
       SeqUtil_TRACE( "setEndState() not recreating existing lock file:%s\n", filename );
    }
 
-   if ( _nodeDataPtr->type == NpassTask && _nodeDataPtr->isLastNPTArg ) {
-      /*container arguments*/
-
-       if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
-            SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
-            containerLoopExt = (char*) SeqLoops_getExtFromLoopArgs(newArgs);
-            SeqUtil_TRACE( "maestro.go_end() containerLoopExt %s\n", containerLoopExt);
-            SeqUtil_stringAppend( &nptExt, containerLoopExt );
-            free(containerLoopExt);
-            SeqUtil_stringAppend( &nptExt, "+last" );
-            memset(filename,'\0',sizeof filename);
-            sprintf(filename,"%s/%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, nptExt); 
-            free( nptExt);
-       }
-
-       /* create the node end lock file name if not exists*/
-       if ( access(filename, R_OK) != 0 ) {
-          SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
-          if ( touch(filename) != 0 ) raiseError( "Cannot create lockfile: %s\n", filename );
-       } else {
-          SeqUtil_TRACE( "setEndState() not recreating existing lock file:%s\n", filename );
-       }
-   }
-
    free( extName );
    free( extension );
-   SeqNameValues_deleteWholeList( &newArgs);
 }
 
 /* 
@@ -923,24 +896,29 @@ Inputs
 
 static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
    char statePattern[SEQ_MAXFIELD];
+   char filename[SEQ_MAXFIELD];
    glob_t glob_last, glob_begin, glob_submit, glob_abort;
    int undoneIteration = 0;
    SeqNameValuesPtr containerLoopArgsList = NULL;
-   char *extension=NULL;
+   char *extension=NULL, *nptExt=NULL, *containerLoopExt = NULL;
+   SeqNameValuesPtr newArgs = NULL;
    
-   /* search for last end states. */
-   containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
-   if ( containerLoopArgsList != NULL) {
-       SeqUtil_stringAppend( &extension, (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList)); 
-   }
-   SeqUtil_stringAppend( &extension,"+"); 
+   /* search for last end states if not last npt */
 
-   memset( statePattern, '\0', sizeof statePattern );
-   sprintf( statePattern,"%s/%s/%s.%slast.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, extension);
-   glob(statePattern, GLOB_NOSORT,0 ,&glob_last);
-   undoneIteration = !(glob_last.gl_pathc);
-   if (undoneIteration)  SeqUtil_TRACE("maestro.isNpassComplete - last iteration not found. \n"); 
-   globfree(&glob_last);
+   if ( ! _nodeDataPtr->isLastNPTArg ) {
+      containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+      if ( containerLoopArgsList != NULL) {
+          SeqUtil_stringAppend( &extension, (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList)); 
+      } 
+      SeqUtil_stringAppend( &extension,"+"); 
+
+      memset( statePattern, '\0', sizeof statePattern );
+      sprintf( statePattern,"%s/%s/%s.%slast.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, extension);
+      glob(statePattern, GLOB_NOSORT,0 ,&glob_last);
+      undoneIteration = !(glob_last.gl_pathc);
+      if (undoneIteration)  SeqUtil_TRACE("maestro.isNpassComplete - last iteration not found. \n"); 
+      globfree(&glob_last);
+   }
   
    if (! undoneIteration) {
      /* search for submit states. */
@@ -969,6 +947,33 @@ static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
      undoneIteration = glob_abort.gl_pathc;
      if (undoneIteration) SeqUtil_TRACE("maestro.isNpassComplete - found abort.stop: %s \n",glob_abort.gl_pathv[0]); 
      globfree(&glob_abort);
+   }
+
+   /*set last npt flag*/ 
+   if ( _nodeDataPtr->isLastNPTArg ) {
+       memset(filename,'\0',sizeof filename);
+       /*container arguments*/
+       if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+            newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
+            SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
+            containerLoopExt = (char*) SeqLoops_getExtFromLoopArgs(newArgs);
+            SeqUtil_TRACE( "maestro.go_end() containerLoopExt %s\n", containerLoopExt);
+            SeqUtil_stringAppend( &nptExt, containerLoopExt );
+            free(containerLoopExt);
+            SeqUtil_stringAppend( &nptExt, "+last" );
+            memset(filename,'\0',sizeof filename);
+            sprintf(filename,"%s/%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, nptExt); 
+            free( nptExt);
+            SeqNameValues_deleteWholeList( &newArgs);
+       }
+
+       /* create the node end lock file name if not exists*/
+       if ( access(filename, R_OK) != 0 ) {
+          SeqUtil_TRACE( "maestro.go_end() created lockfile %s\n", filename);
+          if ( touch(filename) != 0 ) raiseError( "Cannot create lockfile: %s\n", filename );
+       } else {
+          SeqUtil_TRACE( "setEndState() not recreating existing lock file:%s\n", filename );
+       }
    }
 
   free(extension);
@@ -1017,8 +1022,6 @@ static int isNpassAborted ( const SeqNodeDataPtr _nodeDataPtr ) {
    return abortedIteration;
 } 
 
-
-
 /* 
 processContainerEnd
 
@@ -1031,7 +1034,6 @@ Inputs:
 */
 
 static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow ) {
-
 
    char endfile[SEQ_MAXFIELD];
    char continuefile[SEQ_MAXFIELD];
@@ -1095,7 +1097,6 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
    SeqNode_freeNameValues(newArgs); 
    free( extension);
    free( extWrite );
-
 }
 
 /*
