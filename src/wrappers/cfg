@@ -153,7 +153,11 @@ function Sys_AddWrapper
    fi
 
    # dot the job content
+   printf "\n printf \"USER CODE BEGINS \\n \" " >> ${dest_file}
+   printf "\n printf \" #____________________________________________________________#\\n \" " >> ${dest_file}
    printf "\n. ${job_with_wrapper} ${args}" >> ${dest_file}
+   printf "\n printf \" #____________________________________________________________#\\n \" " >> ${dest_file}
+   printf "\n printf \"USER CODE ENDS \\n \" " >> ${dest_file}
 
    # dot the job content
    printf "\n set -x" >> ${dest_file}
