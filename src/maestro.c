@@ -903,15 +903,14 @@ static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
    char *extension=NULL, *nptExt=NULL, *containerLoopExt = NULL;
    SeqNameValuesPtr newArgs = NULL;
    
+   containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+   if ( containerLoopArgsList != NULL) {
+       SeqUtil_stringAppend( &extension, (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList)); 
+   } 
+   SeqUtil_stringAppend( &extension,"+"); 
+
    /* search for last end states if not last npt */
-
    if ( ! _nodeDataPtr->isLastNPTArg ) {
-      containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
-      if ( containerLoopArgsList != NULL) {
-          SeqUtil_stringAppend( &extension, (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList)); 
-      } 
-      SeqUtil_stringAppend( &extension,"+"); 
-
       memset( statePattern, '\0', sizeof statePattern );
       sprintf( statePattern,"%s/%s/%s.%slast.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, extension);
       glob(statePattern, GLOB_NOSORT,0 ,&glob_last);
