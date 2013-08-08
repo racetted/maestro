@@ -1781,7 +1781,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope _dep_sco
    }
 
 
-   SeqUtil_TRACE( "processDepStatus _dep_name=%s _extString=%s _dep_datestamp=%s _dep_status=%s _dep_exp=%s\n", 
+   SeqUtil_TRACE( "maestro.processDepStatus() _dep_name=%s _extString=%s _dep_datestamp=%s _dep_status=%s _dep_exp=%s\n", 
       _dep_name, extString, _dep_datestamp, _dep_status, _dep_exp ); 
 
    if( _dep_index == NULL || strlen( _dep_index ) == 0 ) {
@@ -1794,12 +1794,16 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr,SeqDependsScope _dep_sco
    memset( statusFile, '\0', sizeof statusFile);
 
    /* get info from the dependant node */
+   if  (! doesNodeExist(_dep_name, _dep_exp, _dep_datestamp)) {
+       SeqUtil_TRACE("maestro.processDepStatus() dependant node (%s) of exp (%s) does not exist, skipping dependency \n",_dep_name,_dep_exp);  
+       return(0);
+   }
    depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL, NULL );
    
    /* check catchup value of the node */
-   SeqUtil_TRACE("dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
+   SeqUtil_TRACE("maestro.processDepStatus() dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
    if (depNodeDataPtr->catchup == CatchupDiscretionary) {
-      SeqUtil_TRACE("dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
+      SeqUtil_TRACE("maestro.processDepStatus() dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
       return(0);
    }
 

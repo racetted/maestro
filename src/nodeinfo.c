@@ -99,17 +99,17 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
 
 }
 
-void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
+void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep ) {
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
    xmlChar *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,
            *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    xmlChar *depPath = NULL;
-   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL, *parsedDepName=NULL; 
-   xmlAttrPtr propertiesPtr;
-   SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL ;
-   int i=0, current_index_flag=0;
+   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL, *parsedDepName=NULL, *tmpLoopName=NULL; 
+   SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL;
+   SeqLoopsPtr loopsPtr = NULL;
+   int i=0;
    if (_result) {
       nodeset = _result->nodesetval;
       SeqUtil_TRACE( "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
@@ -133,9 +133,27 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
             parsedDepName=SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
 
             depIndex = xmlGetProp( nodePtr, "index" );
-            depLocalIndex = xmlGetProp( nodePtr, "local_index" );
             /* look for keywords in index fields */
             
+            /* add loop context in case of intra dep */
+ 
+            if (isIntraDep) {
+                loopsPtr =  _nodeDataPtr->loops;
+                while( loopsPtr != NULL ) {
+                    if( strstr(  _nodeDataPtr->pathToModule ,loopsPtr->loop_name ) != NULL ) {
+                        /* add loop arg to full dep index */
+                        tmpLoopName=(char*) SeqUtil_getPathLeaf( (const char*) loopsPtr->loop_name );
+                        SeqUtil_TRACE( "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
+                        if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName) != NULL) {
+                            SeqNameValues_insertItem( &depArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
+                            SeqNameValues_insertItem( &localArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
+                        }
+                        free(tmpLoopName);
+                    }
+                    loopsPtr  = loopsPtr->nextPtr;
+                }
+            }
+
 	    if( depIndex != NULL ) {
                /*validate dependency args and create a namevalue list*/
 	       if( SeqLoops_parseArgs( &depArgs, depIndex ) != -1 ) {
@@ -152,8 +170,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
 	       } else {
 	           raiseError( "parseDepends(): dependency index format error\n" );
 	       }
-	       fullDepIndex=strdup((char *)SeqLoops_getLoopArgs(depArgs));
 	    }
+	    if (depArgs != NULL) fullDepIndex=strdup((char *)SeqLoops_getLoopArgs(depArgs));
+
+            depLocalIndex = xmlGetProp( nodePtr, "local_index" );
 
             if( depLocalIndex != NULL ) {
                /*validate local dependency args and create a namevalue list*/
@@ -171,8 +191,9 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
 	       } else {
 	           raiseError( "parseDepends(): local dependency index format error\n" );
 	       }
-	       fullDepLocalIndex=strdup((char *)SeqLoops_getLoopArgs(localArgs));
 	    }
+	    if( localArgs != NULL ) fullDepLocalIndex=strdup((char *)SeqLoops_getLoopArgs(localArgs));
+
             depPath = xmlGetProp( nodePtr, "path" );
             depHour = xmlGetProp( nodePtr, "hour" );
             depStatus = xmlGetProp( nodePtr, "status" );
@@ -635,7 +656,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       sprintf ( query, "(%s/child::DEPENDS_ON)", NODE_RES_XML_ROOT );
       SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-         parseDepends( result, _nodeDataPtr); 
+         parseDepends( result, _nodeDataPtr, 0); 
       }
       xmlXPathFreeObject (result);
 
@@ -682,6 +703,210 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    free(value);
 }
 
+/* Returns 1 if the node exists within known context*/
+int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, char* datestamp) {
+   char *xmlFile = NULL, *currentFlowNode = NULL, *newNode=NULL;
+   char *tmpstrtok = NULL, *tmpJobPath = NULL , *tmpAnswer=NULL, *tmpSwitchType=NULL;
+   char query[512];
+   int i = 0, count=0;
+   xmlDocPtr doc = NULL, previousDoc=NULL;
+   xmlNodeSetPtr nodeset = NULL;
+   xmlXPathObjectPtr result = NULL, attributesResult = NULL;
+   xmlNodePtr currentNodePtr = NULL;
+   xmlXPathContextPtr context = NULL, previousContext=NULL;
+   const xmlChar *nodeName = NULL;
+   SeqNodeDataPtr  nodeDataPtr = NULL;
+
+   newNode = (char*) SeqUtil_fixPath( _nodePath );
+   nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
+   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(_seq_exp_home,"",datestamp) );
+
+   SeqUtil_TRACE( "nodeinfo.doesNodeExist() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
+
+   /* count is 0-based */
+   /* build the xmlfile path */
+   xmlFile = malloc( strlen( _seq_exp_home ) + strlen( "/EntryModule/flow.xml" ) + 1 );
+   sprintf( xmlFile, "%s/EntryModule/flow.xml", _seq_exp_home);
+
+   /* parse the xml file */
+   doc = XmlUtils_getdoc(xmlFile);
+
+   /* the context is used to walk trough the nodes */
+   context = xmlXPathNewContext(doc);
+
+   tmpJobPath = (char*) malloc( strlen( _nodePath ) + 1 );
+
+   strcpy( tmpJobPath, _nodePath );
+
+   tmpstrtok = (char*) strtok( tmpJobPath, "/" );
+   while ( tmpstrtok != NULL ) {
+      /* build the query */      
+      if ( count == 0 ) {
+         sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
+         SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
+      } else {
+         /* next queries relative to previous node context */
+         sprintf ( query, "(child::*[@name='%s'])", tmpstrtok );
+         SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
+      }
+      
+      /* run the normal query */
+      if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+         SeqUtil_TRACE("nodeinfo.doesNodeExist() Node %s not found in XML master file! \n", _nodePath);
+         SeqNode_freeNode( nodeDataPtr );
+         SeqUtil_TRACE("nodeinfo.doesNodeExist() return = 0 \n");
+         if (previousContext != NULL){
+            xmlXPathFreeContext(previousContext);
+         }
+         if (previousDoc != NULL){
+            xmlFreeDoc(previousDoc); 
+         }
+         xmlXPathFreeContext(context);
+         xmlFreeDoc(doc);
+         xmlCleanupParser();
+         free(tmpJobPath);
+         free(tmpSwitchType); 
+         free(tmpAnswer); 
+         free(xmlFile);
+         free(currentFlowNode);
+         return(0);
+      }
+       
+      /* At this point I should only have one node in the result set
+      I'm getting the node to set it in the context so that
+      I can retrieve other nodes relative to the current one
+      i.e. depends/submits/etc
+      */
+
+      nodeset = result->nodesetval;
+      currentNodePtr = nodeset->nodeTab[0];
+      nodeDataPtr->type = getNodeType( currentNodePtr->name );
+      context->node = currentNodePtr;
+
+          /* retrieve node specific attributes */
+      if ( (attributesResult = XmlUtils_getnodeset ("(@*)", context)) != NULL){
+         nodeset=attributesResult->nodesetval;
+         for (i=0; i < nodeset->nodeNr; i++) {
+            currentNodePtr = nodeset->nodeTab[i];
+            nodeName = currentNodePtr->name;
+	    if ( strcmp (nodeName, "type") == 0 && nodeDataPtr->type == Switch) {
+	        tmpSwitchType=strdup(currentNodePtr->children->content);
+	        tmpAnswer=switchReturn(nodeDataPtr,tmpSwitchType);
+	        sprintf ( query, "(child::SWITCH_ITEM[@name='%s'])", tmpAnswer);
+                /* run the normal query */
+                if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+                    SeqUtil_TRACE("nodeinfo.doesNodeExist() Query %s did not find any corresponding SWITCH ITEM in XML flow file! \n", query );
+                    SeqNode_freeNode( nodeDataPtr );
+                    if (previousContext != NULL){
+                       xmlXPathFreeContext(previousContext);
+                    }
+                    if (previousDoc != NULL){
+                       xmlFreeDoc(previousDoc); 
+                    }
+                    xmlXPathFreeContext(context);
+                    xmlFreeDoc(doc);
+                    xmlCleanupParser();
+                    free(tmpJobPath);
+                    free(tmpSwitchType); 
+                    free(tmpAnswer); 
+                    free(xmlFile);
+                    free(currentFlowNode);
+                    SeqUtil_TRACE("nodeinfo.doesNodeExist() return = 0 \n");
+                    return(0);
+                } else {
+		    /* query returned results */
+                    nodeset = result->nodesetval;
+                    currentNodePtr = nodeset->nodeTab[0];
+                    context->node = currentNodePtr;
+		}
+	    }
+         }
+      xmlXPathFreeObject (attributesResult);
+      }
+
+      /* read the new flow file described in the module */
+      if ( nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
+       
+         /* read the flow file located in the module depot */
+	 free(xmlFile);
+	 xmlFile = malloc( strlen( _seq_exp_home ) + strlen( "/modules//flow.xml") + strlen( tmpstrtok ) + 1 ); 
+         sprintf ( xmlFile, "%s/modules/%s/flow.xml",_seq_exp_home, tmpstrtok ); 
+
+	 /* keep record of previous xml file for use in siblings query*/
+
+         if (previousContext != NULL){
+             xmlXPathFreeContext(previousContext);
+	 }
+	 if (previousDoc != NULL){
+             xmlFreeDoc(previousDoc); 
+	 }
+
+         previousContext=context;
+	 previousDoc=doc; 
+         context = NULL;
+         doc = NULL;
+
+         /* parse the new xml file */
+         doc = XmlUtils_getdoc(xmlFile);
+
+         /* the context is used to walk trough the nodes */
+         context = xmlXPathNewContext(doc);
+         sprintf ( query, "(/MODULE)", tmpstrtok );
+
+         if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+             SeqUtil_TRACE("nodeinfo.doesNodeExist() Warning: Problem with result set, Node %s not found in XML master file\n", _nodePath );
+             SeqNode_freeNode( nodeDataPtr );
+             if (previousContext != NULL){
+                 xmlXPathFreeContext(previousContext);
+             }
+             if (previousDoc != NULL){
+                 xmlFreeDoc(previousDoc); 
+             }
+             xmlXPathFreeContext(context);
+             xmlFreeDoc(doc);
+             xmlCleanupParser();
+             free(tmpJobPath);
+             free(tmpSwitchType); 
+             free(tmpAnswer); 
+             free(xmlFile);
+             free(currentFlowNode);
+             SeqUtil_TRACE("nodeinfo.doesNodeExist() return = 0 \n");
+             return(0);
+         }
+         nodeset = result->nodesetval;
+         currentNodePtr = nodeset->nodeTab[0];
+         context->node = currentNodePtr;
+
+      }
+
+      /* get the next token */
+      tmpstrtok = (char*) strtok(NULL,"/");
+
+      count++;
+
+      xmlXPathFreeObject (result);
+   }
+
+   if (previousContext != NULL){
+      xmlXPathFreeContext(previousContext);
+   }
+   if (previousDoc != NULL){
+      xmlFreeDoc(previousDoc); 
+   }
+   xmlXPathFreeContext(context);
+   xmlFreeDoc(doc);
+   xmlCleanupParser();
+   free(tmpJobPath);
+   free(tmpSwitchType); 
+   free(tmpAnswer); 
+   free(xmlFile);
+   free(currentFlowNode);
+   SeqNode_freeNode( nodeDataPtr );
+   SeqUtil_TRACE("nodeinfo.doesNodeExist() return = 1 \n");
+   return(1);
+
+}
+
    /*
    */
 void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home ) {
@@ -689,16 +914,16 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    char query[512],pathToModule[SEQ_MAXFIELD];
    char *tmpstrtok = NULL, *tmpJobPath = NULL, *suiteName = NULL, *module = NULL;
    char *taskPath = NULL, *intramodulePath = NULL, *tmpPTM=NULL, *tmpAnswer=NULL, *tmpSwitchType=NULL;
+
    int i = 0, count=0, totalCount = 0, switchResultFound=0;
    xmlDocPtr doc = NULL, previousDoc=NULL;
-   xmlAttrPtr propertiesPtr = NULL;
    xmlNodeSetPtr nodeset = NULL;
-   xmlXPathObjectPtr result = NULL, submitsResult = NULL, attributesResult = NULL;
-   xmlNodePtr currentNodePtr = NULL, nodePtr=NULL;
+   xmlXPathObjectPtr result = NULL, attributesResult = NULL;
+   xmlNodePtr currentNodePtr = NULL;
    xmlXPathContextPtr context = NULL, previousContext=NULL;
    const xmlChar *nodeName = NULL;
  
-   SeqUtil_TRACE( "nodeinfo.getFlowInfo() task:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
+   SeqUtil_TRACE( "nodeinfo.getFlowInfo() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
    /* count is 0-based */
    totalCount = (int) SeqUtil_tokenCount( _nodePath, "/" ) -1  ;
@@ -775,7 +1000,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
                     SeqUtil_TRACE("Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
                 } else {
 		    /* query returned results */
-		    switchResultFound=1;
+                    switchResultFound=1;
                     nodeset = result->nodesetval;
                     currentNodePtr = nodeset->nodeTab[0];
                     context->node = currentNodePtr;
@@ -891,7 +1116,6 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       }
 
       xmlXPathFreeObject (result);
-      xmlXPathFreeObject (submitsResult);
    }
 
   /* SeqUtil_stripSubstring(&pathToModule,intramodulePath,1); */
@@ -933,11 +1157,11 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
        sprintf ( query, "(child::DEPENDS_ON)");
        if (_nodeDataPtr->type==Module){
            if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
-               parseDepends( result, _nodeDataPtr ); 
+               parseDepends( result, _nodeDataPtr, 1 ); 
            }
         } else {
            if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-               parseDepends( result, _nodeDataPtr ); 
+               parseDepends( result, _nodeDataPtr, 1 ); 
            }
         }
        xmlXPathFreeObject (result);
