@@ -1115,12 +1115,12 @@ Returns the error status of the ord_soumet call.
 
 static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps) {
    char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD];
-   char listingDir[SEQ_MAXFIELD];
+   char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
    char tmpDate[5];
    char pidbuf[100];
    char *cpu = NULL, *tmpdir=NULL;
-   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *workerEndFile=NULL, *readyFile=NULL;
+   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *workerEndFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL;
    char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL;
    int catchup = CatchupNormal;
    int error_status = 0;
@@ -1129,8 +1129,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    actions( (char*) _signal, _flow, _nodeDataPtr->name );
    memset(nodeFullPath,'\0',sizeof nodeFullPath);
    memset(listingDir,'\0',sizeof listingDir);
+   memset(defFile,'\0',sizeof defFile);
    sprintf( nodeFullPath, "%s/modules/%s.tsk", SEQ_EXP_HOME, _nodeDataPtr->taskPath );
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
+   sprintf( defFile, "%s/resources/resources.def", SEQ_EXP_HOME);
+
    
    SeqUtil_stringAppend( &fullExtName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -1185,6 +1188,12 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          SeqUtil_stringAppend( &extName, "." );
          SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
       }
+      if ( (prefix = SeqUtil_getdef( defFile, "SEQ_JOBNAME_PREFIX" )) != NULL ){
+          SeqUtil_stringAppend( &jobName, prefix );
+          SeqUtil_stringAppend( &jobName, extName );
+      } else {
+          jobName=strdup(extName);
+      }
 
       /* test code to build jobname for longer jn argument 
       SeqUtil_stringAppend( &jobname, EXPNAME); 
@@ -1199,6 +1208,8 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       SeqUtil_stringAppend( &jobname, ".");
       SeqUtil_stringAppend( &jobname, extName);
       */
+      
+      
 
       /* go and submit the job */
       if ( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
@@ -1232,11 +1243,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	        maestro ( _nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL, _nodeDataPtr->datestamp  );
 	     }	
 
-	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
          } else {
 	     /* normal submit mode */
-             sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, extName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, getenv("SEQ_BIN"),_nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+             sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, getenv("SEQ_BIN"),_nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 	 }
 
          printf( "%s\n", cmd );
@@ -1259,7 +1270,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          _nodeDataPtr->submits == NULL ? strcpy( noendwrap, "" ) : strcpy( noendwrap, "-noendwrap" ) ;
 
-	  sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, extName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	  sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
 	 
 	 printf( "%s\n", cmd );
          SeqUtil_TRACE("maestro.go_submit() cmd_length=%d %s\n",strlen(cmd), cmd);
@@ -1282,6 +1293,8 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    free( readyFile); 
    free( fullExtName );
    free( extName );
+   free( jobName );
+   free( prefix );
    return(error_status);
 }
 
