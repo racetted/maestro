@@ -37,50 +37,6 @@ void CopyStrTillCarac(char *result, const char *original, char c)
   *result = '\0' ;
 }
 
-/********************************************************************************
-*match:Match 'string' against the extended regular expression in 'pattern',
-* treating errors as no match.
-* Return 1 for match, 0 for no match.
-********************************************************************************/
-int match(const char *string, char *pattern)
-{
-
-#if defined(Mop_linux)
-
- char *ptr = NULL;
- int re;
-
- ptr = (char *) re_comp(pattern);
- if ( ptr != NULL) {
-    return(0); /* report error */
- }
-
- re = re_exec(string);
- return(re);
-
-#else
-
- char *ptr = NULL;
- char *re = NULL;
-
- ptr = (char *) regcmp(pattern,(char *) 0);
- if ( ptr == NULL) {
-    return(0); /* report error */
- }
-
- re = regex(ptr,string);
- free(ptr);
- if ( re == NULL) {
-    return(0); /* report error */
- }
-  
- return(1);  
-#endif
-
-}
-
-/****************************************************************/
-
 /***************************************************************
 *nodewait: send 'wait' message to operational logging system.
 ****************************************************************/
@@ -282,4 +238,46 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 }
 
 
+
+/********************************************************************************
+*match:Match 'string' against the extended regular expression in 'pattern',
+* treating errors as no match.
+* Return 1 for match, 0 for no match.
+********************************************************************************/
+int match(const char *string, char *pattern)
+{
+
+#if defined(Mop_linux)
+
+ char *ptr = NULL;
+ int re;
+
+ ptr = (char *) re_comp(pattern);
+ if ( ptr != NULL) {
+    return(0); /* report error */
+ }
+
+ re = re_exec(string);
+ return(re);
+
+#else
+
+ char *ptr = NULL;
+ char *re = NULL;
+
+ ptr = (char *) regcmp(pattern,(char *) 0);
+ if ( ptr == NULL) {
+    return(0); /* report error */
+ }
+
+ re = regex(ptr,string);
+ free(ptr);
+ if ( re == NULL) {
+    return(0); /* report error */
+ }
+  
+ return(1);  
+#endif
+
+}
 

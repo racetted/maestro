@@ -5,13 +5,16 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <glob.h>
 #include <errno.h>        /* errno */
 #include "SeqUtil.h"
 #include <time.h>  /*nsleep*/
 #include "SeqNameValues.h"
 #include "SeqListNode.h"
+#include "l2d2_commun.h"
 
 
 int SEQ_TRACE = 0;
@@ -136,32 +139,48 @@ struct dirent *direntp=NULL;
 }
 
 /********************************************************************************
-*removeFile: Removes the named file 'filename'; it returns zero if succeeds 
+*removeFile_nfs: Removes the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/
-int removeFile(const char *filename) {
+int removeFile_nfs(const char *filename) {
    int status=0;
 
-   SeqUtil_TRACE( "maestro.removeFile() removing %s\n", filename );
+   SeqUtil_TRACE( "SeqUtil.removeFile_nfs() removing %s\n", filename );
    status = remove(filename);
    return(status);
 }
 
 
 /********************************************************************************
-*touch: simulate a "touch" on a given file 'filename'
+*access_nfs: access the named file 'filename'; it returns zero if succeeds 
+* and a nonzero value if it does not
 ********************************************************************************/
-int touch(const char *filename) {
+int access_nfs (const char *filename , int stat ) {
+   int status=0;
+
+   SeqUtil_TRACE("SeqUtil.access_nfs() accessing %s\n", filename);
+   status = access(filename, R_OK);
+   return (status);
+}
+ 
+
+
+
+
+/********************************************************************************
+*touch_nfs: simulate a "touch" on a given file 'filename'
+********************************************************************************/
+int touch_nfs(const char *filename) {
    FILE *actionfile;
    
-   SeqUtil_TRACE("maestro.touch(): filename=%s\n",filename);
+   SeqUtil_TRACE("SeqUtil.touch_nfs(): filename=%s\n",filename);
 
    if ((actionfile = fopen(filename,"r")) != NULL ) {
       fclose(actionfile);
       utime(filename,NULL); /*set the access and modification times to current time */     
    } else {
       if ((actionfile = fopen(filename,"w+")) == NULL) {
-         fprintf(stderr,"Error: maestro cannot touch file:%s\n",filename);
+         fprintf(stderr,"Error: maestro cannot touch_nfs file:%s\n",filename);
          return(1);
       }
       fclose(actionfile);
@@ -170,33 +189,30 @@ int touch(const char *filename) {
    return(0); 
 }
 
-
-
-/* returns 1 if succeeds, 0 failure */
-int isFileExists( const char* lockfile, const char *caller ) {
-  char* directory=NULL, *filename=NULL;
-  DIR *dirp=NULL;
-  struct dirent *direntp=NULL;
-  int foundFile=0;
-
-    direntp=(struct dirent *) malloc(sizeof(struct dirent));
-    directory=SeqUtil_getPathBase(lockfile);
-    filename=SeqUtil_getPathLeaf(lockfile);
-    SeqUtil_TRACE("maestro.isFileExist() opening directory=%s\n",directory);
-    dirp = opendir(directory);
-    if (dirp != NULL) {
-       while ( (direntp = readdir(dirp)) != NULL && foundFile == 0 ) {
-          if (strcmp(direntp->d_name,filename) == 0) {
-             SeqUtil_TRACE("maestro.isFileExist() found file matching=%s\n",direntp->d_name );
-             foundFile=1;
-          }
-       }
-       closedir(dirp);
+/* isFileExists_nfs
+* returns 1 if succeeds, 0 failure 
+*/
+int isFileExists_nfs( const char* lockfile, const char *caller ) {
+    if ( access(lockfile, R_OK) == 0 ) {
+       SeqUtil_TRACE( "SeqUtil.isFileExists_nfs() caller:%s found lock file=%s\n", caller, lockfile ); 
+       return 1;
     }
-    free(directory);
-    free(filename);
-    return(foundFile);
+    SeqUtil_TRACE( "SeqUtil.isFileExists_nfs() caller:%s missing lock file=%s\n", caller, lockfile ); 
+    return 0;
 }
+ 
+/**
+* fopen_nfs
+* use link to make waited_end file available to host
+*/
+FILE * fopen_nfs (const char *path, int sock )
+{
+    FILE *fp;
+    if ( (fp=fopen (path, "r")) != NULL )  return(fp);
+    raiseError("fopen_nfs Cannot open waited file, aborting.");
+}
+
+
 
 int SeqUtil_isDirExists( const char* path_name ) {
    DIR *pDir = NULL;
@@ -213,6 +229,40 @@ int SeqUtil_isDirExists( const char* path_name ) {
 
    return bExists;
 }
+
+
+/* 
+* nfs Wrapper to glob function for
+ * pathnames matching
+*/
+int globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno)) 
+{
+    glob_t glob_p;
+    int ret;
+    /* The real glob */
+    ret = glob(pattern, GLOB_NOSORT,  0 , &glob_p);
+    switch (ret) {
+        case GLOB_NOSPACE:
+            SeqUtil_TRACE( "SeqUtil.globPath_nfs() Glob running out of memory \n"); 
+            return(0);
+            break;
+        case GLOB_ABORTED:
+            SeqUtil_TRACE( "SeqUtil.globPath_nfs() Glob read error \n" ); 
+            return(0);
+            break;
+        case GLOB_NOMATCH:
+            SeqUtil_TRACE( "SeqUtil.globPath_nfs() Glob no found matches \n"); 
+            globfree(&glob_p);
+            return(0);
+            break;/* not reached */
+     }
+
+     ret=glob_p.gl_pathc;
+     globfree(&glob_p);
+     return (ret);
+}
+
+
 
 char *SeqUtil_getPathLeaf (const char *full_path) {
   char *split,*work_string,*chreturn =NULL; 
@@ -242,7 +292,12 @@ char *SeqUtil_getPathBase (const char *full_path) {
   return chreturn;
 }
 
-int SeqUtil_mkdir( const char* dir_name, int is_recursive ) {
+
+/**
+  *
+  *
+  */
+int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
    char tmp[1000];
    char *split = NULL, *work_string = NULL; 
    SeqUtil_TRACE ( "SeqUtil_mkdir: dir_name %s recursive? %d \n", dir_name, is_recursive );
@@ -661,6 +716,94 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
    return returnString; 
 } 
 
+/*
+ * WriteNodeWaitedFile_nfs
+ * Writes (nfs) the dependency lockfile in the directory of the node that this current node is waiting for.
+ * 
+ * Inputs:
+ *    _dep_user     - the user id where the dependant node belongs
+ *    _dep_exp_path - the SEQ_EXP_HOME of the dependant node
+ *    _dep_node     - the path of the node including the container
+  *    _dep_status   - the status that the node is waiting for (end,abort,etc)
+  *    _dep_index    - the loop index that this node is waiting for (.+1+6)
+  *    _dep_scope    - dependency scope
+  *     Sfile        - Status file of the dependent node
+  *     xpinode      - Experiment Inode
+ */ 
+
+int WriteNodeWaitedFile_nfs ( const char* pwname, const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
+                                      const char* filename, const char* statusfile) {
+ 
+    FILE *waitingFile = NULL;
+    char tmp_line[SEQ_MAXFIELD];
+    char line[SEQ_MAXFIELD];
+    int found=0;
+ 
+    fprintf(stderr,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_nfs routine\n");
+
+
+    memset(tmp_line,'\0',sizeof(tmp_line));
+    memset(line,'\0',sizeof(line));
+
+    if ((waitingFile = fopen(filename,"a")) == NULL) {
+            raiseError( "maestro.WriteNodeWaitedFile_nfs cannot write to file:%s\n",filename );
+    }
+ 
+    SeqUtil_TRACE( "maestro.writeNodeWaitedFile_nfs updating %s\n", filename);
+ 
+    /* sua need to add more logic for duplication and handle more than one entry in the waited file */
+    sprintf( tmp_line, "user=%s exp=%s node=%s datestamp=%s args=%s\n", pwname,seq_xp_home, nname, datestamp, loopArgs );
+    while( fgets(line, SEQ_MAXFIELD, waitingFile) != NULL ) {
+       if( strcmp( line, tmp_line ) == 0 ) {
+          found = 1;
+          break;
+       }
+    }
+ 
+    if ( !found ) fprintf( waitingFile,"%s", tmp_line );
+    fclose( waitingFile );
+ 
+    return(0);
+}
+/**
+*
+*
+*/
+int  WriteInterUserDepFile_nfs (const char *filename , const char * DepBuf , const char *ppwdir, const char* maestro_version, 
+                                const char *datestamp, const char *md5sum)
+{
+     char buff[1024];
+     char DepFileName[1024];
+     FILE *fp=NULL;
+     int ret;
+
+
+     if ((fp = fopen(filename,"w")) == NULL) {
+               raiseError( "WriteInterUserDepFile_nfs: Cannot write to interUser dependency file:%s\n",filename );
+     }
+
+     fwrite(DepBuf, 1, strlen(DepBuf) , fp);
+     fclose(fp);
+
+     /* create server dependency directory (based on maestro version) 
+     * Note: multiple client could try to create this when  do not exist. Give a static inode for this action */
+     snprintf(buff, sizeof(buff), "%s/.suites/maestrod/dependencies/polling/v%s",ppwdir,maestro_version);
+   
+     if ( access(buff,R_OK ) != 0 ) {
+          if ( SeqUtil_mkdir_nfs ( buff , 1) != 0 ) { 
+             raiseError( "WriteInterUserDepFile_nfs: Could not create dependency directory:%s",buff );
+          }
+     }
+
+     /* build dependency filename and link it to true dependency file under the xp. tree*/
+     snprintf(DepFileName,sizeof(DepFileName),"%s/.suites/maestrod/dependencies/polling/v%s/%s_%s",ppwdir,maestro_version,datestamp,md5sum);
+
+     /* have to check for re-runs */
+     ret=symlink(filename,DepFileName); /* atomic */
+
+     return(0);
+}
+
 void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
 
    va_list ap;
@@ -680,49 +823,98 @@ void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
 }
 
 /**
- * fopen_nfs
- * use link to make waited_end file available to host
+ * build a symlink on sequencing/sync/$version
+ *
  */
-FILE * fopen_nfs (const char *path, const char * perm )
+int lock_nfs ( const char * filename , const char * datestamp ) 
 {
-    FILE *fp;
-    char lock[1024];
-    struct stat st;
-    time_t now;
-    double diff_t;
-    int status,ret,loop=0;
+    char lpath[1024], src[1024], dest[1024], Ltime[25];
+     char *seq_exp_home, *mversion, *md5Token ;
+     int i,ret=0;
+     struct stat st;
+     time_t now;
+     double diff_t;
 
-    if (perm == NULL || path == NULL) {
-         raiseError("SeqUtil_fopen_nfs() input permission %s or path %s NULL", perm, path );
-    }
 
-    snprintf(lock,sizeof(lock),"%s.wlock",path);
-    SeqUtil_TRACE("LOCK=%s   PATH=%s\n",lock,path);
+     if ( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
+	            fprintf(stderr,"lock_nfs: Cannot get SEQ_EXP_HOME variable ...\n");
+     }
 
-    time(&now);
-    while ( loop < 300 ) {
-        if ( (status=link(path,lock)) == -1 ) {
-            if ( (lstat(lock,&st)) < 0 ) {
-                    loop++;
-                    continue;
-            } else if ( (diff_t=difftime(now,st.st_mtime)) > 5 ) {
-                    ret=unlink(lock); /* lock file removed after 5sec  */
-            }
-        } else {
-           if ( (status=stat(path,&st)) == 0 ) {
-                if ( st.st_nlink == 2 ) {
-                     /* got the lock */
-                     SeqUtil_TRACE("OPENING:%s\n",lock);
-                     fp=fopen(lock, perm);
-                     return(fp);
-                } else {
-                    SeqUtil_TRACE("ERROR with link\n");
+     if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
+                     fprintf(stderr, "lock_nfs: Cannot get env. var SEQ_MAESTRO_VERSION\n");
+     }
+     
+     snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",seq_exp_home,datestamp,mversion);
+     if ( access(lpath,R_OK) != 0 ) ret=SeqUtil_mkdir_nfs(lpath , 1);
+
+     sprintf(src,"%s/end_task_lock",lpath);
+     if ( access(src,R_OK) != 0 ) {
+                 if ( (ret=touch_nfs(src)) != 0 ) fprintf(stderr,"cannot touch file:lock on %s \n",lpath);
+     }
+
+     md5Token = (char *) str2md5(filename,strlen(filename));
+     sprintf(dest,"%s/%s",lpath,md5Token);
+
+     for ( i=0 ; i < 5 ; i++ ) {
+          get_time(Ltime,3);
+          ret=symlink("end_task_lock",dest);
+          if ( ret == 0 )  {
+                 fprintf(stdout,"symlink obtained loop=%d AT:%s xpn=%s Token:%s\n",i,Ltime,seq_exp_home,md5Token);
+                 break;
+          }
+          usleep(500000);
+     }
+     
+     if ( ret != 0 ) {
+          if ( (stat(dest,&st)) == 0 ) {
+                time(&now);
+                if ( (diff_t=difftime(now,st.st_mtime)) > 5 ) {
+                       ret=unlink(dest);
+                       fprintf(stderr,"symlink timeout xpn=%s Token:%s\n",seq_exp_home,md5Token);
                 }
-           }
-        }
-        usleep(250000);
-        loop++;
-        SeqUtil_TRACE("loop=%d\n",loop);
-    }
+          }
+     }
+    free(md5Token);
+
+     return(ret);
+}
+
+int unlock_nfs ( const char * filename , const char * datestamp ) 
+{
+     char lpath[1024], src[1024], Ltime[25];
+     char *seq_exp_home, *mversion, *md5Token ;
+     int ret=0;
+
+     if ( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
+	            fprintf(stderr,"lock_nfs: Cannot get SEQ_EXP_HOME variable ...\n");
+     }
+
+     if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
+                     fprintf(stderr, "lock_nfs: Cannot get env. var SEQ_MAESTRO_VERSION\n");
+     }
+     
+     snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",seq_exp_home,datestamp,mversion);
+     if ( access(lpath,R_OK) != 0 ) ret=SeqUtil_mkdir_nfs(lpath , 1);
+    
+     md5Token = (char *) str2md5(filename,strlen(filename));
+     sprintf(src,"%s/%s",lpath,md5Token);
+
+     get_time(Ltime,3);
+     if ( access(src,R_OK) == 0 ) {
+         if ( (ret=unlink(src)) != 0 ) {
+               fprintf(stderr,"unlink error:%d AT:%s xpn=%s Token:%s\n",ret,Ltime,seq_exp_home,md5Token);
+               ret=1;
+         } else {
+               fprintf(stdout,"symlink released AT:%s xpn=%s Token:%s\n",Ltime,seq_exp_home,md5Token);
+         }
+     } else {
+               fprintf(stdout,"unlock_nfs: file not there:%s !!!\n",src);
+               ret=1;
+     }
+
+     free(md5Token);
+      fprintf(stdout,"maestro.unlock_nfs() filename:%s return:%d\n",filename,ret);
+      return(ret);
+
 }
 

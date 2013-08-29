@@ -25,4 +25,5 @@
 * 
 ******************************************************************************/
 extern void nodelogger(const char *job, const char *type, const char* loop_ext, const char *message, const char *datestamp);
+extern void get_time (char * , int );
 

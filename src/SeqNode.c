@@ -56,48 +56,66 @@ char* SeqNode_getTypeString( SeqNodeType _node_type ) {
 void SeqNode_setName ( SeqNodeDataPtr node_ptr, const char* name ) {
    if ( name != NULL ) {
       free( node_ptr->name );
-      node_ptr->name = malloc( strlen(name) + 1 );
-      strcpy( node_ptr->name, name );
+      if (node_ptr->name = malloc( strlen(name) + 1 )) {
+          strcpy( node_ptr->name, name );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setName()\n");
+      }
    }
 }
 
 void SeqNode_setNodeName ( SeqNodeDataPtr node_ptr, const char* nodeName ) {
    if ( nodeName != NULL ) {
       free( node_ptr->nodeName );
-      node_ptr->nodeName = malloc( strlen(nodeName) + 1 );
-      strcpy( node_ptr->nodeName, nodeName );
+      if (node_ptr->nodeName = malloc( strlen(nodeName) + 1 )) {
+         strcpy( node_ptr->nodeName, nodeName );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setNodeName()\n");
+      }
    }
 }
 
 void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module ) {
    if ( module != NULL ) {
       free( node_ptr->module );
-      node_ptr->module = malloc( strlen(module) + 1 );
-      strcpy( node_ptr->module, module );
+      if (node_ptr->module = malloc( strlen(module) + 1 )) {
+          strcpy( node_ptr->module, module );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setModule()\n");
+      }
    }
 }
 
 void SeqNode_setPathToModule ( SeqNodeDataPtr node_ptr, const char* pathToModule ) {
    if ( pathToModule != NULL ) {
       free( node_ptr->pathToModule );
-      node_ptr->pathToModule = malloc( strlen(pathToModule) + 1 );
-      strcpy( node_ptr->pathToModule, pathToModule );
+      if (node_ptr->pathToModule = malloc( strlen(pathToModule) + 1 )){
+          strcpy( node_ptr->pathToModule, pathToModule );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setPathToModule()\n");
+      }
    }
 }
 
 void SeqNode_setIntramoduleContainer ( SeqNodeDataPtr node_ptr, const char* intramodule_container ) {
    if( intramodule_container != NULL ) {
       free( node_ptr->intramodule_container );
-      node_ptr->intramodule_container = malloc( strlen(intramodule_container) + 1 );
-      strcpy( node_ptr->intramodule_container, intramodule_container );
+      if (node_ptr->intramodule_container = malloc( strlen(intramodule_container) + 1 )) {
+          strcpy( node_ptr->intramodule_container, intramodule_container );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setIntramoduleContainer()\n");
+      }
    }
 }
 
 void SeqNode_setContainer ( SeqNodeDataPtr node_ptr, const char* container ) {
    if( container != NULL ) {
       free( node_ptr->container );
-      node_ptr->container = malloc( strlen(container) + 1 );
-      strcpy( node_ptr->container, container );
+      if (node_ptr->container = malloc( strlen(container) + 1 )) {
+          strcpy( node_ptr->container, container );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setContainer()\n");
+      }
    }
 }
 
@@ -106,30 +124,42 @@ void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
    char *tmpCpu=NULL;
    if ( cpu != NULL ) {
       free( node_ptr->cpu );
-      node_ptr->cpu = malloc( strlen(cpu) + 1 );
-      strcpy( node_ptr->cpu, cpu );
-      tmpCpu=strdup(cpu);
+      if (node_ptr->cpu = malloc( strlen(cpu) + 1 )){
+          strcpy( node_ptr->cpu, cpu );
+          tmpCpu=strdup(cpu);
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+      }
   
       /* parse NPEX */
       tmpstrtok = (char*) strtok( tmpCpu, "x" );
       if ( tmpstrtok != NULL ) {
           free( node_ptr->npex );
-	  node_ptr->npex=malloc( strlen(tmpstrtok) +1); 
-	  strcpy(node_ptr->npex, tmpstrtok);
+	  if (node_ptr->npex=malloc( strlen(tmpstrtok) +1)){ 
+              strcpy(node_ptr->npex, tmpstrtok);
+          } else {
+              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+          }
       }
       /* NPEY */
       tmpstrtok = (char*) strtok( NULL, "x" );
       if ( tmpstrtok != NULL ) {
           free( node_ptr->npey );
-	  node_ptr->npey=malloc( strlen(tmpstrtok) +1); 
-	  strcpy(node_ptr->npey, tmpstrtok);
+	  if (node_ptr->npey=malloc( strlen(tmpstrtok) +1)){ 
+   	     strcpy(node_ptr->npey, tmpstrtok);
+          } else {
+              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+          }
       }
       /* OMP */
       tmpstrtok = (char*) strtok( NULL, "x" );
       if ( tmpstrtok != NULL ) {
           free( node_ptr->omp );
-	  node_ptr->omp=malloc( strlen(tmpstrtok) +1); 
-	  strcpy(node_ptr->omp, tmpstrtok);
+	  if (node_ptr->omp=malloc( strlen(tmpstrtok) +1)){ 
+  	      strcpy(node_ptr->omp, tmpstrtok);
+          } else {
+              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+          }
       }
    free (tmpCpu);
    }
@@ -148,8 +178,11 @@ void SeqNode_setCpuMultiplier ( SeqNodeDataPtr node_ptr, const char* cpu_multipl
     }
     sprintf(tmpMult,"%d",mult);
     free( node_ptr->cpu_multiplier );
-    node_ptr->cpu_multiplier = malloc( strlen(cpu_multiplier) + 1 );
-    strcpy( node_ptr->cpu_multiplier, tmpMult );
+    if (node_ptr->cpu_multiplier = malloc( strlen(cpu_multiplier) + 1 )){
+        strcpy( node_ptr->cpu_multiplier, tmpMult );
+    } else {
+        raiseError("OutOfMemory exception in SeqNode_setCpuMultiplier()\n");
+    }
     free (tmpMultTok);
   }
    free (tmpMult);
@@ -158,64 +191,88 @@ void SeqNode_setCpuMultiplier ( SeqNodeDataPtr node_ptr, const char* cpu_multipl
 void SeqNode_setMachine ( SeqNodeDataPtr node_ptr, const char* machine ) {
    if ( machine != NULL ) {
       free( node_ptr->machine );
-      node_ptr->machine = malloc( strlen(machine) + 1 );
-      strcpy( node_ptr->machine, machine );
+      if (node_ptr->machine = malloc( strlen(machine) + 1 )){
+          strcpy( node_ptr->machine, machine );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setMachine()\n");
+      }
    }
 }
 
 void SeqNode_setMemory ( SeqNodeDataPtr node_ptr, const char* memory ) {
    if ( memory != NULL ) {
       free( node_ptr->memory );
-      node_ptr->memory = malloc( strlen(memory) + 1 );
-      strcpy( node_ptr->memory, memory );
+      if (node_ptr->memory = malloc( strlen(memory) + 1 )){
+          strcpy( node_ptr->memory, memory );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setMemory()\n");
+      }
    }
 }
 
 void SeqNode_setQueue ( SeqNodeDataPtr node_ptr, const char* queue ) {
    if ( queue != NULL ) {
       free( node_ptr->queue );
-      node_ptr->queue = malloc( strlen(queue) + 1 );
-      strcpy( node_ptr->queue, queue );
+      if (node_ptr->queue = malloc( strlen(queue) + 1 )){
+          strcpy( node_ptr->queue, queue );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setQueue()\n");
+      }
    }
 }
 
 void SeqNode_setSuiteName ( SeqNodeDataPtr node_ptr, const char* suiteName ) {
    if ( suiteName != NULL ) {
       free( node_ptr->suiteName );
-      node_ptr->suiteName = malloc( strlen(suiteName) + 1 );
-      strcpy( node_ptr->suiteName, suiteName );
+      if (node_ptr->suiteName = malloc( strlen(suiteName) + 1 )){
+          strcpy( node_ptr->suiteName, suiteName );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setSuiteName()\n");
+      }
    }
 }
 
 void SeqNode_setInternalPath ( SeqNodeDataPtr node_ptr, const char* path ) {
    if ( path != NULL ) {
       free( node_ptr->taskPath );
-      node_ptr->taskPath = malloc( strlen(path) + 1 );
-      strcpy( node_ptr->taskPath, path );
+      if (node_ptr->taskPath = malloc( strlen(path) + 1 )){
+          strcpy( node_ptr->taskPath, path );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setInternalPath()\n");
+      }
    }
 }
 
 void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args ) {
    if ( args != NULL ) {
       free( node_ptr->args );
-      node_ptr->args = malloc( strlen(args) + 1 );
-      strcpy( node_ptr->args, args );
+      if (node_ptr->args = malloc( strlen(args) + 1 )){
+          strcpy( node_ptr->args, args );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setArgs()\n");
+      }
    }
 }
 
 void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath ) {
    if ( workerPath != NULL ) {
       free( node_ptr->workerPath );
-      node_ptr->workerPath = malloc( strlen(workerPath) + 1 );
-      strcpy( node_ptr->workerPath, workerPath );
+      if (node_ptr->workerPath = malloc( strlen(workerPath) + 1 )){
+          strcpy( node_ptr->workerPath, workerPath );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setWorkerPath()\n");
+      }
    }
 }
 
 void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
    if ( soumetArgs != NULL ) {
       free( node_ptr->soumetArgs );
-      node_ptr->soumetArgs = malloc( strlen(soumetArgs) + 1 );
-      strcpy( node_ptr->soumetArgs, soumetArgs );
+      if (node_ptr->soumetArgs = malloc( strlen(soumetArgs) + 1 )){
+          strcpy( node_ptr->soumetArgs, soumetArgs );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setSoumetArgs()\n");
+      }
    }
 }
 
@@ -229,40 +286,55 @@ void SeqNode_setLoopArgs ( SeqNodeDataPtr node_ptr, SeqNameValuesPtr _loop_args 
 void SeqNode_setAlias ( SeqNodeDataPtr node_ptr, const char* alias ) {
    if ( alias != NULL ) {
       free( node_ptr->alias );
-      node_ptr->alias = malloc( strlen(alias) + 1 );
-      strcpy( node_ptr->alias, alias );
+      if (node_ptr->alias = malloc( strlen(alias) + 1 )){
+          strcpy( node_ptr->alias, alias );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setAlias()\n");
+      }
    }
 }
 
 void SeqNode_setDatestamp( SeqNodeDataPtr node_ptr, const char* datestamp) {
    if ( datestamp != NULL ) {
       free( node_ptr->datestamp );
-      node_ptr->datestamp = malloc( strlen(datestamp) + 1 );
-      strcpy( node_ptr->datestamp, datestamp );
+      if (node_ptr->datestamp = malloc( strlen(datestamp) + 1 )){
+          strcpy( node_ptr->datestamp, datestamp );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setDatestamp()\n");
+      }
    }
 }
 
 void SeqNode_setSubmitOrigin( SeqNodeDataPtr node_ptr, const char* submitOrigin) {
    if ( submitOrigin != NULL ) {
       free( node_ptr->submitOrigin );
-      node_ptr->submitOrigin = malloc( strlen(submitOrigin) + 1 );
-      strcpy( node_ptr->submitOrigin, submitOrigin );
+      if (node_ptr->submitOrigin = malloc( strlen(submitOrigin) + 1 )){
+          strcpy( node_ptr->submitOrigin, submitOrigin );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setSubmitOrigin()\n");
+      }
    }
 }
 
 void SeqNode_setWorkdir( SeqNodeDataPtr node_ptr, const char* workdir) {
    if ( workdir != NULL ) {
       free( node_ptr->workdir);
-      node_ptr->workdir = malloc( strlen(workdir) + 1 );
-      strcpy( node_ptr->workdir, workdir);
+      if (node_ptr->workdir = malloc( strlen(workdir) + 1 )){
+          strcpy( node_ptr->workdir, workdir);
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setWorkdir()\n");
+      }
    }
 }
 
 void SeqNode_setExtension ( SeqNodeDataPtr node_ptr, const char* extension ) {
    if ( extension != NULL ) {
       free( node_ptr->extension );
-      node_ptr->extension = malloc( strlen(extension) + 1 );
-      strcpy( node_ptr->extension, extension );
+      if (node_ptr->extension = malloc( strlen(extension) + 1 )){
+          strcpy( node_ptr->extension, extension );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setExtension()\n");
+      }
    }
 }
 
@@ -272,8 +344,11 @@ SeqLoopsPtr SeqNode_allocateLoopsEntry ( SeqNodeDataPtr node_ptr ) {
    SeqLoopsPtr loopsPtr = NULL;
    SeqUtil_TRACE( "SeqNode_allocateLoopsEntry()\n" );
    if ( node_ptr->loops == NULL ) {
-      node_ptr->loops = malloc( sizeof (SeqLoops) );
-      loopsPtr = node_ptr->loops;
+      if (node_ptr->loops = malloc( sizeof (SeqLoops) )){
+          loopsPtr = node_ptr->loops;
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_allocateLoopsEntry()\n");
+      }
    } else {
       loopsPtr = node_ptr->loops;
       /* position ourselves at the end of the list */
@@ -282,9 +357,12 @@ SeqLoopsPtr SeqNode_allocateLoopsEntry ( SeqNodeDataPtr node_ptr ) {
       }
    
       /* allocate memory for new data */
-      loopsPtr->nextPtr = malloc( sizeof(SeqLoops) );
-      /* go to memory for new data */
-      loopsPtr = loopsPtr->nextPtr;
+      if (loopsPtr->nextPtr = malloc( sizeof(SeqLoops) )){
+          /* go to memory for new data */
+          loopsPtr = loopsPtr->nextPtr;
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_allocateLoopsEntry()\n");
+      }
    }
    loopsPtr->nextPtr = NULL;
    loopsPtr->values = NULL;
@@ -299,8 +377,11 @@ SeqDependenciesPtr SeqNode_allocateDepsEntry ( SeqNodeDataPtr node_ptr ) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqUtil_TRACE( "SeqNode_allocateDepsEntry()\n" );
    if ( node_ptr->depends == NULL ) {
-      node_ptr->depends = malloc( sizeof (SeqDependencies) );
-      deps_ptr = node_ptr->depends;
+      if (node_ptr->depends = malloc( sizeof (SeqDependencies) )){
+          deps_ptr = node_ptr->depends;
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_allocateDepsEntry()\n");
+      }
    } else {
       deps_ptr = node_ptr->depends;
       /* position ourselves at the end of the list */
@@ -309,9 +390,12 @@ SeqDependenciesPtr SeqNode_allocateDepsEntry ( SeqNodeDataPtr node_ptr ) {
       }
 
       /* allocate memory for new data */
-      deps_ptr->nextPtr = malloc( sizeof(SeqDependencies) );
-      /* go to memory for new data */
-      deps_ptr = deps_ptr->nextPtr;
+      if (deps_ptr->nextPtr = malloc( sizeof(SeqDependencies) )){
+          /* go to memory for new data */
+          deps_ptr = deps_ptr->nextPtr;
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_allocateDepsEntry()\n");
+      }
    }
    deps_ptr->nextPtr = NULL;
    deps_ptr->dependencyItem = NULL;
@@ -337,9 +421,12 @@ SeqNameValuesPtr SeqNode_allocateDepsNameValue ( SeqDependenciesPtr deps_ptr ) {
       }
 
       /* allocate memory for new data */
-      nameValuesPtr->nextPtr = malloc( sizeof(SeqNameValues) );
-      /* go to memory for new data */
-      nameValuesPtr = nameValuesPtr->nextPtr;
+      if (nameValuesPtr->nextPtr = malloc( sizeof(SeqNameValues) )){
+          /* go to memory for new data */
+          nameValuesPtr = nameValuesPtr->nextPtr;
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_allocatedDepsNameValue()\n");
+      }
    }
    /* set end of list */
    nameValuesPtr->nextPtr = NULL;
@@ -353,24 +440,33 @@ SeqNameValuesPtr SeqNode_allocateDepsNameValue ( SeqDependenciesPtr deps_ptr ) {
    name-value structure */
 void SeqNode_setDepsNameValue (SeqNameValuesPtr name_values_ptr, char* name, char* value ) {
    /* printf ("SeqNode_setDepsNameValue name=%s value=%s\n", name , value ); */
-   name_values_ptr->name = malloc( sizeof(char) * ( strlen( name ) + 1) );
-   strcpy( name_values_ptr->name, (char*)name );
-   if ( value != NULL ) {
-      name_values_ptr->value = malloc( sizeof(char) * ( strlen( value ) + 1) );
-      strcpy( name_values_ptr->value, (char*)value );
+   if (name_values_ptr->name = malloc( sizeof(char) * ( strlen( name ) + 1) )){
+       strcpy( name_values_ptr->name, (char*)name );
    } else {
-      name_values_ptr->value = malloc( sizeof(char) * 2);
-      strcpy( name_values_ptr->value, "" );
+       raiseError("OutOfMemory exception in SeqNode_setDepsNameValue()\n");
+   }
+   if ( value != NULL ) {
+      if (name_values_ptr->value = malloc( sizeof(char) * ( strlen( value ) + 1) )){
+         strcpy( name_values_ptr->value, (char*)value );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setDepsNameValue()\n");
+      }
+   } else {
+      if (name_values_ptr->value = malloc( sizeof(char) * 2)){
+          strcpy( name_values_ptr->value, "" );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setDepsNameValue()\n");
+      }
    }
 }
 
 /* add dependency of type node i.e. tasks/family  */
 void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, char* dep_node_name, char* dep_node_path,
-                         char* dep_user, char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour) {
+                         char* dep_user, char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char* dep_Prot) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
-   SeqUtil_TRACE( "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_user=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s\n",
-      dep_node_name, dep_node_path, dep_user, dep_exp, dep_status, dep_index, local_index );
+   SeqUtil_TRACE( "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_user=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s, dep_Prot=%s\n",
+      dep_node_name, dep_node_path, dep_user, dep_exp, dep_status, dep_index, local_index, dep_Prot);
    deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
    deps_ptr->type = type;
    nameValuesPtr = deps_ptr->dependencyItem;
@@ -393,7 +489,11 @@ void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, c
    SeqNode_setDepsNameValue ( nameValuesPtr, "LOCAL_INDEX", local_index );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep_hour );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep_hour ); 
+
+   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
+   SeqNode_setDepsNameValue ( nameValuesPtr, "PROT", dep_Prot );
+
 }
 
 /* add dependency of type date i.e. not sure how we will implement this yet */
@@ -467,8 +567,11 @@ void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, char* name, char* value 
 
 void SeqNode_setError ( SeqNodeDataPtr node_ptr, const char* message ) {
    node_ptr->error = 1;
-   node_ptr->errormsg = malloc( strlen( message ) + 1 );
-   strcpy( node_ptr->errormsg, message );
+   if (node_ptr->errormsg = malloc( strlen( message ) + 1 )){
+       strcpy( node_ptr->errormsg, message );
+   } else {
+       raiseError("OutOfMemory exception in SeqNode_setError()\n");
+   }
 }
 
 void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
@@ -545,7 +648,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    SeqUtil_TRACE( "SeqNode.SeqNode_printNode() called\n" );
 
    if( filename != NULL ) {
-      removeFile(filename);
+      removeFile_nfs(filename);
    }
    if( filters == NULL ) {
       showAll = 1;
@@ -723,8 +826,11 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filena
 SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    SeqNodeDataPtr nodeDataPtr = NULL;
    SeqUtil_TRACE( "SeqNode.SeqNode_createNode() started\n" );
-   nodeDataPtr = malloc( sizeof( SeqNodeData ) );
-   SeqNode_init ( nodeDataPtr );
+   if (nodeDataPtr = malloc( sizeof( SeqNodeData ) )){
+       SeqNode_init ( nodeDataPtr );
+   } else {
+       raiseError("OutOfMemory exception in SeqNode_createNode()\n");
+   }
    SeqNode_setName( nodeDataPtr, name );
    SeqNode_setNodeName ( nodeDataPtr, (char*) SeqUtil_getPathLeaf(name));
    SeqNode_setContainer ( nodeDataPtr, (char*) SeqUtil_getPathBase(name));
@@ -827,8 +933,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }
-   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro_%s)\n", getenv("SEQ_MAESTRO_DOMAIN"), getenv("SEQ_MAESTRO_VERSION"));
-   SeqUtil_printOrWrite( filename, "eval $(ssmuse sh -d %s -p maestro-utils_%s)\n", getenv("SEQ_UTILS_DOMAIN"), getenv("SEQ_UTILS_VERSION"));
+   SeqUtil_printOrWrite( filename, "%s \n", getenv("SEQ_MAESTRO_SHORTCUT"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
    SeqUtil_printOrWrite( filename, "export SEQ_WRAPPER=%s\n", getenv("SEQ_WRAPPER"));
@@ -890,8 +995,11 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
       /*remove the :last, raise flag that node has a :last*/
       stringLength=strlen(tmpValue)-5;
-      tmp2Value=malloc(stringLength+1); 
-      memset(tmp2Value,'\0', stringLength+1);
+      if (tmp2Value=malloc(stringLength+1)) {
+          memset(tmp2Value,'\0', stringLength+1);
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_generateConfig()\n");
+      }
       strncpy(tmp2Value, tmpValue, stringLength); 
       SeqUtil_stringAppend( &tmp2Value, "" );
       SeqUtil_TRACE("SeqLoops_GenerateConfig Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 

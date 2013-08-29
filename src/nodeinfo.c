@@ -102,10 +102,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
 void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep ) {
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
-   const xmlChar *nodeName = NULL;
-   xmlChar *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,
-           *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
-   xmlChar *depPath = NULL;
+   const char *nodeName = NULL;
+   char *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,  *depPath = NULL, *depProt=NULL, *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL;
    char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL, *parsedDepName=NULL, *tmpLoopName=NULL; 
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL;
    SeqLoopsPtr loopsPtr = NULL;
@@ -120,19 +118,22 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
          SeqUtil_TRACE( "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
-	 depType = xmlGetProp( nodePtr, "type" );
+	 depType = (char *) xmlGetProp( nodePtr, "type" );
 	 SeqUtil_TRACE( "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
-         if ( depType == NULL ) { 
-            raiseError( "type attributes is mandatory for DEPENDS_ON xml element." );
-         }
-         if ( strcmp( depType, "node" ) == 0 ) {
-            depUser = xmlGetProp( nodePtr, "user" );
-            depExp = xmlGetProp( nodePtr, "exp" );
+         if ( depType == NULL ) depType=strdup("node");
 
-            depName = xmlGetProp( nodePtr, "dep_name" );
+         if ( strcmp( depType, "node" ) == 0 ) {
+            depUser = (char *) xmlGetProp( nodePtr, "user" );
+            depExp = (char *) xmlGetProp( nodePtr, "exp" );
+
+            depName = (char *) xmlGetProp( nodePtr, "dep_name" );
             parsedDepName=SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
 
-            depIndex = xmlGetProp( nodePtr, "index" );
+            depProt  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
+            /* default interuser protocol if not defined */
+            if ((depProt == NULL) && (depUser != NULL)) depProt=strdup("polling"); 
+
+            depIndex = (char *) xmlGetProp( nodePtr, "index" );
             /* look for keywords in index fields */
             
             /* add loop context in case of intra dep */
@@ -173,7 +174,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 	    }
 	    if (depArgs != NULL) fullDepIndex=strdup((char *)SeqLoops_getLoopArgs(depArgs));
 
-            depLocalIndex = xmlGetProp( nodePtr, "local_index" );
+            depLocalIndex = (char *) xmlGetProp( nodePtr, "local_index" );
 
             if( depLocalIndex != NULL ) {
                /*validate local dependency args and create a namevalue list*/
@@ -194,9 +195,9 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 	    }
 	    if( localArgs != NULL ) fullDepLocalIndex=strdup((char *)SeqLoops_getLoopArgs(localArgs));
 
-            depPath = xmlGetProp( nodePtr, "path" );
-            depHour = xmlGetProp( nodePtr, "hour" );
-            depStatus = xmlGetProp( nodePtr, "status" );
+            depPath = (char *) xmlGetProp( nodePtr, "path" );
+            depHour = (char *) xmlGetProp( nodePtr, "hour" );
+            depStatus = (char *) xmlGetProp( nodePtr, "status" );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depName: %s\n", depName );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep parsedDepName: %s\n", parsedDepName );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );
@@ -207,16 +208,18 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
-            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour );
+            SeqUtil_TRACE( "nodeinfo.parseDepends() depProt: %s\n", depProt ); /* added by Rochdi */
+            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depProt);
 	    
             SeqUtil_TRACE( "nodeinfo.parseDepends() done\n" );
-            xmlFree( depName );
-            xmlFree( depIndex );
-            xmlFree( depPath );
-            xmlFree( depStatus );
-            xmlFree( depUser );
-            xmlFree( depExp );
-            xmlFree( depHour );
+            free( depName );
+            free( depIndex );
+            free( depPath );
+            free( depStatus );
+            free( depUser );
+            free( depProt );
+            free( depExp );
+            free( depHour );
             free(parsedDepName);
 	    free(fullDepIndex);
 	    free(fullDepLocalIndex);
@@ -704,7 +707,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
 }
 
 /* Returns 1 if the node exists within known context*/
-int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, char* datestamp) {
+int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* datestamp) {
    char *xmlFile = NULL, *currentFlowNode = NULL, *newNode=NULL;
    char *tmpstrtok = NULL, *tmpJobPath = NULL , *tmpAnswer=NULL, *tmpSwitchType=NULL;
    char query[512];
@@ -734,9 +737,11 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, char* datest
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
 
-   tmpJobPath = (char*) malloc( strlen( _nodePath ) + 1 );
-
-   strcpy( tmpJobPath, _nodePath );
+   if (tmpJobPath = (char*) malloc( strlen( _nodePath ) + 1 )) {
+       strcpy( tmpJobPath, _nodePath );
+   } else {
+       raiseError("OutOfMemory exception in nodeinfo.doesNodeExist()\n");
+   }
 
    tmpstrtok = (char*) strtok( tmpJobPath, "/" );
    while ( tmpstrtok != NULL ) {

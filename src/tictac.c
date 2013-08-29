@@ -1,5 +1,8 @@
 #include "tictac.h"
-
+#include "SeqUtil.h"
+#include "l2d2_commun.h"
+#include "l2d2_socket.h"
+#include "QueryServer.h"
 
 /*****************************************************************************
 * tictac:
@@ -9,6 +12,10 @@
 ******************************************************************************/
 
 
+extern int touch_svr(char *filename) ;
+extern int touch_nfs(const char *filename) ;
+extern int get_Inode (const char * );
+extern int  (*_touch)(char * );
 
 /* 
 tictac_setDate
@@ -23,22 +30,39 @@ Inputs:
 
 extern void tictac_setDate( char* _expHome, char* datestamp ) {
 
-   char *dateFileName = NULL ;
+   char *dateFileName = NULL;
+   char *job="TICTAC";
+   char *tmpfromaestro=getenv("FROM_MAESTRO");
+   int ret,sock;
+ 
+   _touch = touch_svr;
+   if  ( tmpfromaestro == NULL ) {
+      if ( (MLLServerConnectionFid=OpenConnectionToMLLServer( _expHome , job )) < 0 ) {
+         _touch = touch_nfs;
+         SeqUtil_TRACE( "maestro.tictac_setDate() (NFS) setting date to=%s\n", datestamp); 
+      } else {
+         _touch = touch_svr;
+         SeqUtil_TRACE( "maestro.tictac_setDate() (server) setting date to=%s\n", datestamp); 
+      }
+   } 
 
    SeqUtil_checkExpHome(_expHome);
    SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
 
    checkValidDatestamp(datestamp); 
    SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
-   printf("Warning: use of tictac -s $datestamp is deprecated. Please use SEQ_DATE environment variable or a -d $datestamp argument to maestro or expbegin calls.\n"); 
+   fprintf(stderr,"Warning: use of tictac -s $datestamp is deprecated. Please use SEQ_DATE environment variable or a -d $datestamp argument to maestro or expbegin calls.\n"); 
    SeqUtil_stringAppend( &dateFileName, _expHome );
    SeqUtil_stringAppend( &dateFileName, "/logs/" );
    SeqUtil_stringAppend( &dateFileName, datestamp );
    SeqUtil_stringAppend( &dateFileName, "_nodelog" );
 
-   if ( touch(dateFileName) != 0 ) raiseError( "Cannot touch log file: %s\n", dateFileName );
-   free (dateFileName);
+   if ( _touch(dateFileName) != 0 ) raiseError( "Cannot touch log file: %s\n", dateFileName );  
 
+   if  ( tmpfromaestro == NULL && MLLServerConnectionFid > 0 ) {
+      CloseConnectionWithMLLServer(MLLServerConnectionFid);
+   }
+   free (dateFileName);
 }
 
 
@@ -127,8 +151,12 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    }
    free (tmpstrtok);
 
-   returnDate = malloc( strlen(dateValue) + 1 );
-   strcpy( returnDate, dateValue );
+   if (returnDate = malloc( strlen(dateValue) + 1 )) {
+      strcpy( returnDate, dateValue );
+   } else {
+      raiseError("ERROR: Unable to allocate memory in tictac_getDate()\n"); 
+   }
+   
    free(dateFileName);
    free(tmpLatestFile);
 
@@ -158,29 +186,36 @@ extern void checkValidDatestamp(char *datestamp){
       raiseError("ERROR: Datestamp must contain between 8 and 14 characters (YYYYMMDD[HHMMSS]).\n"); 
 
    SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
-   tmpDateString= (char*) malloc(5);
-   sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
-   validationInt = atoi(tmpDateString);
-
+   if (tmpDateString= (char*) malloc(5)) {
+      sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
+      validationInt = atoi(tmpDateString);
+   } else {
+      raiseError("ERROR: Unable to allocate memory in tictac_checkValidDatestamp()\n"); 
+   }
    if (validationInt < 0  || validationInt > 9999)
      raiseError("ERROR: Year %d outside set bounds of [0,9999].\n", validationInt); 
 
    SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
-   tmpDateString= (char*) malloc(3);
-   sprintf(tmpDateString, "%.*s",2,&datestamp[4]);
-   validationInt = atoi(tmpDateString);
-
+   if (tmpDateString= (char*) malloc(3)) {
+      sprintf(tmpDateString, "%.*s",2,&datestamp[4]);
+      validationInt = atoi(tmpDateString);
+   } else {
+      raiseError("ERROR: Unable to allocate memory in tictac_checkValidDatestamp()\n"); 
+   }
    if (validationInt < 0  || validationInt > 12)
       raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
 
     SeqUtil_TRACE( "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
-   tmpDateString= (char*) malloc(3);
-   sprintf(tmpDateString, "%.*s",2,&datestamp[6]);
-   validationInt = atoi(tmpDateString);
+   if (tmpDateString= (char*) malloc(3)) {
+      sprintf(tmpDateString, "%.*s",2,&datestamp[6]);
+      validationInt = atoi(tmpDateString);
+   } else {
+      raiseError("ERROR: Unable to allocate memory in tictac_checkValidDatestamp()\n"); 
+   }
 
    if (validationInt < 0  || validationInt > 31)
       raiseError("ERROR: Day %d outside set bounds of [0,31].\n", validationInt); 
@@ -189,9 +224,12 @@ extern void checkValidDatestamp(char *datestamp){
    free(tmpDateString);
 
    if ( dateLength >= 10) {
-      tmpDateString= (char*) malloc(3);
-      sprintf(tmpDateString, "%.*s",2,&datestamp[8]);
-      validationInt = atoi(tmpDateString);
+      if (tmpDateString= (char*) malloc(3)){
+         sprintf(tmpDateString, "%.*s",2,&datestamp[8]);
+         validationInt = atoi(tmpDateString);
+      } else {
+         raiseError("ERROR: Unable to allocate memory in tictac_checkValidDatestamp()\n"); 
+      }
 
       if (validationInt < 0  || validationInt > 23)
         raiseError("ERROR: Hour %d outside set bounds of [0,23].\n", validationInt); 
@@ -202,9 +240,12 @@ extern void checkValidDatestamp(char *datestamp){
 
    if ( dateLength >= 12) {
 
-      tmpDateString= (char*) malloc(3);
-      sprintf(tmpDateString, "%.*s",2,&datestamp[10]);
-      validationInt = atoi(tmpDateString);
+      if (tmpDateString= (char*) malloc(3)){
+         sprintf(tmpDateString, "%.*s",2,&datestamp[10]);
+         validationInt = atoi(tmpDateString);
+      } else {
+         raiseError("ERROR: Unable to allocate memory in tictac_checkValidDatestamp()\n"); 
+      }
 
       if (validationInt < 0  || validationInt > 59)
          raiseError("ERROR: Minute %d outside set bounds of [0,59].\n", validationInt); 
@@ -213,9 +254,12 @@ extern void checkValidDatestamp(char *datestamp){
    }
 
    if ( dateLength == 14) {
-      tmpDateString= (char*) malloc(3);
-      sprintf(tmpDateString, "%.*s",2,&datestamp[12]);
-      validationInt = atoi(tmpDateString);
+      if (tmpDateString= (char*) malloc(3)){
+         sprintf(tmpDateString, "%.*s",2,&datestamp[12]);
+         validationInt = atoi(tmpDateString);
+      } else {
+         raiseError("ERROR: Unable to allocate memory in tictac_checkValidDatestamp()\n"); 
+      }
 
       if (validationInt < 0  || validationInt > 59)
          raiseError("ERROR: Second %d outside set bounds of [0,59].\n", validationInt); 

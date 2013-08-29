@@ -61,5 +61,5 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 extern void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *datestamp);
 
 extern void CopyStrTillCarac(char *result, const char *original, char c);
-
 extern int match(const char *string, char *pattern);
+
