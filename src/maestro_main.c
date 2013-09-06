@@ -4,7 +4,6 @@
 #include "maestro.h"
 #include "SeqListNode.h"
 #include "SeqNameValues.h"
-//#include "SeqNodeInfo.h"
 /***********************************************************************************
 * name: maestro
 *

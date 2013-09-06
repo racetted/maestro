@@ -213,8 +213,7 @@ int globPath (char *pattern, int flags, int (*errfunc) (const char *epath, int e
 	             fprintf(stderr,"globPath: Glob read error\n");
 		     break;
 	case GLOB_NOMATCH:
-		     fprintf(stderr,"globPath: Glob no found matches\n");
-                     globfree(&glob_p);
+                globfree(&glob_p);
 		     return(0);
 		     break;/* not reached */
     }

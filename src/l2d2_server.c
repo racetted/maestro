@@ -258,240 +258,6 @@ void DependencyManager (_l2d2server l2d2 ) {
 }
 
 /*
-*  Worker Process/Thread : locking, logging & Dependency
-*  This process will handle a client Session.
-*/
-static void l2d2Servlet( int sock )
-{
-  
-  int buflen,num,Sret=0;
-  unsigned int pidSent;
-  int client_sock;
-  int _ZONE_ = 1, ACCEPT=0 , STOP = -1;
-  
-  char buf[1024],buff[1024];
-  char Astring[1024],inode[128], expName[256], expInode[64], hostname[128]; 
-  char Bigstr[2048];
-  char node[256], signal[256], username[256];
-  char Stime[25],Etime[25];
-  char m5[40];
-  char *ts;
-  char trans;
-  
-  key_t log_key, lock_key, acct_key;
-  int semid_log, semid_lock, semid_acct;
-  struct sembuf sem_log, sem_lock, sem_acct;
-
-  sem_acct.sem_num = 0;
-  sem_acct.sem_op = -1;  /* set to allocate resource */
-  sem_acct.sem_flg = SEM_UNDO;
-  acct_key=0x0f0f0f;
-  /*
-  if ((semid_acct = initsem(acct_key, 1)) == -1) {
-          fprintf(stderr,"ERROR initsem lock\n");
-	  * what to do next ??? *
-  }
-  */
- 
-  /* loop on connection requests */
-  while ( ACCEPT == 0  )
-  {
- 
-      /* we have to see if we activate this : known as the Hurd problem 
-      if (semop(semid_acct, &sem_acct, 1) == -1) {
-          fprintf(stderr,"ERROR grabing acct sem \n");
-	  ACCEPT = -1;
-	  break;
-      }
-      */
-
-      if ( (client_sock=accept_from_socket (sock)) < 0 ) {
-                fprintf (stderr,"accept error\n");
-		ACCEPT = -1;
-                break;
-      }
-     
-      /* Release accept semaphore 
-      sem_acct.sem_op = 1;  
-      if (semop(semid_acct, &sem_acct, 1) == -1) {
-          fprintf(stderr,"ERROR release semop accept\n");
-      }
-      */
-
-      /* Process can block here, do read with Time out */
-      if ( (buflen=recv_socket(client_sock,buf,sizeof(buf),SERVER_SOCK_TIMEOUT)) <= 0 ) {
-                fprintf (stderr,"read in accept loop Timed out\n");
-	        close(client_sock);
-                continue;
-      }
-
-      buf[buflen > 0 ? buflen : 0] = '\0';
-      /* Validate this Client: accept  Client if pid sent equal server pid -> change to md5sum */
-
-      Sret=sscanf(buf,"%c %d %s %s %s %s %s %s %s",&trans,&pidSent,expInode,expName,node,signal,hostname,username,m5);
-      if ( Sret != 9 ) {
-                fprintf (stderr,"Got wrong number of parameters at LOGIN, number=%d ,should be 9 others->trans=%c,pidSent=%d expInode=%s \
-		         expName=%s node=%s signal=%s hostname=%s username=%s m5=%s\n",Sret,trans,pidSent,expInode,expName,node,signal,hostname,username,m5);
-		close(client_sock);
-		continue;
-      }
-
-      get_time(Stime,3);
-      if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
-	    /* answer the client to enable him to complete his Login */
-	    send_reply(client_sock,0);
-            logZone(_ZONE_,L2D2.dzone,CONSOLE_OUT,"Open Session with Host:%s AT:%s Exp=%s Node=%s Signal=%s XpInode=%s User=%s M5=%s\n",hostname, Stime, expName, node ,signal, expInode, username,m5);
-     } else {
-	    send_reply(client_sock,1);
-	    close(client_sock);
-            logZone(_ZONE_,L2D2.dzone,CONSOLE_ERR,"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s XpInode=%s User=%s\n",hostname , Stime, expName, node, signal,expInode,username);
-            continue;
-     }
-    
-     /* Generate a semaphore key based on xp's Inode for LOGGING same for all process, we are not using ftok */
-     log_key = (getuid() & 0xff ) << 24 | ( atoi(expInode) & 0xffff) << 16;
-     
-     /* initialize a  LOGGING semaphore for this Xp */
-     sem_log.sem_num = 0;
-     sem_log.sem_op = -1;  /* set to allocate resource */
-     sem_log.sem_flg = SEM_UNDO;
-     if ((semid_log = initsem(log_key, 1)) == -1) {
-          fprintf(stderr,"ERROR initsem lock\n");
-	  /* what to do next ??? */
-     }
-
-     /* set flag to terminate client */
-     STOP=-1;
-
-     /* Get & process commands */
-     while( (buflen=read(client_sock, buff, sizeof(buff) )) > 0 && STOP != TRUE ) 
-     { 
-         buff[buflen > 0 ? buflen : 0] = '\0';
-	 _ZONE_ = 2;
-         switch (buff[0]) {
-	         case 'A': /* test existence of lock file on local xp */
-	                  Sret = access (&buff[2], R_OK);
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'C': /*  create a Lock file on local xp */
-	                  Sret = CreateLock ( &buff[2] );
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'D': /* mkdir on local xp */
-	                  Sret = r_mkdir ( &buff[2] , 1);
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'F': /* test existence of lock file on local xp */
-	                  Sret = isFileExists ( &buff[2] );
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'G': /* glob local xp */
-			  Sret = globPath (&buff[2], GLOB_NOSORT, 0 );
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'H': /* Remove file on remote xp */
-			  break;
-	         case 'I': 
-		          Sret=ParseXmlConfigFile(&buff[2] , &L2D2 );
-			  send_reply(client_sock, Sret);
-		          break;
-	         case 'K': /* write Inter user dep file */
-		          Sret = sscanf(&buff[2],"%d %s",&num,Astring);
-		          switch (num) {
-		            case 1:
-		                   strcpy(Bigstr,&buff[4]);
-		                   break;
-		            case 2:
-		                   strcat(&Bigstr[strlen(Bigstr)],&buff[4]);
-			           Sret = writeInterUserDepFile (Bigstr);
-			           break;
-			    default:
-			           break;
-			  }
-
-			  /* Sret = writeInterUserDepFile (buff, client_sock); */
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'L': /* Log the node under the proper experiment grab the semaphore set created */ 
-			  if (semop(semid_log, &sem_log, 1) == -1) {
-			          fprintf(stderr,"ERROR grabing semop log\n");
-			          /* send_reply(client_sock,1); */
-				  break;
-		          }
-                          
-
-	                  Sret = NodeLogr( &buff[2] , getpid());
-			  send_reply(client_sock,Sret);
-                          
-			  
-		          sem_log.sem_op = 1;  
-			  if (semop(semid_log, &sem_log, 1) == -1) {
-			          fprintf(stderr,"ERROR release semop log\n");
-			  }
-			  
-			  break;
-	         case 'N': /* lock */
-		          Sret = lock( &buff[2] , L2D2 ,expName, node ); 
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'P': /* unlock */ 
-		          Sret = unlock( &buff[2] , L2D2 ,expName, node ); 
-			  send_reply(client_sock,Sret);
-		          break;
-	         case 'R': /* Remove file on local xp */
-	                  Sret = removeFile( &buff[2] );
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'S': /* Client has sent a Stop, OK Close this connection */
-			  Sret=shutdown (client_sock,SHUT_WR);
-			  STOP = TRUE;
-			  break;
-	         case 'T': /* Touch a Lock file on local xp */
-	                  Sret = touch ( &buff[2] );
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'W': /* write Node Wait file  under dependent-ON xp */
-			  Sret = writeNodeWaitedFile ( &buff[2] );
-			  send_reply(client_sock,Sret);
-			  break;
-	         case 'X': /* server shutdown */
-		          kill(L2D2.pid,SIGUSR1);
-			  Sret=shutdown (client_sock,SHUT_WR);
-			  STOP = TRUE;
-			  break;
-	         case 'Y': /* server is alive do a uptime */
-			  send_reply(client_sock,0);
-			  break;
-	         case 'Z': /* download waited file to client */
-		          Sret = SendFile( &buff[2] , client_sock);
-			  break;
-                 default :
-	                  fprintf(stderr,"Unrecognized Token>%s< LEN=%d from Experiment=%s node=%s from_host=%s signal=%s \n",buff,buflen,expName,node,hostname,signal);
-			  send_reply(client_sock,1); 
-			  break;
-          }
-	  get_time(Etime,3);
-          logZone(_ZONE_,L2D2.dzone,CONSOLE_OUT,"Originator_Node=%s Ret=%d Cmd=%s log_key=%x Servlet_pid=%d\n",node,Sret,buff,log_key,getpid()); 
-     }
-
-     _ZONE_ = 1;
-     switch (STOP) 
-     {
-        case TRUE:
-                   logZone(_ZONE_,L2D2.dzone,CONSOLE_OUT,"Client Terminated succeffuly from Host=%s xp=%s node=%s host=%s signal=%s pid=%d\n\n",hostname,expName,node,signal,getpid()); 
-                   close (client_sock);
-		   break;
-	case FALSE:
-                   logZone(_ZONE_,L2D2.dzone,CONSOLE_ERR,"Client Disconnected .. xp=%s node=%s host=%s signal=%s pid=%d\n\n",expName,node,hostname,signal,getpid()); 
-                   close (client_sock);
-		   break;
-     }
-
- } /* end while accept is successful */
-}
-  
-  
-/*
 *  Worker Process/Thread : locking, logging 
 *  This process will handle a client Session with Multiplexing.
 */
@@ -546,7 +312,6 @@ static void l2d2SelectServlet( int listen_sd )
       memcpy(&working_set, &master_set, sizeof(master_set));
 
       /* Call select() with no timeout.   */
-       fprintf(stdout,"Waiting on select()...\n"); 
       rc = select(max_sd + 1, &working_set, NULL, NULL, NULL);
 
       /* Check to see if the select call failed.                */
@@ -604,7 +369,6 @@ static void l2d2SelectServlet( int listen_sd )
                   /* Add the new incoming connection to the  
                      master read set if Client validate */
 
-                  fprintf(stdout,"New incoming connection: %d\n", new_sd); 
                   if ( (buflen=recv_socket(new_sd,buf,sizeof(buf),SERVER_SOCK_TIMEOUT)) <= 0 ) {
                          fprintf (stderr,"read in accept loop Timed out\n");
 	                 close(new_sd);
@@ -633,6 +397,13 @@ static void l2d2SelectServlet( int listen_sd )
 
                   FD_SET(new_sd, &master_set);
                   if (new_sd > max_sd) max_sd = new_sd; /* keep track of the max */
+                  
+		  /* put the socket in non-blocking mode */
+		  if  ( ! (fcntl(new_sd, F_GETFL) & O_NONBLOCK)  ) {
+		        if  (fcntl(new_sd, F_SETFL, fcntl(new_sd, F_GETFL) | O_NONBLOCK) < 0) {
+		                fprintf(stderr,"Could not put the socket in non-blocking mode\n");
+		        }
+		  }
 
                   /* Loop back up and accept another incoming connection */
                } while (new_sd != -1);
@@ -643,7 +414,6 @@ static void l2d2SelectServlet( int listen_sd )
             else
             {
                get_time(Stime,3);
-               fprintf(stdout,"Descriptor %d is readable Time:%s\n", i,Stime); 
                close_conn = FALSE;
                /* Receive all incoming data on this socket        
                   before we loop back and call select again.    */
@@ -655,13 +425,8 @@ static void l2d2SelectServlet( int listen_sd )
                    recv fails with EWOULDBLOCK.  If any other   
                    failure occurs, we will close the connection. */
 
-		   alarm(3);
+		   
                    rc = recv(i, buff, sizeof(buff), 0);
-		   alarm(0);
-		   if ( sig_recv == 1 ) {
-		        sig_recv=0;
-			break;
-                   }
                    if (rc < 0) {
                       if (errno != EWOULDBLOCK) {
                          perror("recv() failed");
@@ -698,7 +463,7 @@ static void l2d2SelectServlet( int listen_sd )
 	                /* what to do next ??? */
                    }
 
-                   buff[buflen > 0 ? buflen : 0] = '\0';
+                   buff[rc > 0 ? rc : 0] = '\0';
                    switch (buff[0]) {
 	                       case 'A': /* test existence of lock file on local xp */
 	                                Sret = access (&buff[2], R_OK);
@@ -797,7 +562,7 @@ static void l2d2SelectServlet( int listen_sd )
 		                        Sret = SendFile( &buff[2] , i);
 		              	        break;
                                default :
-	                                fprintf(stderr,"Unrecognized Token>%s< LEN=%d from Experiment=%s node=%s from_host=%s signal=%s \n",buff,buflen,expName,node,hostname,signal);
+	                                fprintf(stderr,"Unrecognized Token>%s< LEN=%d from Experiment=%s node=%s from_host=%s signal=%s \n",buff,rc,expName,node,hostname,signal);
 			                send_reply(i,1); 
 			                break;
                        }
@@ -848,7 +613,6 @@ void maestro_l2d2_main_process_server (int fserver)
   for (i=0 ; i< L2D2.numProcessAtstart; i++ )
   {
            if ( (ChildPids[i] = fork()) == 0 ) 
-                /* l2d2Servlet(fserver); */
                 l2d2SelectServlet(fserver);
            else if ( ChildPids[i] > 0 )       
                 ProcessCount++;
@@ -867,17 +631,6 @@ void maestro_l2d2_main_process_server (int fserver)
   /* try alws to adjust the number of servlet */
   for (;;)
   {
-        /*
-        if ( ProcessCount < L2D2.numProcessAtstart ) {
-           if ( (pid = fork()) == 0 )    
-                * l2d2Servlet(fserver); *
-                l2d2SelectServlet(fserver);
-           else if ( pid > 0 )         
-                ProcessCount++;
-           else                      
-                perror("fork() failed");
-        } 
-        */ 
 	sleep(3);              
 
         if ( sig_admin_Terminate == 1 ) {
@@ -1046,19 +799,6 @@ int main ( int argc , char * argv[] )
   snprintf(buf,sizeof(buf),"%s/.suites/mconfig.xml",passwdEnt->pw_dir);
   returnVal = ParseXmlConfigFile(buf, &L2D2 );
 
-  /* set up the desired signal mask common to most threads 
-    and newly created threads will inherit this signal mask 
-  sigemptyset(&set); 
-  sigaddset(&set,SIGHUP);
-  sigaddset(&set,SIGTERM);
-  sigaddset(&set,SIGUSR1);
-  sigaddset(&set,SIGUSR2);
-
-  block out these signals 
-  pthread_sigmask(SIG_BLOCK, &set , NULL);
-  */
-
-
   /* fork a Dependency Manager Process (DMP) this is a child */
   if ( (L2D2.depProcPid=fork()) == 0 ) {
          sigset_t  newmask, oldmask,zeromask;
@@ -1084,13 +824,14 @@ int main ( int argc , char * argv[] )
          exit(0);
   }
 
-  /* set socket in non blocking mode */
+  /* set main socket in non blocking mode */
   int on=1;
   if ( (ret=ioctl(fserver, FIONBIO, (char *)&on)) < 0 ) {
         perror("ioctl() failed");
         close(fserver);
 	exit(-1);
   }
+  
 
   /* Back to parent */
   if ( listen(fserver, 3000) < 0 ) {

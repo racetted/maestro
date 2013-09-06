@@ -43,7 +43,7 @@ char *CurrentNode;
 pid_t ChildPid;
 
 /* static char DATESTAMP[SEQ_MAXFIELD]; */
-static char USERNAME[8];
+static char USERNAME[32];
 static char EXPNAME[128];
 
 /* Function declarations */
@@ -2330,7 +2330,13 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       fprintf(stdout,"found logging mechanism SEQ_LOGGING_MECH=%s\n",logMech);
       free(defFile);defFile=NULL;
    }
-   
+/*   
+test to run all interactions via nfs except end state
+   if ( ! ((strcmp(_signal,"end") == 0 ) || (strcmp(_signal, "endx") == 0 )) ) {
+      free(logMech); logMech=NULL;
+      logMech=strdup("NFS");
+   }
+*/ 
    /* Install handler for 
     *   SIGALRM to be able to time out socket routines This handler must be installed only once 
     *   SIGPIPE : in case of socket closed */

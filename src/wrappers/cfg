@@ -90,7 +90,7 @@ function Sys_AddWrapperHeader
    listing_dir=$3
 
 #get prefix from exp's config to parse it out of jobname
-jobnamePrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX` 2>/dev/null || jobnamePrefix=""
+jobnamePrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX 2>/dev/null` || jobnamePrefix=""
 jobnameNoPrefix=${jobname##$jobnamePrefix}
 
    cat >> ${dest_file} << END
@@ -203,7 +203,7 @@ function Sys_SetWrapFiles
 #   job_batch=${job_batch_dir}${node}${loopext}.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
 #   LaJobLink=${job_batch_dir}${node}${loopext}-${mach}.link
 
-   jnPrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX` 2>/dev/null || jnPrefix=""
+   jnPrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX 2>/dev/null` || jnPrefix=""
    jnNoPrefix=${jn##$jnPrefix}
    job_with_wrapper=${job_with_wrapper_dir}${container}/${jnNoPrefix}.wrapped.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
    job_batch=${job_batch_dir}${container}/${jnNoPrefix}.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')

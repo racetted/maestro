@@ -35,7 +35,7 @@ static char NODELOG_MESSAGE[NODELOG_BUFSIZE];
 static char NODELOG_LOOPEXT[NODELOG_BUFSIZE];
 static char NODELOG_DATE[NODELOG_BUFSIZE];
 
-static char username[20];
+static char username[32];
 static char LOG_PATH[1024];
 static char TMP_LOG_PATH[1024];
 
@@ -206,7 +206,6 @@ static int write_line(int sock)
       fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at recv   %%%%%%%%%%%%%%\n");
       return(-1);
    } 
-   fprintf(stderr,"bf=%s\nbytes_read=%d, bytes_sent=%d\nnodelogger_buf=%s", bf, bytes_read, bytes_sent, nodelogger_buf);
 
    bf[bytes_read > 0 ? bytes_read : 0] = '\0';
    if ( bf[0] != '0' ) {
