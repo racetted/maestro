@@ -487,8 +487,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                     /* Check to see if the connection has been closed by the client  */
                    if (rc == 0) {
                        get_time(Stime,3);
-                       /* logZone(L2D2.dzone,L2D2.dzone,mlog,"Closed Session Host:%s AT:%s Exp=%s Node:%s Signal:%s\n",l2d2client[i].host, Stime, l2d2client[i].xp, l2d2client[i].node, l2d2client[i].signal);*/
-                       logZone(L2D2.dzone,L2D2.dzone,mlog,"%s Closed AT:%s\n",l2d2client[i].Open_str,Stime);
+                       logZone(L2D2.dzone,L2D2.dzone,mlog,"%s Closed AT:%s NumTrans=%u\n",l2d2client[i].Open_str,Stime,l2d2client[i].trans);
                        close_conn = TRUE;
                        break;
                    }
@@ -502,22 +501,27 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 	                       case 'A': /* test existence of lock file on local xp */
 	                                ret = access (&buff[2], R_OK);
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'C': /*  create a Lock file on local xp */
 	                                ret = CreateLock ( &buff[2] );
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'D': /* mkdir on local xp */
 	                                ret = r_mkdir ( &buff[2] , 1);
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'F': /* test existence of lock file on local xp */
 	                                ret = isFileExists ( &buff[2] );
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'G': /* glob local xp */
 			                ret = globPath (&buff[2], GLOB_NOSORT, 0 );
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'I': 
                                          ret=sscanf(&buff[2],"%d %s %s %s %s %s %s %s",&pidSent,expInode,expName,node,signal,hostname,username,m5);
@@ -537,6 +541,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 			                         strcpy(l2d2client[i].xp,expName);
 			                         strcpy(l2d2client[i].node,node);
 			                         strcpy(l2d2client[i].signal,signal);
+					         l2d2client[i].trans=0;
                                          } else {
 	                                         send_reply(i,1);
 	                                         close(i);
@@ -564,6 +569,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 
 			                /* ret = writeInterUserDepFile_svr_2 (&buff[2], i, mlog); */ 
 			                send_reply(i,ret); 
+					l2d2client[i].trans++;
 			                break;
 	                       case 'L':/* Log the node under the proper experiment grab the semaphore set created */ 
                                         /* Generate a semaphore key based on xp's Inode for LOGGING same for all process ,we are not using ftok
@@ -596,18 +602,22 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 			                        fprintf(mlog,"ERROR release semop log\n");
 			                }
 			  
+					l2d2client[i].trans++;
 			                break;
 	                       case 'N': /* lock */
 		                        ret = lock( &buff[2] , L2D2 ,expName, node, mlog ); 
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'P': /* unlock */ 
 		                        ret = unlock( &buff[2] , L2D2 ,expName, node, mlog ); 
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 		                        break;
 	                       case 'R': /* Remove file on local xp */
 	                                ret = removeFile( &buff[2] );
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'S': /* Client has sent a Stop, OK Close this connection 
 			                Note: if we use close(i) here , the rcv() call will fail, we need to close
@@ -619,11 +629,13 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 	                       case 'T': /* Touch a Lock file on local xp */
 	                                ret = touch ( &buff[2] );
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'W': /* write Node Wait file  under dependent-ON xp */
                                         get_time(Stime,3);
 			                ret = writeNodeWaitedFile ( &buff[2] , mlog );
 			                send_reply(i,ret);
+					l2d2client[i].trans++;
 			                break;
 	                       case 'X': /* server shutdown */
 		                        kill(L2D2.pid,SIGUSR1);
@@ -635,6 +647,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 			                break;
 	                       case 'Z':/* download waited file to client */
 		                        ret = SendFile( &buff[2] , i, mlog ); 
+					l2d2client[i].trans++;
 		              	        break;
                                default :
 	                                fprintf(mlog,"Unrecognized Token>%s< LEN=%d from Host=%s Exp=%s node=%s signal=%s \n",buff,rc,l2d2client[i].host,l2d2client[i].xp,l2d2client[i].node,l2d2client[i].signal);
