@@ -26,15 +26,18 @@
 #include "l2d2_socket.h"
 
 #define SERVER_SOCK_TIMEOUT 5
-#define MAX_PROCESS 12
+#define MAX_PROCESS 8
+#define SELECT_TIMEOUT 5*60
+
+#define NOTIF_TIME_INTVAL_EW 6*60  /* 6 minutes */
+#define NOTIF_TIME_INTVAL_DM 3*60
 
 #define TRUE 1
 #define FALSE 0
 
 
-/* forward functions declarations */
-extern int  _sleep (double sleep_time);
-extern void logZone(int , int , int , char * , ...);
+/* forward functions & vars declarations */
+extern void logZone(int , int , FILE *fp , char * , ...);
 extern int initsem(key_t key, int nsems);
 extern char *page_start_dep , *page_end_dep;
 extern char *page_start_blocked , *page_end_blocked;
@@ -42,41 +45,33 @@ extern char *page_start_blocked , *page_end_blocked;
 /* globals vars */
 unsigned int pidTken = 0;
 unsigned int ChildPids[MAX_PROCESS]={0};
-int ProcessCount = 0;
+pid_t child_pid;
 
 /* global default data for l2d2server */
-_l2d2server L2D2 = {0,0,0,0,30,24,1,4,'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'};
+_l2d2server L2D2 = {0,0,0,0,30,24,1,4,20,'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'};
 
 /* variable for Signal handlers */
-sig_atomic_t sig_depend_USR1 = 0;
-sig_atomic_t sig_depend_USR2 = 0;
-sig_atomic_t sig_admin_Terminate = 0;
-sig_atomic_t sig_recv = 0;
+volatile sig_atomic_t ProcessCount = 0;
+volatile sig_atomic_t sig_depend = 0;
+volatile sig_atomic_t sig_admin_Terminate = 0;
+volatile sig_atomic_t sig_admin_AddWorker = 0;
+volatile sig_atomic_t sig_recv = 0;
+volatile sig_atomic_t sig_child = 0;
 
+/* signal handler for alarm */
 static void recv_handler ( int notused ) { sig_recv = 1; }
-static void sig_child(int sig)
+
+/* Signal handler for Exiting childs  */
+static void child_handler(int signo, siginfo_t *siginfo, void *context)
 {
      wait(0);
-     ProcessCount--;
+     sig_child=1;
+     child_pid=siginfo->si_pid;
  }
  
-
-static void sig_depend(int signo) {
-    switch (signo) {
-        case SIGUSR1: 
-                     sig_depend_USR1 = 1;
-		     break;
-        case SIGUSR2:
-                     sig_depend_USR2 = 1;
-                     fprintf(stderr,"received sig 2\n");
-		     break;
-        case SIGHUP:
-                     fprintf(stderr,"received SIGHUP\n");
-		     break;
-        default:
-                     fprintf(stderr,"default\n");
-		     break;
-    }
+/* Signal handler for Dependency Manager */
+static void depMang_handler(int signo, siginfo_t *siginfo, void *context ) {
+    sig_depend = siginfo->si_signo;
 }
 
 static void sig_admin(int signo, siginfo_t *siginfo, void *context) {
@@ -86,13 +81,9 @@ static void sig_admin(int signo, siginfo_t *siginfo, void *context) {
 	             sig_admin_Terminate = 1; 
 		     break;
         case SIGUSR2:
-                     fprintf(stderr,"received sig 2\n");
-		     break;
-        case SIGHUP:
-                     fprintf(stderr,"received SIGHUP\n");
+		     sig_admin_AddWorker = 1;
 		     break;
         default:
-                     fprintf(stderr,"default\n");
 		     break;
     }
 }
@@ -108,12 +99,14 @@ static void sig_admin(int signo, siginfo_t *siginfo, void *context) {
 */
 void DependencyManager (_l2d2server l2d2 ) {
      
-     FILE *fp;
+     FILE *fp,*ft,*dmlg,*dmlgerr;
      static DIR *dp = NULL;
      struct dirent *d;
      struct stat st;
+     sigset_t  newmask, oldmask,zeromask;
+     struct sigaction sa;
      struct _depParameters *depXp=NULL;
-     time_t current_epoch;
+     time_t current_epoch,start_epoch;
      unsigned long int epoch_diff;
      int datestamp,nb,LoopNumber;
      char underline[2];
@@ -122,14 +115,49 @@ void DependencyManager (_l2d2server l2d2 ) {
      char listings[1024];
      char largs[128];
      char extension[256]; /* probably a malloc here */
-     char ffilename[512], filename[256], linkname[1024],LoopName[40];
+     char ffilename[512], filename[256], linkname[1024],LoopName[64];
      char rm_key[256];
      char rm_keyFile[1024];
      char Time[40];
      char *pleaf=NULL;
-     int Dret,running = 0;
+     int ret,running = 0;
      int r, _ZONE_ = 2;
      
+         
+     l2d2.depProcPid=getpid();
+     umask(0);
+
+
+     /* open log files */
+     snprintf(buf,sizeof(buf),"%s_%d",l2d2.dmlog,l2d2.depProcPid);
+     if ( (dmlg=fopen(buf,"w+")) == NULL ) {
+            fprintf(stdout,"Dependency Manager: Could not open dmlog stream\n");
+     }
+
+     snprintf(buf,sizeof(buf),"%s_%d",l2d2.dmlogerr,l2d2.depProcPid);
+     if ( (dmlgerr=fopen(buf,"w+")) == NULL ) {
+            fprintf(stdout,"Dependency Manager: Could not open dmlogerr stream\n");
+     }
+     
+     /* close 0,1,2 streams */
+     close(0);
+     close(1);
+     close(2);
+     
+     /* streams will be unbuffered */
+     setvbuf(dmlg, NULL, _IONBF, 0);
+     setvbuf(dmlgerr, NULL, _IONBF, 0);
+
+     sa.sa_sigaction = &depMang_handler;
+     sa.sa_flags = SA_SIGINFO;
+     sigemptyset(&sa.sa_mask);
+
+     /* register signals Note : they are not used for the moment */
+     if ( sigaction(SIGUSR1,&sa,NULL)  != 0 )  fprintf(dmlgerr,"error in sigactions  SIGUSR1\n");
+     if ( sigaction(SIGUSR2,&sa,NULL)  != 0 )  fprintf(dmlgerr,"error in sigactions  SIGUSR2\n");
+     
+
+     fprintf(dmlg,"Dependency Manager starting ... pid=%d\n",l2d2.depProcPid);
 
      /* check existence of web stat files  */
      if ( access(l2d2.web_dep,R_OK) == 0 || stat(l2d2.web_dep,&st) == 0 || st.st_size > 0 ) {
@@ -138,22 +166,21 @@ void DependencyManager (_l2d2server l2d2 ) {
 	     fwrite(page_end_dep, 1, strlen(page_end_dep) , fp);
 	     fclose(fp);
      }
-     /* Not used now 
-     if ( access(l2d2.web_blk,R_OK) == 0 || stat(l2d2.web_blk,&st) == 0 || st.st_size > 0 ) {
-	     fp = fopen(l2d2.web_blk,"w");
-	     fwrite(page_start_blocked, 1, strlen(page_start_blocked) , fp);
-	     fwrite(page_end_blocked, 1, strlen(page_end_blocked) , fp);
-	     fclose(fp);
+    
+     /* for heartbeat */
+     start_epoch = time(NULL);
+     snprintf(buf,sizeof(buf),"%s/DM_%d",l2d2.tmpdir,getpid());
+     if ( (ft=fopen(buf,"w+")) != NULL ) {
+             fclose(ft);
      }
-     */
 
      while (running == 0 ) {
-         _sleep(l2d2.pollfreq);
+         sleep(l2d2.pollfreq);
 	 /* get current epoch */
 	 current_epoch = time(NULL);
 	 if ( (dp=opendir(l2d2.dependencyPollDir)) == NULL ) { 
-	          fprintf(stderr,"Error Could not pen polling directory:%s\n",l2d2.dependencyPollDir);
-		  _sleep(3);
+	          fprintf(dmlgerr,"Error Could not pen polling directory:%s\n",l2d2.dependencyPollDir);
+		  sleep(2);
 	          continue ; 
 	 }  
 	 fp = fopen(l2d2.web_dep , "w");
@@ -171,7 +198,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 
             /* stat will stat the file pointed to ... lstat will stat the link itself */
 	    if ( stat(ffilename,&st) != 0 ) {
-	                 fprintf(stderr,"DependencyManager(): inter dependency file removed:%s\n",filename);
+	                 fprintf(dmlgerr,"DependencyManager(): inter dependency file removed:%s\n",filename);
 			 unlink(ffilename); 
 	                 continue;
 	    }
@@ -186,8 +213,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 				r=readlink(ffilename,linkname,1023);
 				
 				linkname[r] = '\0';
-				if ( (depXp=ParseXmlDepFile(linkname)) == NULL ) {
-	                                fprintf(stderr,"DependencyManager(): Problem parsing xml file:%s\n",linkname);
+				if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlgerr )) == NULL ) {
+	                                fprintf(dmlgerr,"DependencyManager(): Problem parsing xml file:%s\n",linkname);
 				} else {
                                         if ( strcmp(depXp->xpd_slargs,"") != 0 )  
 					        snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
@@ -199,8 +226,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 					      pleaf=(char *) getPathLeaf(depXp->xpd_snode);
 					      /* where to put listing :xp/listings/server_host/datestamp/node_container/nonde_name and loop */
 					      snprintf(listings,sizeof(listings),"%s/listings/%s/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_xpdate, depXp->xpd_container);
-					      if ( access(listings,R_OK) != 0 )  Dret=r_mkdir(listings,1);
-					      if ( Dret != 1 ) fprintf(stderr,"DM :: could not create dirctory:%s\n",listings);
+					      if ( access(listings,R_OK) != 0 )  ret=r_mkdir(listings,1);
+					      if ( ret != 1 ) fprintf(dmlgerr,"DM :: could not create dirctory:%s\n",listings);
                                               memset(listings,'\0',sizeof(listings));
 					      if ( strcmp(depXp->xpd_slargs,"") != 0 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_xpdate,Time);
@@ -208,27 +235,27 @@ void DependencyManager (_l2d2server l2d2 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_xpdate,Time);
 					      }
 					      /* build command */
-					      snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_xpdate, depXp->xpd_snode, largs, listings);
-					      fprintf(stderr,"dependency submit cmd=%s\n",cmd); 
+					      snprintf(cmd,sizeof(cmd),". s.ssmuse.dot %s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_xpdate, depXp->xpd_snode, largs, listings);
+					      fprintf(dmlgerr,"dependency submit cmd=%s\n",cmd); 
 					      /* take account of concurrency here ie multiple dependency managers! */
 					      snprintf(buf,sizeof(buf),"%s/.%s",l2d2.dependencyPollDir,filename);
-					      Dret=rename(ffilename,buf);
-					      if ( Dret == 0 ) {
+					      ret=rename(ffilename,buf);
+					      if ( ret == 0 ) {
 					             unlink(buf);
 					             unlink(linkname);
-					             Dret=system(cmd); 
+					             ret=system(cmd); 
                                               }
 					} else {
 					      epoch_diff=(int)(current_epoch - atoi(depXp->xpd_regtimepoch))/3600;
-					      if ( epoch_diff > L2D2.dependencyTimeOut ) {
+					      if ( epoch_diff > l2d2.dependencyTimeOut ) {
 					            unlink(linkname);
 					            unlink(ffilename);
-	                                            fprintf(stderr,"============= Dependency Timed Out ============\n");
-	                                            fprintf(stderr,"DependencyManager(): Dependency:%s Timed Out\n",filename);
-	                                            fprintf(stderr,"source name:%s\n",depXp->xpd_sname);
-	                                            fprintf(stderr,"name       :%s\n",depXp->xpd_name);
-	                                            fprintf(stderr,"current_epoch=%u registred_epoch=%d registred_epoch_str=%s epoch_diff=%lu\n",(unsigned int)current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
-						    fprintf(stderr,"\n");
+	                                            fprintf(dmlgerr,"============= Dependency Timed Out ============\n");
+	                                            fprintf(dmlgerr,"DependencyManager(): Dependency:%s Timed Out\n",filename);
+	                                            fprintf(dmlgerr,"source name:%s\n",depXp->xpd_sname);
+	                                            fprintf(dmlgerr,"name       :%s\n",depXp->xpd_name);
+	                                            fprintf(dmlgerr,"current_epoch=%d registred_epoch=%d registred_epoch_str=%s epoch_diff=%d\n",current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
+						    fprintf(dmlgerr,"\n");
 					      }
 					}
 					/* register dependency in web page */
@@ -244,13 +271,22 @@ void DependencyManager (_l2d2server l2d2 ) {
 					fwrite(buf, 1 ,strlen(buf), fp );
 					snprintf(buf,sizeof(buf),"<tr><td><font color=\"red\">LOCK</font></td><td>%s</td></table></td>",depXp->xpd_lock);
 					fwrite(buf, 1 ,strlen(buf), fp );
+					free(depXp);depXp=NULL;
 				}
 			     } 
 		             break;
                 default:
 		    	     break;
-            }
-	 }
+            } /* end switch */
+	 } /* end while readdir */
+	 
+	 /* heart beat :: each 2 minutes */
+	 if ( (epoch_diff=current_epoch - start_epoch) >= 120 ) {
+	         start_epoch=current_epoch;
+	         snprintf(buf,sizeof(buf),"%s/DM_%d",l2d2.tmpdir,getpid());
+		 ret=utime(buf,NULL);
+         }
+
 	 fwrite(page_end_dep, 1, strlen(page_end_dep) , fp);
 	 fclose(fp);
 	 closedir(dp);
@@ -258,14 +294,15 @@ void DependencyManager (_l2d2server l2d2 ) {
 }
 
 /*
-*  Worker Process/Thread : locking, logging 
+*  Worker Process : locking, logging 
 *  This process will handle a client Session with Multiplexing.
 */
-static void l2d2SelectServlet( int listen_sd )
+static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 {
-  
+ 
+  FILE *fp, *mlog;
   fd_set master_set, working_set;
-  int buflen,num,Sret=0;
+  int buflen,num,ret;
   int i,j,k,count;
   unsigned int pidSent;
   int _ZONE_ = 1, STOP = -1;
@@ -277,9 +314,16 @@ static void l2d2SelectServlet( int listen_sd )
   char Stime[25],Etime[25];
   char m5[40];
 
-  int    max_sd, new_sd;
-  int    desc_ready, end_server = FALSE;
-  int    rc,close_conn,len;
+  _l2d2client l2d2client[256]; /* 256 client that's enough, the select can take 1024 max */
+
+  int  max_sd, new_sd;
+  int  desc_ready, end_server = FALSE;
+  int  rc,close_conn,len;
+  int  ceiling=0;
+  int fd;             /* file descriptor for file to send */
+  off_t offset = 0;   /* file offset */
+  int sent;           /* bytes sent */
+  struct stat stat_buf; 
   char *ts;
   char trans;
 
@@ -287,22 +331,38 @@ static void l2d2SelectServlet( int listen_sd )
   int semid_log, semid_lock, semid_acct;
   struct sembuf sem_log, sem_lock, sem_acct;
   struct sigaction ssa;
+  struct timeval timeout;  /* Timeout for select */
 
   sem_acct.sem_num = 0;
   sem_acct.sem_op = -1;  /* set to allocate resource */
   sem_acct.sem_flg = SEM_UNDO;
   acct_key=0x0f0f0f;
 
+  /* open log files */
+  snprintf(buf,sizeof(buf),"%s_%d",L2D2.mlog,getpid());
+  if ( (mlog=fopen(buf,"w+")) == NULL ) {
+            fprintf(stdout,"Worker: Could not open mlog stream\n");
+  }
+  /* for heartbeat */ 
+  if ( tworker == ETERNAL ) {
+        snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,getpid());
+        ret=utime(buf,NULL); 
+  }
+  
+  /* streams will be unbuffered */
+  setvbuf(mlog, NULL, _IONBF, 0);
+
   ssa.sa_handler = recv_handler;
   ssa.sa_flags = 0;
   sigemptyset(&ssa.sa_mask);
 
-  /* register SIGALRM signal for session control with each client */
-  if ( sigaction(SIGALRM,&ssa,NULL) == -1 ) fprintf(stderr,"Error registring signal in SelectServlet \n");
+  /* register SIGALRM signal for session control with each client , Not used in the moment */
+  if ( sigaction(SIGALRM,&ssa,NULL) == -1 ) fprintf(mlog,"Error registring signal in SelectServlet \n");
 
   FD_ZERO(&master_set);
   max_sd = listen_sd;
   FD_SET(listen_sd, &master_set);
+
 
   /* Loop waiting for incoming connects or for incoming data   
       on any of the connected sockets. */
@@ -310,9 +370,13 @@ static void l2d2SelectServlet( int listen_sd )
   {
       /* Copy the master fd_set over to the working fd_set.     */
       memcpy(&working_set, &master_set, sizeof(master_set));
+  
+      /* set timeout for select SELECT_TIMEOUT minutes */
+      timeout.tv_sec = SELECT_TIMEOUT ;
+      timeout.tv_usec = 0;
 
-      /* Call select() with no timeout.   */
-      rc = select(max_sd + 1, &working_set, NULL, NULL, NULL);
+      /* Call select() with */
+      rc = select(max_sd + 1, &working_set, NULL, NULL, &timeout);
 
       /* Check to see if the select call failed.                */
       if (rc < 0) {
@@ -320,14 +384,22 @@ static void l2d2SelectServlet( int listen_sd )
          break;
       }
 
-      /* Check to see if the 5 minute time out expired. In case of time out 
+      /* Check to see if select call timed out for 5 minute ... yes -> do other things */ 
       if (rc == 0) {
-         fprintf(stderr,"  select() timed out.  End program.\n");
-         break;
+          if ( tworker != ETERNAL ) {
+	     fclose(mlog);
+	     exit(0);
+          } else {
+	     /* heart beat */
+	     snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,getpid());
+    	     if ( (fp=fopen(buf,"w+")) != NULL ) {
+	           fclose(fp);
+	     }
+	  }
       }
-      */
+      
 
-      /* One or more descriptors are readable.  Need to           
+      /* One or more descriptors are readable. Need to           
          determine which ones they are.                         */
       desc_ready = rc;
       for (i=0; i <= max_sd  &&  desc_ready > 0; ++i)
@@ -346,7 +418,6 @@ static void l2d2SelectServlet( int listen_sd )
             /* Check to see if this is the listening socket */
             if (i == listen_sd)
             {
-               /* fprintf(stdout,"Listening socket is readable\n"); */
                /* Accept all incoming connections that are        
                   queued up on the listening socket before we     
                   loop back and call select again. */
@@ -360,52 +431,30 @@ static void l2d2SelectServlet( int listen_sd )
                   new_sd = accept(listen_sd, NULL, NULL);
                   if (new_sd < 0) {
                      if (errno != EWOULDBLOCK) {
-                        perror("  accept() failed");
+                        perror(" accept() failed");
                         end_server = TRUE;
                      }
                      break;
                   }
 
                   /* Add the new incoming connection to the  
-                     master read set if Client validate */
-
-                  if ( (buflen=recv_socket(new_sd,buf,sizeof(buf),SERVER_SOCK_TIMEOUT)) <= 0 ) {
-                         fprintf (stderr,"read in accept loop Timed out\n");
-	                 close(new_sd);
-                         continue;
-                  }
-
-                  buf[buflen > 0 ? buflen : 0] = '\0';
-                  Sret=sscanf(buf,"%c %d %s %s %s %s %s %s %s",&trans,&pidSent,expInode,expName,node,signal,hostname,username,m5);
-                  if ( Sret != 9 ) {
-                             fprintf (stderr,"Got wrong number of parameters at LOGIN, number=%d ,should be 9 others->trans=%c,pidSent=%d expInode=%s \
-		             expName=%s node=%s signal=%s hostname=%s username=%s m5=%s\n",Sret,trans,pidSent,expInode,expName,node,signal,hostname,username,m5);
-		             close(new_sd);
-		             continue;
-                  }
-
-                  get_time(Stime,3);
-                  if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
-	                  send_reply(new_sd,0);
-                          logZone(_ZONE_,L2D2.dzone,CONSOLE_OUT,"Open Session with Host:%s AT:%s Exp=%s Node=%s Signal=%s XpInode=%s User=%s M5=%s PID=%d\n",hostname, Stime, expName, node ,signal, expInode, username, m5, getpid());
-                  } else {
-	                 send_reply(new_sd,1);
-	                 close(new_sd);
-                         logZone(_ZONE_,L2D2.dzone,CONSOLE_ERR,"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s XpInode=%s User=%s PID=%d\n",hostname , Stime, expName, node, signal, expInode, username, getpid());
-                         continue;
-                  }
-
-                  FD_SET(new_sd, &master_set);
-                  if (new_sd > max_sd) max_sd = new_sd; /* keep track of the max */
-                  
+                     master read set. And Examine maximum connected Clients */
+		  ceiling++;
+		  if ( ceiling >= L2D2.maxClientPerProcess ) {
+		        kill(L2D2.pid,SIGUSR2);
+		  }
+		  
 		  /* put the socket in non-blocking mode */
 		  if  ( ! (fcntl(new_sd, F_GETFL) & O_NONBLOCK)  ) {
 		        if  (fcntl(new_sd, F_SETFL, fcntl(new_sd, F_GETFL) | O_NONBLOCK) < 0) {
-		                fprintf(stderr,"Could not put the socket in non-blocking mode\n");
+		            fprintf(mlog,"Could not put the socket in non-blocking mode\n");
 		        }
 		  }
+                  
+		  FD_SET(new_sd, &master_set);
+                  if (new_sd > max_sd) max_sd = new_sd; /* keep track of the max */
 
-                  /* Loop back up and accept another incoming connection */
+                 /* Loop back up and accept another incoming connection */
                } while (new_sd != -1);
             }
 
@@ -413,7 +462,6 @@ static void l2d2SelectServlet( int listen_sd )
                existing connection must be readable             */
             else
             {
-               get_time(Stime,3);
                close_conn = FALSE;
                /* Receive all incoming data on this socket        
                   before we loop back and call select again.    */
@@ -424,145 +472,172 @@ static void l2d2SelectServlet( int listen_sd )
 		/* Receive data on this connection until the    
                    recv fails with EWOULDBLOCK.  If any other   
                    failure occurs, we will close the connection. */
-
 		   
                    rc = recv(i, buff, sizeof(buff), 0);
                    if (rc < 0) {
                       if (errno != EWOULDBLOCK) {
                          perror("recv() failed");
-                         fprintf(stderr," recv failed on i=%d\n",i); 
+                         get_time(Stime,3);
+                         logZone(L2D2.dzone,L2D2.dzone,mlog,"recv failed with Host:%s AT:%s Exp=%s Node:%s Signal:%s\n",l2d2client[i].host, Stime, l2d2client[i].xp, l2d2client[i].node, l2d2client[i].signal);
                          close_conn = TRUE;
                       }
                       break;
                     }
 
-                    /* Check to see if the connection has been    
-                       closed by the client  */
+                    /* Check to see if the connection has been closed by the client  */
                    if (rc == 0) {
                        get_time(Stime,3);
-                       fprintf(stdout,"Connection closed:%d Time:%s\n",i,Stime);
+                       /* logZone(L2D2.dzone,L2D2.dzone,mlog,"Closed Session Host:%s AT:%s Exp=%s Node:%s Signal:%s\n",l2d2client[i].host, Stime, l2d2client[i].xp, l2d2client[i].node, l2d2client[i].signal);*/
+                       logZone(L2D2.dzone,L2D2.dzone,mlog,"%s Closed AT:%s\n",l2d2client[i].Open_str,Stime);
                        close_conn = TRUE;
                        break;
                    }
 
                    /* Data was received  */
                    len = rc;
-
+                   
                    /* work on data      */
-                   /* Generate a semaphore key based on xp's Inode for LOGGING same for all process, 
-		      we are not using ftok
-		      Need a datestamp here */
-                   log_key = (getuid() & 0xff ) << 24 | ( atoi(expInode) & 0xffff) << 16;
-     
-                   /* initialize a LOGGING semaphore for this Xp */
-                   sem_log.sem_num = 0;
-                   sem_log.sem_op = -1;  /* set to allocate resource */
-                   sem_log.sem_flg = SEM_UNDO;
-                   if ((semid_log = initsem(log_key, 1)) == -1) {
-                        fprintf(stderr,"ERROR initsem lock\n");
-	                /* what to do next ??? */
-                   }
-
                    buff[rc > 0 ? rc : 0] = '\0';
                    switch (buff[0]) {
 	                       case 'A': /* test existence of lock file on local xp */
-	                                Sret = access (&buff[2], R_OK);
-			                send_reply(i,Sret);
+	                                ret = access (&buff[2], R_OK);
+			                send_reply(i,ret);
 			                break;
 	                       case 'C': /*  create a Lock file on local xp */
-	                                Sret = CreateLock ( &buff[2] );
-			                send_reply(i,Sret);
+	                                ret = CreateLock ( &buff[2] );
+			                send_reply(i,ret);
 			                break;
 	                       case 'D': /* mkdir on local xp */
-	                                Sret = r_mkdir ( &buff[2] , 1);
-			                send_reply(i,Sret);
+	                                ret = r_mkdir ( &buff[2] , 1);
+			                send_reply(i,ret);
 			                break;
 	                       case 'F': /* test existence of lock file on local xp */
-	                                Sret = isFileExists ( &buff[2] );
-			                send_reply(i,Sret);
+	                                ret = isFileExists ( &buff[2] );
+			                send_reply(i,ret);
 			                break;
 	                       case 'G': /* glob local xp */
-			                Sret = globPath (&buff[2], GLOB_NOSORT, 0 );
-			                send_reply(i,Sret);
-			                break;
-	                       case 'H': /* Remove file on remote xp */
+			                ret = globPath (&buff[2], GLOB_NOSORT, 0 );
+			                send_reply(i,ret);
 			                break;
 	                       case 'I': 
-		                        Sret=ParseXmlConfigFile(&buff[2] , &L2D2 );
-			                send_reply(i, Sret);
+                                         ret=sscanf(&buff[2],"%d %s %s %s %s %s %s %s",&pidSent,expInode,expName,node,signal,hostname,username,m5);
+                                         if ( ret != 8 ) {
+                                                    fprintf (mlog,"Got wrong number of parameters at LOGIN, number=%d instead of 8 ::buff=%s\n",buff);
+		                                    close(i);
+						    ceiling--;
+		                                    break;
+                                         }
+
+                                         if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
+	                                         send_reply(i,0);
+                                                 get_time(Stime,3);
+                                                 /* logZone(L2D2.dzone,L2D2.dzone,mlog,"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s PID=%d NumberOfConn=%d\n",hostname, Stime, expName, node ,signal, pidSent, ceiling); */
+						 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s PID=%d NumberOfConn=%d ",hostname, Stime, expName, node ,signal, pidSent, ceiling);
+			                         strcpy(l2d2client[i].host,hostname);
+			                         strcpy(l2d2client[i].xp,expName);
+			                         strcpy(l2d2client[i].node,node);
+			                         strcpy(l2d2client[i].signal,signal);
+                                         } else {
+	                                         send_reply(i,1);
+	                                         close(i);
+						 ceiling--;
+                                                 logZone(L2D2.dzone,L2D2.dzone,mlog,"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s User=%s PID=%d m5_svr=%s m5_client=%s\n",hostname , Stime, expName, node, signal, username, pidSent, L2D2.m5sum, m5);
+                                         }
+					 
 		                        break;
 	                       case 'K': /* write Inter user dep file */
-		                        Sret = sscanf(&buff[2],"%d %s",&num,Astring);
+                                        get_time(Stime,3);
+                                        fprintf(mlog," writing interUserDepFile node:%s signal:%s Time:%s\n",l2d2client[i].node,l2d2client[i].signal,Stime);
+		                        ret = sscanf(&buff[2],"%d %s",&num,Astring);
 		                        switch (num) {
 		                          case 1:
 		                                 strcpy(Bigstr,&buff[4]);
 		                                 break;
 		                          case 2:
 		                                 strcat(&Bigstr[strlen(Bigstr)],&buff[4]);
-			                         Sret = writeInterUserDepFile (Bigstr);
+			                         ret = writeInterUserDepFile (Bigstr, mlog );
 			                         break;
 			                  default:
 			                         break;
 			                }
+                                         
 
-			                /* Sret = writeInterUserDepFile (buff, i); */
-			                send_reply(i,Sret);
+			                /* ret = writeInterUserDepFile_svr_2 (&buff[2], i, mlog); */ 
+			                send_reply(i,ret); 
 			                break;
-	                       case 'L': /* Log the node under the proper experiment grab the semaphore set created */ 
+	                       case 'L':/* Log the node under the proper experiment grab the semaphore set created */ 
+                                        /* Generate a semaphore key based on xp's Inode for LOGGING same for all process ,we are not using ftok
+		                            Note : Need a datestamp here */
+                                        log_key = (getuid() & 0xff ) << 24 | ( atoi(expInode) & 0xffff) << 16;
+     
+                                        /* initialize a LOGGING semaphore for this Xp */
+                                        sem_log.sem_num = 0;
+                                        sem_log.sem_op = -1;  /* set to allocate resource */
+                                        sem_log.sem_flg = SEM_UNDO;
+
+                                        if ((semid_log = initsem(log_key, 1)) == -1) {
+                                              fprintf(mlog,"ERROR initsem lock\n");
+	                                      /* what to do next ??? */
+                                        }
+
 			                if (semop(semid_log, &sem_log, 1) == -1) {
-			                        fprintf(stderr,"ERROR grabing semop log\n");
+			                        fprintf(mlog,"ERROR grabing semop log\n");
 			                        /* send_reply(i,1); */
 				                break;
 		                        }
                           
 
-	                                Sret = NodeLogr( &buff[2] , getpid());
-			                send_reply(i,Sret);
+	                                ret = NodeLogr( &buff[2] , getpid(), mlog );
+			                send_reply(i,ret);
                           
 			  
 		                        sem_log.sem_op = 1;  
 			                if (semop(semid_log, &sem_log, 1) == -1) {
-			                        fprintf(stderr,"ERROR release semop log\n");
+			                        fprintf(mlog,"ERROR release semop log\n");
 			                }
 			  
 			                break;
 	                       case 'N': /* lock */
-		                        Sret = lock( &buff[2] , L2D2 ,expName, node ); 
-			                send_reply(i,Sret);
+		                        ret = lock( &buff[2] , L2D2 ,expName, node, mlog ); 
+			                send_reply(i,ret);
 			                break;
 	                       case 'P': /* unlock */ 
-		                        Sret = unlock( &buff[2] , L2D2 ,expName, node ); 
-			                send_reply(i,Sret);
+		                        ret = unlock( &buff[2] , L2D2 ,expName, node, mlog ); 
+			                send_reply(i,ret);
 		                        break;
 	                       case 'R': /* Remove file on local xp */
-	                                Sret = removeFile( &buff[2] );
-			                send_reply(i,Sret);
+	                                ret = removeFile( &buff[2] );
+			                send_reply(i,ret);
 			                break;
-	                       case 'S': /* Client has sent a Stop, OK Close this connection */
-			                Sret=shutdown (i,SHUT_WR);
+	                       case 'S': /* Client has sent a Stop, OK Close this connection 
+			                Note: if we use close(i) here , the rcv() call will fail, we need to close
+					the server write side and let the client close his side, the server will then
+					report a closed socket */
+			                ret=shutdown(i,SHUT_WR);
 			                STOP = TRUE;
 			                break;
 	                       case 'T': /* Touch a Lock file on local xp */
-	                                Sret = touch ( &buff[2] );
-			                send_reply(i,Sret);
+	                                ret = touch ( &buff[2] );
+			                send_reply(i,ret);
 			                break;
 	                       case 'W': /* write Node Wait file  under dependent-ON xp */
-			                Sret = writeNodeWaitedFile ( &buff[2] );
-			                send_reply(i,Sret);
+                                        get_time(Stime,3);
+			                ret = writeNodeWaitedFile ( &buff[2] , mlog );
+			                send_reply(i,ret);
 			                break;
 	                       case 'X': /* server shutdown */
 		                        kill(L2D2.pid,SIGUSR1);
-			                Sret=shutdown (i,SHUT_WR);
+			                ret=shutdown(i,SHUT_WR);
 			                STOP = TRUE;
 			                break;
 	                       case 'Y': /* server is alive do a uptime */
 			                send_reply(i,0);
 			                break;
-	                       case 'Z': /* download waited file to client */
-		                        Sret = SendFile( &buff[2] , i);
+	                       case 'Z':/* download waited file to client */
+		                        ret = SendFile( &buff[2] , i, mlog ); 
 		              	        break;
                                default :
-	                                fprintf(stderr,"Unrecognized Token>%s< LEN=%d from Experiment=%s node=%s from_host=%s signal=%s \n",buff,rc,expName,node,hostname,signal);
+	                                fprintf(mlog,"Unrecognized Token>%s< LEN=%d from Host=%s Exp=%s node=%s signal=%s \n",buff,rc,l2d2client[i].host,l2d2client[i].xp,l2d2client[i].node,l2d2client[i].signal);
 			                send_reply(i,1); 
 			                break;
                        }
@@ -581,14 +656,13 @@ static void l2d2SelectServlet( int listen_sd )
                      close(i);
                      FD_CLR(i, &master_set);
                      if (i == max_sd) {
-                        while (FD_ISSET(max_sd, &master_set) == FALSE)
-                           max_sd -= 1;
+                        while (FD_ISSET(max_sd, &master_set) == FALSE) max_sd -= 1;
                      }
+		     ceiling--;
                }
             } /* End of existing connection is readable */
          } /* End of if (FD_ISSET(i, &working_set)) */
       } /* End of loop through selectable descriptors */
-
    } while (end_server == FALSE);
 
    /* Cleanup all of the sockets that are open                  */
@@ -601,61 +675,160 @@ static void l2d2SelectServlet( int listen_sd )
 
 void maestro_l2d2_main_process_server (int fserver)
 {
-   pid_t pid, kpid;
-   int status,i;
-   char *md5sum=NULL, *Auth_token=NULL;
-   struct passwd *passwdEnt = getpwuid(getuid());
-   char authorization_file[1024];
-   struct sigaction adm;
+  FILE *smlog;
+  pid_t pid_eworker, kpid;  /* pid_eworker : pid of eternal worker */
+  int ret,status,i=0,j;
+  char *m5sum=NULL, *Auth_token=NULL;
+  struct passwd *passwdEnt = getpwuid(getuid());
+  char authorization_file[1024],filename[1024];
+  time_t current_epoch;
+  struct sigaction adm;
+  struct stat st;
+  double diff_t;
 
-
-   /* create requested number of process */
-  for (i=0 ; i< L2D2.numProcessAtstart; i++ )
-  {
-           if ( (ChildPids[i] = fork()) == 0 ) 
-                l2d2SelectServlet(fserver);
-           else if ( ChildPids[i] > 0 )       
-                ProcessCount++;
-           else                         
-                perror("fork() failed");
-  }
-  
   bzero(&adm, sizeof(adm));
   adm.sa_sigaction = &sig_admin;
   adm.sa_flags = SA_SIGINFO;
   
-  if ( sigaction(SIGUSR1, &adm, NULL) != 0 ) fprintf(stderr,"ERROR sigaction for adminstration purposes:USR1");
-  if ( sigaction(SIGUSR2, &adm, NULL) != 0 ) fprintf(stderr,"ERROR sigaction for adminstration purposes:USR2");
-  if ( sigaction(SIGHUP,  &adm, NULL) != 0 ) fprintf(stderr,"ERROR sigaction for adminstration purposes:HUP");
+  /* open log files */
+  snprintf(filename,sizeof(filename),"%s_%d",L2D2.mlog,L2D2.pid);
+  if ( (smlog=fopen(filename,"w+")) == NULL ) {
+            fprintf(stderr,"Main server: Could not open mlog stream\n");
+  } else {
+            fprintf(smlog,"Main server: starting .... PID=%d\n",L2D2.pid);
+  }
+  
+  /* close 0,1,2 streams */
+  close(0);
+  close(1);
+  close(2);
 
-  /* try alws to adjust the number of servlet */
+  /* streams will be unbuffered */
+  setvbuf(smlog, NULL, _IONBF, 0);
+
+  /* register signal for admin purposes */
+  if ( sigaction(SIGUSR1, &adm, NULL) != 0 ) fprintf(smlog,"ERROR in sigaction signal :USR1");
+  if ( sigaction(SIGUSR2, &adm, NULL) != 0 ) fprintf(smlog,"ERROR in sigaction signal :USR2");
+  if ( sigaction(SIGHUP,  &adm, NULL) != 0 ) fprintf(smlog,"ERROR in sigaction signal :HUP");
+
+  /* Generate the Eternal worker */
+  if ( (pid_eworker = fork()) == 0 ) { 
+      l2d2SelectServlet( fserver , ETERNAL );
+  } else if ( pid_eworker > 0 ) {      
+      ProcessCount++;
+  } else                         
+      perror("fork() Eternal Worker failed");
+
+  /* go into the main admin loop */
   for (;;)
   {
-	sleep(3);              
+	if ( sig_admin_AddWorker == 1 ) {
+	      sig_admin_AddWorker=0;
+	      fprintf(smlog,"Received signal USR2 from worker ProcessCount=%d\n",ProcessCount);
+              if ( ProcessCount < L2D2.maxNumOfProcess ) {
+                 if ( (ChildPids[i] = fork()) == 0 ) {   
+                      l2d2SelectServlet( fserver , TRANSIENT );
+                 } else if ( ChildPids[i] > 0 ) {        
+                      ProcessCount++;
+	              fprintf(smlog,"One worker generated with pid=%d\n",ChildPids[i]);
+		      i++;
+                 } else                      
+                      perror("fork() Worker failed");
+              } else {
+	            fprintf(smlog,"cannot add more worker, already reached maximum number:%d\n",ProcessCount);
+              }
+	}
+	
+
+        /* sigchild :: a Child has exited ... dont know who is */
+	if ( sig_child == 1 ) {
+	     sig_child=0;
+	     /* Check Eternal worker */
+	     if ( (ret=kill(pid_eworker,0)) != 0 ) {
+	           fprintf(smlog,"Eternal Worker is dead (pid=%d) ... trying to spawn a new one ret=%d\n",pid_eworker,ret);
+                   ProcessCount--;
+                   if ( (pid_eworker = fork()) == 0 ) { 
+                              l2d2SelectServlet( fserver , ETERNAL );
+                   } else if ( pid_eworker > 0 ) {      
+                              ProcessCount++;
+                   } else                         
+                          perror("fork() Eternal Worker failed");
+	     } 
+	     
+	     /* Check Dependency Manager */
+	     if ( (ret=kill(L2D2.depProcPid,0)) != 0 ) {
+	           fprintf(smlog,"Dependency Manager is dead (pid=%d) ... trying to spawn a new one ret=%d\n",L2D2.depProcPid,ret);
+                   if ( (L2D2.depProcPid=fork()) == 0 ) {
+                         /*  this is a child, Note: will inherite signals */
+                          close(fserver);
+                          DependencyManager (L2D2) ;
+                          exit(0); /* never reached ! */
+                   } else if ( L2D2.depProcPid > 0 ) {
+	                  /* in parent do nothing */
+	           } else 
+                          perror("fork() Dependenct Manager failed");
+             }
+	     /* Check Transient worker, only for decrementing the ProcessCount variable */
+             for ( j=0; j < i ; j++ ) {
+                 if ( ChildPids[j] != 0 && (ret=kill(ChildPids[j],0)) != 0 ) {
+                             ChildPids[j]=0;
+                             ProcessCount--;
+		 }
+	     }
+	}
+        
+	/* hearbeat */
+	current_epoch = time(NULL);
+	/* must examine if Eternal worker or Dependency Manager has delivered this signal */
+	snprintf(filename,sizeof(filename),"%s/EW_%d",L2D2.tmpdir,pid_eworker);
+	if ( stat(filename,&st) == 0 ) {
+	        if ( (diff_t=abs(difftime(current_epoch,st.st_mtime))) > NOTIF_TIME_INTVAL_EW ) {
+	              if ( (ret=kill(pid_eworker,0)) != 0 ) {
+	                   fprintf(smlog,"Eternal Worker is dead (no heartbeat) ...  spawning a new one\n");
+		     }
+	        } 
+         } else if ( (ret=kill(pid_eworker,0)) != 0 ) {
+	                fprintf(smlog,"Eternal worker is dead (no heartbeat) ... spawning a new one\n");
+	        }
+
+	 snprintf(filename,sizeof(filename),"%s/DM_%d",L2D2.tmpdir,L2D2.depProcPid);
+	 if ( stat(filename,&st) == 0 ) {
+	            if ( (diff_t=abs(difftime(current_epoch,st.st_mtime))) > NOTIF_TIME_INTVAL_DM ) {
+	                if ( (ret=kill(L2D2.depProcPid,0)) != 0 ) {
+	                   fprintf(smlog,"Dependency manager is dead (no heartbeat) ...  spawning a new one\n");
+			}
+                    } 
+         } else if ( (ret=kill(L2D2.depProcPid,0)) != 0 ) {
+	                fprintf(smlog,"Dependency manager is dead (no heartbeat) ... spawning a new one\n");
+	          }
 
         if ( sig_admin_Terminate == 1 ) {
 	     close(fserver);
              sleep (2);
-             for ( i=0; i < L2D2.numProcessAtstart ; i++ ) {
-	           ChildPids[i] == 0 ? : kill (ChildPids[i],9);
-		   /* if ( (kpid=waitpid(ChildPids[i], &status, WNOHANG)) > 0 )  fprintf(stderr,"Child %ld terminated\n", kpid); */
+             for ( j=0; j < i ; j++ ) {
+	           ChildPids[j] == 0 ? : kill (ChildPids[j],9);
              }
-	     l2d2server_shutdown();
+	     kill(pid_eworker,9);
+	     l2d2server_shutdown(smlog);
 	}
 	/* test to see if user has started a new mserver */
         snprintf(authorization_file,sizeof(authorization_file),".maestro_server_%s",L2D2.mversion);
-	
-        Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &md5sum);
+        Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
 	if ( Auth_token != NULL ) {
-	   if ( strcmp(md5sum,L2D2.m5sum) != 0 ) {
-	       fprintf(stderr,"mserver::Error md5sum has changed auth=%s new=%s old=%s ... killing server\n",L2D2.auth,md5sum,L2D2.m5sum);
-               for ( i=0; i < L2D2.numProcessAtstart ; i++ ) {
-	           ChildPids[i] == 0 ? : kill (ChildPids[i],9);
-		   /* if ( (kpid=waitpid(ChildPids[i], &status, WNOHANG)) > 0 )  fprintf(stderr,"Child %ld terminated\n", kpid); */
+	   if ( strcmp(m5sum,L2D2.m5sum) != 0 ) {
+	       fprintf(smlog,"mserver::Error md5sum has changed File=%s new=%s old=%s ... killing server\n",L2D2.auth,m5sum,L2D2.m5sum);
+               for ( j=0; j < i ; j++ ) {
+	           ChildPids[j] == 0 ? : kill (ChildPids[j],9);
                }
-	       l2d2server_remove();
-	   } else free(Auth_token); 
+	       kill(pid_eworker,9);
+	       l2d2server_remove(smlog);
+	   } else {
+	           free(Auth_token); 
+	           free(m5sum); 
+	         }
 	}
+	
+	sleep(5);  /* yield  Note : what about server receiving signal here ? */              
   }
 
 }
@@ -663,32 +836,21 @@ void maestro_l2d2_main_process_server (int fserver)
 int main ( int argc , char * argv[] ) 
 {
 
-  int  dep_pid , buflen;
   char buf[1024];
   
   struct stat st;
   char authorization_file[256];
-  char *Auth_token=NULL;
+  char hostname[128], hostTken[20], ipTken[20];
+  char *Auth_token=NULL, *m5sum=NULL;
   struct passwd *passwdEnt = getpwuid(getuid());
-
-  int status;
-
-  struct _Thread_Data *ptr_ThData;
-  pthread_t threadID;
-  size_t stacksize;
   
-  /* for bucket logs */
-  struct _depList *depListHeadPrt=NULL;
-
-  int fserver, client_sock;
+  int fserver;
   int server_port;
-  int returnVal,ret,i;
+  int portTken;
+  int ret,status,i;
 
-  char hostname[128];
   char *home = NULL;
   char *ip=NULL;
-  char hostTken[20],ipTken[20];
-  int  portTken;
 
   /* get maestro current version and shortcut */
   if (  (L2D2.mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
@@ -713,7 +875,7 @@ int main ( int argc , char * argv[] )
   snprintf(buf,sizeof(buf),"%s/.suites/maestrod/dependencies/polling/v%s",passwdEnt->pw_dir,L2D2.mversion);
   strcpy(L2D2.dependencyPollDir,buf);
   if ( access(buf,R_OK) != 0 ) {
-         if ( (status=mkdir( buf , S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))  != 0 ) { 
+         if ( (status=r_mkdir(buf , 1))  != 0 ) { 
                 fprintf(stderr, "maestro_server(),Could not create dependencies directory:%s\n",buf);
 	 }
 	 
@@ -722,18 +884,15 @@ int main ( int argc , char * argv[] )
   /* get authorization param */
   snprintf(authorization_file,sizeof(authorization_file),".maestro_server_%s",L2D2.mversion);
   snprintf(L2D2.auth,sizeof(L2D2.auth),"%s/.suites/%s",passwdEnt->pw_dir,authorization_file);
-  Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &L2D2.m5sum);
+  Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   if ( Auth_token != NULL) {
       fprintf(stderr, "maestro_server(),found .maestro_server_%s file, removing configuration file\n",L2D2.mversion);
       status=unlink(L2D2.auth);
-      free(Auth_token);Auth_token=NULL;
+      free(Auth_token);
+      free(m5sum);
   }
 
   /* check for a running dependency process */
-
-  /* disconnect stdin, stdout, and stderr */
-   close(0);   /* close and reopen STDOUT  */
-   close(2);   /* close and reopen STDERR */
 
   /* detach from current terminal */
   if ( fork() > 0 ) 
@@ -759,9 +918,9 @@ int main ( int argc , char * argv[] )
   /* parent writes host:port and exits after disconnecting stdin, stdout, and stderr */
   ip = get_own_ip_address();  /* get own IP address as 32 bit integer */
 
-  fprintf(stdout, "Host ip=%s Server port= %d\n", ip, server_port);
 
   unsigned int mypid=getpid();
+
   /* get into another process group */
   setpgrp(); 
 
@@ -772,7 +931,7 @@ int main ( int argc , char * argv[] )
   strcpy(L2D2.ip,ip);
 
   /* create local common tmp directory where to synchronize locks */
-  fprintf(stdout,"user=%s pid=%d \n",L2D2.user,L2D2.pid);
+  fprintf(stdout, "Host ip=%s Server port=%d user=%s pid=%d\n", ip, server_port, L2D2.user, L2D2.pid);
   sprintf(buf,"/tmp/%s/%d",L2D2.user,L2D2.pid);
   
   ret=r_mkdir(buf,1);
@@ -787,44 +946,37 @@ int main ( int argc , char * argv[] )
 
   /* Set authorization file */
   set_Authorization (mypid,hostname,ip,server_port,authorization_file,passwdEnt->pw_name,&L2D2.m5sum);
-  Auth_token = get_Authorization (authorization_file, passwdEnt->pw_name,&L2D2.m5sum);
+  Auth_token = get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%d", &pidTken, hostTken, ipTken, &portTken);
   fprintf(stdout, "Set maestro_server pid key to:%u file md5=%s\n",pidTken,L2D2.m5sum);
   snprintf(buf,sizeof(buf),"%s/.suites/.maestro_server_%s",passwdEnt->pw_dir,L2D2.mversion);
   strcpy(L2D2.lock_server_pid_file,buf);
-
   free(Auth_token);
 
   /* Parse config file. In which directory should this file reside ? */
   snprintf(buf,sizeof(buf),"%s/.suites/mconfig.xml",passwdEnt->pw_dir);
-  returnVal = ParseXmlConfigFile(buf, &L2D2 );
+  ret = ParseXmlConfigFile(buf, &L2D2 );
 
-  /* fork a Dependency Manager Process (DMP) this is a child */
+  /* register handler for sigchild signal */
+  struct sigaction chd;
+  bzero(&chd, sizeof(chd));
+  chd.sa_sigaction = &child_handler;
+  chd.sa_flags = SA_SIGINFO;
+  sigemptyset (&chd.sa_mask);
+  if ( sigaction(SIGCHLD, &chd, 0) != 0 ) fprintf(stderr,"ERROR sigaction for SIGCHLD");
+
+  /* fork a Dependency Manager Process (DM)  */
   if ( (L2D2.depProcPid=fork()) == 0 ) {
-         sigset_t  newmask, oldmask,zeromask;
-         struct sigaction sa;
-         
-	 L2D2.depProcPid=getpid();
+         /*  this is a child */
          close(fserver);
-	 umask(0);
-         /* reopen stdout stderr */
-         freopen(L2D2.dmlog,"w+",stdout); 
-         freopen(L2D2.dmlogerr,"w+",stderr); 
-         setvbuf(stdout, NULL, _IONBF, 0);
-         setvbuf(stderr, NULL, _IONBF, 0);
-
-         sa.sa_handler = sig_depend;
-         sa.sa_flags = SA_RESTART;
-         sigemptyset(&sa.sa_mask);
-
-         /* register signals */
-         if ( sigaction(SIGHUP,&sa,NULL)  != 0 )  fprintf(stderr,"error in sigactions  hup\n");
-     
          DependencyManager (L2D2) ;
-         exit(0);
+         exit(0); /* never reached ! */
+  } else if ( L2D2.depProcPid < 0 ) { 
+         perror("fork failed");
+	 exit(1);
   }
 
-  /* set main socket in non blocking mode */
+  /* set socket in non blocking mode , This is needed by select sys call */
   int on=1;
   if ( (ret=ioctl(fserver, FIONBIO, (char *)&on)) < 0 ) {
         perror("ioctl() failed");
@@ -841,67 +993,63 @@ int main ( int argc , char * argv[] )
 
   }
 
-  struct sigaction chd;
-  bzero(&chd, sizeof(chd));
-  chd.sa_handler = sig_child;
-  chd.sa_flags = SA_NOCLDSTOP | SA_RESTART;
-  sigemptyset (&chd.sa_mask);
-  if ( sigaction(SIGCHLD, &chd, 0) != 0 ) fprintf(stderr,"ERROR sigaction for SIGCHLD");
-  
-
- /* register this handler to remove our pidfile at exit */
-  atexit(l2d2server_atexit);
-      
-
- /* Ok start the thread Server */
-  fprintf(stdout,"starting the main Server Loop \n");
-
- /* open log files */
+ /* reopen streams  
   freopen(L2D2.mlog, "w+", stdout);
   freopen(L2D2.mlogerr, "w+", stderr);
 
- /* set NO BUFFERING for STDOUT and STDERR */
+  set NO BUFFERING for STDOUT and STDERR 
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
+  */
 
- /* go into the main loop */
+ /* Ok start the Server ie go into main loop */
   maestro_l2d2_main_process_server(fserver);
 
   return (0);
 }
 
 /**
- * on fatal server shutdowns (if the exit() function is called)
- * remove the pid file of this process, terminate DMP. 
- */
-
-static void l2d2server_atexit(void)
-{
-     fprintf(stderr,"Stopping dependency process ...\n");
-     kill(L2D2.depProcPid,9);
-}
-
-/**
  * shutdown the l2d2server process
- * this gets called when  shuting down the server
+ * this gets called when shuting down the server
  */
 
-static void l2d2server_shutdown(void)
+static void l2d2server_shutdown(FILE *fp)
 {
-    fprintf(stderr,"Shutting down maestro server ... \n");
-    fprintf(stderr,"Removing .maestro_server file:%s\n",L2D2.auth);
+    int ret;
+    char buf[1024];
+
+    fprintf(fp,"Stopping dependency process  ...\n");
+    kill(L2D2.depProcPid,9);
+
+    fprintf(fp,"Removing .maestro_server file:%s\n",L2D2.auth);
     unlink(L2D2.auth);
-    exit(1); /* this will cal atexit */
+   
+    snprintf(buf,sizeof(buf),"%s/%d",L2D2.tmpdir,L2D2.depProcPid);
+    ret=unlink(buf);
+    
+    snprintf(buf,sizeof(buf),"%s/%d",L2D2.tmpdir,L2D2.pid);
+    ret=unlink(buf);
+
+    fprintf(fp,"Removing tmp directory       ... \n");
+    ret=rmdir(L2D2.tmpdir);
+
+    free(L2D2.tmpdir);
+    free(L2D2.m5sum);
+
+    fprintf(fp,"Shutting down maestro server ... \n");
+    exit(1);
 }
 
 /**
  * remove old running mserver
  *
  */
-static void l2d2server_remove(void) 
+static void l2d2server_remove(FILE *fp) 
 {
-     fprintf(stderr,"Removing previous maestro_server processes\n");
-     fprintf(stderr,"Stopping previous dependency process ...\n");
+     fprintf(fp,"Removing previous maestro_server processes\n");
+     fprintf(fp,"Stopping previous dependency process ...\n");
+     kill(L2D2.depProcPid,9);
+
      exit(1);
 
 }

@@ -125,7 +125,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     if ( tmpfrommaestro == NULL ) {
        fprintf(stderr, "\n================= NODELOGGER: NOT_FROM_MAESTRO signal:%s================== \n",type);
        FromWhere = FROM_NODELOGGER;
-       if ( (sock=OpenConnectionToMLLServer( seq_exp_home , "LOG" )) < 0 ) { 
+       if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
           gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
           ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 
           return;
@@ -146,7 +146,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        } else {
         /* it could be that we dont have the env. variable set to use Server */
            FromWhere = FROM_MAESTRO_NO_SVR;
-           if ( (sock=OpenConnectionToMLLServer( seq_exp_home , "LOG" )) < 0 ) { 
+           if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
                fprintf(stderr, "================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
                gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
                ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 

@@ -21,7 +21,7 @@
 
 /* size of socket buffers in KiloBytes */
 #define SOCK_BUF_SIZE 10
-#define SOCK_TIMEOUT_CLIENT 40
+#define SOCK_TIMEOUT_CLIENT 20
 
 static struct  sockaddr_in server;      /* server socket */
 static socklen_t sizeserver = sizeof(server);
@@ -30,7 +30,7 @@ static int must_init_signal = 1;
 /* prototype */
 int GetHostName (char *, size_t );
 char *get_Authorization( char * , char *, char **);
-void  set_Authorization (int  ,char * , char * , int  , char * , char *,char **);
+void  set_Authorization (unsigned int  ,char * , char * , int  , char * , char *,char **);
 int accept_from_socket (int fserver);
 int bind_sock_to_port (int s);
 int get_socket_net();
@@ -43,7 +43,6 @@ int send_socket (int , char * , int  , unsigned int );
 int read_socket (int , char * , int  , unsigned int ); 
 int recv_socket (int , char * , int  , unsigned int ); 
 int recv_full ( int sock , char * buff, int rsize );
-FILE * GetFile ( const char * filename , int sock );
 void send_reply (int , int );  
-int do_Login( int  , int  , char *, char * , char * , char * ,char **);
+int do_Login( int  , unsigned int  , char *, char * , char * , char * ,char **);
 #endif

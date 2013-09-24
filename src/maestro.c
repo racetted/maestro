@@ -141,7 +141,7 @@ static void CreateLockFile_nfs(int sock , char *filename, char *caller )
           touch_nfs(filename);
           SeqUtil_TRACE( "%s created lockfile %s\n", caller, filename);
    } else {
-          printf( "%s not recreating existing lock file:%s\n",caller, filename );
+          SeqUtil_TRACE( "%s not recreating existing lock file:%s\n",caller, filename );
    }
 
 }
@@ -836,8 +836,6 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s/%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName); 
 
-   /* Obtain a lock to protect remaining code */ 
-   ret=_lock( filename , _nodeDataPtr->datestamp ); 
 
    /* For a container, we don't send the log file entry again if the
       status file already exists and the signal is endx */
@@ -851,6 +849,9 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
 
    /* clear any other state */
    clearAllOtherStates( _nodeDataPtr, extName, "maestro.setEndState()", "end"); 
+
+   /* Obtain a lock to protect end state */ 
+   ret=_lock( filename , _nodeDataPtr->datestamp ); 
 
    /* create the node end lock file name if not exists*/
    _CreateLockFile( MLLServerConnectionFid , filename , "go_end() ");
@@ -2168,9 +2169,6 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
              raiseError("Invalid string for specifying polling dependency type:%s\n",_dep_prot);
    }
 
-   /* DEBUG */
-   fprintf(stdout,"DEPPARAM=%s\n",depBuf);
-
    /* TODO -> if ret is not 0 dont write to nodelogger the wait line */
    ret = ! _WriteInterUserDepFile(filename, depBuf, current_passwd->pw_dir, maestro_version, _dep_datestamp, md5sum);
    free(md5sum);
@@ -2320,8 +2318,8 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
 
    /* Deciding on locking mecanism: the decision will be based on acquiring 
     * SEQ_LOGGING_MECH string value in .maestrorc file */
-   if (defFile = malloc ( strlen (getenv("HOME")) + strlen("/.suites/overrides.def") + 2 )) {
-      sprintf( defFile, "%s/.suites/overrides.def", getenv("HOME"));
+   if (defFile = malloc ( strlen (getenv("HOME")) + strlen("/.maestrorc") + 2 )) {
+      sprintf( defFile, "%s/.maestrorc", getenv("HOME"));
    } else {
       raiseError("OutOfMemory exception in maestro()\n");
    }
