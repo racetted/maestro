@@ -200,7 +200,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 
             /* stat will stat the file pointed to ... lstat will stat the link itself */
 	    if ( stat(ffilename,&st) != 0 ) {
-	                 fprintf(dmlgerr,"DependencyManager(): inter dependency file removed:%s\n",filename);
+	                 get_time(Time,4);
+	                 fprintf(dmlgerr,"DependencyManager(): %s inter-dependency file not there, removing link ... \n",Time,filename);
 			 unlink(ffilename); 
 	                 continue;
 	    }
@@ -216,7 +217,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 				
 				linkname[r] = '\0';
 				if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlgerr )) == NULL ) {
-	                                fprintf(dmlgerr,"DependencyManager(): Problem parsing xml file:%s\n",linkname);
+	                                get_time(Time,4);
+	                                fprintf(dmlgerr,"DependencyManager(): %s Problem parsing xml file:%s\n",Time,linkname);
 				} else {
                                         if ( strcmp(depXp->xpd_slargs,"") != 0 )  
 					        snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
@@ -229,7 +231,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					      /* where to put listing :xp/listings/server_host/datestamp/node_container/nonde_name and loop */
 					      snprintf(listings,sizeof(listings),"%s/listings/%s/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_xpdate, depXp->xpd_container);
 					      if ( access(listings,R_OK) != 0 )  ret=r_mkdir(listings,1);
-					      if ( ret != 1 ) fprintf(dmlgerr,"DM :: could not create dirctory:%s\n",listings);
+					      if ( ret != 1 ) fprintf(dmlgerr,"DM:: Could not create directory:%s\n",listings);
                                               memset(listings,'\0',sizeof(listings));
 					      if ( strcmp(depXp->xpd_slargs,"") != 0 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_xpdate,Time);
