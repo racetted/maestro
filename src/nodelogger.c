@@ -351,10 +351,8 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     Tokendate = atof(Stime);
     snprintf (flock,sizeof(flock),"%s/%s_%s_%u",lpath,Stime,host,pid);
      
-    fprintf(stdout,"my Token date=%s host_pid=%s %u\n",Stime,host,pid);
-    fprintf(stdout," lpath=%s\n",lpath);
-    fprintf(stdout," lock=%s\n",lock);
-    fprintf(stdout," flock=%s\n",flock);
+    fprintf(stdout,"Token date=%s host_pid=%s %u\n",Stime,host,pid);
+    fprintf(stdout,"flock=%s\n",flock);
 
     sprintf (TokenHostPid,"%s_%u",host,pid);
     
@@ -491,18 +489,21 @@ int acquire_connection (char *seq_exp_home ,  char *datestamp ,  char *job )
    snprintf(authorization_file,sizeof(authorization_file),".maestro_server_%s",mversion);
 
    if ( (Auth_token=get_Authorization (authorization_file,passwdEnt->pw_name,&m5sum)) != NULL) {
-      nscan = sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%u", &pid, htserver, ipserver, &port);
-      fprintf(stderr, "Maestro Server parameters are: pid=>%u<  host=>%s< ip=>%s< port=>%u<\n",pid,htserver,ipserver,port);
-      /* try to get a connection  */ 
-      if ( (sock=connect_to_host_port_by_ip (ipserver,port))  < 0 ) {
-         fprintf(stderr,"Nodelogger Cannot connect to maestro_server at host:%s and port:%d \n", htserver, port);
-         return(-1);
-      } else {
-         if ( (ret=do_Login(sock, pid, job, seq_exp_home, "LOG", passwdEnt->pw_name, &m5sum)) != 0 ) return(-1);
-      }
+             nscan = sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%u", &pid, htserver, ipserver, &port);
+             fprintf(stderr, "Maestro Server parameters are: pid=>%u<  host=>%s< ip=>%s< port=>%u<\n",pid,htserver,ipserver,port);
+             /* try to get a connection  */ 
+             if ( (sock=connect_to_host_port_by_ip (ipserver,port))  < 0 ) {
+                       fprintf(stderr,"Nodelogger Cannot connect to maestro_server at host:%s and port:%d \n", htserver, port);
+                       return(-1);
+             } 
+             if ( (ret=do_Login(sock, pid, job, seq_exp_home, "LOG", passwdEnt->pw_name, &m5sum)) != 0 ) {
+	               fprintf(stderr, "Nodelogger::Cannot Login with mserver\n");
+	               return(-1);
+             }
+      
    } else {
-      fprintf(stderr, "Nodelogger::Found No maestro_server parametres file\n");
-      return(-1);
+          fprintf(stderr, "Nodelogger::Found No maestro_server parametres file\n");
+          return(-1);
    }
 
    return(sock);

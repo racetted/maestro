@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <pwd.h>
 #include <errno.h>
+#include <time.h>
 #include <glob.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -108,6 +109,7 @@ void DependencyManager (_l2d2server l2d2 ) {
      struct _depParameters *depXp=NULL;
      time_t current_epoch,start_epoch;
      unsigned long int epoch_diff;
+     double diff;
      int datestamp,nb,LoopNumber;
      char underline[2];
      char buf[1024];
@@ -168,7 +170,7 @@ void DependencyManager (_l2d2server l2d2 ) {
      }
     
      /* for heartbeat */
-     start_epoch = time(NULL);
+     time(&start_epoch);
      snprintf(buf,sizeof(buf),"%s/DM_%d",l2d2.tmpdir,getpid());
      if ( (ft=fopen(buf,"w+")) != NULL ) {
              fclose(ft);
@@ -177,7 +179,7 @@ void DependencyManager (_l2d2server l2d2 ) {
      while (running == 0 ) {
          sleep(l2d2.pollfreq);
 	 /* get current epoch */
-	 current_epoch = time(NULL);
+	 time(&current_epoch);
 	 if ( (dp=opendir(l2d2.dependencyPollDir)) == NULL ) { 
 	          fprintf(dmlgerr,"Error Could not pen polling directory:%s\n",l2d2.dependencyPollDir);
 		  sleep(2);
@@ -235,7 +237,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_xpdate,Time);
 					      }
 					      /* build command */
-					      snprintf(cmd,sizeof(cmd),". s.ssmuse.dot %s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_xpdate, depXp->xpd_snode, largs, listings);
+					      snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_xpdate, depXp->xpd_snode, largs, listings);
 					      fprintf(dmlgerr,"dependency submit cmd=%s\n",cmd); 
 					      /* take account of concurrency here ie multiple dependency managers! */
 					      snprintf(buf,sizeof(buf),"%s/.%s",l2d2.dependencyPollDir,filename);
@@ -246,7 +248,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					             ret=system(cmd); 
                                               }
 					} else {
-					      epoch_diff=(int)(current_epoch - atoi(depXp->xpd_regtimepoch))/3600;
+					      epoch_diff=(int)(current_epoch - atoi(depXp->xpd_regtimepoch))/3600; 
 					      if ( epoch_diff > l2d2.dependencyTimeOut ) {
 					            unlink(linkname);
 					            unlink(ffilename);
@@ -281,7 +283,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 	 } /* end while readdir */
 	 
 	 /* heart beat :: each 2 minutes */
-	 if ( (epoch_diff=current_epoch - start_epoch) >= 120 ) {
+	 if ( (diff=difftime(current_epoch,start_epoch)) >= 120 ) {
 	         start_epoch=current_epoch;
 	         snprintf(buf,sizeof(buf),"%s/DM_%d",l2d2.tmpdir,getpid());
 		 ret=utime(buf,NULL);
@@ -314,7 +316,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   char Stime[25],Etime[25];
   char m5[40];
 
-  _l2d2client l2d2client[256]; /* 256 client that's enough, the select can take 1024 max */
+  _l2d2client l2d2client[256]; /* 256 client that's enough, the select can take 1024 max and we are forcing a max number of clients */
 
   int  max_sd, new_sd;
   int  desc_ready, end_server = FALSE;
@@ -332,6 +334,8 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   struct sembuf sem_log, sem_lock, sem_acct;
   struct sigaction ssa;
   struct timeval timeout;  /* Timeout for select */
+  time_t sig_sent,now;
+  double delay;
 
   sem_acct.sem_num = 0;
   sem_acct.sem_op = -1;  /* set to allocate resource */
@@ -363,6 +367,8 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   max_sd = listen_sd;
   FD_SET(listen_sd, &master_set);
 
+  /* get reference time to manage sending of signals to add workers to main server */
+  time(&sig_sent);
 
   /* Loop waiting for incoming connects or for incoming data   
       on any of the connected sockets. */
@@ -437,11 +443,23 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                      break;
                   }
 
-                  /* Add the new incoming connection to the  
-                     master read set. And Examine maximum connected Clients */
+                  /* Add the new incoming connection to the master read set. 
+		   * And Examine maximum simulatenous connected Clients 
+		   * Note, we do not reject accepts, but we rely on the main 
+		   * server to spawn a new worker to lower the load and also 
+		   * hoping that after 5 sec, the load is fairly distributed
+		   * btw the workers. */
+
 		  ceiling++;
 		  if ( ceiling >= L2D2.maxClientPerProcess ) {
-		        kill(L2D2.pid,SIGUSR2);
+			time(&now);
+			/* wait 5 secondes btw sending of signals to main server,this is for signal flood control */
+			if ( (delay=difftime(now,sig_sent)) >= 5 ) {
+		               get_time(Stime,3);
+		               fprintf(mlog,"Signal sent at:%s to main server to add a worker\n",Stime);
+		               kill(L2D2.pid,SIGUSR2);
+			       sig_sent=now;
+			}
 		  }
 		  
 		  /* put the socket in non-blocking mode */
@@ -487,7 +505,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                     /* Check to see if the connection has been closed by the client  */
                    if (rc == 0) {
                        get_time(Stime,3);
-                       logZone(L2D2.dzone,L2D2.dzone,mlog,"%s Closed AT:%s NumTrans=%u\n",l2d2client[i].Open_str,Stime,l2d2client[i].trans);
+                       logZone(L2D2.dzone,L2D2.dzone,mlog,"%s Closed AT:%s TransNumber=%u\n",l2d2client[i].Open_str,Stime,l2d2client[i].trans);
                        close_conn = TRUE;
                        break;
                    }
@@ -524,35 +542,41 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 					l2d2client[i].trans++;
 			                break;
 	                       case 'I': 
+			                 pidSent=0;
+					 memset(expInode,'\0',sizeof(expInode));
+					 memset(expName,'\0',sizeof(expName));
+					 memset(node,'\0',sizeof(node));
+					 memset(hostname,'\0',sizeof(hostname));
+					 memset(username,'\0',sizeof(username));
+					 memset(m5,'\0',sizeof(m5));
                                          ret=sscanf(&buff[2],"%d %s %s %s %s %s %s %s",&pidSent,expInode,expName,node,signal,hostname,username,m5);
+                                         get_time(Stime,3);
                                          if ( ret != 8 ) {
-                                                    fprintf (mlog,"Got wrong number of parameters at LOGIN, number=%d instead of 8 ::buff=%s\n",buff);
-		                                    close(i);
-						    ceiling--;
-		                                    break;
-                                         }
-
-                                         if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
+	                                         send_reply(i,1);
+                                                 fprintf (mlog,"Got wrong number of parameters at LOGIN, number=%d instead of 8 buff=>%s<\n",buff);
+	                                         /* close(i);same comment as for the S case below */
+			                         ret=shutdown(i,SHUT_WR);
+					         ceiling--;
+                                                 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s ... Wrong number of arguments ",hostname , Stime, expName, node, signal);
+                                         } else if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
 	                                         send_reply(i,0);
-                                                 get_time(Stime,3);
-                                                 /* logZone(L2D2.dzone,L2D2.dzone,mlog,"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s PID=%d NumberOfConn=%d\n",hostname, Stime, expName, node ,signal, pidSent, ceiling); */
-						 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s PID=%d NumberOfConn=%d ",hostname, Stime, expName, node ,signal, pidSent, ceiling);
-			                         strcpy(l2d2client[i].host,hostname);
-			                         strcpy(l2d2client[i].xp,expName);
-			                         strcpy(l2d2client[i].node,node);
-			                         strcpy(l2d2client[i].signal,signal);
-					         l2d2client[i].trans=0;
+						 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s pid=%d NumberOfConn=%d ",hostname, Stime, expName, node ,signal, pidSent, ceiling);
                                          } else {
 	                                         send_reply(i,1);
-	                                         close(i);
+	                                         /* close(i);same comment as for the S case below */
+			                         ret=shutdown(i,SHUT_WR);
 						 ceiling--;
-                                                 logZone(L2D2.dzone,L2D2.dzone,mlog,"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s User=%s PID=%d m5_svr=%s m5_client=%s\n",hostname , Stime, expName, node, signal, username, pidSent, L2D2.m5sum, m5);
+                                                 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s pid_svr=%d pid_sent=%d m5_client=%s ",hostname , Stime, expName, node, signal, pidTken, pidSent, m5);
                                          }
-					 
-		                        break;
+                                         /* gather info for this client */
+					 l2d2client[i].trans=0;
+			                 strcpy(l2d2client[i].host,hostname);
+			                 strcpy(l2d2client[i].xp,expName);
+			                 strcpy(l2d2client[i].node,node);
+			                 strcpy(l2d2client[i].signal,signal);
+		                         break;
 	                       case 'K': /* write Inter user dep file */
                                         get_time(Stime,3);
-                                        fprintf(mlog," writing interUserDepFile node:%s signal:%s Time:%s\n",l2d2client[i].node,l2d2client[i].signal,Stime);
 		                        ret = sscanf(&buff[2],"%d %s",&num,Astring);
 		                        switch (num) {
 		                          case 1:
@@ -650,7 +674,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 					l2d2client[i].trans++;
 		              	        break;
                                default :
-	                                fprintf(mlog,"Unrecognized Token>%s< LEN=%d from Host=%s Exp=%s node=%s signal=%s \n",buff,rc,l2d2client[i].host,l2d2client[i].xp,l2d2client[i].node,l2d2client[i].signal);
+	                                fprintf(mlog,"Unrecognized Token>%s< from Host=%s Exp=%s node=%s signal=%s \n",buff,l2d2client[i].host,l2d2client[i].xp,l2d2client[i].node,l2d2client[i].signal);
 			                send_reply(i,1); 
 			                break;
                        }
@@ -671,6 +695,14 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                      if (i == max_sd) {
                         while (FD_ISSET(max_sd, &master_set) == FALSE) max_sd -= 1;
                      }
+		     /* dont think that this re-initializing is mandatory */
+		     l2d2client[i].trans=0;
+		     memset(l2d2client[i].host,'\0',sizeof(l2d2client[i].host));
+		     memset(l2d2client[i].xp,'\0',sizeof(l2d2client[i].xp));
+		     memset(l2d2client[i].node,'\0',sizeof(l2d2client[i].node));
+		     memset(l2d2client[i].signal,'\0',sizeof(l2d2client[i].signal));
+		     memset(l2d2client[i].Open_str,'\0',sizeof(l2d2client[i].Open_str));
+		     memset(l2d2client[i].Close_str,'\0',sizeof(l2d2client[i].Close_str));
 		     ceiling--;
                }
             } /* End of existing connection is readable */
@@ -784,6 +816,7 @@ void maestro_l2d2_main_process_server (int fserver)
 	     /* Check Transient worker, only for decrementing the ProcessCount variable */
              for ( j=0; j < i ; j++ ) {
                  if ( ChildPids[j] != 0 && (ret=kill(ChildPids[j],0)) != 0 ) {
+	                     fprintf(smlog,"Worker process pid:%u has terminated\n",ChildPids[j]);
                              ChildPids[j]=0;
                              ProcessCount--;
 		 }

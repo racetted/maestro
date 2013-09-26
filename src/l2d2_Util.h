@@ -16,6 +16,7 @@
 #define CONSOLE_OUT 0
 #define CONSOLE_ERR 1
 #define LOCK_TIME_TO_LIVE 5
+#define MAX_RETRIES 10
 
 /* function declaration */
 int  removeFile (char *x);
@@ -26,17 +27,18 @@ int  Access ( const char *x );
 int  isDirExists ( const char *x );
 int  r_mkdir ( const char* x , int a  );
 int  globPath (char *, int , int (*) (const char *, int ) );
-int  NodeLogr (char * , int );
-int  writeNodeWaitedFile ( const char * );
-int  writeInterUserdepFile( const char *);
+int  NodeLogr (char * , int , FILE *);
+int  writeNodeWaitedFile ( const char * , FILE *);
+int  writeInterUserdepFile( const char *, FILE *);
+int  writeInterUserdepFile_v2( const char *, int  , FILE *);
 char *getPathBase (const char *);
 int  _sleep (double );
-int lock ( char * ,_l2d2server L2D2, char *xpn, char *node);
-int unlock ( char * ,_l2d2server L2D2 , char *xpn, char *node) ;
-struct _depParameters *ParseXmlDepFile(char * );
+int lock ( char * ,_l2d2server L2D2, char *xpn, char *node, FILE *fp);
+int unlock ( char * ,_l2d2server L2D2 , char *xpn, char *node, FILE *fp) ;
 int  ParseXmlConfigFile(char * , _l2d2server * );
+struct _depParameters *ParseXmlDepFile(char *filename , FILE * , FILE * );
+int SendFile (const char * x , int a , FILE *);
+void logZone(int this_Zone, int conf_Zone, FILE *fp  , char * txt, ...);
 char *getPathLeaf (const char *);
-int SendFile (const char * x , int a );
 char typeofFile(mode_t mode);
-void logZone(int this_Zone, int conf_Zone, int console , char * txt, ...);
 #endif
