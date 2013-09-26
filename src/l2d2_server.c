@@ -760,6 +760,7 @@ void maestro_l2d2_main_process_server (int fserver)
 
   /* Generate the Eternal worker */
   if ( (pid_eworker = fork()) == 0 ) { 
+      fclose(smlog);
       l2d2SelectServlet( fserver , ETERNAL );
   } else if ( pid_eworker > 0 ) {      
       ProcessCount++;
@@ -773,7 +774,8 @@ void maestro_l2d2_main_process_server (int fserver)
 	      sig_admin_AddWorker=0;
 	      fprintf(smlog,"Received signal USR2 from worker ProcessCount=%d\n",ProcessCount);
               if ( ProcessCount < L2D2.maxNumOfProcess ) {
-                 if ( (ChildPids[i] = fork()) == 0 ) {   
+                 if ( (ChildPids[i] = fork()) == 0 ) { 
+		      fclose(smlog);
                       l2d2SelectServlet( fserver , TRANSIENT );
                  } else if ( ChildPids[i] > 0 ) {        
                       ProcessCount++;
@@ -795,6 +797,7 @@ void maestro_l2d2_main_process_server (int fserver)
 	           fprintf(smlog,"Eternal Worker is dead (pid=%d) ... trying to spawn a new one ret=%d\n",pid_eworker,ret);
                    ProcessCount--;
                    if ( (pid_eworker = fork()) == 0 ) { 
+		              fclose(smlog);
                               l2d2SelectServlet( fserver , ETERNAL );
                    } else if ( pid_eworker > 0 ) {      
                               ProcessCount++;
@@ -808,6 +811,7 @@ void maestro_l2d2_main_process_server (int fserver)
                    if ( (L2D2.depProcPid=fork()) == 0 ) {
                          /*  this is a child, Note: will inherite signals */
                           close(fserver);
+		          fclose(smlog);
                           DependencyManager (L2D2) ;
                           exit(0); /* never reached ! */
                    } else if ( L2D2.depProcPid > 0 ) {
