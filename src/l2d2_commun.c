@@ -28,18 +28,21 @@ void get_time (char *btime , int mode )
    strftime (time_string, sizeof (time_string), "%Y%m%d%H%M%S", ptm);
    /* Compute milliseconds from microseconds.  */
    milliseconds = tv.tv_usec / 1000;
-   /* Print the formatted time, in seconds, followed by a decimal point and the milliseconds.  */
+
    switch (mode) {
        case 1 :
                sprintf (btime,"%s", time_string);
                break;
        case 2 :
+               /* Print the formatted time, in seconds, followed by a decimal point and the milliseconds.  */
                sprintf (btime,"%s.%03ld", time_string, milliseconds);
                break;
        case 3 :
+               /* Print the formatted time, in seconds, followed by a decimal point and the microseconds.  */
                sprintf (btime,"%s.%u", time_string, (unsigned int) tv.tv_usec);
                break;
        case 4 :
+               /* Print hours, minutes, seconds ie HH:MM:SS  */
                memset(time_string,'\0',sizeof(time_string));      
                strftime (time_string, sizeof (time_string), "%H:%M:%S", ptm);
                sprintf (btime,"%s", time_string);

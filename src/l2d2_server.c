@@ -28,9 +28,10 @@
 
 #define SERVER_SOCK_TIMEOUT 5
 #define MAX_PROCESS 8
-#define SELECT_TIMEOUT 5*60
+#define ETERNAL_WORKER_STIMEOUT 3*60    /* 3 minutes */
+#define TRANSIENT_WORKER_STIMEOUT 5*60
 
-#define NOTIF_TIME_INTVAL_EW 6*60  /* 6 minutes */
+#define NOTIF_TIME_INTVAL_EW 6*60  
 #define NOTIF_TIME_INTVAL_DM 3*60
 
 #define TRUE 1
@@ -46,7 +47,6 @@ extern char *page_start_blocked , *page_end_blocked;
 /* globals vars */
 unsigned int pidTken = 0;
 unsigned int ChildPids[MAX_PROCESS]={0};
-pid_t child_pid;
 
 /* global default data for l2d2server */
 _l2d2server L2D2 = {0,0,0,0,30,24,1,4,20,'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'};
@@ -67,8 +67,7 @@ static void child_handler(int signo, siginfo_t *siginfo, void *context)
 {
      wait(0);
      sig_child=1;
-     child_pid=siginfo->si_pid;
- }
+}
  
 /* Signal handler for Dependency Manager */
 static void depMang_handler(int signo, siginfo_t *siginfo, void *context ) {
@@ -94,8 +93,8 @@ static void sig_admin(int signo, siginfo_t *siginfo, void *context) {
    Sumbiting dependencies. This routine is concurrency
    safe meaning that a hcron script could be set to 
    manage dependency files in the same way we do here
-   w/o clashing with it. If  needed for Operational
-   mode. 
+   w/o interfering with it (If  needed for Operational
+   mode). 
    
 */
 void DependencyManager (_l2d2server l2d2 ) {
@@ -131,12 +130,13 @@ void DependencyManager (_l2d2server l2d2 ) {
 
 
      /* open log files */
-     snprintf(buf,sizeof(buf),"%s_%d",l2d2.dmlog,l2d2.depProcPid);
+     get_time(Time,1);
+     snprintf(buf,sizeof(buf),"%s_%.8s_%d",l2d2.dmlog,Time,l2d2.depProcPid);
      if ( (dmlg=fopen(buf,"w+")) == NULL ) {
             fprintf(stdout,"Dependency Manager: Could not open dmlog stream\n");
      }
 
-     snprintf(buf,sizeof(buf),"%s_%d",l2d2.dmlogerr,l2d2.depProcPid);
+     snprintf(buf,sizeof(buf),"%s_%.8s_%d",l2d2.dmlogerr,Time,l2d2.depProcPid);
      if ( (dmlgerr=fopen(buf,"w+")) == NULL ) {
             fprintf(stdout,"Dependency Manager: Could not open dmlogerr stream\n");
      }
@@ -181,7 +181,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 	 /* get current epoch */
 	 time(&current_epoch);
 	 if ( (dp=opendir(l2d2.dependencyPollDir)) == NULL ) { 
-	          fprintf(dmlgerr,"Error Could not pen polling directory:%s\n",l2d2.dependencyPollDir);
+	          fprintf(dmlgerr,"Error Could not open polling directory:%s\n",l2d2.dependencyPollDir);
 		  sleep(2);
 	          continue ; 
 	 }  
@@ -200,7 +200,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 
             /* stat will stat the file pointed to ... lstat will stat the link itself */
 	    if ( stat(ffilename,&st) != 0 ) {
-	                 get_time(Time,4);
+	                 get_time(Time,1);
 	                 fprintf(dmlgerr,"DependencyManager(): %s inter-dependency file not there, removing link ... \n",Time,filename);
 			 unlink(ffilename); 
 	                 continue;
@@ -217,7 +217,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 				
 				linkname[r] = '\0';
 				if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlgerr )) == NULL ) {
-	                                get_time(Time,4);
+	                                get_time(Time,1);
 	                                fprintf(dmlgerr,"DependencyManager(): %s Problem parsing xml file:%s\n",Time,linkname);
 				} else {
                                         if ( strcmp(depXp->xpd_slargs,"") != 0 )  
@@ -231,7 +231,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					      /* where to put listing :xp/listings/server_host/datestamp/node_container/nonde_name and loop */
 					      snprintf(listings,sizeof(listings),"%s/listings/%s/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_xpdate, depXp->xpd_container);
 					      if ( access(listings,R_OK) != 0 )  ret=r_mkdir(listings,1);
-					      if ( ret != 1 ) fprintf(dmlgerr,"DM:: Could not create directory:%s\n",listings);
+					      if ( ret != 0 ) fprintf(dmlgerr,"DM:: Could not create directory:%s\n",listings);
                                               memset(listings,'\0',sizeof(listings));
 					      if ( strcmp(depXp->xpd_slargs,"") != 0 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_xpdate,Time);
@@ -309,13 +309,13 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   int buflen,num,ret;
   int i,j,k,count;
   unsigned int pidSent;
-  int _ZONE_ = 1, STOP = -1;
+  int _ZONE_ = 1, STOP = -1, SelecTimeOut;
   
   char buf[1024],buff[1024];
   char Astring[1024],inode[128], expName[256], expInode[64], hostname[128]; 
   char Bigstr[2048];
   char node[256], signal[256], username[256];
-  char Stime[25],Etime[25];
+  char Stime[25],Etime[25], tlog[10];
   char m5[40];
 
   _l2d2client l2d2client[256]; /* 256 client that's enough, the select can take 1024 max and we are forcing a max number of clients */
@@ -331,7 +331,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   char *ts;
   char trans;
 
-  key_t log_key, lock_key, acct_key;
+  key_t log_key, lock_key;
   int semid_log, semid_lock, semid_acct;
   struct sembuf sem_log, sem_lock, sem_acct;
   struct sigaction ssa;
@@ -342,10 +342,11 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   sem_acct.sem_num = 0;
   sem_acct.sem_op = -1;  /* set to allocate resource */
   sem_acct.sem_flg = SEM_UNDO;
-  acct_key=0x0f0f0f;
 
   /* open log files */
-  snprintf(buf,sizeof(buf),"%s_%d",L2D2.mlog,getpid());
+  get_time(Stime,1);
+  snprintf(tlog,sizeof(tlog),"%.8s",Stime);
+  snprintf(buf,sizeof(buf),"%s_%.8s_%d",L2D2.mlog,Stime,getpid());
   if ( (mlog=fopen(buf,"w+")) == NULL ) {
             fprintf(stdout,"Worker: Could not open mlog stream\n");
   }
@@ -358,12 +359,13 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   /* streams will be unbuffered */
   setvbuf(mlog, NULL, _IONBF, 0);
 
+  /* register SIGALRM signal for session control with each client, 
+  This could be used in future
   ssa.sa_handler = recv_handler;
   ssa.sa_flags = 0;
   sigemptyset(&ssa.sa_mask);
-
-  /* register SIGALRM signal for session control with each client , Not used in the moment */
   if ( sigaction(SIGALRM,&ssa,NULL) == -1 ) fprintf(mlog,"Error registring signal in SelectServlet \n");
+  */
 
   FD_ZERO(&master_set);
   max_sd = listen_sd;
@@ -371,6 +373,13 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 
   /* get reference time to manage sending of signals to add workers to main server */
   time(&sig_sent);
+
+  /* fix timeout for workers */
+  if ( tworker == ETERNAL ) {
+          SelecTimeOut=ETERNAL_WORKER_STIMEOUT;
+  } else {
+          SelecTimeOut=TRANSIENT_WORKER_STIMEOUT;
+  }
 
   /* Loop waiting for incoming connects or for incoming data   
       on any of the connected sockets. */
@@ -380,10 +389,10 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
       memcpy(&working_set, &master_set, sizeof(master_set));
   
       /* set timeout for select SELECT_TIMEOUT minutes */
-      timeout.tv_sec = SELECT_TIMEOUT ;
+      timeout.tv_sec = SelecTimeOut ;
       timeout.tv_usec = 0;
 
-      /* Call select() with */
+      /* Call select() with timeout */
       rc = select(max_sd + 1, &working_set, NULL, NULL, &timeout);
 
       /* Check to see if the select call failed.                */
@@ -392,9 +401,11 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
          break;
       }
 
-      /* Check to see if select call timed out for 5 minute ... yes -> do other things */ 
+      /* Check to see if select call timed out ... yes -> do other things */ 
       if (rc == 0) {
           if ( tworker != ETERNAL ) {
+	     get_time(Stime,3);
+	     fprintf(mlog,"TRansient worker exits pid=%lu at:%s\n", (unsigned long) getpid(), Stime );
 	     fclose(mlog);
 	     exit(0);
           } else {
@@ -402,6 +413,19 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 	     snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,getpid());
     	     if ( (fp=fopen(buf,"w+")) != NULL ) {
 	           fclose(fp);
+	     }
+	     /* cascade log file if time to do so */
+	     get_time(Stime,1);
+	     if ( strncmp(tlog,Stime,8) != 0 ) {
+	            fprintf(mlog,"Cascading log file at:%s\n", Stime);
+	            snprintf(tlog,sizeof(tlog),"%.8s",Stime);
+	            /* close old mlog file */
+	            fclose(mlog);
+	            snprintf(buf,sizeof(buf),"%s_%.8s_%d",L2D2.mlog,Stime,getpid());
+	            if ( (mlog=fopen(buf,"w+")) == NULL ) {
+	                      fprintf(stdout,"Worker: Could not open mlog stream\n");
+	            }
+	            setvbuf(mlog, NULL, _IONBF, 0);
 	     }
 	  }
       }
@@ -451,18 +475,6 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 		   * server to spawn a new worker to lower the load and also 
 		   * hoping that after 5 sec, the load is fairly distributed
 		   * btw the workers. */
-
-		  ceiling++;
-		  if ( ceiling >= L2D2.maxClientPerProcess ) {
-			time(&now);
-			/* wait 5 secondes btw sending of signals to main server,this is for signal flood control */
-			if ( (delay=difftime(now,sig_sent)) >= 5 ) {
-		               get_time(Stime,3);
-		               fprintf(mlog,"Signal sent at:%s to main server to add a worker\n",Stime);
-		               kill(L2D2.pid,SIGUSR2);
-			       sig_sent=now;
-			}
-		  }
 		  
 		  /* put the socket in non-blocking mode */
 		  if  ( ! (fcntl(new_sd, F_GETFL) & O_NONBLOCK)  ) {
@@ -473,6 +485,20 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                   
 		  FD_SET(new_sd, &master_set);
                   if (new_sd > max_sd) max_sd = new_sd; /* keep track of the max */
+		  
+		  ceiling++;
+		  if ( ceiling >= L2D2.maxClientPerProcess ) {
+			time(&now);
+			/* wait 5 secondes btw sending of signals to main server,this is for signal flood control */
+			if ( (delay=difftime(now,sig_sent)) >= 5 ) {
+		               get_time(Stime,3);
+			       if ( tworker == ETERNAL ) {
+		                     fprintf(mlog,"Signal sent at:%s to main server to add a worker\n",Stime);
+		                     kill(L2D2.pid,SIGUSR2);
+                               }
+			       sig_sent=now;
+			}
+		  }
 
                  /* Loop back up and accept another incoming connection */
                } while (new_sd != -1);
@@ -879,7 +905,12 @@ void maestro_l2d2_main_process_server (int fserver)
 	           free(m5sum); 
 	         }
 	}
-	
+        
+	/* wait on Un-caught childs  */
+	if ( (kpid=waitpid(-1,NULL,WNOHANG)) > 0 ) { 
+	       fprintf(smlog,"mserver::Waited on  child with pid:%lu\n",(unsigned long ) kpid);
+        }
+
 	sleep(5);  /* yield  Note : what about server receiving signal here ? */              
   }
 
