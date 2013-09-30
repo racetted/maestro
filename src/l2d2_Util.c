@@ -572,6 +572,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    if ( (c=roxml_get_content(log_txt,bf,sizeof(bf),&size)) != NULL ) {
 	                    sprintf(pl2d2->logdir,"%s/v%s",bf,pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->logdir , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 	                    snprintf(pl2d2->mlog,sizeof(pl2d2->mlog),"%s/mlog",pl2d2->logdir);
 	                    snprintf(pl2d2->mlogerr,sizeof(pl2d2->mlogerr),"%s/mlogerr",pl2d2->logdir);
 			    /* set files */
@@ -581,6 +585,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    } else {
 	                    sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->logdir , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 			    /* set files */
 	                    sprintf(pl2d2->mlog,"%s/mlog",pl2d2->logdir);
 	                    sprintf(pl2d2->mlogerr,"%s/mlogerr",pl2d2->logdir);
@@ -596,11 +604,19 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    if ( (c=roxml_get_content(web_txt,bf,sizeof(bf),&size)) != NULL ) {
 	                    sprintf(pl2d2->web,"%s/v%s",bf,pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
 			    fprintf(stdout,"In Xml Config File found web directory=%s\n",pl2d2->web);
                    } else {
 	                    sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies_stat_v%s.html",pl2d2->web,pl2d2->mversion);
                             fprintf(stderr,"Setting Defaults for web path:%s\n",pl2d2->web);
                           }
@@ -700,10 +716,18 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 
 	     sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->web , 1);
+	     if ( status == 1 ) {
+	            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+                    exit(1);
+	     }
 
 	     sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
 	     sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->logdir , 1);
+	     if ( status == 1 ) {
+	            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+                    exit(1);
+	     }
 	     sprintf(pl2d2->mlog,"%s/mlog",pl2d2->logdir);
 	     sprintf(pl2d2->mlogerr,"%s/mlogerr",pl2d2->logdir);
 	     sprintf(pl2d2->dmlog,"%s/dmlog",pl2d2->logdir);
