@@ -26,10 +26,11 @@
 #include "l2d2_server.h"
 #include "l2d2_socket.h"
 
-#define SERVER_SOCK_TIMEOUT 5
 #define MAX_PROCESS 8
 #define ETERNAL_WORKER_STIMEOUT 3*60    /* 3 minutes */
 #define TRANSIENT_WORKER_STIMEOUT 5*60
+
+#define SPAWNING_DELAY_TIME  5 /* seconds */
 
 #define NOTIF_TIME_INTVAL_EW 6*60  
 #define NOTIF_TIME_INTVAL_DM 3*60
@@ -489,8 +490,8 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 		  ceiling++;
 		  if ( ceiling >= L2D2.maxClientPerProcess ) {
 			time(&now);
-			/* wait 5 secondes btw sending of signals to main server,this is for signal flood control */
-			if ( (delay=difftime(now,sig_sent)) >= 5 ) {
+			/* wait SPAWNING_DELAY_TIME secondes btw sending of signals to main server,this is for signal flood control */
+			if ( (delay=difftime(now,sig_sent)) >= SPAWNING_DELAY_TIME ) {
 		               get_time(Stime,3);
 			       if ( tworker == ETERNAL ) {
 		                     fprintf(mlog,"Signal sent at:%s to main server to add a worker\n",Stime);
