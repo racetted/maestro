@@ -898,6 +898,8 @@ static void clearAllOtherStates (const SeqNodeDataPtr _nodeDataPtr, char * fullN
 
    int ret;
    char filename[SEQ_MAXFIELD];
+   char *extension = NULL, *tmpExt = NULL;
+   SeqNameValuesPtr newArgs = NULL; SeqNameValues_clone(_nodeDataPtr->loop_args);
 
    memset(filename,'\0',sizeof filename);
    SeqUtil_TRACE( "maestro.clearAllOtherStates() originator=%s node=%s\n", originator, fullNodeName);
@@ -935,6 +937,29 @@ static void clearAllOtherStates (const SeqNodeDataPtr _nodeDataPtr, char * fullN
    if ( _access(filename, R_OK) == 0 && strcmp( current_state, "waiting" ) != 0 ) {
       SeqUtil_TRACE( "maestro.clearAllOtherStates() %s removed lockfile %s\n", originator, filename);
       ret=_removeFile(filename);
+   }
+
+   /* NPASS(i) will delete NPASS.end in all states */
+
+   if (_nodeDataPtr->type == NpassTask) {
+       if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+            newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
+            SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
+            tmpExt = (char *) SeqLoops_getExtFromLoopArgs(newArgs); 
+            if (tmpExt != NULL) {
+                SeqUtil_stringAppend( &extension, "." );
+            }
+            SeqUtil_stringAppend( &extension, tmpExt );
+            memset(filename,'\0',sizeof filename);
+            sprintf(filename,"%s/%s/%s%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, extension); 
+            if ( _access(filename, R_OK) == 0 && strcmp( current_state, "end" ) != 0 ) {
+                SeqUtil_TRACE( "maestro.clearAllOtherStates() %s removed lockfile %s\n", originator, filename);
+                ret=_removeFile(filename);
+            } 
+            SeqNode_freeNameValues(newArgs); 
+            free( extension);
+            free( tmpExt);
+        }
    }
 
    /* delete abort intermediate states only in init, abort or end */
@@ -1263,8 +1288,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
    /* check ignoreAllDeps first so that it does not write the waiting file */
    if( ignoreAllDeps == 1 || validateDependencies( _nodeDataPtr ) == 0 ) {
-      /*  clear states here also in case setBeginState is not called (discreet or catchup) */
-      clearAllOtherStates( _nodeDataPtr, fullExtName, "maestro.go_submit()", "submit" ); 
       setSubmitState( _nodeDataPtr ) ;
 
       /* dependencies are satisfied */

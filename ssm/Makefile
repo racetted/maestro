@@ -15,7 +15,6 @@ ssm:	profile.sh
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
 	cp ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
-	ssmprep --basePath $(shell pwd)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;
 	echo "Package: maestro" > $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Version: ${VERSION}" >> $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Platform: ${SSM_MACH_ID}" >> $(SSMPACKAGE)/.ssm.d/control; \

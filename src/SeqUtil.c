@@ -535,7 +535,7 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
       if ( strstr( line, "#" ) != NULL ) {
 	continue;
       }
-      if ( sscanf( line, " %[^= ] = %s ", defkey, defval ) == 2 ){	
+      if ( sscanf( line, " %[^= ] = %[^\n] ", defkey, defval ) == 2 ){	
 	if ( strcmp( key, defkey ) == 0 ) {
 	  fclose(deffile);
 	  if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
@@ -672,26 +672,26 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
             if (! (returnString=malloc(strlen(path) - 3  + strlen(_nodeDataPtr->pathToModule) + 1 )) ){
                raiseError("SeqUtil_relativePathEvaluation() malloc: Out of memory!\n"); 
 	    }
-	    strcpy(returnString,_nodeDataPtr->pathToModule);
+	         strcpy(returnString,_nodeDataPtr->pathToModule);
             strcat(returnString,path+3);
             SeqUtil_TRACE("SeqUtil_relativePathEvaluation(): module keyword replacement: replacing %s with %s\n",path,returnString);
-	    if (strstr(returnString,"...") != NULL) {
+	         if (strstr(returnString,"...") != NULL) {
                raiseError("SeqUtil_relativePathEvaluation(): \"...\" keyword should only occur once. Not permitted to go beyond a single module level. Check your dep_name = %s", path);
 	    }
 	    
        } else if ((tmpString=strstr(path, "..")) !=NULL) {
             /*count the number of containers to go up*/
             count=SeqUtil_tokenCount( path, ".." ); 
-	    returnString=strdup(_nodeDataPtr->container);
+	         returnString=strdup(_nodeDataPtr->container);
             tmpString = (char*) malloc( strlen( path ) + 1 );
             strcpy( tmpString, path );
             tmpstrtok = (char*) strtok( tmpString, ".." );
-	    while (tmpstrtok != NULL ) {
-		returnString=SeqUtil_getPathBase(returnString);
+	         while (tmpstrtok != NULL ) {
+ 		          returnString=SeqUtil_getPathBase(returnString);
                 prevPtr=tmpstrtok; 
                 tmpstrtok = (char*) strtok( NULL, ".." );
-	    }
-	    SeqUtil_stringAppend(&returnString,prevPtr);
+	         }
+            SeqUtil_stringAppend(&returnString,prevPtr);
             SeqUtil_TRACE("SeqUtil_relativePathEvaluation(): parent keyword replacement: replacing %s with %s\n",path,returnString);
             free(tmpString);
        } else {
