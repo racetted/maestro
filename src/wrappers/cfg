@@ -35,7 +35,7 @@ fi
 
 function Sys_ErrorTrap
 {
-   printf "${SEQ_BIN}/nodelogger -n ${node} -s info -m \"ord_soumet failed status=$1 on `hostname`\" LastErrorMessage=${LastErrorMessage}"
+   printf "${SEQ_BIN}/nodelogger -n ${node} -s abort -m \"ord_soumet failed status=$1 on `hostname`\" LastErrorMessage=${LastErrorMessage}"
    loopArgs=""
    # fetch the SEQ_LOOP_ARGS from the given job cfg file
    if [[ -r "${jobcfg}" ]] ; then
