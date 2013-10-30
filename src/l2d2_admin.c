@@ -54,7 +54,7 @@ void print_usage (FILE* stream , int existe_code)
            "  -h  --help                        Display usage information.\n"
            "  -c  --confile  config.xml         Load maestro server configuration file.\n"
            "  -l  --listd                       List Registered Dependencies \n" 
-           "  -r  --rmdep   token|xp_name       Remove a dependency args is dependency key (xpd_key) \n" 
+           "  -r  --rmdep   token|xp_name       Remove a dependency args is dependency_token or experiment_name \n" 
            "  -s  --shutdown                    Shut Down maestro server \n" 
            "  -i  --isalive                     Inquire if maestro server is alive \n" 
            "  -v  --verbose                     Print verbose messages.\n");
@@ -96,7 +96,7 @@ int main (int argc, char* argv[])
 
   char dpkey[120];
   char buf[256];
-  int datestamp;
+  int *datestamp;
   char extension[256];
   char underline[2];
   char linkname[1024];
@@ -209,7 +209,7 @@ int main (int argc, char* argv[])
     
   /*
       do Login and get response
-      Note : if the exp is not valid , the server wont log the client !!!!  
+      Note : if the exp is not valid , the server will not log the client !!!!  
   */
 
   /* first set a handler for timeouts */
@@ -292,7 +292,7 @@ int main (int argc, char* argv[])
                                              fprintf(stdout,"xpd_mdomain     :%s\n",depXp->xpd_mdomain);
                                              fprintf(stdout,"xpd_regtimedate :%s\n",depXp->xpd_regtimedate);
                                              fprintf(stdout,"xpd_regtimepoch :%s\n",depXp->xpd_regtimepoch);
-                                             fprintf(stdout,"xpd_key         :%s\n",filename);
+                                             fprintf(stdout,"xpd_key         : %s\n",filename);
                                              fprintf(stdout,"++++++++++++++++++++++++++++++++++++++++++++++++++\n");
                                      }
 			     }
@@ -316,7 +316,7 @@ int main (int argc, char* argv[])
            break;
       case CHANGE_TIME_STEP:
            break;
-      case RELOAD_CONFIG:
+      case RELOAD_CONFIG: /* has to be reviewed */
            sprintf(buffer,"I %s",input_file);
 	   alarm(5);
            bytes_sent=send(sock, buffer , sizeof(buffer) , 0);
@@ -383,6 +383,8 @@ int main (int argc, char* argv[])
   sigemptyset (&act.sa_mask);
   ret = sigaction (SIGALRM, &act, NULL);
   if (ret < 0) perror (__func__);
+
+  free(m5sum);
 
   return 0;
 }

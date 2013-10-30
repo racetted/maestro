@@ -21,7 +21,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
     int bytes_read, bytes_sent;
     int ret_nfs;
     char buffer[MAXBUF];
-    char Rbuffer[3];
+    char Rbuffer[MAXBUF];
 
     /* reset buffer */
     memset(buffer,'\0',sizeof(buffer));
@@ -91,7 +91,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
 
     
 
-    Rbuffer[bytes_read-1] = '\0';
+    Rbuffer[bytes_read] = '\0';
 
     /* 00 & 11 are the only response of 
      * the server. anything else mean problems 
@@ -234,6 +234,7 @@ int OpenConnectionToMLLServer ( char * node , char *signal )
 
     if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
             fprintf(stderr,"Could not get maestro version env variable ...\n");
+            return(-1);
     }
 
     snprintf(authorization_file,sizeof(authorization_file),".maestro_server_%s",mversion);
@@ -257,10 +258,13 @@ int OpenConnectionToMLLServer ( char * node , char *signal )
     gethostname(thisHost, sizeof(thisHost));
 
     /* Build the authorization connection */
-
     seq_exp_home = getenv("SEQ_EXP_HOME");
 
     ret=do_Login(sock,pid,node,seq_exp_home,signal,passwdEnt->pw_name,&m5sum); 
+    free(m5sum);
+
+    if ( ret != 0 ) close(sock);
+
     return (ret == 0 ? sock : -2);
 }
 

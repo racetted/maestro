@@ -4,6 +4,7 @@
 #include <strings.h> 
 #include <signal.h> 
 #include <unistd.h>
+#include <errno.h>
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -27,7 +28,6 @@ int GetHostName(char *name, size_t len)
   int junk;
 
   junk = gethostname(name, len);
-  if ( name[0] == 'c' && name[2] == 'f' && name[5] == 'p' && name[7] == 'm' && name[8] == '\0' ) name[7] = 's';  /* name=cxfyypzm,return cxfyypzs instead */
 
   return(junk);
 }
@@ -47,6 +47,8 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
      if ( (auth_buf=(char*)malloc(1024)) == NULL ) {
 	 fprintf(stderr, "get_Authorization: Cannot Malloc auth buffer\n");
 	 exit(1); 
+     } else {
+         memset(auth_buf,'\0',1024); /* this is very important, if removed login can fail */
      }
 
      if (  (ppass=getpwnam(username)) == NULL ) {
@@ -62,7 +64,7 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
 	 free(auth_buf);
 	 return (NULL); 
 
-     }
+     } 
 
      if ((fd = open(buf, O_RDONLY)) == -1) {
 	 fprintf(stderr, "get_Authorization: Can't open Parameteres file:%s\n",filename);
@@ -79,13 +81,6 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
 
      close(fd);
      
-     if (index(auth_buf, '\n')) {
-	 *index(auth_buf, '\n') = '\0' ;
-     } else {
-	 fprintf(stderr, "get_Authorization: Invalid Parameteres file:%s\n",filename);
-	 return (NULL); 
-     }
-
      /* compute md5sum here */
      *m5sum=str2md5(auth_buf,strlen(auth_buf));
 
@@ -95,12 +90,11 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
 /**
  * write Parameteres tokens into file ~user/.suites/.maestro_server_${version} 
  */
-void set_Authorization (int pid ,char * hostn , char * hip, int port , char * filename, char *username , char **m5sum) 
+void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , char * filename, char *username , char **m5sum) 
 {
      int fd;
      char buf[1024];
      int nc;
-     int ret=0;
      struct passwd *ppass;
     
      if (  (ppass=getpwnam(username)) == NULL ) {
@@ -112,11 +106,12 @@ void set_Authorization (int pid ,char * hostn , char * hip, int port , char * fi
      
      if ((fd = open(buf, O_WRONLY + O_CREAT, 0600)) == -1) {
 	 fprintf(stderr,"set_Authorization: Can't open Parameteres file:%s\n",filename);
+	 free(ppass);
 	 exit(1);
      }
 
-     nc = snprintf(buf, sizeof(buf), "seqpid=%d seqhost=%s seqip=%s seqport=%d\n", pid, hostn, hip, port);
-     ret=write(fd, buf, nc + 1);
+     nc = snprintf(buf, sizeof(buf), "seqpid=%u seqhost=%s seqip=%s seqport=%d\n", pid, hostn, hip, port);
+     write(fd, buf, nc);
      close(fd);
      
      /* compute md5sum here */
@@ -431,7 +426,7 @@ int send_socket (int sock , char *buf , int size , unsigned int timeout)
 /** 
  * Initiate a connection with maestro_server 
  */
-int do_Login( int sock , int pid , char *node, char *xpname , char *signl , char *username ,char **m5) {
+int do_Login( int sock , unsigned int pid , char *node, char *xpname , char *signl , char *username ,char **m5) {
 
     char host[25];
     char bLogin[1024];
@@ -465,7 +460,7 @@ int do_Login( int sock , int pid , char *node, char *xpname , char *signl , char
                return (1);
     }
 
-    snprintf(bLogin,sizeof(bLogin),"I %d %u %s %s %s %s %s %s",(unsigned int) pid,(unsigned int)fileStat.st_ino, xpname, node , signl , host, username,*m5);
+    snprintf(bLogin,sizeof(bLogin),"I %u %d %s %s %s %s %s %s", pid, fileStat.st_ino, xpname, node , signl , host, username, *m5);
     if ( (bytes_sent=send_socket (sock , bLogin , sizeof(bLogin) , SOCK_TIMEOUT_CLIENT)) <= 0 ) { 
                 fprintf(stderr,"LOGIN FAILED (Timeout sending) with %s Maestro server from host=%s node=%s signal=%s\n",username, host, node, signl );
     	        return(1);
@@ -488,81 +483,22 @@ int do_Login( int sock , int pid , char *node, char *xpname , char *signl , char
 /**
  *
  * rec_full 
- * receive all the stream base on a size given at
- * begining of the buffer.
+ * receive all the stream based on a size 
  * Need a timeout
  */
 int recv_full ( int sock , char * buff, int rsize )
 {
-        int received = 0;
+        int received = 0, r;
         while ( received < rsize )
         {
-           int r = recv( sock, buff + received, rsize - received, 0);
+           r = recv( sock, buff + received, rsize - received, 0);
            if ( r <= 0 ) {
-                fprintf(stderr,"Client break\n");
-                break;
+	           fprintf(stderr,"Client break\n");
+		   break;
            }
-
            received += r;
         }
 
 	return (received==rsize)  ? 0 : 1; 
-}
-/**
- *  GetFile
- *  routine to download the waited_end file to 
- *  TMPDIR of client host, open it and give the handle
- *  to work with.
- */
-FILE * GetFile ( const char * filename , int sock ) 
-{
-  FILE *fp;
-  char buffer[8192];  /* 8K waited_end file !!! */
-  char wfilename[1024];
-  char tmp[1024];
-  char csize[11];
-  int bytes_sent,bytes_read,error=0;
-
-  if ( getenv("TMPDIR") != NULL ) {
-    snprintf(wfilename,sizeof(wfilename),"%s/waitfile",getenv("TMPDIR"));
-  } else {
-    snprintf(wfilename,sizeof(wfilename),"/tmp/waitfile");
-  }
-
-  /* build command */
-  sprintf(tmp,"Z %s",filename);
-
-  if ( (bytes_sent=send_socket(sock , tmp , sizeof(tmp) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
-    fprintf(stderr,"%%%%%%%%%%%% GetFile: socket closed at send  %%%%%%%%%%%%%%\n");
-    fprintf(stderr, "====== GetFile : Reverting to nfs Routines ====== \n");
-    /* ret_nfs=revert_nfs ( buf , action ); return(ret_nfs); */
-  }
-
-  memset(buffer,'\0',sizeof(buffer));
-
-  /* the size of the buffer is given as 11 digit number BUT we are
-   * only able to handle 8K max !!!! , note :11 to grab space after number */
-
-  if ( recv_full(sock,csize,11) == 0 && recv_full(sock,buffer,atoi(csize)) == 0 ) { 
-    if (  (fp=fopen(wfilename,"w+")) == NULL) {
-              fprintf(stderr,"Could not open local waited_end file:%s\n",wfilename);
-              return(NULL);
-    }
-    
-    fwrite(buffer, sizeof(char) , sizeof(buffer) , fp);
-    fclose(fp); fp=NULL;
-  } else {
-    fprintf(stdout, "ERROR can not downlaod waited file:%s\n",filename);
-    return (NULL);
-  }
-
-  /* now the waited_end file is local (TMPDIR) , open it a give the
-   * handle to routine ... */
-  if ( (fp=fopen(wfilename,"r")) == NULL) { 
-         fprintf(stderr,"Crap .... Could not open local waited_end file:%s\n",wfilename);
-         return(NULL);
-  }
-
-  return(fp);
 }
 

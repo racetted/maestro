@@ -23,6 +23,7 @@
 #include "l2d2_Util.h"
 
 extern _l2d2server L2D2;
+extern FILE *mlog,*mlogerr;
 static void pdir (const char * dir_name);
 
 /**
@@ -48,7 +49,6 @@ char *getPathLeaf (const char *full_path) {
 
 /**
  * Name        : removeFile
- * Author      : R.Lahlou , cmoi 2012
  * 
  */
 int removeFile(char *filename) {
@@ -60,7 +60,6 @@ int removeFile(char *filename) {
 
 /**
  * Name        : CreateLock
- * Author      : R.Lahlou , cmoi 2012
  * Description : touch a file (calls touch) if file
  *               not there
  */
@@ -120,8 +119,7 @@ int isFileExists( const char* lockfile ) {
 
 /**
  * Name        : Access
- * Author      : R.Lahlou , cmoi 2012
- * Description :  
+ * Description : check if file exist 
  */
 int Access ( const char* lockfile ) {
 
@@ -194,7 +192,6 @@ int r_mkdir ( const char* dir_name, int is_recursive ) {
 
 /**
  * Name        : globPath
- * Author      : R.Lahlou , cmoi 2012
  * Description : Wrapper to glob :
  *               find pathnames matching a pattern  
  */
@@ -213,7 +210,7 @@ int globPath (char *pattern, int flags, int (*errfunc) (const char *epath, int e
 	             fprintf(stderr,"globPath: Glob read error\n");
 		     break;
 	case GLOB_NOMATCH:
-                globfree(&glob_p);
+                     globfree(&glob_p);
 		     return(0);
 		     break;/* not reached */
     }
@@ -246,10 +243,9 @@ char *getPathBase (const char *full_path) {
 
 /**
  * Name        : NodeLogr
- * Author      : R.Lahlou , cmoi 2012
  * Description :  
  */
-int NodeLogr (char *nodeLogerBuffer , int pid)
+int NodeLogr (char *nodeLogerBuffer , int pid, FILE *mlog)
 {
      int NodeLogfile;
      int bwrite, num=0,ret;
@@ -258,19 +254,19 @@ int NodeLogr (char *nodeLogerBuffer , int pid)
      char logBuffer[1024];
 
      if ( nodeLogerBuffer == NULL ) {
-            fprintf(stderr,"NodeLogr: arg. nodeLogerBuffer is NULL \n");
+            fprintf(mlog,"NodeLogr: arg. nodeLogerBuffer is NULL \n");
             return (1);
      }
 
      memset(firsin,'\0',sizeof(firsin));
      if ( (num=sscanf(nodeLogerBuffer,"%[^:]:%[^:]:%[^\n]",user,firsin,logBuffer)) != 3 ) {
-             fprintf(stderr,"NodeLogr: Error with the format of nodeLogerBuffer\n");
+             fprintf(mlog,"NodeLogr: Error with the format of nodeLogerBuffer\n");
 	     return (1);
      }
      
      /* test existence of Exp. and datestamp  */
      if ( access(firsin,R_OK) != 0 ) {
-             fprintf(stderr,"NodeLogr: Experiment:%s do not exists\n",firsin);
+             fprintf(mlog,"NodeLogr: Experiment:%s do not exists\n",firsin);
 	     return (1);
      }
 
@@ -281,7 +277,7 @@ int NodeLogr (char *nodeLogerBuffer , int pid)
            close(NodeLogfile);
 	   ret=0;
      } else {
-           fprintf(stderr,"NodeLogr: Could not Open nodelog file for Experiment:%s pid=%d logBuffer:%s\n",firsin,pid,logBuffer);
+           fprintf(mlog,"NodeLogr: Could not Open nodelog file for Experiment:%s pid=%d logBuffer:%s\n",firsin,pid,logBuffer);
            ret=1; 
      }
 
@@ -291,11 +287,10 @@ int NodeLogr (char *nodeLogerBuffer , int pid)
 
 /**
  * Name        : writeNodeWaitedFile
- * Author      : R.lahlou , cmoi 2012
  * Description : write the node waited file under dependent-ON Xp. 
  * Return value: 
  */
-int  writeNodeWaitedFile ( const char * string ) 
+int  writeNodeWaitedFile ( const char * string , FILE *mlog ) 
 {
     FILE *waitingFile;
     char tmp_line[1024];
@@ -320,18 +315,6 @@ int  writeNodeWaitedFile ( const char * string )
 	return(1);
     }
    
-    /* Test status File to see wether the task has ended while we were writing node file. If yes 
-     * do not write wait file and return status that should should submit task (no wait) and erase
-     * in maestro waiting file.
-     * Remember that we are now holding the Mutex of the Xperiment we are depending on ... 
-     NO NEED!!! 
-    if ( access(statusFile,R_OK) == 0 ) {
-                fprintf(stderr,"writeNodeWaitedFile(mserver) found status file:%s\n",waitfile );
-                return (9);
-    }
-    */
-
-    /* if ((waitingFile=open(waitfile,O_WRONLY|O_APPEND|O_CREAT, 00666)) == -1 ) { */
     if ((waitingFile=fopen(waitfile,"a")) == NULL ) {
                 fprintf(stderr,"writeNodeWaitedFile(mserver) cannot open file:%s for appending \n",waitfile );
 		return(1);
@@ -356,18 +339,18 @@ int  writeNodeWaitedFile ( const char * string )
 }
 
 /**
- *
+ * write dependency file btw diff users
  *
  *
  */
-int writeInterUserDepFile (const char * tbuffer )
+int writeInterUserDepFile (const char * tbuffer, FILE *mlog)
 {
      FILE * fp=NULL;
      char buff[1024];
      char DepFileName[1024];
      char filename[1024],DepBuf[2048],ppwdir[1024],mversion[128],md5sum[128],datestamp[128]; 
      char *token, *saveptr1;
-     char *tmpString; 
+     char *tmpString;
      const char delimiter[] = "#";
      struct stat st;
      char mode[] = "0444";
@@ -380,10 +363,11 @@ int writeInterUserDepFile (const char * tbuffer )
      int size;
 
      tmpString=strdup(tbuffer); 
+
      /* get the first token */
      token = strtok_r(tmpString, delimiter, &saveptr1);
-     free(tmpString); 
-	   
+     free(tmpString);
+
      /* walk through other tokens */
      while( token != NULL ) 
      {
@@ -410,7 +394,7 @@ int writeInterUserDepFile (const char * tbuffer )
 	       return(1);
      }
 
-     /* in case of ocm dep. and depending on  a loop the file exist already 
+     /* in case of ocm dep. and depending on a loop the file exist already
       * from last iteration */
      if ((fp=fopen(filename,"w")) == NULL) {
                fprintf(stderr,"maestro server cannot write to interUser dependency file:%s\n",filename );
@@ -422,14 +406,12 @@ int writeInterUserDepFile (const char * tbuffer )
 
      if ( stat(filename,&st) != 0 ) {
                fprintf(stderr,"maestro server cannot stat interUser dependency file:%s\n",filename );
-               free(tmpString); 
 	       return(1);
-     } else fprintf(stderr,"size of InterUserDepFile is :%ld\n",(long)st.st_size);
+     } else fprintf(stderr,"size of InterUserDepFile is :%ld\n",st.st_size);
 
-     /* create server dependency directory (based on maestro version) 
-     * Note: multiple client from diff. experiment could try to create this when do not exist. Give a static inode for this action */
+     /* Create server dependency directory (based on maestro version) 
+      * Note: multiple clients from diff. experiment could try to create this */
      snprintf(buff, sizeof(buff), "%s/.suites/maestrod/dependencies/polling/v%s",ppwdir,mversion);
-
      if ( access(buff,R_OK) != 0 ) {
           if ( r_mkdir ( buff , 1 ) != 0 ) {
                   fprintf(stderr,"Could not create dependency directory:%s\n",buff);
@@ -446,9 +428,9 @@ int writeInterUserDepFile (const char * tbuffer )
              fprintf(stderr,"writeInterUserDepFile: symlink returned with error:%d\n",r );
      }
      
+     
      return(0);
 }
-
 
 /**
  * Wrapper to nanosleep which is thread safe
@@ -567,12 +549,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	       sprintf(buffer,"%s/public_html/dependencies_stat_v%s.html",getenv("HOME"),pl2d2->mversion);
 	       strcpy(pl2d2->web_dep,buffer);
 
-	       sprintf(buffer,"%s/public_html/blocked_clients_v%s.html",getenv("HOME"),pl2d2->mversion);
-	       strcpy(pl2d2->web_blk,buffer);
-	      
-	       pl2d2->numProcessAtstart=5;
+	       pl2d2->maxNumOfProcess=4;
+	       pl2d2->maxClientPerProcess=20;
 	       pl2d2->pollfreq=30;
-	       pl2d2->dependencyTimeOut=24;
+	       pl2d2->dependencyTimeOut=24; /* hours */
 	       return(0);
       }
 
@@ -592,6 +572,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    if ( (c=roxml_get_content(log_txt,bf,sizeof(bf),&size)) != NULL ) {
 	                    sprintf(pl2d2->logdir,"%s/v%s",bf,pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->logdir , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 	                    snprintf(pl2d2->mlog,sizeof(pl2d2->mlog),"%s/mlog",pl2d2->logdir);
 	                    snprintf(pl2d2->mlogerr,sizeof(pl2d2->mlogerr),"%s/mlogerr",pl2d2->logdir);
 			    /* set files */
@@ -601,6 +585,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    } else {
 	                    sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->logdir , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 			    /* set files */
 	                    sprintf(pl2d2->mlog,"%s/mlog",pl2d2->logdir);
 	                    sprintf(pl2d2->mlogerr,"%s/mlogerr",pl2d2->logdir);
@@ -616,35 +604,58 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    if ( (c=roxml_get_content(web_txt,bf,sizeof(bf),&size)) != NULL ) {
 	                    sprintf(pl2d2->web,"%s/v%s",bf,pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
-	                    sprintf(pl2d2->web_blk,"%s/blocked_clients.html",pl2d2->web);
 			    fprintf(stdout,"In Xml Config File found web directory=%s\n",pl2d2->web);
                    } else {
 	                    sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web , 1);
+			    if ( status == 1 ) {
+			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+                                    exit(1);
+			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies_stat_v%s.html",pl2d2->web,pl2d2->mversion);
-	                    sprintf(pl2d2->web_blk,"%s/blocked_clients_v%s.html",pl2d2->web,pl2d2->mversion);
                             fprintf(stderr,"Setting Defaults for web path:%s\n",pl2d2->web);
                           }
              }
-             node_t *prc_n = roxml_get_chld(item,"numProcessAtstart",0);
-	     if ( prc_n != NULL ) {
-                   node_t *prc_txt = roxml_get_txt(prc_n,0);
-                   if ( (c=roxml_get_content(prc_txt,bf,sizeof(bf),&size)) != NULL ) {
-	                    if ( (pl2d2->numProcessAtstart=atoi(bf)) <= 1 ) {
-			              pl2d2->numProcessAtstart=1;
-			              fprintf(stdout,"Forcing numProcessAtstart=%d\n",pl2d2->numProcessAtstart);
-                            } else if ( (pl2d2->numProcessAtstart=atoi(bf)) > 10 ) {
-			              pl2d2->numProcessAtstart=10;
-			              fprintf(stdout,"Forcing numProcessAtstart=%d\n",pl2d2->numProcessAtstart);
+             
+	     node_t *pparam_n = roxml_get_chld(item,"pparams",0);
+             if ( pparam_n != NULL ) {
+                      node_t *prc_n = roxml_get_attr(pparam_n,"maxNumOfProcess",0);
+                      if ( (c=roxml_get_content(prc_n,bf,sizeof(bf),&size)) != NULL ) {
+	                    if ( (pl2d2->maxNumOfProcess=atoi(bf)) <= 0 ) {
+			              pl2d2->maxNumOfProcess=1;
+			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
+                            } else if ( (pl2d2->maxNumOfProcess=atoi(bf)) > 10 ) {
+			              pl2d2->maxNumOfProcess=4;
+			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             } else {
-			         fprintf(stdout,"In Xml Config File found numProcessAtstart=%d\n",pl2d2->numProcessAtstart);
+			         fprintf(stdout,"In Xml Config File found maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             }
-                   } else {
-		            pl2d2->numProcessAtstart=5;
-                            fprintf(stderr,"Setting Defaults for numProcessAtstart:%d\n",pl2d2->numProcessAtstart);
-                          }
-             }
+                      } else {
+		            pl2d2->maxNumOfProcess=4;
+                            fprintf(stderr,"Setting Defaults for maxNumOfProcess:%d\n",pl2d2->maxNumOfProcess);
+                      }
+
+                      node_t *pmc_n = roxml_get_attr(pparam_n,"maxClientPerProcess",0);
+                      if ( (c=roxml_get_content(pmc_n,bf,sizeof(bf),&size)) != NULL ) {
+	                    if ( (pl2d2->maxClientPerProcess=atoi(bf)) <= 10 ) {
+			              pl2d2->maxClientPerProcess=20; 
+			              fprintf(stdout,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+                            } else if ( (pl2d2->maxClientPerProcess=atoi(bf)) > 45 ) {
+			              pl2d2->maxClientPerProcess=20;
+			              fprintf(stdout,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+                            } else {
+			         fprintf(stdout,"In Xml Config File found maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+                            }
+                      } else {
+		            pl2d2->maxClientPerProcess=20;
+                            fprintf(stderr,"Setting Defaults for maxClientPerProcess:%d\n",pl2d2->maxClientPerProcess);
+                      }
+             } 
 
              node_t *param_n = roxml_get_chld(item,"dparams",0);
 
@@ -660,7 +671,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                             } 
                    } else {
 	                    pl2d2->pollfreq=30;
-                            fprintf(stderr,"Setting Defaults for polling frequency\n",pl2d2->pollfreq);
+                            fprintf(stderr,"Setting Defaults for polling frequency=%d\n",pl2d2->pollfreq);
 		   }
              
 		   node_t *dto = roxml_get_attr(param_n, "dependencyTimeOut",0);
@@ -671,11 +682,11 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 			                 fprintf(stdout,"Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
                                   } else {
 	                                 pl2d2->dependencyTimeOut=atoi(bf);
-                                         fprintf(stderr,"In Xml Config file found dependency time out periode\n",pl2d2->dependencyTimeOut);
+                                         fprintf(stderr,"In Xml Config file found dependency time out periode=%d\n",pl2d2->dependencyTimeOut);
 				  }
                           } else {
 	                          pl2d2->dependencyTimeOut=24;
-                                  fprintf(stderr,"Setting Defaults for dependency time out periode\n",pl2d2->dependencyTimeOut);
+                                  fprintf(stderr,"Setting Defaults for dependency time out periode=%d\n",pl2d2->dependencyTimeOut);
 			  }
                    }
 	     }
@@ -683,31 +694,40 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	     if ( dbz_n != NULL ) {
                     node_t *dbz_txt = roxml_get_txt(dbz_n,0);
                     if ( (c=roxml_get_content(dbz_txt,bf,sizeof(bf),&size)) != NULL ) {
-		            if ( (pl2d2->dzone=atoi(bf)) <= 0 ) {
+		            if ( (pl2d2->dzone=atoi(bf)) < 0 ) {
 		                  pl2d2->dzone=1;
+			          fprintf(stdout,"Setting Defaults for debuging dzone=%d\n",pl2d2->dzone);
                             } else {
-			           pl2d2->dzone=atoi(bf);
-			           fprintf(stdout,"In Xml Config File found dzone=%d\n",pl2d2->dzone);
+			          pl2d2->dzone=atoi(bf);
+			          fprintf(stdout,"In Xml Config File found dzone=%d\n",pl2d2->dzone);
                             }
                     } else {
-		            pl2d2->dzone=1;
-                            fprintf(stderr,"Setting Defaults for debuging Zone\n",pl2d2->dzone);
+		            pl2d2->dzone=0;
+                            fprintf(stderr,"Setting Defaults for debuging Zone=%d\n",pl2d2->dzone);
 		    }
              }
       } else {
              fprintf(stderr,"Incorrect root node name in xml config file:%s ... Setting Defaults \n",filename);
-	     pl2d2->numProcessAtstart=5;
+	     pl2d2->maxNumOfProcess=4;
+	     pl2d2->maxClientPerProcess=20;
 	     pl2d2->pollfreq=30;
-	     pl2d2->dependencyTimeOut=120;
-             pl2d2->dzone=1;
+	     pl2d2->dependencyTimeOut=24;
+             pl2d2->dzone=0;
 
 	     sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->web , 1);
+	     if ( status == 1 ) {
+	            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+                    exit(1);
+	     }
 
 	     sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
-	     sprintf(pl2d2->web_blk,"%s/blocked_clients.html",pl2d2->web);
 	     sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->logdir , 1);
+	     if ( status == 1 ) {
+	            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+                    exit(1);
+	     }
 	     sprintf(pl2d2->mlog,"%s/mlog",pl2d2->logdir);
 	     sprintf(pl2d2->mlogerr,"%s/mlogerr",pl2d2->logdir);
 	     sprintf(pl2d2->dmlog,"%s/dmlog",pl2d2->logdir);
@@ -722,7 +742,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 /**
  * parse dependency file (polling for the moment )
  */
-struct _depParameters * ParseXmlDepFile(char *filename )
+struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dmlogerr)
 {
 
       FILE *doc=NULL;
@@ -928,7 +948,6 @@ struct _depParameters * ParseXmlDepFile(char *filename )
                              c=roxml_get_content(xp_regtimepoch,bf,sizeof(bf),&size);
                              strcpy(listParam->xpd_regtimepoch,bf);
                    } else strcpy(listParam->xpd_regtimepoch,"");
-	           /* fprintf(stderr,"xpd_regtimedate=%s  xpd_regtimepoch=%s\n",listParam->xpd_regtimedate,listParam->xpd_regtimepoch);  */
      } else {
             fprintf(stderr,"regtime null\n");
             strcpy(listParam->xpd_regtimedate,"");
@@ -941,90 +960,22 @@ struct _depParameters * ParseXmlDepFile(char *filename )
 
      return (listParam);
 }
-/**
-*  function : pdir
-*             walk through directory
-*/
-static void pdir (const char * dir_name)
-{
-    DIR * d;
-    struct dirent * entry;
-    struct stat st;
-    const char * d_name;
-    int path_length;
-    char path[PATH_MAX]; /* limits.h defines "PATH_MAX". */
-
-    /* Open the directory specified by "dir_name". */
-    d = opendir (dir_name);
-
-    /* Check it was opened. */
-    if (! d) {
-        fprintf (stderr, "Cannot open directory '%s': %s\n", dir_name, strerror (errno));
-        exit (EXIT_FAILURE);
-    }
-
-    while (1) {
-        /* "Readdir" gets subsequent entries from "d". */
-        entry = readdir (d);
-        if (! entry) {
-            /* There are no more entries in this directory, so break
-               out of the while loop. */
-            break;
-        }
-        d_name = entry->d_name;
-	if ( stat(d_name,&st) != 0 ) {
-	      fprintf(stderr,"Cannot stat on :%s\n",d_name);
-	      continue;
-        }
-
-        /* See if "entry" is a subdirectory of "d". */
-        if ( typeofFile(st.st_mode) == 'd' ) {
-            /* Check that the directory is not "d" or d's parent. */
-            if (strcmp (d_name, "..") != 0 && strcmp (d_name, ".") != 0) {
-                path_length = snprintf(path, PATH_MAX, "%s/%s", dir_name, d_name);
-                if (path_length >= PATH_MAX) {
-                         fprintf (stderr, "Path length has got too long.\n");
-                         exit (EXIT_FAILURE);
-                }
-		/* do work  */
-
-                /* Recursively call "pdir" with the new path. */
-                pdir (path);
-            }
-        }
-    }
-    /* After going through all the entries, close the directory. */
-    if (closedir (d)) {
-            fprintf (stderr, "Could not close '%s': %s\n", dir_name, strerror (errno));
-            exit (EXIT_FAILURE);
-    }
-}
 
 /** 
-*  logZone : log to stdout/err
+*  logZone : log to file
 *  this need synchro. btw all the processes
 *  Note : errors are logged what ever the Zone is 
 */
-void logZone(int this_Zone, int conf_Zone, int console , char * txt, ...)
+void logZone(int this_Zone, int conf_Zone, FILE *fp  , char * txt, ...)
 {
       va_list za;
 
       if ( this_Zone == conf_Zone ) {
              va_start( za, txt );
-             switch (console)
-             {
-                 case CONSOLE_OUT:
-                                  vfprintf(stdout,txt,za);
-                                  break;
-                 case CONSOLE_ERR:
-                                  vfprintf(stderr,txt,za);
-                                  break;
-             }
-             va_end(za);
-      } else if ( console == CONSOLE_ERR ) {
-                 vfprintf(stderr,txt,za);
+             vfprintf(fp,txt,za);
       }
 }
+
 /**
 *   Function : typeofFile
 *   object   : return a code corresponding to the type
@@ -1052,123 +1003,108 @@ char typeofFile(mode_t mode)
 }
 /**
  * SendFile
- * Download waited_end file to host TMPDIR 
+ * Send  waited_end file to client  
  *
- *
+ * 
  */
-int SendFile_previous (const char * filename , int sock ) 
+int SendFile (const char * filename , int sock, FILE *mlog ) 
 {
-    char buff[8192];
-    char kris[8192];
-    char fsize[11];
+    char * buffer;
+    char fsize[11]; /* size of the file encoded in 11 char, max : 99999999999 wow! */
     FILE * waitf;
-    int size;
+    
     int bytes_written=0, bytes_read=0, bytes_left=0, total=0;
     
     struct stat st;
 
     /* get & format size of file in bytes */ 
     if ( stat(filename,&st) != 0 ) {
-          fprintf(stderr,"SendFile:mserver cannot stat waitfile:%s\n", filename );
+          fprintf(mlog,"SendFile:mserver cannot stat waitfile:%s\n", filename );
           return(1);
     }
+    
+    snprintf(fsize,sizeof(fsize),"%d",st.st_size);
 
-    /* size = st.st_size; */
-    snprintf(fsize,sizeof(fsize),"%10ld",(long)st.st_size);
-
+    /* have to malloc here */
+    if ( (buffer=(char *) malloc( st.st_size * sizeof(char))) == NULL ) {
+          fprintf(mlog,"SendFile:Could not malloc\n");
+	  return(1);
+    }
+   
     if ((waitf=fopen(filename,"r")) != NULL ) { 
-	  fread(kris,sizeof(kris),1,waitf);
+          memset(buffer,'\0',st.st_size);
+	  fread(buffer,st.st_size,1,waitf);
     } else {
-          fprintf(stderr,"SendFile:mserver cannot read waited_end file:%s\n", filename );
+          fprintf(mlog,"SendFile:mserver cannot read waited_end file:%s\n", filename );
+	  free(buffer);
           return(1);
     }
     fclose(waitf);
 
+    /* send size of file */
+    bytes_written=write(sock, fsize, sizeof(fsize));
 
-    sprintf(buff,"%s %s",fsize,kris); 
-
-    /* One sending bytes_written = write (sock , buff, sizeof(buff)); */
-   
-    bytes_left = strlen(buff);
-
-    while ( total < strlen(buff) ) 
+    
+    bytes_left = st.st_size;
+     
+    while ( total < st.st_size ) 
     {
-        bytes_written = send(sock, buff+total, bytes_left, 0);
+        bytes_written = send(sock, buffer+total, bytes_left, 0);
 
 	if ( bytes_written == -1 ) break;
 	total += bytes_written;
 	bytes_left -= bytes_written;
     }
 
+    free(buffer);
+
     return (bytes_written == -1)  ? 1 : 0;
 }
-int SendFile (const char * filename , int sock ) 
-{
-    char buff[1024];
-    char kris[1024];
-    FILE * waitf;
-    int size;
-    int bytes_written=0, bytes_read=0, bytes_left=0, total=0;
-    
-    struct stat st;
 
-    /* get & format size of file in bytes */ 
-    if ( stat(filename,&st) != 0 ) {
-          fprintf(stderr,"SendFile:mserver cannot stat waitfile:%s\n", filename );
-          return(1);
-    }
-
-    memset(kris,'\0',sizeof(kris));
-    if ((waitf=fopen(filename,"r")) != NULL ) { 
-	  fread(kris,sizeof(kris),1,waitf);
-    } else {
-          fprintf(stderr,"SendFile:mserver cannot read waited_end file:%s\n", filename );
-          return(1);
-    }
-    fclose(waitf);
-
-
-    bytes_written = write (sock , kris, sizeof(kris)); 
-  
-    return (bytes_written == -1)  ? 1 : 0;
-}
 /**
- * Obtain a lock on a file , try a limited time if no success
- * return 0 if lock obtained 1 if not 
- * also check if symlink is old by x sec remove it
+ * Obtain a lock on a file , and if  symlink is old by x sec remove it
+ * return 
+ *  0 if lock obtained 
+ *  1 if not 
+ *  
  */
-int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node ) 
+int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node , FILE *mlog ) 
 {
    int i, ret;
    char *base,*leaf;
    char src[1024],dest[1024],Ltime[25];
    struct stat st;
    time_t now;
-   double diff_t;
+   double diff_t=0.0;
    
    sprintf(src,"%s/end_task_lock",L2D2.tmpdir);
    if ( access(src,R_OK) != 0 ) { 
-           if ( (ret=touch(src)) != 0 ) fprintf(stderr,"cannot Touch file: lock on Tmpdir Xp=%s Node=%s\n",xpn,node);
+           if ( (ret=touch(src)) != 0 ) {
+	         fprintf(mlog,"cannot Touch file: lock on Tmpdir Xp=%s Node=%s\n",xpn,node);
+		 return(1);
+	   }
    }
   
    sprintf(dest,"%s/%s",L2D2.tmpdir,md5Token);
 
+   /* Code Moved to client side
    for ( i=0 ; i < 5 ; i++ ) {
         get_time(Ltime,3);
         ret=symlink("end_task_lock",dest);
         if ( ret == 0 )  {
-	       /* fprintf(stdout,"symlink obtained loop=%d AT:%s xpn=%s node=%s Token:%s\n",i,Ltime,xpn,node,md5Token); */
 	       break;
         }
-	_sleep(0.5);
+	usleep(500000);  
    }
- 
+   */
+
+   ret=symlink("end_task_lock",dest);
    if ( ret != 0 ) {
-        if ( (stat(dest,&st)) == 0 ) {
+        if ( (lstat(dest,&st)) == 0 ) {
               time(&now);
 	      if ( (diff_t=difftime(now,st.st_mtime)) > LOCK_TIME_TO_LIVE ) {
 	             ret=unlink(dest);
-                     fprintf(stderr,"symlink timeout xpn=%s node=%s Token:%s\n",xpn,node,md5Token);
+                     fprintf(mlog,"symlink timeout xpn=%s node=%s Token:%s diff=%f\n",xpn,node,md5Token,diff_t);
 	      }
 	} 
    } 
@@ -1180,7 +1116,7 @@ int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node )
  * remove a lock, 
  * return 0 if success 1 if not 
  */
-int unlock ( char *md5Token , _l2d2server L2D2, char *xpn, char *node) 
+int unlock ( char *md5Token , _l2d2server L2D2, char *xpn, char *node, FILE *mlog) 
 {
    int ret;
    char src[1024],Ltime[25];
@@ -1190,11 +1126,9 @@ int unlock ( char *md5Token , _l2d2server L2D2, char *xpn, char *node)
    get_time(Ltime,3);
    if ( access(src,R_OK) == 0 ) { 
        if ( (ret=unlink(src)) != 0 ) {
-             fprintf(stderr,"unlink error:%d AT:%s xpn=%s node=%s Token:%s\n",ret,Ltime,xpn,node,md5Token);
+             fprintf(mlog,"unlink error:%d AT:%s xpn=%s node=%s Token:%s\n",ret,Ltime,xpn,node,md5Token);
 	     return(1);
-       } else {
-             /* fprintf(stdout,"symlink released AT:%s xpn=%s node=%s Token:%s\n",Ltime,xpn,node,md5Token); */
-       }
+       } 
    } 
    
 
@@ -1253,67 +1187,4 @@ int initsem(key_t key, int nsems)  /* key from ftok() */
     }
 
     return semid;
-}
-
-/**
- *
- *
- */
-int readline ( int sock , char *buffer, int buffsize, int timeout) 
-{
-     char *buffPos, *buffEnd;
-     int nChars,readlen;
-     typedef enum { false, true } bool;
-     bool complete=false;
-     fd_set fset;
-     struct timeval tv;
-     int sockStatus, readSize;
-     unsigned long blockMode;
-
-     FD_ZERO(&fset);
-     FD_SET(sock,&fset);
-
-     if ( timeout > 0 ) {
-         tv.tv_sec = 0;
-	 tv.tv_usec = timeout;
-	 sockStatus = select(sock+1, &fset, NULL , &fset, &tv);
-     } else {
-	 sockStatus = select(sock+1, &fset, NULL , &fset, NULL);
-     } 
-
-     if ( sockStatus <= 0 ) {
-           return sockStatus;
-     }
-
-     buffer[0] = '\0';
-     buffPos = buffer;
-     buffEnd = buffer + buffsize;
-     readlen=0;
-     while (!complete) {
-         if ((buffEnd - buffPos) < 0 ) {
-	     readSize = 0;
-	 } else {
-	     readSize = 1;
-	 }
-	 FD_ZERO(&fset);
-	 FD_SET(sock,&fset);
-	 tv.tv_sec = 5;
-	 tv.tv_usec= 0;
-	 sockStatus = select(sock+1, &fset, NULL , &fset, &tv);
-	 if ( sockStatus < 0 ) {
-	      return -1;
-	 }
-	 nChars = recv(sock, (char*) buffPos,readSize, MSG_NOSIGNAL);
-	 readlen += nChars;
-         if ( nChars <= 0 ) { 
-	       return -1;
-         }
-	 if ( buffPos[nChars -1 ] == '\n' ) {
-	     complete = true;
-	     buffPos[nChars -1] = '\0';
-         }
-	 buffPos += nChars;
-     }
-
-     return readlen;
 }
