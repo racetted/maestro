@@ -209,7 +209,7 @@ int main (int argc, char* argv[])
     
   /*
       do Login and get response
-      Note : if the exp is not valid , the server wont log the client !!!!  
+      Note : if the exp is not valid , the server will not log the client !!!!  
   */
 
   /* first set a handler for timeouts */
@@ -316,7 +316,7 @@ int main (int argc, char* argv[])
            break;
       case CHANGE_TIME_STEP:
            break;
-      case RELOAD_CONFIG:
+      case RELOAD_CONFIG: /* has to be reviewed */
            sprintf(buffer,"I %s",input_file);
 	   alarm(5);
            bytes_sent=send(sock, buffer , sizeof(buffer) , 0);

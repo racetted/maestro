@@ -42,7 +42,6 @@ static char TMP_LOG_PATH[1024];
 static int write_line(int sock);
 static void gen_message (const char *job, const char *type, const char* loop_ext, const char *message);
 static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp);
-static int acquire_connection( char *seq_exp_home ,  char *datestamp ,  char *job );
 extern char* str2md5 (const char *str, int length);
 
 static void log_alarm_handler() { fprintf(stderr,"%%%%%%%%% EXCEEDED TIME IN LOOP ITERATIONS %%%%%%%%\n"); };
@@ -123,7 +122,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     /* if called inside maestro, a connection is already open  */
     tmpfrommaestro = getenv("FROM_MAESTRO");
     if ( tmpfrommaestro == NULL ) {
-       fprintf(stderr, "\n================= NODELOGGER: NOT_FROM_MAESTRO signal:%s================== \n",type);
+       SeqUtil_TRACE( "\n================= NODELOGGER: NOT_FROM_MAESTRO signal:%s================== \n",type);
        FromWhere = FROM_NODELOGGER;
        if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
           gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
@@ -138,21 +137,21 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        /* register signals */
        if ( sigaction(SIGALRM,&sa,NULL) == -1 ) fprintf(stderr,"Nodelooger::error in registring SIGALRM\n");
     } else {
-       fprintf(stderr, "\n================= NODELOGGER: TRYING TO USE CONNECTION FROM MAESTRO PROCESS IF SERVER IS UP signal:%s================== \n",type);
+       SeqUtil_TRACE( "\n================= NODELOGGER: TRYING TO USE CONNECTION FROM MAESTRO PROCESS IF SERVER IS UP signal:%s================== \n",type);
        if ( MLLServerConnectionFid > 0 ) {
           FromWhere = FROM_MAESTRO;
           sock = MLLServerConnectionFid;
-          fprintf(stderr, "================= NODELOGGER: OK,HAVE A CONNECTION FROM MAESTRO PROCESS ================== \n");
+          SeqUtil_TRACE( "\n================= NODELOGGER: OK,HAVE A CONNECTION FROM MAESTRO PROCESS ================== \n");
        } else {
         /* it could be that we dont have the env. variable set to use Server */
            FromWhere = FROM_MAESTRO_NO_SVR;
            if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
-               fprintf(stderr, "================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
+               SeqUtil_TRACE( "\n================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
                gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
                ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 
                return;
             } else {
-               fprintf(stderr, "================= ACQUIRED A NEW CONNECTION FROM NODELOGGER PROCESS ================== \n");
+               SeqUtil_TRACE( "\n================= ACQUIRED A NEW CONNECTION FROM NODELOGGER PROCESS ================== \n");
             }
        }
     }
@@ -176,7 +175,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        case FROM_MAESTRO_NO_SVR:
 	   ret=write(sock,"S \0",3);
            close(sock);
-           fprintf(stderr, "================= ClOSING CONNECTION FROM NODELOGGER PROCESS ================== \n");
+           SeqUtil_TRACE( "\n================= ClOSING CONNECTION FROM NODELOGGER PROCESS ================== \n");
 	   break;
        default:
            break;
@@ -185,9 +184,8 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
 
 
 /**
- * write a buffer to socket
- *
- *
+ * write a buffer to socket with timeout
+ * and receive an ack 0 || 1
  */
 static int write_line(int sock)
 {
@@ -252,7 +250,7 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     /* write the message into "nodelogger_buf", which will be sent to a socket if server up */
     memset(nodelogger_buf, '\0', NODELOG_BUFSIZE );
     memset(nodelogger_buf_short, '\0', NODELOG_BUFSIZE );
-    fprintf (stdout,"NODELOGGER node:%s type:%s message:%s\n", node, type, message );
+    SeqUtil_TRACE ( "\nNODELOGGER node:%s type:%s message:%s\n", node, type, message );
 
     if ( loop_ext != NULL ) {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
@@ -266,11 +264,11 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
 
 
 /**
-  *  Synchronize clients logging to Experiment nodelog
-  *  author : Rochdi Lahlou
-  *  Algo   :
-  *
-  *
+  *  Synchronize clients logging to Experiment nodelog file
+  *  author : Rochdi Lahlou, cmoi 2013
+  *  Algo   : hypotheses : nfs 2+, garanties that link and rename are atomic
+  *           build on this to make clients writes to nodelog file based 
+  *           on a timed round robin methods. 
   *
   *
   *
@@ -351,8 +349,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     Tokendate = atof(Stime);
     snprintf (flock,sizeof(flock),"%s/%s_%s_%u",lpath,Stime,host,pid);
      
-    fprintf(stdout,"Token date=%s host_pid=%s %u\n",Stime,host,pid);
-    fprintf(stdout,"flock=%s\n",flock);
+    SeqUtil_TRACE( "\nToken date=%s host=%s pid=%u flock=%s\n",Stime,host,pid,flock);
 
     sprintf (TokenHostPid,"%s_%u",host,pid);
     
@@ -454,57 +451,3 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
 }
 
 
-
-
-/**
- *  acquire a connection with l2d2 server, the process is
- *  1- reading the authority file for server parametres.
- *  2- doing a login to be authenticated by the l2d2 server.
-*/
-int acquire_connection (char *seq_exp_home ,  char *datestamp ,  char *job )
-{
-   static char ipserver[20];
-   static char htserver[20];
-   static char host[100];
-   static char buf_id[250];
-   static char buffer[250];
- 
-   char authorization_file[256];
-   char *Auth_token=NULL;
-   char *m5sum=NULL;
-   char resolved[MAXPATHLEN];
-   char *path_status=NULL, *mversion=NULL;
-   struct stat stbuf;
-   unsigned int pid;
-   int port, sock , nscan, ret;
-   int bsent , bread ;
-   struct passwd *passwdEnt = getpwuid(getuid());
-
-   gethostname(host, sizeof(host));
-
-   if ( ( mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
-            fprintf(stderr,"Nodelogger::Could not get maestro version ...\n");
-   }
-    
-   snprintf(authorization_file,sizeof(authorization_file),".maestro_server_%s",mversion);
-
-   if ( (Auth_token=get_Authorization (authorization_file,passwdEnt->pw_name,&m5sum)) != NULL) {
-             nscan = sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%u", &pid, htserver, ipserver, &port);
-             fprintf(stderr, "Maestro Server parameters are: pid=>%u<  host=>%s< ip=>%s< port=>%u<\n",pid,htserver,ipserver,port);
-             /* try to get a connection  */ 
-             if ( (sock=connect_to_host_port_by_ip (ipserver,port))  < 0 ) {
-                       fprintf(stderr,"Nodelogger Cannot connect to maestro_server at host:%s and port:%d \n", htserver, port);
-                       return(-1);
-             } 
-             if ( (ret=do_Login(sock, pid, job, seq_exp_home, "LOG", passwdEnt->pw_name, &m5sum)) != 0 ) {
-	               fprintf(stderr, "Nodelogger::Cannot Login with mserver\n");
-	               return(-1);
-             }
-      
-   } else {
-          fprintf(stderr, "Nodelogger::Found No maestro_server parametres file\n");
-          return(-1);
-   }
-
-   return(sock);
-}

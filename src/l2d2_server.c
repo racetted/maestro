@@ -354,7 +354,9 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   /* for heartbeat */ 
   if ( tworker == ETERNAL ) {
         snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,getpid());
-        ret=utime(buf,NULL); 
+        if ( (fp=fopen(buf,"w+")) != NULL ) {
+             fclose(fp);
+        }
   }
   
   /* streams will be unbuffered */
@@ -412,9 +414,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
           } else {
 	     /* heart beat */
 	     snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,getpid());
-    	     if ( (fp=fopen(buf,"w+")) != NULL ) {
-	           fclose(fp);
-	     }
+             ret=utime(buf,NULL); 
 	     /* cascade log file if time to do so */
 	     get_time(Stime,1);
 	     if ( strncmp(tlog,Stime,8) != 0 ) {
@@ -534,7 +534,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                     /* Check to see if the connection has been closed by the client  */
                    if (rc == 0) {
                        get_time(Stime,3);
-                       logZone(L2D2.dzone,L2D2.dzone,mlog,"%s Closed AT:%s TransNumber=%u\n",l2d2client[i].Open_str,Stime,l2d2client[i].trans);
+                       logZone(_ZONE_,L2D2.dzone,mlog,"%s Closed AT:%s TransNumber=%u\n",l2d2client[i].Open_str,Stime,l2d2client[i].trans);
                        close_conn = TRUE;
                        break;
                    }
@@ -759,6 +759,7 @@ void maestro_l2d2_main_process_server (int fserver)
   struct sigaction adm;
   struct stat st;
   double diff_t;
+  char Time[40];
 
   bzero(&adm, sizeof(adm));
   adm.sa_sigaction = &sig_admin;
@@ -799,14 +800,15 @@ void maestro_l2d2_main_process_server (int fserver)
   {
 	if ( sig_admin_AddWorker == 1 ) {
 	      sig_admin_AddWorker=0;
-	      fprintf(smlog,"Received signal USR2 from worker ProcessCount=%d\n",ProcessCount);
+	      get_time(Time,3);
+	      fprintf(smlog,"Received signal USR2 at:%s from worker ProcessCount=%d\n",Time,ProcessCount);
               if ( ProcessCount < L2D2.maxNumOfProcess ) {
                  if ( (ChildPids[i] = fork()) == 0 ) { 
 		      fclose(smlog);
                       l2d2SelectServlet( fserver , TRANSIENT );
                  } else if ( ChildPids[i] > 0 ) {        
                       ProcessCount++;
-	              fprintf(smlog,"One worker generated with pid=%d\n",ChildPids[i]);
+	              fprintf(smlog,"One worker generated with pid=%d at:%s\n",ChildPids[i],Time);
 		      i++;
                  } else                      
                       perror("fork() Worker failed");
@@ -823,6 +825,9 @@ void maestro_l2d2_main_process_server (int fserver)
 	     if ( (ret=kill(pid_eworker,0)) != 0 ) {
 	           fprintf(smlog,"Eternal Worker is dead (pid=%d) ... trying to spawn a new one ret=%d\n",pid_eworker,ret);
                    ProcessCount--;
+		   /* glitch here with signals */
+		   if ( ProcessCount < 0 ) ProcessCount=0;
+
                    if ( (pid_eworker = fork()) == 0 ) { 
 		              fclose(smlog);
                               l2d2SelectServlet( fserver , ETERNAL );
@@ -852,6 +857,8 @@ void maestro_l2d2_main_process_server (int fserver)
 	                     fprintf(smlog,"Worker process pid:%u has terminated\n",ChildPids[j]);
                              ChildPids[j]=0;
                              ProcessCount--;
+			     /* glitch here with signals */
+			     if ( ProcessCount < 0 ) ProcessCount=0;
 		 }
 	     }
 	}
@@ -879,8 +886,9 @@ void maestro_l2d2_main_process_server (int fserver)
                     } 
          } else if ( (ret=kill(L2D2.depProcPid,0)) != 0 ) {
 	                fprintf(smlog,"Dependency manager is dead (no heartbeat) ... spawning a new one\n");
-	          }
+	 }
 
+        /* shut down server */
         if ( sig_admin_Terminate == 1 ) {
 	     close(fserver);
              sleep (2);
@@ -888,8 +896,10 @@ void maestro_l2d2_main_process_server (int fserver)
 	           ChildPids[j] == 0 ? : kill (ChildPids[j],9);
              }
 	     kill(pid_eworker,9);
-	     l2d2server_shutdown(smlog);
+             kill(L2D2.depProcPid,9);
+	     l2d2server_shutdown(pid_eworker,smlog);
 	}
+
 	/* test to see if user has started a new mserver */
         snprintf(authorization_file,sizeof(authorization_file),".maestro_server_%s",L2D2.mversion);
         Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
@@ -904,12 +914,12 @@ void maestro_l2d2_main_process_server (int fserver)
 	   } else {
 	           free(Auth_token); 
 	           free(m5sum); 
-	         }
+	   }
 	}
         
 	/* wait on Un-caught childs  */
 	if ( (kpid=waitpid(-1,NULL,WNOHANG)) > 0 ) { 
-	       fprintf(smlog,"mserver::Waited on  child with pid:%lu\n",(unsigned long ) kpid);
+	       fprintf(smlog,"mserver::Waited on child with pid:%lu\n",(unsigned long ) kpid);
         }
 
 	sleep(5);  /* yield  Note : what about server receiving signal here ? */              
@@ -941,12 +951,6 @@ int main ( int argc , char * argv[] )
             fprintf(stderr, "maestro_server(),Could not get maestro current version. do a proper ssmuse \n");
             exit(1);
   }
-  
-  if (  (L2D2.mshortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
-            fprintf(stderr, "maestro_server(),Could not get maestro current shortcut. do a proper ssmuse \n");
-            exit(1);
-  }
-  
 
   /* first of all, create ~user/.suites if not there */
   snprintf(buf,sizeof(buf),"%s/.suites",passwdEnt->pw_dir);
@@ -976,7 +980,7 @@ int main ( int argc , char * argv[] )
       free(m5sum);
   }
 
-  /* check for a running dependency process */
+  /* do we have to check for a running dependency process here ? */
 
   /* detach from current terminal */
   if ( fork() > 0 ) 
@@ -1094,33 +1098,34 @@ int main ( int argc , char * argv[] )
 
 /**
  * shutdown the l2d2server process
- * this gets called when shuting down the server
+ * this gets called when shutting down the server
  */
 
-static void l2d2server_shutdown(FILE *fp)
+static void l2d2server_shutdown(pid_t pid , FILE *fp)
 {
     int ret;
     char buf[1024];
 
-    fprintf(fp,"Stopping dependency process  ...\n");
-    kill(L2D2.depProcPid,9);
-
+    fprintf(fp,"Shutting down maestro server ... \n");
+    
     fprintf(fp,"Removing .maestro_server file:%s\n",L2D2.auth);
     unlink(L2D2.auth);
    
-    snprintf(buf,sizeof(buf),"%s/%d",L2D2.tmpdir,L2D2.depProcPid);
+    snprintf(buf,sizeof(buf),"%s/DM_%d",L2D2.tmpdir,L2D2.depProcPid);
     ret=unlink(buf);
     
-    snprintf(buf,sizeof(buf),"%s/%d",L2D2.tmpdir,L2D2.pid);
+    snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,pid);
+    ret=unlink(buf);
+    
+    snprintf(buf,sizeof(buf),"%s/end_task_lock",L2D2.tmpdir);
     ret=unlink(buf);
 
-    fprintf(fp,"Removing tmp directory       ... \n");
     ret=rmdir(L2D2.tmpdir);
+    ret == 0 ?  fprintf(fp,"tmp directory removed ... \n") : fprintf(fp,"tmp directory not removed ... \n") ;
 
     free(L2D2.tmpdir);
     free(L2D2.m5sum);
 
-    fprintf(fp,"Shutting down maestro server ... \n");
     exit(1);
 }
 
@@ -1130,10 +1135,10 @@ static void l2d2server_shutdown(FILE *fp)
  */
 static void l2d2server_remove(FILE *fp) 
 {
-     fprintf(fp,"Removing previous maestro_server processes\n");
-     fprintf(fp,"Stopping previous dependency process ...\n");
+     fprintf(fp,"Stopping previous dependency process pid=%d...\n",L2D2.depProcPid);
      kill(L2D2.depProcPid,9);
-
+     
+     fprintf(fp,"Removing previous maestro_server processes\n");
      exit(1);
 
 }

@@ -66,7 +66,7 @@ static int isNpassAborted ( const SeqNodeDataPtr _nodeDataPtr );
 static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr);
 static void setSubmitState(const SeqNodeDataPtr _nodeDataPtr);
 static void setInitState(const SeqNodeDataPtr _nodeDataPtr);
-static void setEndState(const char *_signal, const SeqNodeDataPtr _nodeDataPtr);
+static int setEndState(const char *_signal, const SeqNodeDataPtr _nodeDataPtr);
 static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_action);
 static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waited_one, const char* waited_status);
 static void clearAllOtherStates( SeqNodeDataPtr _nodeDataPtr, char *fullNodeName, char *originator, char *current_signal); 
@@ -783,11 +783,12 @@ Inputs:
 static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr) {
    char filename[SEQ_MAXFIELD];
    SeqNameValuesPtr newArgs = NULL;
+   int isEndCnt=1;
 
    SeqUtil_TRACE( "maestro.go_end() node=%s signal=%s\n", _nodeDataPtr->name, _signal );
    
    actions( _signal, _flow, _nodeDataPtr->name );
-   setEndState( _signal, _nodeDataPtr );
+   isEndCnt=setEndState( _signal, _nodeDataPtr );
 
    if ( (_nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask) && (strcmp(_flow, "continue") == 0)) {
         submitNodeList(_nodeDataPtr);
@@ -799,9 +800,14 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
             }
          }
       }
+   
    /* check if the container has been completed by the end of this */
    if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
-      processContainerEnd( _nodeDataPtr, _flow );
+         if ( isEndCnt == 1 ) {
+	       processContainerEnd( _nodeDataPtr, _flow );
+	 } else {  
+	       return (0);
+         }
    }
 
    /* submit nodes waiting for this one to end */
@@ -811,7 +817,7 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
 
    SeqNameValues_deleteWholeList( &newArgs );
    actionsEnd( _signal, _flow, _nodeDataPtr->name );
-   return 0;
+   return (0);
 }
 
 /* 
@@ -824,18 +830,19 @@ Inputs:
 
 */
 
-static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
+static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
-   char filename[SEQ_MAXFIELD];
+   char filename[SEQ_MAXFIELD], filename1[SEQ_MAXFIELD];
    char *extName = NULL,*nptExt = NULL, *containerLoopExt = NULL;
-   int ret=0;
+   SeqNodeDataPtr NodePtr = NULL;
+   int ret=0, isEndContainerExist=1;
+   char Time[40];
 
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
    extName = (char *)SeqNode_extension( _nodeDataPtr );
 
    memset(filename,'\0',sizeof filename);
    sprintf(filename,"%s/%s/%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName); 
-
 
    /* For a container, we don't send the log file entry again if the
       status file already exists and the signal is endx */
@@ -852,6 +859,23 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
 
    /* Obtain a lock to protect end state */ 
    ret=_lock( filename , _nodeDataPtr->datestamp ); 
+   get_time(Time,3);
+   fprintf(stderr,"\n Time_in=%s lock=%s\n",Time,filename);
+   /* Handling multiple concurrent "endx" submissions of a container 
+      The above lock will ensure that only one child is executing
+      this section. If the child finds a ${container}.end file, it
+      means that a previous child has submitted the "endx" for this 
+      container and the current child should exit.
+   */
+
+   /* if this node is a container do this */
+   if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
+         NodePtr = nodeinfo( _nodeDataPtr->name, "type", NULL, NULL, NULL, _nodeDataPtr->datestamp );
+	 if ( NodePtr->type != Task && NodePtr->type != NpassTask ) {
+                isEndContainerExist = _access(filename, R_OK);
+                fprintf(stderr,"\n>>> CONTAINER_END_LOCK_FILE:%s\n",filename);
+	 }
+   }
 
    /* create the node end lock file name if not exists*/
    _CreateLockFile( MLLServerConnectionFid , filename , "go_end() ");
@@ -866,21 +890,25 @@ static void setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) 
             SeqUtil_stringAppend( &nptExt, containerLoopExt );
             free(containerLoopExt);
             SeqUtil_stringAppend( &nptExt, "+last" );
-            memset(filename,'\0',sizeof filename);
-            sprintf(filename,"%s/%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, nptExt); 
+            memset(filename1,'\0',sizeof filename);
+            sprintf(filename1,"%s/%s/%s.%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, nptExt); 
             free( nptExt);
        }
 
        /* create the ^last node end lock file name if not exists*/
-      _CreateLockFile( MLLServerConnectionFid , filename , "go_end() ");
+      _CreateLockFile( MLLServerConnectionFid , filename1 , "go_end() ");
 
    }
 
    /* Release lock here */
    ret=_unlock( filename , _nodeDataPtr->datestamp  );
+   get_time(Time,3);
+   fprintf(stderr,"\n Time_out=%s lock=%s\n",Time,filename);
 
    free( extName );
    SeqNameValues_deleteWholeList( &newArgs);
+
+   return ( isEndContainerExist );
 }
 
 /* 
@@ -2134,9 +2162,6 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    if ( (maestro_version=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
       raiseError("Could not get maestro version from SEQ_MAESTRO_VERSION env variable.\n");
    }
-   if ( (maestro_shortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
-      raiseError("Could not get maestro shortcut from SEQ_MAESTRO_SHORTCUT env variable.\n");
-   }
    
    /* 
     * create directory where to put the *waiting.interUser* file 
@@ -2325,16 +2350,17 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    }
    
    if ( (logMech=SeqUtil_getdef( defFile, "SEQ_LOGGING_MECH" )) != NULL ) {
-      fprintf(stdout,"found logging mechanism SEQ_LOGGING_MECH=%s\n",logMech);
-      free(defFile);defFile=NULL;
+          free(defFile);defFile=NULL;
+   } else {
+          logMech=strdup("nfs");
    }
-/*   
-test to run all interactions via nfs except end state
-   if ( ! ((strcmp(_signal,"end") == 0 ) || (strcmp(_signal, "endx") == 0 )) ) {
-      free(logMech); logMech=NULL;
-      logMech=strdup("NFS");
+
+   /* inform only at beginning of tasks */
+   if ( strcmp(_signal,"begin") == 0 ) {
+          fprintf(stdout,"logging mechanism set to:%s\n",logMech);
    }
-*/ 
+
+
    /* Install handler for 
     *   SIGALRM to be able to time out socket routines This handler must be installed only once 
     *   SIGPIPE : in case of socket closed */

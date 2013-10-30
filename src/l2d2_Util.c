@@ -694,7 +694,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	     if ( dbz_n != NULL ) {
                     node_t *dbz_txt = roxml_get_txt(dbz_n,0);
                     if ( (c=roxml_get_content(dbz_txt,bf,sizeof(bf),&size)) != NULL ) {
-		            if ( (pl2d2->dzone=atoi(bf)) <= 0 ) {
+		            if ( (pl2d2->dzone=atoi(bf)) < 0 ) {
 		                  pl2d2->dzone=1;
 			          fprintf(stdout,"Setting Defaults for debuging dzone=%d\n",pl2d2->dzone);
                             } else {
@@ -702,7 +702,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 			          fprintf(stdout,"In Xml Config File found dzone=%d\n",pl2d2->dzone);
                             }
                     } else {
-		            pl2d2->dzone=1;
+		            pl2d2->dzone=0;
                             fprintf(stderr,"Setting Defaults for debuging Zone=%d\n",pl2d2->dzone);
 		    }
              }
@@ -712,7 +712,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	     pl2d2->maxClientPerProcess=20;
 	     pl2d2->pollfreq=30;
 	     pl2d2->dependencyTimeOut=24;
-             pl2d2->dzone=1;
+             pl2d2->dzone=0;
 
 	     sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->web , 1);
@@ -1075,7 +1075,7 @@ int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node , FILE *ml
    char src[1024],dest[1024],Ltime[25];
    struct stat st;
    time_t now;
-   double diff_t;
+   double diff_t=0.0;
    
    sprintf(src,"%s/end_task_lock",L2D2.tmpdir);
    if ( access(src,R_OK) != 0 ) { 
@@ -1100,11 +1100,11 @@ int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node , FILE *ml
 
    ret=symlink("end_task_lock",dest);
    if ( ret != 0 ) {
-        if ( (stat(dest,&st)) == 0 ) {
+        if ( (lstat(dest,&st)) == 0 ) {
               time(&now);
 	      if ( (diff_t=difftime(now,st.st_mtime)) > LOCK_TIME_TO_LIVE ) {
 	             ret=unlink(dest);
-                     fprintf(mlog,"symlink timeout xpn=%s node=%s Token:%s\n",xpn,node,md5Token);
+                     fprintf(mlog,"symlink timeout xpn=%s node=%s Token:%s diff=%f\n",xpn,node,md5Token,diff_t);
 	      }
 	} 
    } 

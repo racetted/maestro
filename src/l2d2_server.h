@@ -78,7 +78,7 @@ union semun {
 };
 
 static void maestro_l2d2_main_process_server (int fserver);
-static void l2d2server_shutdown (FILE *fp);
+static void l2d2server_shutdown (pid_t pid , FILE *fp);
 static void l2d2server_remove (FILE *fp);
 static void l2d2SelectServlet( int sock , TypeOfWorker twrk );
 
