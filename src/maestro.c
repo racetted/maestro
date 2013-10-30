@@ -2185,6 +2185,10 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    if ( (maestro_version=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
       raiseError("Could not get maestro version from SEQ_MAESTRO_VERSION env variable.\n");
    }
+
+   if ( (maestro_shortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
+      raiseError("Could not get maestro shortcut from SEQ_MAESTRO_SHORTCUT env variable.\n");
+   }
    
    /* 
     * create directory where to put the *waiting.interUser* file 

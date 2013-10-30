@@ -952,6 +952,11 @@ int main ( int argc , char * argv[] )
             exit(1);
   }
 
+  if (  (L2D2.mshortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
+            fprintf(stderr, "maestro_server(),Could not get maestro current version. do a proper ssmuse \n");
+            exit(1);
+  }
+
   /* first of all, create ~user/.suites if not there */
   snprintf(buf,sizeof(buf),"%s/.suites",passwdEnt->pw_dir);
   strcpy(L2D2.home,buf);
