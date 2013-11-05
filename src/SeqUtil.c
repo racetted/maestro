@@ -526,6 +526,7 @@ char* SeqUtil_getdef( const char* filename, const char* key ) {
 char* SeqUtil_parsedef( const char* filename, const char* key ) {
   FILE* deffile;
   char *retval=NULL;
+  int iterator=0;
   char line[SEQ_MAXFIELD],defkey[SEQ_MAXFIELD],defval[SEQ_MAXFIELD];
 
   if ( (deffile = fopen( filename, "r" )) != NULL ){
@@ -533,24 +534,30 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
     memset(defval,'\0',sizeof defval);
     while ( fgets( line, sizeof(line), deffile ) != NULL ) {
       if ( strstr( line, "#" ) != NULL ) {
-	continue;
+  	      continue;
       }
-      if ( sscanf( line, " %[^= ] = %[^\n] ", defkey, defval ) == 2 ){	
-	if ( strcmp( key, defkey ) == 0 ) {
-	  fclose(deffile);
-	  if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
-	    raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
-	  }
-	  strcpy(retval,defval);
-	  SeqUtil_TRACE("SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
-	  return retval;
-	}
+      if ( sscanf( line, " %[^= ] = %[^\n]", defkey, defval ) == 2 ){
+	       if ( strcmp( key, defkey ) == 0 ) {
+    	       fclose(deffile);
+             iterator = strlen(defval);
+             /* remove trailing whitespace */
+             while ((defval[iterator] == ' ')||(defval[iterator] == '\0')) {
+                 defval[iterator]='\0';
+                 --iterator;
+             }
+  	          if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
+	              raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
+  	          }
+	          strcpy(retval,defval);
+	          SeqUtil_TRACE("SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
+	          return retval;
+	       }
       }
       defkey[0] = '\0';
       defval[0] = '\0';
     }
-    fclose(deffile);}
-  else{
+    fclose(deffile);
+  } else {
     SeqUtil_TRACE("SeqUtil_parsedef(): unable to open definition file %s\n",filename);
   }
   return NULL;
