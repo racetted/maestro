@@ -126,6 +126,9 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
          }
       }
    }
+
+   checkValidDatestamp(dateValue);
+
    tmpstrtok = (char*) strtok( format, "%" );
    while ( tmpstrtok != NULL ) {
       if (strcmp(tmpstrtok,"Y")==0)
