@@ -803,9 +803,10 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
    
    /* check if the container has been completed by the end of this */
    if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
-         if ( isEndCnt == 1 ) {
+         if ( isEndCnt != 0 ) {
 	       processContainerEnd( _nodeDataPtr, _flow );
 	 } else {  
+          fprintf(stderr, "maestro.go_end() Skipping end execution, already @ end state. No dependencies will be submitted, nor containers will be processed. Clear out end lockfile to be able to run end command.\n");
 	       return (0);
          }
    }
@@ -869,13 +870,10 @@ static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
    */
 
    /* if this node is a container do this */
-   if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
-         NodePtr = nodeinfo( _nodeDataPtr->name, "type", NULL, NULL, NULL, _nodeDataPtr->datestamp );
-	 if ( NodePtr->type != Task && NodePtr->type != NpassTask ) {
-                isEndContainerExist = _access(filename, R_OK);
-                fprintf(stderr,"\n>>> CONTAINER_END_LOCK_FILE:%s\n",filename);
+    if ( _nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask ) {
+        isEndContainerExist = _access(filename, R_OK);
+        fprintf(stderr,"\n>>> CONTAINER_END_LOCK_FILE:%s\n",filename);
 	 }
-   }
 
    /* create the node end lock file name if not exists*/
    _CreateLockFile( MLLServerConnectionFid , filename , "go_end() ");
@@ -908,6 +906,7 @@ static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
    free( extName );
    SeqNameValues_deleteWholeList( &newArgs);
 
+   SeqUtil_TRACE( "maestro.setEndState() return %d\n", isEndContainerExist );
    return ( isEndContainerExist );
 }
 
@@ -1401,7 +1400,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	        SeqUtil_TRACE(" Running maestro -s submit on %s\n", _nodeDataPtr->workerPath); 
 	        maestro ( _nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL, _nodeDataPtr->datestamp  );
 	     }	
-
+        
 	     sprintf(cmd,"%s -sys %s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_WRAPPER"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
          } else {
@@ -1603,6 +1602,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD];
    char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL;
    int submitCode = 0, count = 0, line_count=0, ret;
+   SeqUtil_TRACE( "maestro.submitDependencies() executing for %s\n", _nodeDataPtr->nodeName );
 
    LISTNODEPTR cmdList = NULL;
 

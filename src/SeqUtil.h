@@ -7,7 +7,7 @@
 #include <openssl/md5.h>
 #include <stdio.h>
 
-#define SEQ_MAXFIELD 1000
+#define SEQ_MAXFIELD 2000
 
 void  raiseError(const char* fmt, ... );
 void  SeqUtil_TRACE (char * fmt, ...) ;

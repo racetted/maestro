@@ -43,9 +43,7 @@ function Sys_ErrorTrap
       loopArgs=$(grep SEQ_LOOP_ARGS ${jobcfg} | cut -d '=' -f 2- | cut -d '"' -f 2)
    fi
 
-   ${SEQ_BIN}/nodelogger -n "${node}" ${loopArgs} -s info -m "ord_soumet failed status=$1 on `hostname`\n${LastErrorMessage}"
-
-   #${SEQ_BIN}/nodelogger -n "${node}" ${loopArgs} -s info -m "ord_soumet failed" 
+   ${SEQ_BIN}/nodelogger -n "${node}" ${loopArgs} -s abort -m "ord_soumet failed status=$1 on `hostname`\n${LastErrorMessage}"
    exit $1
 }
 
@@ -214,12 +212,18 @@ function Sys_SetWrapFiles
 function Sys_SetJobRemove 
 {
   container="${node%/*}"
-  export SelfJobRemove="rm -f ${job_info_dir}/${container}/\${JOB_ID:-\${LOADL_STEP_ID%.*}} >/dev/null 2>&1 || true "
+  export SelfJobRemove="rm -f ${job_info_dir}/${container}/${SEQ_DATE}@\${JOB_ID:-\${LOADL_STEP_ID%.*}} >/dev/null 2>&1 || true "
 }
 
 # moves the job info file  at the correct container level
 function Sys_PostSubmit
 {
    container="${node%/*}"
-   mv ${job_info_dir}/${system_job_id} ${job_info_dir}/${container}
+   #create right jobinfo link, remove old reference. system_job_id = $SgeCell $jn 
+   #
+   jnPrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX 2>/dev/null` || jnPrefix=""
+   jnNoPrefix=${jn##$jnPrefix}
+   ln -s "$SgeCell $jnNoPrefix" ${job_info_dir}/${container}/${SEQ_DATE}@${system_job_id}
+   rm -f ${job_info_dir}/${system_job_id} 
+
 }
