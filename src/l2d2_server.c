@@ -38,6 +38,7 @@
 #define TRUE 1
 #define FALSE 0
 
+#define MAX_LOCK_TRY 11
 
 /* forward functions & vars declarations */
 extern void logZone(int , int , FILE *fp , char * , ...);
@@ -308,7 +309,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   FILE *fp, *mlog;
   fd_set master_set, working_set;
   int buflen,num,ret;
-  int i,j,k,count;
+  int i,j,k,count,try;
   unsigned int pidSent;
   int _ZONE_ = 1, STOP = -1, SelecTimeOut;
   
@@ -323,20 +324,22 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 
   int  max_sd, new_sd;
   int  desc_ready, end_server = FALSE;
-  int  rc,close_conn,len;
+  int  rc, close_conn, len, got_lock;
   int  ceiling=0;
-  int fd;             /* file descriptor for file to send */
-  off_t offset = 0;   /* file offset */
-  int sent;           /* bytes sent */
+  int  fd;           
+  int sent;            
   struct stat stat_buf; 
   char *ts;
   char trans;
 
-  key_t log_key, lock_key;
+  key_t log_key;
   int semid_log, semid_lock, semid_acct;
   struct sembuf sem_log, sem_lock, sem_acct;
   struct sigaction ssa;
   struct timeval timeout;  /* Timeout for select */
+  struct flock nlock,ilock; /* for Logging */
+  glob_t g_AliveFiles;
+  int g_result;
   time_t sig_sent,now;
   double delay;
 
@@ -351,9 +354,17 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   if ( (mlog=fopen(buf,"w+")) == NULL ) {
             fprintf(stdout,"Worker: Could not open mlog stream\n");
   }
+
+  memset(buf,'\0',sizeof(buf));
+
   /* for heartbeat */ 
   if ( tworker == ETERNAL ) {
         snprintf(buf,sizeof(buf),"%s/EW_%d",L2D2.tmpdir,getpid());
+        if ( (fp=fopen(buf,"w+")) != NULL ) {
+             fclose(fp);
+        }
+  } else { /* need this for logging */
+	snprintf(buf,sizeof(buf),"%s/TRW_%d",L2D2.tmpdir,getpid());
         if ( (fp=fopen(buf,"w+")) != NULL ) {
              fclose(fp);
         }
@@ -407,6 +418,8 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
       /* Check to see if select call timed out ... yes -> do other things */ 
       if (rc == 0) {
           if ( tworker != ETERNAL ) {
+	     snprintf(buf,sizeof(buf),"%s/TRW_%d",L2D2.tmpdir,getpid());
+             ret=unlink(buf);
 	     get_time(Stime,3);
 	     fprintf(mlog,"TRansient worker exits pid=%lu at:%s\n", (unsigned long) getpid(), Stime );
 	     fclose(mlog);
@@ -625,35 +638,63 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 					l2d2client[i].trans++;
 			                break;
 	                       case 'L':/* Log the node under the proper experiment grab the semaphore set created */ 
-                                        /* Generate a semaphore key based on xp's Inode for LOGGING same for all process ,we are not using ftok
-		                            Note : Need a datestamp here */
-                                        log_key = (getuid() & 0xff ) << 24 | ( atoi(expInode) & 0xffff) << 16;
-     
-                                        /* initialize a LOGGING semaphore for this Xp */
-                                        sem_log.sem_num = 0;
-                                        sem_log.sem_op = -1;  /* set to allocate resource */
-                                        sem_log.sem_flg = SEM_UNDO;
+                                        /* Generate a  key based on xp's Inode for LOGGING. Same for all process ,we are not using ftok
+		                            Note : Need a datestamp here ? */
 
-                                        if ((semid_log = initsem(log_key, 1)) == -1) {
-                                              fprintf(mlog,"ERROR initsem lock\n");
-	                                      /* what to do next ??? */
-                                        }
+                                        memset(buf,'\0',sizeof(buf));
+                                        /* regexp for checking existence of TRansient Workers */ 
+	                                snprintf(buf,sizeof(buf),"%s/TRW_*",L2D2.tmpdir);
+					g_result = glob(buf, 0, NULL, &g_AliveFiles);
 
-			                if (semop(semid_log, &sem_log, 1) == -1) {
-			                        fprintf(mlog,"ERROR grabing semop log\n");
-			                        /* send_reply(i,1); */
-				                break;
-		                        }
-                          
+                                        if ( tworker == TRANSIENT || ( g_result == 0 && g_AliveFiles.gl_pathc > 0 ) ) {
 
-	                                ret = NodeLogr( &buff[2] , getpid(), mlog );
-			                send_reply(i,ret);
-                          
-			  
-		                        sem_log.sem_op = 1;  
-			                if (semop(semid_log, &sem_log, 1) == -1) {
-			                        fprintf(mlog,"ERROR release semop log\n");
-			                }
+					       globfree(&g_AliveFiles);
+                                               log_key = (getuid() & 0xff ) << 24 | ( atoi(expInode) & 0xffff) << 16;
+                                               memset(buf,'\0',sizeof(buf));
+	                                       snprintf(buf,sizeof(buf),"%s/NodeLogLock_0x%x",L2D2.tmpdir,log_key);
+					       /* Open a file descriptor to the file.  what if +1 open at the same time  ? */
+					       if ( (fd = open (buf, O_WRONLY|O_CREAT, S_IRWXU)) < 0 ) {
+                                                      fprintf(mlog,"ERROR Opening NodeLogLock file\n");
+			                              send_reply(i,1);
+					              break;
+					       }
+					       memset (&nlock, 0, sizeof(nlock));
+					       nlock.l_type = F_WRLCK;
+					       /* NOTE: F_SETLKW -> fnc suspend until lock be placed, 
+					                F_SETLK  -> fnc returns immedialtly if lock cannot be placed */
+                                               got_lock = FALSE;
+
+					       /* try for (MAX_LOCK_TRY - 1) * 0.25 sec ie= 2.5 sec */
+                                               for (  try = 0; try < MAX_LOCK_TRY; try++ ) {
+					           if (fcntl(fd, F_SETLK, &nlock) == -1) {
+					                usleep(250000);
+					           } else { 
+					                got_lock = TRUE;
+					                break;
+					           }
+					       }
+
+                                               if ( got_lock == FALSE ) {
+					              fcntl(fd, F_GETLK, &ilock);
+					              fprintf(mlog,"ERROR Cannot get lock, owned by pid:%d exp=%s node=%s\n", ilock.l_pid, expName, node);
+                                                      close(fd);
+			                              send_reply(i,1);
+					              break;
+					       }
+
+	                                       ret = NodeLogr( &buff[2] , getpid(), mlog );
+			                       send_reply(i,ret);
+                         
+                                               nlock.l_type = F_UNLCK;
+                                               if (fcntl(fd, F_SETLK, &nlock) == -1) {
+                                                      fprintf(mlog,"ERROR unlocking NodeLogLock file\n");
+					       }
+                                               close(fd);
+                                        } else {  
+					       /* one Serial worker ie Eternel worker */ 
+	                                       ret = NodeLogr( &buff[2] , getpid(), mlog );
+			                       send_reply(i,ret);
+					}
 			  
 					l2d2client[i].trans++;
 			                break;
