@@ -9,8 +9,7 @@ all: prep runcontrol mserver madmin
 L2D2SERVER = mserver
 L2D2ADMIN  = madmin
 
-LIBCRYPTO=/usr/lib/libcrypto.a 
-LIB=-lc -lm 
+LIB=-lc -lm -lcrypto 
 LIBTH=-lpthread
 CFLAGS1 = -g
 CFLAGS2 = -lefence -g -I../inc -DUNITTEST -DREENTRANT -DLINUX -Wall -Wextra -Wno-unused -D__DEBUG -DIGNORE_EMPTY_TEXT_NODES
@@ -22,7 +21,6 @@ runcontrol: prep $(OBJECTS) mserver
 	rm -f $(LIBDIR)/libruncontrol.a
 	ar rcv $(LIBDIR)/libruncontrol.a $(OBJECTS)
 	cp *.h $(INCDIR)
-	cp $(LIBCRYPTO) $(LIBDIR) 
 	ARCH_EXTRA=""
 	for component in $(COMPONENTS); do \
 	   if test $(MACHINE) = "Linux"; then \
@@ -122,11 +120,11 @@ l2d2_roxml-parse-engine.o: l2d2_roxml-parse-engine.c
 	$(CC)  $(CFLAGS2) -c l2d2_roxml-parse-engine.c
  
 mserver: l2d2_server.o l2d2_Util.o l2d2_socket.o l2d2_commun.o l2d2_roxml.o l2d2_roxml-internal.o l2d2_roxml-parse-engine.o
-	$(CC) $(L2D2SOBJECTS) $(LIB) $(LIBTH) $(LIBCRYPTO) -o $(L2D2SERVER); \
+	$(CC) $(L2D2SOBJECTS) $(LIB) $(LIBTH) -o $(L2D2SERVER); \
 	cp $(L2D2SERVER) $(BINDIR);
  
 madmin: l2d2_admin.o l2d2_socket.o l2d2_Util.o l2d2_commun.o l2d2_roxml.o l2d2_roxml-internal.o l2d2_roxml-parse-engine.o
-	$(CC) $(L2D2AOBJECTS) $(LIB) $(LIBTH) $(LIBCRYPTO) -o $(L2D2ADMIN)
+	$(CC) $(L2D2AOBJECTS) $(LIB) $(LIBTH) -o $(L2D2ADMIN)
 	cp $(L2D2ADMIN) $(BINDIR);
 
 clean:

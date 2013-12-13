@@ -677,16 +677,16 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 		   node_t *dto = roxml_get_attr(param_n, "dependencyTimeOut",0);
 	           if ( dto != NULL ) {
                           if ( (c=roxml_get_content(dto,bf,sizeof(bf),&size)) != NULL ) {
-	                          if (  (pl2d2->dependencyTimeOut=atoi(bf)) <= 0 || (pl2d2->dependencyTimeOut=atoi(bf)) > 48 ) {
+	                          if (  (pl2d2->dependencyTimeOut=atoi(bf)) <= 0 || (pl2d2->dependencyTimeOut=atoi(bf)) > 168 ) {
 	                                 pl2d2->dependencyTimeOut=24;
-			                 fprintf(stdout,"Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
-                                  } else {
+			                           fprintf(stdout,"dependencyTimeOut invalid or too high. Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
+                             } else {
 	                                 pl2d2->dependencyTimeOut=atoi(bf);
-                                         fprintf(stderr,"In Xml Config file found dependency time out periode=%d\n",pl2d2->dependencyTimeOut);
+                                    fprintf(stderr,"In Xml Config file found dependency time out period=%d\n",pl2d2->dependencyTimeOut);
 				  }
                           } else {
 	                          pl2d2->dependencyTimeOut=24;
-                                  fprintf(stderr,"Setting Defaults for dependency time out periode=%d\n",pl2d2->dependencyTimeOut);
+                                  fprintf(stderr,"Setting Defaults for dependency time out period=%d\n",pl2d2->dependencyTimeOut);
 			  }
                    }
 	     }
