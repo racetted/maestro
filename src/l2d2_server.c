@@ -222,14 +222,14 @@ void DependencyManager (_l2d2server l2d2 ) {
                                               get_time(Time,4); 
 					      pleaf=(char *) getPathLeaf(depXp->xpd_snode);
 					      /* where to put listing :xp/listings/server_host/datestamp/node_container/nonde_name and loop */
-					      snprintf(listings,sizeof(listings),"%s/listings/%s/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_xpdate, depXp->xpd_container);
+					      snprintf(listings,sizeof(listings),"%s/listings/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_container);
 					      if ( access(listings,R_OK) != 0 )  ret=r_mkdir(listings,1);
 					      if ( ret != 0 ) fprintf(dmlg,"DM:: Could not create directory:%s\n",listings);
                                               memset(listings,'\0',sizeof(listings));
 					      if ( strcmp(depXp->xpd_slargs,"") != 0 ) {
-					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_xpdate,Time);
+					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_sxpdate,Time);
                                               } else {
-					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_xpdate,Time);
+					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_container,pleaf,depXp->xpd_sxpdate,Time);
 					      }
 					      /* build command */
 					      snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, listings);
