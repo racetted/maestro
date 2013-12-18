@@ -94,14 +94,11 @@ static void sig_admin(int signo, siginfo_t *siginfo, void *context) {
    Routine which run as a Process for Verifying and 
    Sumbiting dependencies. This routine is concurrency
    safe meaning that a hcron script could be set to 
-   manage dependency files in the same way we do here
-   w/o interfering with it (If  needed for Operational
-   mode). 
-   
+   manage dependency files.
 */
 void DependencyManager (_l2d2server l2d2 ) {
      
-     FILE *fp,*ft,*dmlg,*dmlgerr;
+     FILE *fp,*ft,*dmlg;
      static DIR *dp = NULL;
      struct dirent *d;
      struct stat st;
@@ -137,12 +134,7 @@ void DependencyManager (_l2d2server l2d2 ) {
      if ( (dmlg=fopen(buf,"w+")) == NULL ) {
             fprintf(stdout,"Dependency Manager: Could not open dmlog stream\n");
      }
-
-     snprintf(buf,sizeof(buf),"%s_%.8s_%d",l2d2.dmlogerr,Time,l2d2.depProcPid);
-     if ( (dmlgerr=fopen(buf,"w+")) == NULL ) {
-            fprintf(stdout,"Dependency Manager: Could not open dmlogerr stream\n");
-     }
-     
+    
      /* close 0,1,2 streams */
      close(0);
      close(1);
@@ -150,15 +142,14 @@ void DependencyManager (_l2d2server l2d2 ) {
      
      /* streams will be unbuffered */
      setvbuf(dmlg, NULL, _IONBF, 0);
-     setvbuf(dmlgerr, NULL, _IONBF, 0);
 
      sa.sa_sigaction = &depMang_handler;
      sa.sa_flags = SA_SIGINFO;
      sigemptyset(&sa.sa_mask);
 
      /* register signals Note : they are not used for the moment */
-     if ( sigaction(SIGUSR1,&sa,NULL)  != 0 )  fprintf(dmlgerr,"error in sigactions  SIGUSR1\n");
-     if ( sigaction(SIGUSR2,&sa,NULL)  != 0 )  fprintf(dmlgerr,"error in sigactions  SIGUSR2\n");
+     if ( sigaction(SIGUSR1,&sa,NULL)  != 0 )  fprintf(dmlg,"error in sigactions  SIGUSR1\n");
+     if ( sigaction(SIGUSR2,&sa,NULL)  != 0 )  fprintf(dmlg,"error in sigactions  SIGUSR2\n");
      
 
      fprintf(dmlg,"Dependency Manager starting ... pid=%d\n",l2d2.depProcPid);
@@ -183,7 +174,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 	 /* get current epoch */
 	 time(&current_epoch);
 	 if ( (dp=opendir(l2d2.dependencyPollDir)) == NULL ) { 
-	          fprintf(dmlgerr,"Error Could not open polling directory:%s\n",l2d2.dependencyPollDir);
+	          fprintf(dmlg,"Error Could not open polling directory:%s\n",l2d2.dependencyPollDir);
 		  sleep(2);
 	          continue ; 
 	 }  
@@ -203,7 +194,7 @@ void DependencyManager (_l2d2server l2d2 ) {
             /* stat will stat the file pointed to ... lstat will stat the link itself */
 	    if ( stat(ffilename,&st) != 0 ) {
 	                 get_time(Time,1);
-	                 fprintf(dmlgerr,"DependencyManager(): %s inter-dependency file not there, removing link ... \n",Time,filename);
+	                 fprintf(dmlg,"DependencyManager(): %s inter-dependency file not there, removing link ... \n",Time,filename);
 			 unlink(ffilename); 
 	                 continue;
 	    }
@@ -218,9 +209,9 @@ void DependencyManager (_l2d2server l2d2 ) {
 				r=readlink(ffilename,linkname,1023);
 				
 				linkname[r] = '\0';
-				if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlgerr )) == NULL ) {
+				if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlg )) == NULL ) {
 	                                get_time(Time,1);
-	                                fprintf(dmlgerr,"DependencyManager(): %s Problem parsing xml file:%s\n",Time,linkname);
+	                                fprintf(dmlg,"DependencyManager(): %s Problem parsing xml file:%s\n",Time,linkname);
 				} else {
                                         if ( strcmp(depXp->xpd_slargs,"") != 0 )  
 					        snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
@@ -233,7 +224,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					      /* where to put listing :xp/listings/server_host/datestamp/node_container/nonde_name and loop */
 					      snprintf(listings,sizeof(listings),"%s/listings/%s/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_xpdate, depXp->xpd_container);
 					      if ( access(listings,R_OK) != 0 )  ret=r_mkdir(listings,1);
-					      if ( ret != 0 ) fprintf(dmlgerr,"DM:: Could not create directory:%s\n",listings);
+					      if ( ret != 0 ) fprintf(dmlg,"DM:: Could not create directory:%s\n",listings);
                                               memset(listings,'\0',sizeof(listings));
 					      if ( strcmp(depXp->xpd_slargs,"") != 0 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_xpdate,Time);
@@ -241,8 +232,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_xpdate, depXp->xpd_container,pleaf,depXp->xpd_xpdate,Time);
 					      }
 					      /* build command */
-					      snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_xpdate, depXp->xpd_snode, largs, listings);
-					      fprintf(dmlgerr,"dependency submit cmd=%s\n",cmd); 
+					      snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, listings);
+					      fprintf(dmlg,"dependency submit cmd=%s\n",cmd); 
 					      /* take account of concurrency here ie multiple dependency managers! */
 					      snprintf(buf,sizeof(buf),"%s/.%s",l2d2.dependencyPollDir,filename);
 					      ret=rename(ffilename,buf);
@@ -256,12 +247,12 @@ void DependencyManager (_l2d2server l2d2 ) {
 					      if ( epoch_diff > l2d2.dependencyTimeOut ) {
 					            unlink(linkname);
 					            unlink(ffilename);
-	                                            fprintf(dmlgerr,"============= Dependency Timed Out ============\n");
-	                                            fprintf(dmlgerr,"DependencyManager(): Dependency:%s Timed Out\n",filename);
-	                                            fprintf(dmlgerr,"source name:%s\n",depXp->xpd_sname);
-	                                            fprintf(dmlgerr,"name       :%s\n",depXp->xpd_name);
-	                                            fprintf(dmlgerr,"current_epoch=%d registred_epoch=%d registred_epoch_str=%s epoch_diff=%d\n",current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
-						    fprintf(dmlgerr,"\n");
+	                                            fprintf(dmlg,"============= Dependency Timed Out ============\n");
+	                                            fprintf(dmlg,"DependencyManager(): Dependency:%s Timed Out\n",filename);
+	                                            fprintf(dmlg,"source name:%s\n",depXp->xpd_sname);
+	                                            fprintf(dmlg,"name       :%s\n",depXp->xpd_name);
+	                                            fprintf(dmlg,"current_epoch=%d registred_epoch=%d registred_epoch_str=%s epoch_diff=%d\n",current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
+						    fprintf(dmlg,"\n");
 					      }
 					}
 					/* register dependency in web page */
@@ -300,9 +291,9 @@ void DependencyManager (_l2d2server l2d2 ) {
 }
 
 /*
-*  Worker Process : locking, logging 
-*  This process will handle a client Session with Multiplexing.
-*/
+ *  Worker Process : for locking & logging, can be Eternal or Transient.
+ *  This process will handle a client Session with Multiplexing.
+ */
 static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 {
  
@@ -316,11 +307,12 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   char buf[1024],buff[1024];
   char Astring[1024],inode[128], expName[256], expInode[64], hostname[128]; 
   char Bigstr[2048];
+  char mlogName[1024];
   char node[256], signal[256], username[256];
   char Stime[25],Etime[25], tlog[10];
   char m5[40];
 
-  _l2d2client l2d2client[256]; /* 256 client that's enough, the select can take 1024 max and we are forcing a max number of clients */
+  _l2d2client l2d2client[1024]; /* the select can take 1024 max  */
 
   int  max_sd, new_sd;
   int  desc_ready, end_server = FALSE;
@@ -333,19 +325,14 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   char trans;
 
   key_t log_key;
-  int semid_log, semid_lock, semid_acct;
-  struct sembuf sem_log, sem_lock, sem_acct;
+ 
   struct sigaction ssa;
   struct timeval timeout;  /* Timeout for select */
-  struct flock nlock,ilock; /* for Logging */
+  struct flock nlock,ilock; /* for Logging we are using fnctl() */
   glob_t g_AliveFiles;
   int g_result;
   time_t sig_sent,now;
   double delay;
-
-  sem_acct.sem_num = 0;
-  sem_acct.sem_op = -1;  /* set to allocate resource */
-  sem_acct.sem_flg = SEM_UNDO;
 
   /* open log files */
   get_time(Stime,1);
@@ -1028,11 +1015,18 @@ int main ( int argc , char * argv[] )
 
   /* do we have to check for a running dependency process here ? */
 
+
   /* detach from current terminal */
   if ( fork() > 0 ) 
   {
       fprintf(stdout, "maestro_server(), exiting from parent process \n");
       exit(0);  /* parent exits now */
+  }
+  
+  status=chdir("/");
+  if ( status != 0 ) {
+      fprintf(stderr, "maestro_server(),could not change directory to / ... exiting");
+      exit(1);
   }
 
   /* get hostname */

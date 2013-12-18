@@ -44,7 +44,7 @@ static void gen_message (const char *job, const char *type, const char* loop_ext
 static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp);
 extern char* str2md5 (const char *str, int length);
 
-static void log_alarm_handler() { fprintf(stderr,"%%%%%%%%% EXCEEDED TIME IN LOOP ITERATIONS %%%%%%%%\n"); };
+static void log_alarm_handler() { fprintf(stderr,"=== EXCEEDED TIME IN LOOP ITERATIONS ===\n"); };
  
 typedef enum {
            FROM_MAESTRO,
