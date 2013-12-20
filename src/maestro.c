@@ -2198,16 +2198,16 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    depBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
 
    /* write in local xperiment: sequencing/status/inter_depends/$datestamp */
-   sprintf(filename,"%s/%s/%s/%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _dep_datestamp, depBase );
+   sprintf(filename,"%s/%s/%s/%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, depBase );
 
    /* create dir if not there  (local Xp) */
    if ( _access(filename,R_OK) != 0 ) _SeqUtil_mkdir( filename, 1 );
   
    /* name and path of *waiting.interUser* file */ 
    if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
-            sprintf(filename,"%s%s%s%s_%s.waiting.interUser.%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _dep_datestamp, _nodeDataPtr->name, loopArgs, _dep_status);
+            sprintf(filename,"%s%s%s%s_%s.waiting.interUser.%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, loopArgs, _dep_status);
    } else {
-            sprintf(filename,"%s%s%s%s.waiting.interUser.%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _dep_datestamp, _nodeDataPtr->name, _dep_status);
+            sprintf(filename,"%s%s%s%s.waiting.interUser.%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, _dep_status);
    }
 
    snprintf(depParam,sizeof(depParam)," <xp>%s</xp>\n <node>%s</node>\n <indx>%s</indx>\n <xdate>%s</xdate>\n <status>%s</status>\n <largs>%s</largs>\n \
