@@ -784,7 +784,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    if (showDependencies) SeqNode_printDependencies(node_ptr, filename, 1);
 
    if (showVar) {
-        SeqNode_generateConfig( node_ptr,"continue", filename); 
+        SeqNode_generateConfig( node_ptr,"continue", filename, 0);
    }
 
    free( tmpFilters );
@@ -921,7 +921,7 @@ Inputs:
   filename - char * pointer to where the file must be generated, if null will be output to stdout
 
 */
-void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename) {
+void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename, const char * submit_type) {
    char *extName = NULL;
    int stringLength = 0; 
    char pidbuf[100];
@@ -963,12 +963,12 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    } else {
       SeqUtil_printOrWrite( filename, "export SEQ_LOOP_ARGS=\"\"\n" );
    }
-
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"%s\"\n", _nodeDataPtr->extension );
    } else {
       SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"\"\n" );
-   } 
+   }
+   SeqUtil_printOrWrite( filename, "export SEQ_SUBMIT_TYPE=%s\n", submit_type );
 
    /*container arguments, used in npass tasks mostly*/
    containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);

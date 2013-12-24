@@ -51,7 +51,7 @@ static int go_abort(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
 static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPtr);
 static int go_begin(char *_signal, char *_flow ,const SeqNodeDataPtr nodeDataPtr);
 static int go_end(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPtr);
-static int go_submit(const char *signal, char *_flow ,const SeqNodeDataPtr nodeDataPtr, int ignoreAllDeps );
+static int go_submit(const char *signal, char *_flow ,const SeqNodeDataPtr nodeDataPtr, int ignoreAllDeps, const char *type );
 
 /* deal with containers states */
 static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_flow );
@@ -312,7 +312,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
 	 sprintf(tmpString,"BOMBED: it has been resubmitted. job_ID=%s", jobID);
          SeqUtil_TRACE( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
          nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,tmpString,_nodeDataPtr->datestamp, jobID);
-         go_submit( "submit", _flow , _nodeDataPtr, 1 );
+         go_submit( "submit", _flow , _nodeDataPtr, 1, current_action );
       }
    } else if (strcmp(current_action,"cont") == 0) {
          /*  issue a log message, then submit the jobs in node->submits */
@@ -1266,12 +1266,13 @@ Inputs:
   flow - pointer to the value of the flow given to the binary ( -f option)
   _nodeDataPtr - pointer to the node targetted by the execution
   ignoreAllDeps - integer representing True or False whether dependencies are ignored
+  type - type of submission (generally "submit" or "rerun")
 
 Returns the error status of the ord_soumet call.
 
 */
 
-static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps) {
+static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps, const char *type ) {
    char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
@@ -1335,7 +1336,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
        
       if ( _access(tmpCfgFile, R_OK) == 0) ret=_removeFile(tmpCfgFile); 
 
-      SeqNode_generateConfig( _nodeDataPtr, _flow, tmpCfgFile);
+      SeqNode_generateConfig( _nodeDataPtr, _flow, tmpCfgFile, type );
       cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier );
 
       /* get short name w/ extension i.e. job+3 */
@@ -2483,7 +2484,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       SeqNode_setSubmitOrigin(nodeDataPtr,tmpFullOrigin);
       free( tmpFullOrigin );
 
-      status=go_submit( _signal, _flow, nodeDataPtr, ignoreAllDeps );
+      status=go_submit( _signal, _flow, nodeDataPtr, ignoreAllDeps, _signal );
    }
 
    /* Release connection with server */
