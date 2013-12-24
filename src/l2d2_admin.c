@@ -35,6 +35,7 @@ typedef enum {
       CHANGE_DEBUG_ZONE,
       RELOAD_CONFIG,
       IS_ALIVE,
+      SERVER_HOST,
       NONE
 } ServerActions;
 
@@ -55,6 +56,7 @@ void print_usage (FILE* stream , int existe_code)
            "  -c  --confile  config.xml         Load maestro server configuration file.\n"
            "  -l  --listd                       List Registered Dependencies \n" 
            "  -r  --rmdep   token|xp_name       Remove a dependency args is dependency_token or experiment_name \n" 
+	   "  -m  --machine                     Execution host of server \n"
            "  -s  --shutdown                    Shut Down maestro server \n" 
            "  -i  --isalive                     Inquire if maestro server is alive \n" 
            "  -v  --verbose                     Print verbose messages.\n");
@@ -109,7 +111,7 @@ int main (int argc, char* argv[])
   
 
   /* A string listing valid short options letters.  */
-  static const char* const short_options = "ielshcbr:t:?";
+  static const char* const short_options = "ielmshcbr:t:?";
 
   /* The name of the file to receive program output, or NULL for
      standard output.  */
@@ -150,6 +152,10 @@ int main (int argc, char* argv[])
     case 'l':   /* -l or --list */
                 whatAction=LIST_DEPENDENCIES;
                 break;
+
+    case 'm':   /* -m or --machine */
+                whatAction=SERVER_HOST;
+		break;
 
     case 's':   /* -s or --shutdown */
                 whatAction=SHUT_DOWN_SERVER;
@@ -340,7 +346,9 @@ int main (int argc, char* argv[])
            else
 	        fprintf(stderr,"Problems Reloading Configuration file\n");
            break;
-
+      case SERVER_HOST:
+	   fprintf(stdout,"%s\n",htserver);
+	   break;
       case IS_ALIVE:
            strcpy(buffer,"Y ");
 	   alarm(5);

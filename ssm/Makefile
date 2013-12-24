@@ -5,7 +5,7 @@
 # common section definition
 include ../config/config.mk
 
-ssm:	profile.sh 
+ssm:	profile.sh  ../bin/$(BASE_ARCH)
 	echo "Creating SSM package $(SSMPACKAGE)..."
 	if [ ! -d $(SSMPACKAGE) ]; then \
 	   mkdir $(SSMPACKAGE); \
@@ -25,9 +25,11 @@ ssm:	profile.sh
 
 profile.sh: Makefile ../config/config.mk
 	touch profile ;\
-	echo "export SEQ_WRAPPER=${SEQ_WRAPPER}" >$@ ;\
 	echo "export SEQ_MAESTRO_VERSION=${VERSION}" >>$@ ;\
 	cat profile >>$@
+
+../bin/$(BASE_ARCH):
+	$(MAKE) -C ../src all
 
 clean:
 	rm -rf $(SSMPACKAGE).ssm $(SSMPACKAGE) profile.sh
