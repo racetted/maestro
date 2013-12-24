@@ -3,11 +3,12 @@
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <unistd.h>
 #include "SeqNode.h"
 #include "SeqUtil.h"
 #include "SeqLoopsUtil.h"
 #include "SeqNameValues.h"
-
+#include "SeqUtilServer.h"
 
 static char* FamilyTypeString = "Family";
 static char* TaskTypeString = "Task";
@@ -784,7 +785,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    if (showDependencies) SeqNode_printDependencies(node_ptr, filename, 1);
 
    if (showVar) {
-        SeqNode_generateConfig( node_ptr,"continue", filename, 0);
+       SeqNode_generateConfig( node_ptr,"continue", filename );
    }
 
    free( tmpFilters );
@@ -921,9 +922,10 @@ Inputs:
   filename - char * pointer to where the file must be generated, if null will be output to stdout
 
 */
-void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename, const char * submit_type) {
+void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename ) {
    char *extName = NULL;
-   int stringLength = 0; 
+   int stringLength = 0, isRerun = 0; 
+   char lockFile[SEQ_MAXFIELD];
    char pidbuf[100];
    char shortdate[11];
    char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
@@ -968,7 +970,6 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    } else {
       SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"\"\n" );
    }
-   SeqUtil_printOrWrite( filename, "export SEQ_SUBMIT_TYPE=%s\n", submit_type );
 
    /*container arguments, used in npass tasks mostly*/
    containerLoopArgsList = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
@@ -1033,11 +1034,20 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    }
    SeqUtil_printOrWrite( filename, "export SEQ_SHORT_DATE=%s\n", shortdate); 
 
+   /* check for the presence of a "rerun" file to determine rerun status */
+   memset(lockFile,'\0',sizeof lockFile);
+   sprintf(lockFile,"%s/%s/%s.abort.rerun",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName);
+      if ( _access(lockFile, R_OK) == 0 ) {
+	isRerun = 1;
+      }
+   SeqUtil_printOrWrite( filename, "export SEQ_RERUN=%d\n", isRerun );
+
    free(tmpdir);
    free(tmpValue);
    free(tmp2Value);
    free(loopArgs);
    free(loopArgsPtr);
+   free(extName);
    SeqNameValues_deleteWholeList( &containerLoopArgsList);
 }
 

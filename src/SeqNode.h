@@ -89,7 +89,6 @@ typedef struct _SeqNodeData {
    char* datestamp;
    char* submitOrigin;
    char* workdir;
-   char* state;
 
 
    SeqNameValuesPtr switchAnswers; 
@@ -130,9 +129,7 @@ typedef SeqNodeData *SeqNodeDataPtr;
 SeqNodeDataPtr SeqNode_createNode ( char* name );
 void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filename, int isPrettyPrint );
 
-extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename,
-				    const char * submit_type );
-
+extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename );
 extern char * SeqNode_extension (const SeqNodeDataPtr _nodeDataPtr);
 
 
