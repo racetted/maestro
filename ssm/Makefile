@@ -45,7 +45,7 @@ install: ssm
 	if [ -d $(domain)/$(SSMPACKAGE) ] ; then \
 	  $(MAKE) uninstall ; \
 	fi ; \
-	ssm install -d $(domain) -p $(SSMPACKAGE) -u $(PWD) ; \
+	ssm install -d $(domain) -f $(SSMPACKAGE).ssm ; \
 	ssm publish -d $(domain) -p $(SSMPACKAGE)
 
 uninstall:

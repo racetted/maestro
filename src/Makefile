@@ -31,7 +31,7 @@ runcontrol: prep $(OBJECTS) mserver
 	done;
 	mkdir -p $(BINDIR)/wrappers;
 	cd wrappers; for file in *; do \
-	    cp $${file} $(BINDIR)/wrappers/maestro.$${file}; \
+	    cp $${file} $(BINDIR)/wrappers/maestro_${VERSION}.$${file}; \
 	done; \
 	cd ..
 
