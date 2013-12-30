@@ -1272,16 +1272,17 @@ Returns the error status of the ord_soumet call.
 */
 
 static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps ) {
-   char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD];
+   char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD], workerEndFile[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
    char tmpDate[5];
    char pidbuf[100];
    char *cpu = NULL, *tmpdir=NULL;
-   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *workerEndFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL;
+   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL;
    char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL;
    int catchup = CatchupNormal;
    int error_status = 0, ret;
+   SeqNodeDataPtr workerDataPtr = NULL;
    
    SeqUtil_TRACE( "maestro.go_submit() node=%s signal=%s flow=%s ignoreAllDeps=%d\n ", _nodeDataPtr->name, _signal, _flow, ignoreAllDeps );
    actions( (char*) _signal, _flow, _nodeDataPtr->name );
@@ -1390,16 +1391,24 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     ret=_removeFile(readyFile); 
 
 	     /*check if the running worker has not ended. If it has, launch another one.*/
-	     if (workerEndFile=(char *) malloc(strlen(_nodeDataPtr->workdir) + strlen("/") + strlen(_nodeDataPtr->datestamp) + strlen("/") + strlen(_nodeDataPtr->workerPath) + strlen(".end") + 1)){
-	         sprintf(workerEndFile,"%s/%s/%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath);
-             } else {
-                 raiseError("OutOfMemory exception in maestro.go_submit()\n");
-             }
-	     SeqUtil_TRACE("maestro.go_submit() checking for workerEndFile %s, access return value %d \n", workerEndFile, _access(workerEndFile, R_OK) ); 
+        workerDataPtr =  nodeinfo( _nodeDataPtr->workerPath, "all",  _nodeDataPtr->loop_args, NULL, NULL, _nodeDataPtr->datestamp );
+        SeqLoops_validateLoopArgs( workerDataPtr, _nodeDataPtr->loop_args );        
+        memset(workerEndFile,'\0',sizeof workerEndFile);
+        SeqUtil_TRACE("maestro.go_submit() checking for worker's extension: %s\n", workerDataPtr->extension);
+
+        if( strlen( workerDataPtr->extension ) > 0 ) {
+           sprintf(workerEndFile,"%s/%s/%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath, workerDataPtr->extension);
+        } else  {
+           sprintf(workerEndFile,"%s/%s/%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath);
+        }
+
+	     SeqUtil_TRACE("maestro.go_submit() checking for workerEndFile %s\n", workerEndFile); 
 	     if ( _access(workerEndFile, R_OK) == 0 ) {
 	        SeqUtil_TRACE(" Running maestro -s submit on %s\n", _nodeDataPtr->workerPath); 
-	        maestro ( _nodeDataPtr->workerPath, "submit", "stop" , NULL , 0, NULL, _nodeDataPtr->datestamp  );
+	        maestro ( _nodeDataPtr->workerPath, "submit", "continue" , workerDataPtr->loop_args , 0, NULL, _nodeDataPtr->datestamp  );
 	     }	
+        SeqNode_freeNode( workerDataPtr );
+
         
 	     sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s -p %d -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s -args \"%s\" %s",OCSUB,getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,_nodeDataPtr->mpi,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
@@ -1442,7 +1451,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    actionsEnd( (char*) _signal, _flow, _nodeDataPtr->name );
    free( tmpCfgFile );
    free( tmpTarPath );
-   free( workerEndFile );
    free( tarFile); 
    free( movedTarFile); 
    free( movedTmpName); 
