@@ -605,7 +605,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	                    sprintf(pl2d2->web,"%s/v%s",bf,pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web , 1);
 			    if ( status == 1 ) {
-			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
                                     exit(1);
 			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
@@ -614,7 +614,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	                    sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web , 1);
 			    if ( status == 1 ) {
-			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
                                     exit(1);
 			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies_stat_v%s.html",pl2d2->web,pl2d2->mversion);
