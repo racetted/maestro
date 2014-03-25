@@ -680,7 +680,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* if it is within a work unit, set resources to match supertask */
    if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
        SeqUtil_TRACE ( "nodeinfo.parseBatchResources() Resetting resources to worker's values\n");
-       workerNodeDataPtr = nodeinfo(_nodeDataPtr->workerPath, "all", NULL, NULL, NULL, NULL );
+       workerNodeDataPtr = nodeinfo(_nodeDataPtr->workerPath, "all", NULL, _seq_exp_home, NULL, NULL );
        _nodeDataPtr->mpi=workerNodeDataPtr->mpi;
        _nodeDataPtr->catchup=workerNodeDataPtr->catchup;
        SeqNode_setCpu( _nodeDataPtr, workerNodeDataPtr->cpu );
