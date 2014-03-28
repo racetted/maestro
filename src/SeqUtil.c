@@ -578,7 +578,7 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
   else{
     SeqUtil_stringAppend( &source, "definition" );
   }
-  SeqUtil_TRACE("XmlUtils_resolve(): performing %s replacements\n",source);
+  SeqUtil_TRACE("XmlUtils_resolve(): performing %s replacements in string \"%s\"\n",source, _str);
 
   strtmp = (char *) malloc( strlen(_str) + 1 ) ;
   strcpy(strtmp,_str);
@@ -592,17 +592,17 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
     else{
       env = SeqUtil_getdef(_deffile,var);
     }
-    post = strtok_r(NULL," ",&saveptr2);
+    post = strtok_r(NULL,"\0",&saveptr2);
     if (env == NULL){
       if (isvar > 0){
-	raiseError("Variable %s referenced by %s but is not set in %s\n",var,_srcfile,source);}
+	      raiseError("Variable %s referenced by %s but is not set in %s\n",var,_srcfile,source);}
       else{
-	strncpy(newstr+start,var,strlen(var));
-	start += strlen(var);
+	      strncpy(newstr+start,var,strlen(var));
+	      start += strlen(var);
       }
     }
-    else{
-      SeqUtil_TRACE("XmlUtils_resolve(): replacing %s with %s value %s\n",var,source,env);
+    else {
+      SeqUtil_TRACE("XmlUtils_resolve(): replacing %s with %s value \"%s\"\n",var,source,env);
       strncpy(newstr+start,env,strlen(env));
       start += strlen(env);
     }

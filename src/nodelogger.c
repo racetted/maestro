@@ -91,6 +91,9 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    }
 
    p2 = getpwnam(username);
+   if (p2 == NULL) {
+     fprintf( stderr, "Nodelogger::ERROR: getpwnam error... returns null.\n" );
+   }
    if( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
       fprintf( stderr, "Nodelogger::ERROR: You must provide a valid SEQ_EXP_HOME.\n" );
       exit(1);

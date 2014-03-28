@@ -11,6 +11,7 @@ SeqNameValuesPtr SeqLoops_convertExtension ( SeqLoopsPtr loops_ptr, char* extens
 char* SeqLoops_ContainerExtension( SeqLoopsPtr loops_ptr, SeqNameValuesPtr loop_args_ptr ) ;
 char* SeqLoops_NodeExtension( const char* node_name, SeqNameValuesPtr loop_args_ptr );
 LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr );
+LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr );
 int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr );
 char* SeqLoops_getExtPattern ( char* extension ) ;
 char* SeqLoops_getLoopArgs( SeqNameValuesPtr _loop_args );
@@ -23,5 +24,6 @@ char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args );
 SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 SeqNameValuesPtr SeqLoops_getContainerArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ); 
+LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ); 
 
 #endif

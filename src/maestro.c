@@ -1030,7 +1030,7 @@ static int isLoopComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
    memset( continuefile, '\0', sizeof continuefile );
 
    /* check if the loop is completed */
-   extensions = (LISTNODEPTR) SeqLoops_childExtensions( _nodeDataPtr );
+   extensions = (LISTNODEPTR) SeqLoops_childExtensionsInReverse( _nodeDataPtr );
    if( extensions != NULL ) {
       while( extensions != NULL && undoneIteration == 0 ) {
          sprintf(endfile,"%s/%s/%s.%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, extensions->data);
@@ -1063,7 +1063,7 @@ static int isLoopAborted ( const SeqNodeDataPtr _nodeDataPtr ) {
    int abortedIteration = 0;
 
    /* check if the loop is completed */
-   extensions = (LISTNODEPTR) SeqLoops_childExtensions( _nodeDataPtr );
+   extensions = (LISTNODEPTR) SeqLoops_childExtensionsInReverse( _nodeDataPtr );
    if( extensions != NULL ) {
       while( extensions != NULL && abortedIteration == 0 ) {
          memset( abortedfile, '\0', sizeof abortedfile );
@@ -2014,7 +2014,8 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
        } else {
            /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
            /* get all the node extensions to be checked */
-           extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensions( depNodeDataPtr, _dep_index );
+      /*     extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensions( depNodeDataPtr, _dep_index );
+           extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, _dep_index );
  
            /* loop iterations until we find one that is not satisfied */
            while( extensions != NULL && undoneIteration == 0 ) {
