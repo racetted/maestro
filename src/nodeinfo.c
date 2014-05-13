@@ -504,6 +504,9 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    char *fixedNodePath = (char*) SeqUtil_fixPath( _loop_node_path );
    int extraSpace = 0;
    char *xmlFile = NULL;
+   
+   FILE *pxml = NULL;
+   int xmlSize = 0;
 
    xmlDocPtr doc = NULL;
    xmlXPathObjectPtr result = NULL;
@@ -522,6 +525,36 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
 
    /* parse the xml file */
    doc = XmlUtils_getdoc(xmlFile);
+   
+   /* validate xmlFile (container.xml) parsing */
+   if (doc == NULL) {
+	SeqUtil_TRACE ( "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
+	pxml = fopen (xmlFile, "a+");
+	if(!pxml)
+	  raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	
+	fseek (pxml , 0 , SEEK_END);
+	xmlSize = ftell (pxml);
+	
+	if ( xmlSize==0 ) {
+	  SeqUtil_TRACE ( "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
+	  if (  _nodeDataPtr->type == Loop) {
+	    if(fprintf(pxml, "<NODE_RESOURCES>\n\t<LOOP start=\"0\" set=\"1\" end=\"1\" step=\"1\"/>\n</NODE_RESOURCES>"));
+	    else
+	      raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	  }
+	  else {
+	    if (fprintf(pxml, "<NODE_RESOURCES/>"));
+	    else
+	      raiseError("Cannot write in %s/resources/%s/container.xml\n", _seq_exp_home, fixedNodePath);
+	  }
+	}
+	else {
+	  raiseError("File %s/resources/%s/container.xml not respecting xml syntax\n", _seq_exp_home, fixedNodePath);
+	}
+	fclose (pxml);
+	doc = XmlUtils_getdoc(xmlFile);
+   }
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -546,6 +579,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    xmlFreeDoc( doc );
    free( xmlFile );
    free( fixedNodePath );
+   free(pxml);
 }
 
 /* this function returns the value of the switch statement */
@@ -587,6 +621,9 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    int i,extraSpace = 0;
    SeqNodeDataPtr  workerNodeDataPtr=NULL;
 
+   FILE *pxml = NULL;
+   int xmlSize = 0;
+   
    xmlDocPtr doc = NULL;
    xmlNodeSetPtr nodeset = NULL;
    xmlXPathObjectPtr result = NULL;
@@ -621,6 +658,36 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    
       /* parse the xml file */
       doc = XmlUtils_getdoc(xmlFile);
+      
+   /* validate xmlFile (container.xml) parsing */
+   if (doc == NULL) {
+	SeqUtil_TRACE ( "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
+	pxml = fopen (xmlFile, "a+");
+	if(!pxml)
+	  raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	
+	fseek (pxml , 0 , SEEK_END);
+	xmlSize = ftell (pxml);
+	
+	if ( xmlSize==0 ) {
+	  SeqUtil_TRACE ( "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
+	  if (  _nodeDataPtr->type == Loop) {
+	    if(fprintf(pxml, "<NODE_RESOURCES>\n\t<LOOP start=\"0\" set=\"1\" end=\"1\" step=\"1\"/>\n</NODE_RESOURCES>"));
+	    else
+	      raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	  }
+	  else {
+	    if (fprintf(pxml, "<NODE_RESOURCES/>"));
+	    else
+	      raiseError("Cannot write in %s/resources/%s/container.xml\n", _seq_exp_home, fixedNodePath);
+	  }
+	}
+	else {
+	  raiseError("File %s/resources/%s/container.xml not respecting xml syntax\n", _seq_exp_home, fixedNodePath);
+	}
+	fclose (pxml);
+	doc = XmlUtils_getdoc(xmlFile);
+   }
 
       /* the context is used to walk trough the nodes */
       context = xmlXPathNewContext(doc);
@@ -704,6 +771,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    free(xmlFile);
    free(defFile);
    free(value);
+   free(pxml);
 }
 
 /* Returns 1 if the node exists within known context*/
