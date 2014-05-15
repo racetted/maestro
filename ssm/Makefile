@@ -14,7 +14,7 @@ ssm:	profile.sh  ../bin/$(BASE_ARCH)
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
-	cp ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
+	cp ../src/Makefile ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
 	echo "Package: maestro" > $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Version: ${VERSION}" >> $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Platform: ${SSM_MACH_ID}" >> $(SSMPACKAGE)/.ssm.d/control; \

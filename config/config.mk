@@ -14,7 +14,8 @@ QueryServer.o SeqUtilServer.o l2d2_socket.o l2d2_commun.o ocmjinfo.o
 COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef
 XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
-LIBNAME="xml2 runcontrol rmn_012 crypto"
+LIBNAME="xml2 runcontrol rmn_014 crypto"
+
 XML_INCLUDE_DIR=/usr/include/libxml2
 XML_LIB_DIR=/usr/lib
 ifeq ($(MACHINE),Linux)
