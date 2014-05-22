@@ -1167,12 +1167,13 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 		    }
 		} /*getnodeset found switch item name containing tmpAnswer */ else {
 		  completeAnswerFound = 0;
+		  switchResultFound = 0;
 		  answerIndex = 0;
 		  switchItem = XmlUtils_getnodeset ("child::SWITCH_ITEM/@name", context);
 		  switchItemCount = switchItem->nodesetval->nodeNr;
 		  /*for each switch item containing tmpAnswer, check if it contains tmpAnswer as a complete name*/
 		  for (j=0; j < switchItemCount; j++) {
-		    if (completeAnswerFound == 0) {
+		    if ((completeAnswerFound == 0) && (switchResultFound == 0)) {
 		      switchItemName = switchItem->nodesetval->nodeTab[j]->children->content;
 		      tmpSwitchItemName = switchItemName;
 		      tmpName = (char*) strtok_r(tmpSwitchItemName, " ,)", &savePtr);
@@ -1183,9 +1184,9 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 			  break;
 			} else {
 			    tmpName = (char*) strtok_r ( NULL, " ,)", &savePtr);
-			    SeqUtil_TRACE("tmpName = %s\n", tmpName );
 			}
 		      }
+		      savePtr = NULL;
 		  }
 		  if ( completeAnswerFound == 1) {
 		    sprintf(tmpQuery, "child::SWITCH_ITEM");
