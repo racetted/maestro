@@ -710,8 +710,8 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
             strcat(returnString,path+1); 
             SeqUtil_TRACE("SeqUtil_relativePathEvaluation(): container replacement: replacing %s with %s\n",path,returnString);
 
-	    if (strstr(returnString,".") != NULL) {
-               raiseError("SeqUtil_relativePathEvaluation(): \".\" keyword should only occur once. Check your dep_name = %s", path );
+	    if (strstr(returnString,"./") != NULL) {
+               raiseError("SeqUtil_relativePathEvaluation(): \"./\" keyword should only occur once. Check your dep_name = %s", path );
 	    }
        }   
 
