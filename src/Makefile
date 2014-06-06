@@ -127,5 +127,5 @@ madmin: l2d2_admin.o l2d2_socket.o l2d2_Util.o l2d2_commun.o l2d2_roxml.o l2d2_r
 	cp $(L2D2ADMIN) $(BINDIR);
 
 clean:
-	rm -f *.o; rm -f $(COMPONENTS) nodelogger_svr $(L2D2ADMIN) $(L2D2SERVER); rm -rf $(SWDEST)
+	rm -f *.o; rm -f $(COMPONENTS) $(L2D2ADMIN) $(L2D2SERVER); rm -rf $(SWDEST) .fo
 
