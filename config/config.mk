@@ -14,14 +14,21 @@ QueryServer.o SeqUtilServer.o l2d2_socket.o l2d2_commun.o ocmjinfo.o
 COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef
 XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
-LIBNAME="xml2 runcontrol rmn_014 crypto"
 XML_INCLUDE_DIR=/usr/include/libxml2
 XML_LIB_DIR=/usr/lib
 ifeq ($(MACHINE),Linux)
+   LIBNAME="xml2 runcontrol rmn_014 crypto"
    MACH=op_linux
    SSM_MACH_ID=linux26-$(HARDWARE)
+   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/201402/00/base -d hpcs/201402/00/intel13sp1 -d rpn/libs/4.0"
+   ifeq ($(HARDWARE),i686)
+      #overwrite for 32-bit platform
+      LIBNAME="xml2 runcontrol rmn_013 crypto"
+      COMPILER_SSM_CMD=" . ssmuse-sh -d hpcs/13b/03/base -d rpn/libs/3.0 -d hpcs/13b/03/pgi1301"
+   endif
 else 
    MACH=op_b
+   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/13b/03/base -d rpn/libs/3.0 -d hpcs/ext/xlf_13.1.0.10"
    ifeq ($(BASE_ARCH),AIX-powerpc7)
        SSM_MACH_ID=aix61-ppc-64
    endif
