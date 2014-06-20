@@ -14,7 +14,7 @@ L2D2SOBJECTS  = l2d2_server.o l2d2_socket.o l2d2_Util.o l2d2_commun.o $(ROXML_OB
 L2D2AOBJECTS  = l2d2_admin.o l2d2_socket.o l2d2_Util.o l2d2_commun.o $(ROXML_OBJECTS) 
  
 all: prep 
-	eval $(COMPILER_SSM_CMD); make runcontrol mserver madmin
+	eval $(COMPILER_SSM_CMD); $(MAKE) runcontrol mserver madmin
 
 runcontrol: prep $(OBJECTS) mserver
 	rm -f $(LIBDIR)/libruncontrol.a
@@ -90,7 +90,7 @@ prep:
 	if [ ! -d $(SWDEST) ] ; then \
 	   echo "Creating $(SWDEST)" ; \
 	   mkdir -p $(SWDEST); mkdir $(SWDEST)/lib;mkdir $(SWDEST)/include; mkdir $(SWDEST)/bin; \
-	fi ; \
+	fi
 
 
 ocmjinfo.o:	ocmjinfo.c ocmjinfo.h 
