@@ -7,5 +7,8 @@
  *    */
 char* SeqDatesUtil_getPrintableDate( char* printable_date, int increment );
 int SeqDatesUtil_dow(int y, int m, int d);
+int SeqDatesUtil_isDepHourValid( char* date, char* hourToCheck); 
+int SeqDatesUtil_isDepDOWValid( char* date, char* dowToCheck); 
+
 
 #endif

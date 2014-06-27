@@ -1834,11 +1834,12 @@ Inputs:
 */
 
 static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
-   int isWaiting = 0, isDepIndexWildcard = 0;
+   int isWaiting = 0, isDepIndexWildcard = 0, isDepInScope = 0;
    char filename[SEQ_MAXFIELD];
    char *depName = NULL, *depStatus = NULL, *depUser = NULL, *depExp = NULL,
         *depIndex = NULL, *tmpExt = NULL, *depHour = NULL, *depProt = NULL,
-        *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL;
+        *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL,
+        *depValidHour = NULL, *depValidDOW = NULL;
    char *waitingMsg = NULL, *depDatestamp = NULL;
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
@@ -1856,14 +1857,16 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          SeqUtil_TRACE( "maestro.validateDependencies() nodeinfo_depend_type=Node\n" );
          depScope = IntraSuite;
          depName = SeqNameValues_getValue( nameValuesPtr, "NAME" );
-	 SeqUtil_TRACE( "maestro.validateDependencies() nodeinfo_depend_name=%s\n", depName );
+	      SeqUtil_TRACE( "maestro.validateDependencies() nodeinfo_depend_name=%s\n", depName );
          depIndex = SeqNameValues_getValue( nameValuesPtr, "INDEX" );
          depStatus = SeqNameValues_getValue( nameValuesPtr, "STATUS" );
          depUser = SeqNameValues_getValue( nameValuesPtr, "USER" );
          depExp = SeqNameValues_getValue( nameValuesPtr, "EXP" );
          depHour = SeqNameValues_getValue( nameValuesPtr, "HOUR" );
          localIndex = SeqNameValues_getValue( nameValuesPtr, "LOCAL_INDEX" );
- 	 depProt = SeqNameValues_getValue( nameValuesPtr, "PROT" );
+ 	      depProt = SeqNameValues_getValue( nameValuesPtr, "PROT" );
+         depValidHour = SeqNameValues_getValue( nameValuesPtr, "VALID_HOUR" );
+         depValidDOW = SeqNameValues_getValue( nameValuesPtr, "VALID_DOW" );
 
          if( depUser == NULL || strlen( depUser ) == 0 ) {
             depUser = strdup( current_passwd->pw_name );
@@ -1884,34 +1887,49 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
             SeqUtil_stringAppend( &localIndexString, tmpExt );
             free(tmpExt);
          }
-	 if( depHour != NULL && strlen(depHour) > 0 ) {
-	    /* calculate relative datestamp based on the current one */
-	    depDatestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, atoi(depHour) );
-	 } else {
-	    depDatestamp = strdup( _nodeDataPtr->datestamp );
-	 }	
+	      if( depHour != NULL && strlen(depHour) > 0 ) {
+	         /* calculate relative datestamp based on the current one */
+	         depDatestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, atoi(depHour) );
+	      } else {
+	         depDatestamp = strdup( _nodeDataPtr->datestamp );
+	      }	
          SeqUtil_TRACE( "maestro.validateDependencies() Dependency Scope: %d depDatestamp=%s\n", depScope, depDatestamp);
-	 /* verify status files and write waiting files */
+
+         /* does this dependency apply to the current situation? */
          if( (strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) || (strcmp( localIndexString,"" ) == 0) ) { 
-	    if( depScope == IntraSuite ) {
-	       SeqUtil_TRACE( "maestro.validateDependencies()  calling processDepStatus depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depName, depIndex, depDatestamp, depStatus );
-	       isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, SEQ_EXP_HOME, depProt, depUser);
+            isDepInScope=1;     
+            isDepInScope = isDepInScope && (strlen(depValidHour) > 0 ? SeqDatesUtil_isDepHourValid(_nodeDataPtr->datestamp,depValidHour) : 1);
+            SeqUtil_TRACE( "maestro.validateDependencies() Checked valid hour %s on datestamp %s, isDepInScope=%d\n", depValidHour,_nodeDataPtr->datestamp,isDepInScope);
+            isDepInScope = isDepInScope && (strlen(depValidDOW) > 0 ? SeqDatesUtil_isDepDOWValid(_nodeDataPtr->datestamp,depValidDOW) : 1);
+            SeqUtil_TRACE( "maestro.validateDependencies() Checked Day Of Week %s on datestamp %s, isDepInScope=%d\n", depValidDOW,_nodeDataPtr->datestamp,isDepInScope);
+         } else { 
+            isDepInScope=0; 
+ 	      }
+         /* verify status files and write waiting files */
+         if (isDepInScope) {
+ 	         SeqUtil_TRACE( "maestro.validateDependencies() calling processDepStatus depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depName, depIndex, depDatestamp, depStatus );
+	         if( depScope == IntraSuite ) {
+	            isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, SEQ_EXP_HOME, depProt, depUser);
             } else {
- 	       SeqUtil_TRACE( "maestro.validateDependencies()  calling processDepStatus depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depName, depIndex, depDatestamp, depStatus );
- 	       isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, depExp, depProt, depUser);
-	    }
+ 	            isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, depExp, depProt, depUser);
+	         }
+         } else {
+            SeqUtil_TRACE( "maestro.validateDependencies() Skipping dependency, out of scope. depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depName, depIndex, depDatestamp, depStatus );
          }
+         
          free(depName); free(depStatus); free(depExp);
          free(depUser); free(localIndexString); free(depProt);
-	 free(depDatestamp); free(depIndexString);
-	 free(depHour); free(depIndex); free(localIndex);
+	      free(depDatestamp); free(depIndexString);
+	      free(depHour); free(depIndex); free(localIndex);
+         free(depValidHour); free(depValidDOW);
 
          SeqNameValues_deleteWholeList(&loopArgsPtr);
 
          depName = NULL; depStatus = NULL; depExp=NULL; 
          depUser = NULL; depIndexString = NULL; localIndexString = NULL;
          depDatestamp = NULL; depProt = NULL; 
-	 depHour = NULL; depIndex = NULL; tmpExt = NULL; localIndex = NULL;
+	      depHour = NULL; depIndex = NULL; tmpExt = NULL; localIndex = NULL;
+         depValidHour=NULL; depValidDOW=NULL;
       } else {
          SeqUtil_TRACE("maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");
       }

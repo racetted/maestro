@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <rpnmacros.h>
+#include "SeqUtil.h"
+
 extern incdatr();  /* rmnlib.a */
 extern newdate();  /* rmnlib.a */
 
@@ -99,4 +101,50 @@ int SeqDatesUtil_dow(int y, int m, int d)
    y -= m < 3;
    return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
 }
+
+int SeqDatesUtil_isDepHourValid( char* date, char* hourToCheck){
+  SeqUtil_TRACE( "SeqDatesUtil.isDepHourValid() checking hour %s for date %s \n", hourToCheck, date);
+
+  if ((hourToCheck == NULL) || (date == NULL))  {
+     SeqUtil_TRACE( "SeqDatesUtil.isDepHourValid() input null, return 0\n");
+     return 0; 
+  }
+ 
+  if (strlen(date) >= 10) {
+     if (strncmp(date+8,hourToCheck,2)==0) {
+        SeqUtil_TRACE( "SeqDatesUtil.isDepHourValid() comparison done, returning 1 \n");
+        return 1;
+     } else {
+        SeqUtil_TRACE( "SeqDatesUtil.isDepHourValid() comparison done, returning 0 \n");
+        return 0;
+     }
+  } else {
+     SeqUtil_TRACE( "SeqDatesUtil.isDepHourValid() date string too short to check hour, return 0\n");
+     return 0; 
+  }
+ 
+}
+ 
+int SeqDatesUtil_isDepDOWValid( char* date, char* dowToCheck){
+  int dow = 0, dowToCheckInInt=0; 
+  char year[5], month[3], day[3];
+
+  SeqUtil_TRACE( "SeqDatesUtil.isDepDOWValid() checking day of week %s for date %s \n", dowToCheck, date);
+
+  if ((dowToCheck == NULL) || (date == NULL))  {
+      SeqUtil_TRACE( "SeqDatesUtil.isDepDOWValid() input null, return 0\n");
+      return 0; 
+  }
+  dowToCheckInInt = atoi(dowToCheck) ;
+  strncpy(year, date,4); 
+  year[4] = '\0';
+  strncpy(month, date+4,2); 
+  month[2] = '\0';
+  strncpy(day, date+6,2); 
+  day[2] = '\0';
+  dow = SeqDatesUtil_dow(atoi(year), atoi(month), atoi(day));
+  SeqUtil_TRACE( "SeqDatesUtil.isDepDOWValid() returning result of comparing %d and %d \n", dowToCheckInInt, dow);
+  return (dow == atoi(dowToCheck));
+}
+
 
