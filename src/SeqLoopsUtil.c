@@ -38,13 +38,13 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
    tmpstrtok = (char*) strtok( tmp_args, "," );
    while ( tmpstrtok != NULL ) {
       /* any alphanumeric characters and special chars
-         _:/-* are supported */
+         _:/-$()* are supported */
       loopName=NULL;
       loopValue=NULL;
       loopName=malloc(100);
       loopValue=malloc(50);
 
-      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._^/-*]", loopName, loopValue );
+      sscanf( tmpstrtok, "%[A-Za-z0-9._:/-]=%[A-Za-z0-9._^/-$()*]", loopName, loopValue );
 
       /* should add more syntax validation such as spaces not allowed... */
       if ( strlen( loopName ) == 0 || strlen( loopValue ) == 0 ) {
