@@ -16,8 +16,9 @@ XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
 XML_INCLUDE_DIR=/usr/include/libxml2
 XML_LIB_DIR=/usr/lib
+LIBNAME="xml2 runcontrol rmn_014 crypto"
+
 ifeq ($(MACHINE),Linux)
-   LIBNAME="xml2 runcontrol rmn_014 crypto"
    MACH=op_linux
    SSM_MACH_ID=linux26-$(HARDWARE)
    COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/201402/00/base -d hpcs/201402/00/intel13sp1 -d rpn/libs/4.0"
