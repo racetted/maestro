@@ -1285,7 +1285,7 @@ Returns the error status of the ord_soumet call.
 */
 
 static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps ) {
-   char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD], workerEndFile[SEQ_MAXFIELD];
+   char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD], workerEndFile[SEQ_MAXFIELD], workerAbortFile[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
    char tmpDate[5];
@@ -1407,6 +1407,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
         workerDataPtr =  nodeinfo( _nodeDataPtr->workerPath, "all",  _nodeDataPtr->loop_args, NULL, NULL, _nodeDataPtr->datestamp );
         SeqLoops_validateLoopArgs( workerDataPtr, _nodeDataPtr->loop_args );        
         memset(workerEndFile,'\0',sizeof workerEndFile);
+        memset(workerAbortFile,'\0',sizeof workerAbortFile);
         SeqUtil_TRACE("maestro.go_submit() checking for worker's extension: %s\n", workerDataPtr->extension);
 
         if( strlen( workerDataPtr->extension ) > 0 ) {
@@ -1415,9 +1416,15 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
            sprintf(workerEndFile,"%s/%s/%s.end", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath);
         }
 
-	     SeqUtil_TRACE("maestro.go_submit() checking for workerEndFile %s\n", workerEndFile); 
+        if( strlen( workerDataPtr->extension ) > 0 ) {
+           sprintf(workerAbortFile,"%s/%s/%s.%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath, workerDataPtr->extension);
+        } else  {
+           sprintf(workerAbortFile,"%s/%s/%s.abort.stop", _nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->workerPath);
+        }
 
-	     if ( _access(workerEndFile, R_OK) == 0 ) {
+	     SeqUtil_TRACE("maestro.go_submit() checking for worker status %s or %s", workerEndFile, workerAbortFile);
+
+	     if ( (_access(workerEndFile, R_OK) == 0) || (_access(workerAbortFile, R_OK) == 0  ) ) {
 	        SeqUtil_TRACE(" Running maestro -s submit on %s\n", _nodeDataPtr->workerPath); 
            maestro ( _nodeDataPtr->workerPath, "submit", "continue" , workerDataPtr->loop_args , 0, NULL, _nodeDataPtr->datestamp  );
 	     }	
