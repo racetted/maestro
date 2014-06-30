@@ -707,7 +707,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_fl
    LISTNODEPTR siblingIteratorPtr = NULL;
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
    SeqNodeDataPtr siblingDataPtr = NULL;
-   int abortedSibling = 0, catchup=CatchupNormal;;
+   int abortedSibling = 0, catchup=CatchupNormal;
    char* extWrite = NULL;
 
    if ( _nodeDataPtr->catchup == CatchupDiscretionary ) {   
@@ -1224,7 +1224,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
           SeqUtil_stringAppend( &extWrite, "" );
        }
        siblingIteratorPtr = _nodeDataPtr->siblings;
-       if( siblingIteratorPtr != NULL && undoneChild == 0 ) {
+       if( siblingIteratorPtr != NULL ) {
           /*get the exp catchup*/
           catchup = catchup_get (SEQ_EXP_HOME);
           /* check siblings's status for end or abort.continue or higher catchup */
@@ -1240,11 +1240,20 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
                  sprintf(tmp, "%s/%s", _nodeDataPtr->container, siblingIteratorPtr->data);
                  SeqUtil_TRACE( "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
                  siblingDataPtr = nodeinfo( tmp, "type,res", NULL, NULL, NULL, _nodeDataPtr->datestamp );
-                 if ( siblingDataPtr->catchup > catchup ) {
-                     /*reset undoneChild since we're skipping this node*/
-                     undoneChild = 0;
-                     SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
-                 }
+                 if (catchup != CatchupStop) {
+                     if ( siblingDataPtr->catchup > catchup )  {
+                         /*reset undoneChild since we're skipping this node*/
+                         undoneChild = 0;
+                         SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary or higher catchup node: %s\n", siblingIteratorPtr->data );
+                     }
+                 } else {
+                   /* catchup is set to stop, skip if discretionary only */
+                    if ( siblingDataPtr->catchup == CatchupDiscretionary )  {
+                         /*reset undoneChild since we're skipping this node*/
+                         undoneChild = 0;
+                         SeqUtil_TRACE( "maestro.processContainerEnd() bypassing discretionary node: %s\n", siblingIteratorPtr->data );
+                    }
+                 } 
              }
              siblingIteratorPtr = siblingIteratorPtr->nextPtr;
           }
