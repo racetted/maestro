@@ -109,13 +109,13 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    SeqLoopsPtr loopsPtr = NULL;
    int i=0;
    
-   char *tmpsubstr = NULL, *tmpCompare = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpDepIndex = NULL, *tmpLocalIndexValue = NULL;
+   char *tmpsubstr = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpDepIndex = NULL, *tmpLocalIndexValue = NULL;
    char *tmpDepLocalIndex = NULL, *resourceFile, *_seq_exp_home = getenv("SEQ_EXP_HOME");
    char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpTokenLine, *indexToken = NULL;
    FILE *fp;
    int find_index_token = 0;
    char temp[512], tokenLine[512];
-   int alreadySet = 0;
+   int alreadySet = 0, tmpCompare = 0;
    
    if (_result) {
       nodeset = _result->nodesetval;
@@ -1102,7 +1102,7 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);
-         sprintf ( query, "(/MODULE)", tmpstrtok );
+         sprintf ( query, "(/MODULE)" );
 
          if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
              SeqUtil_TRACE("nodeinfo.doesNodeExist() Warning: Problem with result set, Node %s not found in XML master file\n", _nodePath );
@@ -1358,7 +1358,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);
-         sprintf ( query, "(/MODULE)", tmpstrtok );
+         sprintf ( query, "(/MODULE)" );
 
          if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
              raiseError ("ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
