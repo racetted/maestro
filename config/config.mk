@@ -25,11 +25,11 @@ ifeq ($(MACHINE),Linux)
    ifeq ($(HARDWARE),i686)
       #overwrite for 32-bit platform
       LIBNAME="xml2 runcontrol rmn_013 crypto"
-      COMPILER_SSM_CMD=" . ssmuse-sh -d hpcs/13b/03/base -d rpn/libs/3.0 -d hpcs/13b/03/pgi1301"
+      COMPILER_SSM_CMD=". s.ssmuse.dot DEV/rmnlib-dev DEV/devtools DEV/pgi9xx DEV/legacy"
    endif
 else 
    MACH=op_b
-   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/13b/03/base -d rpn/libs/3.0 -d hpcs/ext/xlf_13.1.0.10"
+   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/13b/03/base -d rpn/libs/4.0 -d hpcs/ext/xlf_13.1.0.10"
    ifeq ($(BASE_ARCH),AIX-powerpc7)
        SSM_MACH_ID=aix61-ppc-64
    endif
