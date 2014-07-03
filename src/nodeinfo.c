@@ -874,7 +874,6 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    free(xmlFile);
    free(defFile);
    free(value);
-   free(pxml);
 }
 
 /* Returns 1 if the node exists within known context*/
