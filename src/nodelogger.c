@@ -26,6 +26,7 @@
 
 /* global variables */
 static char nodelogger_buf[NODELOG_BUFSIZE];
+static char nodelogger_buf_top[NODELOG_BUFSIZE];
 static char nodelogger_buf_short[NODELOG_BUFSIZE];
 extern int MLLServerConnectionFid;
 extern int OpenConnectionToMLLServer (const char *, const char *);
@@ -38,10 +39,11 @@ static char NODELOG_DATE[NODELOG_BUFSIZE];
 static char username[32];
 static char LOG_PATH[1024];
 static char TMP_LOG_PATH[1024];
+static char TOP_LOG_PATH[1024];
 
-static int write_line(int sock);
+static int write_line(int sock, int top);
 static void gen_message (const char *job, const char *type, const char* loop_ext, const char *message);
-static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp);
+static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp, const char *logtype);
 extern char* str2md5 (const char *str, int length);
 
 static void log_alarm_handler() { fprintf(stderr,"=== EXCEEDED TIME IN LOOP ITERATIONS ===\n"); };
@@ -55,7 +57,7 @@ _FromWhere FromWhere;
  
 void nodelogger(const char *job, const char* type, const char* loop_ext, const char *message, const char* datestamp)
 {
-   int i, sock=-1,ret;
+   int i, sock=-1,ret, write_ret;
    int send_success = 0;
    char *tmphost=NULL;
    char *tmpenv = NULL;
@@ -71,6 +73,9 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    char *experience;
    char line[1024];
    struct sigaction sa;
+   char *logtocreate = NULL;
+   int pathcounter=0;
+   char *pathelement=NULL, *tmpbuf=NULL;
 
    if ( loop_ext == NULL ) { loop_ext=strdup(""); }
    if ( message  == NULL ) { message=strdup(""); }
@@ -79,6 +84,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
 
    memset(LOG_PATH,'\0',sizeof LOG_PATH);
    memset(TMP_LOG_PATH,'\0',sizeof TMP_LOG_PATH);
+   memset(TOP_LOG_PATH,'\0',sizeof TOP_LOG_PATH);
    memset(username,'\0',sizeof username);
 
    if ( ( p = getpwuid ( getuid() ) ) == NULL ) {
@@ -101,7 +107,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
 
    snprintf(LOG_PATH,sizeof(LOG_PATH),"%s/logs/%s_nodelog",seq_exp_home,datestamp);
    snprintf(TMP_LOG_PATH,sizeof(TMP_LOG_PATH),"%s/sequencing/sync/%s",seq_exp_home,datestamp);
-
+   snprintf(TOP_LOG_PATH,sizeof(TOP_LOG_PATH),"%s/logs/%s_toplog",seq_exp_home,datestamp);
 
    /* make a duplicate of seq_exp_home because basename may return pointers */
    /* to statically allocated memory which may be overwritten by subsequent calls.*/
@@ -129,7 +135,8 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        FromWhere = FROM_NODELOGGER;
        if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
           gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
-          ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 
+          logtocreate = "both";
+          ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
           return;
        }
        /* install SIGALRM handler */
@@ -148,10 +155,11 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        } else {
         /* it could be that we dont have the env. variable set to use Server */
            FromWhere = FROM_MAESTRO_NO_SVR;
-           if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
+	   if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
                SeqUtil_TRACE( "\n================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
                gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
-               ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 
+               logtocreate = "both";
+               ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
                return;
             } else {
                SeqUtil_TRACE( "\n================= ACQUIRED A NEW CONNECTION FROM NODELOGGER PROCESS ================== \n");
@@ -162,12 +170,30 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     /* if we are here socket is Up then why the second test > -1 ??? */ 
     gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
     if ( sock > -1 ) {
-        if ( write_line(sock) == -1 ) { 
-            ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 
-            return;
-        }
+      pathcounter = 0;
+      tmpbuf=strdup(NODELOG_JOB);
+      pathelement = strtok(tmpbuf, "/");
+      while (pathelement != NULL) {
+         if (strcmp(pathelement, "") != 0) {
+            pathcounter=pathcounter+1;
+         }
+         pathelement=strtok(NULL, "/");
+      }
+      if ((write_ret=write_line(sock, 0)) == -1) {
+        logtocreate = "nodelog";
+        ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
+      }
+      if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
+         if ((write_ret=write_line(sock, 1)) == -1) {
+           logtocreate = "toplog";
+           ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
+         }
+      }
+      if (write_ret == -1)
+         return;
     } else {
-        ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp); 
+        logtocreate = "both";
+        ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
         return;
     }
         /* @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ CRITICAL  : CLOSE SOCKET ONLY WHEN NOT ACQUIRED FROM MAESTRO @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ */
@@ -190,31 +216,35 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
  * write a buffer to socket with timeout
  * and receive an ack 0 || 1
  */
-static int write_line(int sock)
+static int write_line(int sock, int top)
 {
 
    int bytes_read, bytes_sent;
    char bf[512];
 
    memset(bf, '\0', sizeof(bf));
-
-   if ( (bytes_sent=send_socket(sock , nodelogger_buf , sizeof(nodelogger_buf) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
-      fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at send  %%%%%%%%%%%%%%\n");
-      return(-1);
+   
+   if (top == 0) {
+     if ( ((bytes_sent=send_socket(sock , nodelogger_buf , sizeof(nodelogger_buf) , SOCK_TIMEOUT_CLIENT)) <= 0)) {
+        fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at send  %%%%%%%%%%%%%%\n");
+        return(-1);
+     }
+   } else {
+     if ( ((bytes_sent=send_socket(sock , nodelogger_buf_top , sizeof(nodelogger_buf_top) , SOCK_TIMEOUT_CLIENT)) <= 0)) {
+       fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at send  %%%%%%%%%%%%%%\n");
+       return(-1);
+     }
    }
-
    if ( (bytes_read=recv_socket (sock , bf , sizeof(bf) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
-      fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at recv   %%%%%%%%%%%%%%\n");
-      return(-1);
-   } 
-
-   bf[bytes_read > 0 ? bytes_read : 0] = '\0';
+     fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at recv   %%%%%%%%%%%%%%\n");
+     return(-1);
+   }
+   
    if ( bf[0] != '0' ) {
-      fprintf(stderr,"Nodelogger::write_line: errno=%d bf=%s nodelogger_buf=%s\n",errno,bf,nodelogger_buf);
-      return(-1);
+     fprintf(stderr,"Nodelogger::write_line: errno=%d bf=%s nodelogger_buf_top=%s\n",errno,bf,nodelogger_buf_top);
+     return(-1);
    }
    return(0);
-
 }
 
 /* gen_message: write a formatted log message */
@@ -257,9 +287,11 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
 
     if ( loop_ext != NULL ) {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
+	snprintf(nodelogger_buf_top,sizeof(nodelogger_buf_top),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,TOP_LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
         snprintf(nodelogger_buf_short,sizeof(nodelogger_buf_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
     } else {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,message);
+	snprintf(nodelogger_buf_top,sizeof(nodelogger_buf_top),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQMSG=%s\n",username,TOP_LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,message);
         snprintf(nodelogger_buf_short,sizeof(nodelogger_buf_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQMSG=%s\n",c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,message);
     }
 }
@@ -276,13 +308,13 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
   *
   *
   */
-static int sync_nodelog_over_nfs (const char *node, const char * type, const char * loop_ext, const char * message, const char * datestamp)
+static int sync_nodelog_over_nfs (const char *node, const char * type, const char * loop_ext, const char * message, const char * datestamp, const char *logtype)
 {
     FILE *fd;
     struct passwd *ppass;
     struct stat fileStat;
     struct sigaction sa;
-    int fileid,num,nb,my_turn,ret,len,status=0;
+    int fileid,topfileid,num,nb,my_turn,ret,len,status=0;
     int success=0, loop=0;
     unsigned int pid;
     struct timeval tv;
@@ -291,7 +323,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     static DIR *dp = NULL;
     struct dirent *d;
     time_t now;
-    char *seq_exp_home=NULL, *truehost=NULL, *path_status=NULL, *mversion=NULL;
+    char *seq_exp_home=NULL, *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_nodelogger_buf=NULL, *tmp_log_path=NULL;
     char resolved[MAXPATHLEN];
     char host[100], lock[1024],flock[1024],lpath[1024],buf[1024];
     char time_string[40],Stime[40],Etime[40],Atime[40];
@@ -415,19 +447,31 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
  	     get_time(Atime,3);
              if ( (status=stat(flock,&st)) == 0 ) {
                 if ( st.st_nlink == 2 ) {
-                   if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+		  if ( (logtype == "toplog" || logtype == "both") && (fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                      fprintf(stderr,"Nodelogger::could not open filename:%s\n",TOP_LOG_PATH);
+                   } else {
+ 	              off_t s_seek=lseek(fileid, 0, SEEK_END);
+		      num = write(fileid, tmp_nodelogger_buf, strlen(tmp_nodelogger_buf));
+		      fsync(fileid);
+		      close(fileid);
+ 	              ret=unlink(lock);
+ 	              ret=unlink(flock);
+                      closedir(dp);
+                   }
+                   if ( (logtype == "nodelog" || logtype == "both") && (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
                       fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
                    } else {
  	              off_t s_seek=lseek(fileid, 0, SEEK_END);
-                      num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
- 	              fsync(fileid);
- 	              close(fileid);
+		      num = write(fileid, tmp_nodelogger_buf, strlen(tmp_nodelogger_buf));
+		      fsync(fileid);
+		      close(fileid);
  	              ret=unlink(lock);
  	              ret=unlink(flock);
                       closedir(dp);
  	              success=1;
- 		      break;
                    }
+                   if (success == 1)
+		      break;
                 } else {
                    fprintf(stderr,"Nodelogger::Number of link not equal to 2\n");
                 }

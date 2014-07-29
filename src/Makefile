@@ -83,6 +83,9 @@ expcatchup.o:	expcatchup.c expcatchup.h
 nodeinfo.o:	nodeinfo.c nodeinfo.h runcontrollib.h
 	s.compile $(CFLAGS) -includes $(INCDIR) $(XML_INCLUDE_DIR) -libpath $(LIBDIR) $(XML_LIB_DIR)  -src nodeinfo.c
 
+logreader.o:	logreader.c logreader.h
+	s.compile $(CFLAGS) -src logreader.c
+
 maestro.o:	maestro.c QueryServer.h maestro.h nodeinfo.h runcontrollib.h nodelogger.h tictac.h SeqUtil.h
 	echo CFLAGS=$(CFLAGS) ; \
 	s.compile $(CFLAGS) -libappl maestro -src maestro.c

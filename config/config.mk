@@ -10,8 +10,8 @@ INCDIR=$(SWDEST)/include
 BINDIR=$(SWDEST)/bin
 OBJECTS=SeqUtil.o SeqNode.o SeqListNode.o SeqNameValues.o SeqLoopsUtil.o SeqDatesUtil.o \
 runcontrollib.o nodelogger.o maestro.o nodeinfo.o tictac.o expcatchup.o XmlUtils.o \
-QueryServer.o SeqUtilServer.o l2d2_socket.o l2d2_commun.o ocmjinfo.o
-COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef
+QueryServer.o SeqUtilServer.o l2d2_socket.o l2d2_commun.o ocmjinfo.o logreader.o
+COMPONENTS=nodelogger maestro nodeinfo tictac expcatchup getdef logreader
 XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
 XML_INCLUDE_DIR=/usr/include/libxml2
