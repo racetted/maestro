@@ -93,6 +93,7 @@ main (int argc, char * argv[])
                     fprintf( stderr, "ERROR: Invalid loop arguments: %s\n", loops );
                     exit(1);
                }
+               break;
             case 'm':
                message = malloc( strlen( optarg ) + 1 ); 
                strcpy(message,optarg);
