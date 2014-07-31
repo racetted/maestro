@@ -87,13 +87,13 @@ function Sys_AddWrapperHeader
    dest_file=$2
    listing_dir=$3
 
-#get prefix from exp's config to parse it out of jobname
-jobnamePrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX 2>/dev/null` || jobnamePrefix=""
-jobnameNoPrefix=${jobname##$jobnamePrefix}
-
    cat >> ${dest_file} << END
 
-jobout=${listing_dir}/${jobnameNoPrefix}.${SEQ_DATE}.pgmout\$$
+if [[ "\${SEQ_LOOP_EXT}" == "" ]] ; then  
+   jobout=${listing_dir}/\${SEQ_NAME}.${SEQ_DATE}.pgmout\$$
+else
+   jobout=${listing_dir}/\${SEQ_NAME}.\${SEQ_LOOP_EXT}.${SEQ_DATE}.pgmout\$$
+fi
 set ${Set_ex}
 exec 2>\$jobout >> \$jobout 1>&2
 END
@@ -189,6 +189,7 @@ function Sys_CreateDirs
 function Sys_SetWrapFiles
 {
     container="${node%/*}"
+    
 # testcode for using a longer jobname
 #   loopext=$(grep SEQ_LOOP_EXT ${jobcfg})
 #   loopext=${loopext#*=}
@@ -200,11 +201,19 @@ function Sys_SetWrapFiles
 #   job_with_wrapper=${job_with_wrapper_dir}${node}${loopext}.wrapped.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
 #   job_batch=${job_batch_dir}${node}${loopext}.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
 #   LaJobLink=${job_batch_dir}${node}${loopext}-${mach}.link
-
+   seqname=$(grep "SEQ_NAME=" ${jobcfg})
+   seqname=${seqname#*=}
+   seqext=$(grep "SEQ_LOOP_EXT=" ${jobcfg})
+   eval seqext=${seqext#*=}
+   if [[ $seqext == "" ]] ; then 
+      fullname=$seqname
+   else
+      fullname=$seqname.$seqext
+   fi 
    jnPrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX 2>/dev/null` || jnPrefix=""
    jnNoPrefix=${jn##$jnPrefix}
-   job_with_wrapper=${job_with_wrapper_dir}${container}/${jnNoPrefix}.wrapped.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
-   job_batch=${job_batch_dir}${container}/${jnNoPrefix}.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
+   job_with_wrapper=${job_with_wrapper_dir}${container}/${fullname}.wrapped.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
+   job_batch=${job_batch_dir}${container}/${fullname}.${SEQ_DATE}.${ppid}-${mach}-$(date +%F%T | sed 's/[-:]//g')
    LaJobLink=${job_batch_dir}${container}/${jnNoPrefix}-${mach}.link
 }
 
