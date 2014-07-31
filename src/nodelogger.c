@@ -127,6 +127,16 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     strcpy(NODELOG_MESSAGE,message);
     memset(NODELOG_DATE,'\0',NODELOG_BUFSIZE);
     strcpy(NODELOG_DATE,datestamp);
+    
+    pathcounter = 0;
+    tmpbuf=strdup(NODELOG_JOB);
+    pathelement = strtok(tmpbuf, "/");
+    while (pathelement != NULL) {
+       if (strcmp(pathelement, "") != 0) {
+           pathcounter=pathcounter+1;
+       }
+       pathelement=strtok(NULL, "/");
+    }
 
     /* if called inside maestro, a connection is already open  */
     tmpfrommaestro = getenv("FROM_MAESTRO");
@@ -135,7 +145,11 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        FromWhere = FROM_NODELOGGER;
        if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
           gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
-          logtocreate = "both";
+          if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
+            logtocreate = "both";
+          } else {
+            logtocreate = "nodelog";
+          }
           ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
           return;
        }
@@ -158,7 +172,11 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
 	   if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
                SeqUtil_TRACE( "\n================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
                gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
-               logtocreate = "both";
+               if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
+                 logtocreate = "both";
+               } else {
+                 logtocreate = "nodelog";
+               }
                ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
                return;
             } else {
@@ -170,15 +188,6 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     /* if we are here socket is Up then why the second test > -1 ??? */ 
     gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
     if ( sock > -1 ) {
-      pathcounter = 0;
-      tmpbuf=strdup(NODELOG_JOB);
-      pathelement = strtok(tmpbuf, "/");
-      while (pathelement != NULL) {
-         if (strcmp(pathelement, "") != 0) {
-            pathcounter=pathcounter+1;
-         }
-         pathelement=strtok(NULL, "/");
-      }
       if ((write_ret=write_line(sock, 0)) == -1) {
         logtocreate = "nodelog";
         ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
@@ -192,9 +201,13 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
       if (write_ret == -1)
          return;
     } else {
+      if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
         logtocreate = "both";
-        ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
-        return;
+      } else {
+        logtocreate = "nodelog";
+      }
+      ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
+      return;
     }
         /* @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ CRITICAL  : CLOSE SOCKET ONLY WHEN NOT ACQUIRED FROM MAESTRO @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ */
     switch (FromWhere)
@@ -323,7 +336,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     static DIR *dp = NULL;
     struct dirent *d;
     time_t now;
-    char *seq_exp_home=NULL, *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_nodelogger_buf=NULL, *tmp_log_path=NULL;
+    char *seq_exp_home=NULL, *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_log_path=NULL;
     char resolved[MAXPATHLEN];
     char host[100], lock[1024],flock[1024],lpath[1024],buf[1024];
     char time_string[40],Stime[40],Etime[40],Atime[40];
@@ -332,6 +345,12 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     double Tokendate,date,modiftime,actualtime;
     double diff_t;
 
+    if (logtype == "both") {
+       sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"nodelog");
+       sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"toplog");
+       return(0);
+    }
+    
     /* get user parameters */
     if (  (ppass=getpwnam(username)) == NULL ) {
         fprintf(stderr, " Nodelogger::Cannot get user:%s passwd parameteres\n",username);
@@ -447,32 +466,36 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
  	     get_time(Atime,3);
              if ( (status=stat(flock,&st)) == 0 ) {
                 if ( st.st_nlink == 2 ) {
-		  if ( (logtype == "toplog" || logtype == "both") && (fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                      fprintf(stderr,"Nodelogger::could not open filename:%s\n",TOP_LOG_PATH);
-                   } else {
- 	              off_t s_seek=lseek(fileid, 0, SEEK_END);
-		      num = write(fileid, tmp_nodelogger_buf, strlen(tmp_nodelogger_buf));
-		      fsync(fileid);
-		      close(fileid);
- 	              ret=unlink(lock);
- 	              ret=unlink(flock);
-                      closedir(dp);
-                   }
-                   if ( (logtype == "nodelog" || logtype == "both") && (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                      fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
-                   } else {
- 	              off_t s_seek=lseek(fileid, 0, SEEK_END);
-		      num = write(fileid, tmp_nodelogger_buf, strlen(tmp_nodelogger_buf));
-		      fsync(fileid);
-		      close(fileid);
- 	              ret=unlink(lock);
- 	              ret=unlink(flock);
-                      closedir(dp);
- 	              success=1;
-                   }
-                   if (success == 1)
-		      break;
-                } else {
+		  if ( logtype == "toplog" ) {
+		    if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                        fprintf(stderr,"Nodelogger::could not open filename:%s\n",TOP_LOG_PATH);
+                    } else {
+ 	                off_t s_seek=lseek(fileid, 0, SEEK_END);
+		        num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
+		        fsync(fileid);
+		        close(fileid);
+ 	                ret=unlink(lock);
+ 	                ret=unlink(flock);
+                        closedir(dp);
+		        success=1;
+		        break;
+                    }
+		  } else {
+                     if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                        fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
+                     } else {
+ 	                off_t s_seek=lseek(fileid, 0, SEEK_END);
+		        num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
+		        fsync(fileid);
+		        close(fileid);
+ 	                ret=unlink(lock);
+ 	                ret=unlink(flock);
+                        closedir(dp);
+ 	                success=1;
+		        break;
+                     }
+                  }
+		}else {
                    fprintf(stderr,"Nodelogger::Number of link not equal to 2\n");
                 }
              } 
