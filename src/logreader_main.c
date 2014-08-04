@@ -12,11 +12,11 @@ static void printUsage()
    printf("         outputfile   is the file where the output is written to (optional)\n");
    printf("         node         is full path of task or family node (optional)\n");
    printf("         -v           verbosity level\n");
-   printf("         loopargs     is a comma separated list of loop arguments (optional):\n");
+   printf("         loopargs     is a comma separated list of loop arguments (optional)\n");
    printf("         signal       is one of:\n");
    printf("            submit begin end abort initbranch initnode\n");
-   printf("         start_offset is the offset value where to start reading (optional):\n");
-   printf("         end_offset   is theoffset value where to stop reading (optional):\n");
+   printf("         start_offset is the offset value where to start reading (optional)\n");
+   printf("         end_offset   is theoffset value where to stop reading (optional)\n");
    exit(1);
 }
 
