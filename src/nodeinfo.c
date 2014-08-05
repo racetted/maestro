@@ -1252,13 +1252,14 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 	        tmpSwitchType=strdup(currentNodePtr->children->content);
 	        tmpAnswer=switchReturn(_nodeDataPtr,tmpSwitchType);
 		sprintf ( query, "(child::SWITCH_ITEM[contains(@name,'%s')])", tmpAnswer);
-                /* run the normal query */switchResultFound = 1;
+                /* run the normal query */
                 if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
 		    /*No exact match found, search for default item*/
 		    SeqUtil_TRACE("Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\nSearching for default SWITCH_ITEM value (getFlowInfo) \n", query );
 		    sprintf ( query, "(child::SWITCH_ITEM[@name='default'])");
 		    if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
 		      SeqUtil_TRACE("Query %s did not find any default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+		      switchResultFound = 0;
 		    } else {
 		      SeqUtil_TRACE("Query %s found default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
 		      /* query returned results */ 
@@ -1275,7 +1276,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 		  switchItemCount = switchItem->nodesetval->nodeNr;
 		  /*for each switch item containing tmpAnswer, check if it contains tmpAnswer as a complete name*/
 		  for (j=0; j < switchItemCount; j++) {
-		    if ((completeAnswerFound == 0) && (switchResultFound == 0)) {
+		    if (completeAnswerFound == 0) {
 		      switchItemName = switchItem->nodesetval->nodeTab[j]->children->content;
 		      tmpSwitchItemName = switchItemName;
 		      tmpName = (char*) strtok_r(tmpSwitchItemName, " ,)", &savePtr);
