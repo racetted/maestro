@@ -63,7 +63,7 @@ int removeOldNodes (lognode *lastsubmit) {
   while ((remove_iterator != NULL) && (remove_iterator != lastsubmit)) {
     last_known=remove_iterator;
     remove_iterator=remove_iterator->next;
-    if ((strcmp(last_known->seqnode, lastsubmit->seqnode) == 0) && ((strncmp(last_known->msgtype, "abort", 5) != 0) && 
+    if ((strcmp(last_known->seqnode, lastsubmit->seqnode) == 0) && (strcmp(last_known->seqloop, lastsubmit->seqloop) == 0) && ((strncmp(last_known->msgtype, "abort", 5) != 0) && 
        (strncmp(last_known->msgtype, "info", 4) != 0) && (strncmp(last_known->msgtype, "event", 5) != 0) /*&& 
        (strncmp(last_known->msgtype, "abortx", 6) != 0) && (strncmp(last_known->msgtype, "endx", 4) != 0) && 
        (strncmp(last_known->msgtype, "beginx", 6) != 0) && (strncmp(last_known->msgtype, "infox", 5) != 0)*/) ) {
