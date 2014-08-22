@@ -64,10 +64,11 @@ int removeOldNodes (lognode *lastsubmit) {
     last_known=remove_iterator;
     remove_iterator=remove_iterator->next;
     if ((strcmp(last_known->seqnode, lastsubmit->seqnode) == 0) && (strcmp(last_known->seqloop, lastsubmit->seqloop) == 0) && ((strncmp(last_known->msgtype, "abort", 5) != 0) && 
-       (strncmp(last_known->msgtype, "info", 4) != 0) && (strncmp(last_known->msgtype, "event", 5) != 0) /*&& 
+       (strncmp(last_known->msgtype, "info", 4) != 0) && (strncmp(last_known->msgtype, "event", 5) != 0) && (strncmp(last_known->msgtype, "init", 4) != 0) /*&& 
        (strncmp(last_known->msgtype, "abortx", 6) != 0) && (strncmp(last_known->msgtype, "endx", 4) != 0) && 
        (strncmp(last_known->msgtype, "beginx", 6) != 0) && (strncmp(last_known->msgtype, "infox", 5) != 0)*/) ) {
-      deleteNode(last_known);
+       SeqUtil_TRACE("removeOldNodes: removing %s %s\n", last_known->seqnode, last_known->seqloop);
+       deleteNode(last_known);
     }
   }
   return 0;
@@ -134,38 +135,25 @@ int processList(const char* outputfile) {
   SeqUtil_TRACE("logreader: processing log list, first node: %s\n", root_node->seqnode);
   
   /*write formatted log linked list to output stream*/
-  if (strncmp(tmpoutput, "stdout", 6) == 0) {
-    while (slowiterator != NULL) {
-      while (fastiterator != NULL) {
-        if (strcmp(slowiterator->seqnode, fastiterator->seqnode) == 0) {
-          fprintf(stdout, "\\TIMESTAMP=%s:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
-        }
-        lastiterator=fastiterator;
-        fastiterator=fastiterator->next;
-        if ((lastiterator != slowiterator) && (strcmp(slowiterator->seqnode, lastiterator->seqnode) == 0)) {
-          deleteNode(lastiterator);
+  while (slowiterator != NULL) {
+    while (fastiterator != NULL) {
+      if (strcmp(slowiterator->seqnode, fastiterator->seqnode) == 0) {
+        if (strcmp(tmpoutput, "stdout") == 0) {
+            fprintf(stdout, "\n%s!~!%s!~!%s!~!%s!~!%s", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
+        } else { 
+            fprintf(outFile, "\n%s!~!%s!~!%s!~!%s!~!%s", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
         }
       }
-    
-      slowiterator=slowiterator->next;
-      fastiterator=slowiterator;
+      lastiterator=fastiterator;
+      fastiterator=fastiterator->next;
+      if ((lastiterator != slowiterator) && (strcmp(slowiterator->seqnode, lastiterator->seqnode) == 0)) {
+        deleteNode(lastiterator);
+      }
+    }
+  
+    slowiterator=slowiterator->next;
+    fastiterator=slowiterator;
       
-    }
-  } else {
-     while (slowiterator != NULL) {
-      while (fastiterator != NULL) {
-        if (strcmp(slowiterator->seqnode, fastiterator->seqnode) == 0) {
-          fprintf(outFile, "\\TIMESTAMP=%s:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
-        }
-        lastiterator=fastiterator;
-        fastiterator=fastiterator->next;
-        if ((lastiterator != slowiterator) && (strcmp(slowiterator->seqnode, lastiterator->seqnode) == 0)) {
-          deleteNode(lastiterator);
-        }
-      }
-      slowiterator=slowiterator->next;
-      fastiterator=slowiterator;
-    }
   }
   
   if (tmpoutput=="outFile")
@@ -246,7 +234,8 @@ int logreader ( const char* inputfile, const char* outputfile, char* node, char*
        ((loops == NULL) || (strcmp(tmp_seqloop, loops) == 0))) {
       addNode(tmp_timestamp, tmp_seqnode, tmp_msgtype, tmp_seqloop, tmp_seqmsg);
       /*SeqUtil_TRACE("timestamp=%s, node=%s, msgtype=%s, seqloop=%s, seqmsg=%s", current_node->timestamp, current_node->seqnode, current_node->msgtype, current_node->seqloop, current_node->seqmsg);*/
-      if ((strncmp(current_node->msgtype, "submit", 6) == 0) && (strchr((current_node->seqnode)+1, '/') != NULL)) {
+      /* if ((strncmp(current_node->msgtype, "submit", 6) == 0) && (strchr((current_node->seqnode)+1, '/') != NULL)) { */
+      if (strchr((current_node->seqnode)+1, '/') != NULL) {
          removeOldNodes(current_node);
       }
     }
