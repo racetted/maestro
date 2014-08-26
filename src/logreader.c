@@ -63,14 +63,13 @@ int removeOldNodes (lognode *lastsubmit) {
   while ((remove_iterator != NULL) && (remove_iterator != lastsubmit)) {
     last_known=remove_iterator;
     remove_iterator=remove_iterator->next;
-    if ((strcmp(last_known->seqnode, lastsubmit->seqnode) == 0) && (strcmp(last_known->seqloop, lastsubmit->seqloop) == 0) && ((strncmp(last_known->msgtype, "abort", 5) != 0) && 
-       (strncmp(last_known->msgtype, "info", 4) != 0) && (strncmp(last_known->msgtype, "event", 5) != 0) && (strncmp(last_known->msgtype, "init", 4) != 0) /*&& 
-       (strncmp(last_known->msgtype, "abortx", 6) != 0) && (strncmp(last_known->msgtype, "endx", 4) != 0) && 
-       (strncmp(last_known->msgtype, "beginx", 6) != 0) && (strncmp(last_known->msgtype, "infox", 5) != 0)*/) ) {
+    
+    if ((strcmp(last_known->seqnode, lastsubmit->seqnode) == 0) && (strcmp(last_known->seqloop, lastsubmit->seqloop) == 0) && (strcmp(last_known->msgtype, "abort") != 0) && 
+       (strcmp(last_known->msgtype, "info") != 0) && (strcmp(last_known->msgtype, "event") != 0) && (strcmp(last_known->msgtype, "init") != 0)) {
        SeqUtil_TRACE("removeOldNodes: removing %s %s\n", last_known->seqnode, last_known->seqloop);
        deleteNode(last_known);
     }
-  }
+  }  
   return 0;
 }
 
@@ -139,9 +138,9 @@ int processList(const char* outputfile) {
     while (fastiterator != NULL) {
       if (strcmp(slowiterator->seqnode, fastiterator->seqnode) == 0) {
         if (strcmp(tmpoutput, "stdout") == 0) {
-            fprintf(stdout, "\n%s!~!%s!~!%s!~!%s!~!%s", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
+            fprintf(stdout, "%s!~!%s!~!%s!~!%s!~!%s\n", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
         } else { 
-            fprintf(outFile, "\n%s!~!%s!~!%s!~!%s!~!%s", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
+            fprintf(outFile, "%s!~!%s!~!%s!~!%s!~!%s\n", fastiterator->timestamp, fastiterator->seqnode, fastiterator->msgtype, fastiterator->seqloop, fastiterator->seqmsg);
         }
       }
       lastiterator=fastiterator;
