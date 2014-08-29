@@ -28,7 +28,7 @@ int addNode ( char *timestamp, char *seqnode, char *msgtype, char *seqloop, char
   if (tmpptr == NULL || timestamp == NULL) {
     return -1;
   }
-  
+
   tmpptr->timestamp = timestamp;
   tmpptr->seqnode = seqnode;
   tmpptr->msgtype = msgtype;
@@ -66,12 +66,25 @@ int removeOldNodes (lognode *lastsubmit) {
     
     if ((strcmp(last_known->seqnode, lastsubmit->seqnode) == 0) && (strcmp(last_known->seqloop, lastsubmit->seqloop) == 0) && (strcmp(last_known->msgtype, "abort") != 0) && 
        (strcmp(last_known->msgtype, "info") != 0) && (strcmp(last_known->msgtype, "event") != 0) && (strcmp(last_known->msgtype, "init") != 0)) {
-       SeqUtil_TRACE("removeOldNodes: removing %s %s\n", last_known->seqnode, last_known->seqloop);
+       SeqUtil_TRACE("removeOldNodes: removing %s %s %s\n", last_known->seqnode, last_known->seqloop, last_known->msgtype );
        deleteNode(last_known);
     }
   }  
   return 0;
 }
+
+/* is this message type displayed? */
+int isTypeDisplayed (char * msgType) {
+  
+  int answer = 0; 
+
+  answer =( !strcmp(msgType, "info" ) ||  !strcmp(msgType, "event" ) || !strcmp(msgType, "init" ) || !strncmp(msgType, "abort", 5 ) || !strncmp(msgType, "end", 3 ) || 
+          !strcmp(msgType, "discret") || !strncmp(msgType, "begin", 5) || !strcmp(msgType, "submit") ) ;
+  SeqUtil_TRACE("isTypeDisplayed: is %s a displayed message type? answer = %d\n", msgType, answer );
+
+  return answer ; 
+}
+
 
 /*delete a node from the list*/
 int deleteNode (lognode *node) {
@@ -231,12 +244,13 @@ int logreader ( const char* inputfile, const char* outputfile, char* node, char*
     if (((whichnode == "all") || (strcmp(tmp_seqnode, whichnode) == 0) || ((strchr(seqnodeptr+1, '/') == NULL) && (whichnode == "/"))) &&
        ((signal == NULL) || (strcmp(tmp_msgtype, signal) == 0)) &&
        ((loops == NULL) || (strcmp(tmp_seqloop, loops) == 0))) {
-      addNode(tmp_timestamp, tmp_seqnode, tmp_msgtype, tmp_seqloop, tmp_seqmsg);
-      /*SeqUtil_TRACE("timestamp=%s, node=%s, msgtype=%s, seqloop=%s, seqmsg=%s", current_node->timestamp, current_node->seqnode, current_node->msgtype, current_node->seqloop, current_node->seqmsg);*/
-      /* if ((strncmp(current_node->msgtype, "submit", 6) == 0) && (strchr((current_node->seqnode)+1, '/') != NULL)) { */
-      if (strchr((current_node->seqnode)+1, '/') != NULL) {
-         removeOldNodes(current_node);
-      }
+       if (isTypeDisplayed(tmp_msgtype)) { 
+          addNode(tmp_timestamp, tmp_seqnode, tmp_msgtype, tmp_seqloop, tmp_seqmsg);
+          /* only keep last status of each node, for non-root nodes */
+        /*  if (strchr((current_node->seqnode)+1, '/') != NULL) {
+              removeOldNodes(current_node);
+          } */
+       }
     }
     
     currentline = currentline + 1;
