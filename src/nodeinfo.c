@@ -110,7 +110,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    int i=0;
    
    char *tmpsubstr = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpDepIndex = NULL, *tmpLocalIndexValue = NULL;
-   char *tmpDepLocalIndex = NULL, *resourceFile, *_seq_exp_home = getenv("SEQ_EXP_HOME");
+   char *tmpDepLocalIndex = NULL, *resourceFile, *_seq_exp_home = _nodeDataPtr->expHome;
    char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpTokenLine, *indexToken = NULL;
    FILE *fp;
    int find_index_token = 0;
@@ -182,6 +182,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 		if((fp = fopen(resourceFile, "r")) == NULL) {
 			  SeqUtil_TRACE("Nodeinfo_parseDepends() cannot open resource xml file %s for index token parsing\n", resourceFile );
 		} else {
+          memset(tokenLine,'\0',sizeof tokenLine);
 		    while(fgets(temp, 512, fp) != NULL) {
 			      if (find_index_token == 0) {
 				  if((strstr(temp, "$((")) != NULL) {
@@ -205,11 +206,11 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			      tmpsubstr = strtok_r(tmpTokenLine,"$((",&tmpSavePtr1);
 			      SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);
 			      while (tmpsubstr != NULL) {
-				  indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
-				  tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);
+				       indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
+				       tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);
 			      }
 			      if (indexToken != NULL) 
-			      SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
+			          SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
 		    }
 
 		    /* parse dependency loop index and local index */
@@ -1580,6 +1581,8 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
+   SeqNode_setSeqExpHome(nodeDataPtr,seq_exp_home); 
+
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"",datestamp) );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/

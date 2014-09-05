@@ -233,6 +233,18 @@ void SeqNode_setSuiteName ( SeqNodeDataPtr node_ptr, const char* suiteName ) {
    }
 }
 
+void SeqNode_setSeqExpHome ( SeqNodeDataPtr node_ptr, const char* expHome ) {
+   if ( expHome != NULL ) {
+      free( node_ptr->expHome );
+      if (node_ptr->expHome = malloc( strlen(expHome) + 1 )){
+          strcpy( node_ptr->expHome, expHome );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setSeqExpHome()\n");
+      }
+   }
+}
+
+
 void SeqNode_setInternalPath ( SeqNodeDataPtr node_ptr, const char* path ) {
    if ( path != NULL ) {
       free( node_ptr->taskPath );
@@ -530,14 +542,13 @@ void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data ) {
 
 /* default numerical loop with start, step, set, end */
 
-void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, 
-   char* loop_name, char* start, char* step, char* set, char* end ) {
+void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end ) {
    SeqLoopsPtr loopsPtr = NULL;
    char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end;
-   char *defFile = NULL, *_seq_exp_home = getenv("SEQ_EXP_HOME"), *value = NULL;
+   char *defFile = NULL, *value = NULL;
    
-   defFile = malloc ( strlen ( _seq_exp_home ) + strlen("/resources/resources.def") + 1 );
-   sprintf( defFile, "%s/resources/resources.def", _seq_exp_home );
+   defFile = malloc ( strlen ( node_ptr->expHome ) + strlen("/resources/resources.def") + 1 );
+   sprintf( defFile, "%s/resources/resources.def", node_ptr->expHome );
    
    if (strstr(start, "${") != NULL) {
       if ( (value = SeqUtil_keysub( start, defFile, NULL)) != NULL ){
@@ -642,6 +653,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->taskPath = NULL;
    nodePtr->pathToModule = NULL;
    nodePtr->suiteName = NULL;
+   nodePtr->expHome = NULL;
    nodePtr->extension = NULL;
    nodePtr->datestamp = NULL;
    nodePtr->submitOrigin = NULL;

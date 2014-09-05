@@ -89,6 +89,7 @@ typedef struct _SeqNodeData {
    char* datestamp;
    char* submitOrigin;
    char* workdir;
+   char* expHome;
 
 
    SeqNameValuesPtr switchAnswers; 

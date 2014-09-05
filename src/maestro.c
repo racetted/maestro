@@ -38,7 +38,7 @@ static const char* CATCHUP_DISCR_MSG = "DISCRETIONARY: this job is not scheduled
 static const char* CATCHUP_UNSUBMIT_MSG = "CATCHUP mode: this job will not be submitted";
 
 static char OCSUB[256];
-static char SEQ_EXP_HOME[256];
+static char SEQ_EXP_HOME[SEQ_MAXFIELD];
 char *CurrentNode;
 pid_t ChildPid;
 
@@ -2110,6 +2110,9 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
       struct ocmjinfos *ocmjinfo_res;
       if (ocmjinfo_res = (struct ocmjinfos *) malloc(sizeof(struct ocmjinfos)) ) {
           *ocmjinfo_res = ocmjinfo(job);
+          if (ocmjinfo_res->error != 0) {
+              raiseError("ocmjinfo on %s in %s returned an error. Check DEPENDS_ON tag for errors. The targeted job may not exist. \n", _dep_name, _dep_exp);
+          }
       } else {
           raiseError("OutOfMemory exception in maestro.processDepStatus()\n");
       }
