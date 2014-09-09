@@ -1998,10 +1998,8 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
    char ocm_datestamp[11];
    char env[128];
    char job[128];
-   char cfile[128];
-   char cfile2[128];
    FILE *catchupFile=NULL;
-   int catchup, loop_start, loop_total, loop_set, loop_trotte;
+   int loop_start, loop_total, loop_set, loop_trotte;
 
    SeqNodeDataPtr depNodeDataPtr = NULL;
    LISTNODEPTR extensions = NULL;
@@ -2095,8 +2093,6 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
       /* check catchup value of the ocm node */
       memset(dhour,'\0',sizeof(dhour));
       memset(ocm_datestamp,'\0',sizeof(ocm_datestamp));
-      memset(cfile,'\0',sizeof(cfile));
-      memset(cfile2,'\0',sizeof(cfile2));
 
       /* to be able to use ocm stuff put env var. */
       snprintf(env,sizeof(env),"CMC_OCMPATH=%s",_dep_exp);
@@ -2117,32 +2113,17 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
           raiseError("OutOfMemory exception in maestro.processDepStatus()\n");
       }
       printOcmjinfo (ocmjinfo_res); /* for debug */
-      sprintf(cfile,"%s/ocm/catchup/catchup_%s",_dep_exp,ocmjinfo_res->run);
-      sprintf(cfile2,"%s/ocm/catchup/catchup_default",_dep_exp);
 
-      if ( access(cfile,R_OK) == 0 ) {
-         if ((catchupFile = fopen(cfile,"r")) == NULL) {
-            fprintf(stderr,"Error: Cannot open Catchup file:%s\n",cfile);
-            return(1);
- 	 }
-      } else if  ( access(cfile2,R_OK) == 0 ) {
-         if ((catchupFile = fopen(cfile2,"r")) == NULL) {
-              fprintf(stderr,"Error: Cannot open default Catchup file:%s\n",cfile2);
-              return(1);
- 	 }
-      } 
-
-      ret=fscanf(catchupFile,"%d",&catchup);
-      if (ocmjinfo_res->catchup > catchup || ocmjinfo_res->catchup == 9 ) {
-         fprintf(stderr,"The Dependent job:%s is not scheduled to run\"\n",ocmjinfo_res->job); 
-         nodelogger( _nodeDataPtr->name ,"discret", _nodeDataPtr->extension, CATCHUP_DISCR_MSG,_nodeDataPtr->datestamp);
-	 return(1);
+      if (ocmjinfo_res->catchup == 9 ) {
+         nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, "This node has a dependency on an ocm job that is not scheduled to run (catchup = 9). That dependency was ignored.\n",_nodeDataPtr->datestamp);
+         fprintf(stderr,"The dependent job %s is not scheduled to run (catchup = 9), dependency ignored.\"\n",ocmjinfo_res->job); 
+         return (0);
       }
  	
       /* check if a loop job */
       if ( strncmp(ocmjinfo_res->loop_reference,"REG",3) != 0) { /* loop job */
-	 loop_start=atoi(ocmjinfo_res->loop_start);
-	 loop_total=atoi(ocmjinfo_res->loop_total);
+	      loop_start=atoi(ocmjinfo_res->loop_start);
+	      loop_total=atoi(ocmjinfo_res->loop_total);
          loop_set=atoi(ocmjinfo_res->loop_set);
          loop_trotte=loop_start;
       }
@@ -2153,10 +2134,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
                sprintf(statusFile,"%s/ocm/workingdir_tmp/%s_%s_%d.%s.%s", _dep_exp, Ldpname, dhour, loop_trotte, ocm_datestamp, _dep_status );
                if ( (undoneIteration= ! _isFileExists(statusFile,"maestro.processDepStatus()")) ) {
                   snprintf(c,sizeof(c),"%c%c%d",depIndexPtr[0],depIndexPtr[1],loop_trotte);
- 		  free(depIndexPtr);
- 		  depIndexPtr=&c;
- 	          isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, _dep_user, statusFile);
- 	          break; 
+ 		            free(depIndexPtr);
+ 		            depIndexPtr=&c;
+ 	               isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, _dep_user, statusFile);
+ 	               break; 
                }
                loop_trotte++;
             }
