@@ -2036,7 +2036,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
            SeqUtil_TRACE("maestro.processDepStatus() dependant node (%s) of exp (%s) does not exist, skipping dependency \n",_dep_name,_dep_exp);  
            return(0);
        }
-       depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL, NULL );
+       depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL, _dep_datestamp );
        /* check catchup value of the node */
        SeqUtil_TRACE("dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
        if (depNodeDataPtr->catchup == CatchupDiscretionary) {
