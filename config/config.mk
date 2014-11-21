@@ -16,12 +16,12 @@ XTERN_LIB=$(ARMNLIB)/lib/$(BASE_ARCH)
 # platform specific definition
 XML_INCLUDE_DIR=/usr/include/libxml2
 XML_LIB_DIR=/usr/lib
-LIBNAME="xml2 runcontrol rmn_014 crypto"
+LIBNAME="xml2 runcontrol rmn_015 crypto"
 
 ifeq ($(MACHINE),Linux)
    MACH=op_linux
    SSM_MACH_ID=linux26-$(HARDWARE)
-   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/201402/00/base -d hpcs/201402/00/intel13sp1 -d rpn/libs/4.0"
+   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/201402/01/base -d hpcs/201402/01/intel13sp1u2 -d rpn/libs/15.0"
    ifeq ($(HARDWARE),i686)
       #overwrite for 32-bit platform
       LIBNAME="xml2 runcontrol rmn_013 crypto"
@@ -29,7 +29,7 @@ ifeq ($(MACHINE),Linux)
    endif
 else 
    MACH=op_b
-   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/13b/03/base -d rpn/libs/4.0 -d hpcs/ext/xlf_13.1.0.10"
+   COMPILER_SSM_CMD=". ssmuse-sh -d hpcs/201402/01/base -d rpn/libs/15.0 -d hpcs/ext/xlf_13.1.0.10"
    ifeq ($(BASE_ARCH),AIX-powerpc7)
        SSM_MACH_ID=aix61-ppc-64
    endif
