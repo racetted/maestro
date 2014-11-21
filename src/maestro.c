@@ -2209,9 +2209,9 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    */
     
    if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
-      snprintf(depFile,sizeof(depFile),"%s_%s%s_%s.%s",_dep_datestamp, SEQ_EXP_HOME, _nodeDataPtr->name, loopArgs, _dep_status);
+      snprintf(depFile,sizeof(depFile),"%s_%s%s_%s.%s",_nodeDataPtr->datestamp, SEQ_EXP_HOME, _nodeDataPtr->name, loopArgs, _dep_status);
    } else {
-      snprintf(depFile,sizeof(depFile),"%s_%s%s.%s",_dep_datestamp, SEQ_EXP_HOME, _nodeDataPtr->name, _dep_status);
+      snprintf(depFile,sizeof(depFile),"%s_%s%s.%s",_nodeDataPtr->datestamp, SEQ_EXP_HOME, _nodeDataPtr->name, _dep_status);
    }
 
    /* compute md5sum for the string representating the depfile */
@@ -2265,7 +2265,7 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    }
 
    /* TODO -> if ret is not 0 dont write to nodelogger the wait line */
-   ret = ! _WriteInterUserDepFile(filename, depBuf, current_passwd->pw_dir, maestro_version, _dep_datestamp, md5sum);
+   ret = ! _WriteInterUserDepFile(filename, depBuf, current_passwd->pw_dir, maestro_version,_nodeDataPtr->datestamp, md5sum);
    free(md5sum);
    md5sum=NULL;
    free(loopArgs);

@@ -264,12 +264,12 @@ int NodeLogr (char *nodeLogerBuffer , int pid, FILE *mlog)
 	     return (1);
      }
      
-     /* test existence of Exp. and datestamp  */
+     /* test existence of Exp. and datestamp 
      if ( access(firsin,R_OK) != 0 ) {
              fprintf(mlog,"NodeLogr: Experiment:%s do not exists\n",firsin);
 	     return (1);
      }
-
+     */
      strcat(logBuffer,"\n");
      if ((NodeLogfile = open(firsin, O_WRONLY|O_APPEND|O_CREAT, 00666)) != -1 ) {
            bwrite = write(NodeLogfile,logBuffer , strlen(logBuffer));

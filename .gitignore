@@ -9,3 +9,9 @@ ssm
 src/maestro
 src/nodelogger
 src/mserver
+src/expcatchup
+src/madmin
+src/nodeinfo
+src/logreader
+src/getdef
+src/tictac
