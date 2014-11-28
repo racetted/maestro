@@ -43,6 +43,10 @@ int catchup_get( char* _expHome) {
    if ( access(catchupXmlFile, R_OK) == 0 ) {
       SeqUtil_TRACE ("catchup_get(): loading xml file:%s\n", catchupXmlFile );
       docPtr = (xmlDocPtr)XmlUtils_getdoc( catchupXmlFile );
+       /* parse the xml file */
+      if ((docPtr = XmlUtils_getdoc(catchupXmlFile)) == NULL) {
+         raiseError("Unable to parse file: %s\n", catchupXmlFile);
+      }
       context = xmlXPathNewContext(docPtr);
       SeqUtil_TRACE( "catchup_get(): xml query:%s\n", CATCHUP_QUERY ); 
       if( (result = (xmlXPathObjectPtr) XmlUtils_getnodeset (CATCHUP_QUERY, context)) == NULL ) {

@@ -315,7 +315,7 @@ int  writeNodeWaitedFile ( const char * string , FILE *mlog )
 	return(1);
     }
    
-    if ((waitingFile=fopen(waitfile,"a")) == NULL ) {
+    if ((waitingFile=fopen(waitfile,"a+")) == NULL ) {
                 fprintf(stderr,"writeNodeWaitedFile(mserver) cannot open file:%s for appending \n",waitfile );
 		return(1);
     }

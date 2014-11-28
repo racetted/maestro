@@ -573,7 +573,9 @@ void getRootNode( SeqNodeDataPtr _nodeDataPtr, const char *_seq_exp_home ) {
    sprintf( xmlFile, "%s/EntryModule/flow.xml", _seq_exp_home);
 
    /* parse the xml file */
-   doc = XmlUtils_getdoc(xmlFile);
+   if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
+      raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+   }
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -628,31 +630,33 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    }
 
    /* parse the xml file */
-   doc = XmlUtils_getdoc(xmlFile);
-   
+   if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
+      raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+   }
+
    /* validate xmlFile (container.xml) parsing */
    if (doc == NULL) {
-	SeqUtil_TRACE ( "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
-	pxml = fopen (xmlFile, "a+");
-	if(!pxml)
-	  raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	  SeqUtil_TRACE ( "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
+	  pxml = fopen (xmlFile, "a+");
+	  if(!pxml)
+	     raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
 	
-	fseek (pxml , 0 , SEEK_END);
-	xmlSize = ftell (pxml);
+	  fseek (pxml , 0 , SEEK_END);
+	  xmlSize = ftell (pxml);
 	
-	if ( xmlSize==0 ) {
-	  SeqUtil_TRACE ( "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
-	  if (  _nodeDataPtr->type == Loop) {
-	    if(fprintf(pxml, "<NODE_RESOURCES>\n\t<LOOP start=\"0\" set=\"1\" end=\"1\" step=\"1\"/>\n</NODE_RESOURCES>"));
-	    else
-	      raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	  if ( xmlSize==0 ) {
+	    SeqUtil_TRACE ( "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
+	    if (  _nodeDataPtr->type == Loop) {
+	      if(fprintf(pxml, "<NODE_RESOURCES>\n\t<LOOP start=\"0\" set=\"1\" end=\"1\" step=\"1\"/>\n</NODE_RESOURCES>"));
+	      else
+	        raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
+	      }
+	    else {
+	       if (fprintf(pxml, "<NODE_RESOURCES/>"));
+	       else
+	         raiseError("Cannot write in %s/resources/%s/container.xml\n", _seq_exp_home, fixedNodePath);
+	    }
 	  }
-	  else {
-	    if (fprintf(pxml, "<NODE_RESOURCES/>"));
-	    else
-	      raiseError("Cannot write in %s/resources/%s/container.xml\n", _seq_exp_home, fixedNodePath);
-	  }
-	}
 	else {
 	  raiseError("File %s/resources/%s/container.xml not respecting xml syntax\n", _seq_exp_home, fixedNodePath);
 	}
@@ -909,7 +913,9 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
    sprintf( xmlFile, "%s/EntryModule/flow.xml", _seq_exp_home);
 
    /* parse the xml file */
-   doc = XmlUtils_getdoc(xmlFile);
+   if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
+      raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+   }
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -923,7 +929,7 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
    tmpstrtok = (char*) strtok( tmpJobPath, "/" );
    while ( tmpstrtok != NULL ) {
       /* build the query */      
-      if ( count == 0 ) {
+      if ( count == 0 ){
          sprintf ( query, "(/*[@name='%s'])", tmpstrtok );
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       } else {
@@ -1092,14 +1098,15 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
 	 if (previousDoc != NULL){
              xmlFreeDoc(previousDoc); 
 	 }
-
          previousContext=context;
-	 previousDoc=doc; 
+	      previousDoc=doc; 
          context = NULL;
          doc = NULL;
 
          /* parse the new xml file */
-         doc = XmlUtils_getdoc(xmlFile);
+         if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
+             raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+         }
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);
@@ -1192,7 +1199,9 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    sprintf( xmlFile, "%s/EntryModule/flow.xml", _seq_exp_home);
 
    /* parse the xml file */
-   doc = XmlUtils_getdoc(xmlFile);
+   if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
+      raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+   }
 
    /* the context is used to walk trough the nodes */
    context = xmlXPathNewContext(doc);
@@ -1355,8 +1364,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          context = NULL;
          doc = NULL;
 
-         /* parse the new xml file */
-         doc = XmlUtils_getdoc(xmlFile);
+         /* parse the xml file */
+         if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
+             raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+         }
 
          /* the context is used to walk trough the nodes */
          context = xmlXPathNewContext(doc);

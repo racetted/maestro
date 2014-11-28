@@ -752,7 +752,7 @@ int WriteNodeWaitedFile_nfs ( const char* pwname, const char* seq_xp_home, const
     memset(tmp_line,'\0',sizeof(tmp_line));
     memset(line,'\0',sizeof(line));
 
-    if ((waitingFile = fopen(filename,"a")) == NULL) {
+    if ((waitingFile = fopen(filename,"a+")) == NULL) {
             raiseError( "maestro.WriteNodeWaitedFile_nfs cannot write to file:%s\n",filename );
     }
  
