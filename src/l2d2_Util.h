@@ -41,4 +41,5 @@ int SendFile (const char * x , int a , FILE *);
 void logZone(int this_Zone, int conf_Zone, FILE *fp  , char * txt, ...);
 char *getPathLeaf (const char *);
 char typeofFile(mode_t mode);
+int l2d2_Util_isNodeXState (const char* node, const char* loopargs, const char* datestamp, const char* exp, const char* state);
 #endif

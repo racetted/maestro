@@ -93,7 +93,7 @@ void actionsEnd(char *signal, char* flow, char* node) {
 /********************************************************************************
 *genFileList: scan a directory 'directory' and return a list of files 'filelist'
 *  using the the filter 'filters'.
-********************************************************************************/
+*******************************************************************************
 int genFileList(LISTNODEPTR *fileList,const char *directory,LISTNODEPTR *filterList) {
 
 LISTNODEPTR tmplist=NULL;
@@ -137,6 +137,7 @@ struct dirent *direntp=NULL;
  *fileList = tmplist;
  return(0);
 }
+*/
 
 /********************************************************************************
 *removeFile_nfs: Removes the named file 'filename'; it returns zero if succeeds 

@@ -193,42 +193,50 @@ void DependencyManager (_l2d2server l2d2 ) {
 
             /* stat will stat the file pointed to ... lstat will stat the link itself */
 	    if ( stat(ffilename,&st) != 0 ) {
-	                 get_time(Time,1);
-	                 fprintf(dmlg,"DependencyManager(): %s inter-dependency file not there, removing link ... \n",Time,filename);
+	       get_time(Time,1);
+	       fprintf(dmlg,"DependencyManager(): %s inter-dependency file not there, removing link ... \n",Time,filename);
 			 unlink(ffilename); 
-	                 continue;
+	       continue;
 	    }
 	    switch ( typeofFile(st.st_mode) ) {
-                case 'r'    :
-		             /* skip hidden files */
-		             if ( filename[0] == '.' ) break; /* should examine if a left over file ... */
-                             /* test format */
-			     nb = sscanf(filename,"%14d%1[_]%s",&datestamp,underline,extension);
-                             if ( nb == 3 ) {
-			        /* ok get the file & parse */
-				r=readlink(ffilename,linkname,1023);
-				
-				linkname[r] = '\0';
-				if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlg )) == NULL ) {
-	                                get_time(Time,1);
-	                                fprintf(dmlg,"DependencyManager(): %s Problem parsing xml file:%s\n",Time,linkname);
-				} else {
-                                        if ( strcmp(depXp->xpd_slargs,"") != 0 )  
-					        snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
-                                        else 
-					        strcpy(largs,"");
+          case 'r'    :
+		      /* skip hidden files */
+		      if ( filename[0] == '.' ) break; /* should examine if a left over file ... */
+             /* test format */
+			   nb = sscanf(filename,"%14d%1[_]%s",&datestamp,underline,extension);
+            if ( nb == 3 ) {
+			      /* ok get the file & parse */
+			  	   r=readlink(ffilename,linkname,1023);
+			
+				   linkname[r] = '\0';
+				   if ( (depXp=ParseXmlDepFile( linkname, dmlg, dmlg )) == NULL ) {
+	               get_time(Time,1);
+	               fprintf(dmlg,"DependencyManager(): %s Problem parsing xml file:%s\n",Time,linkname);
+				   } else {
+                  /* Is dependant node still in waiting state? If not, do not submit. */ 
+                  if (l2d2_Util_isNodeXState (depXp->xpd_snode, depXp->xpd_slargs, depXp->xpd_sxpdate, depXp->xpd_sname, "waiting") == 0) {
+                     fprintf(dmlg,"DependencyManager(): Removing dependency (waiting state of dependant gone) ffilename=%s ; linkname=%s\n",ffilename,linkname);
+                     unlink(linkname);
+                     unlink(ffilename);
+                     break;
+                  }
 
-                                        if ( access(depXp->xpd_lock,R_OK) == 0 ) {
-                                              get_time(Time,4); 
+                  if ( strcmp(depXp->xpd_slargs,"") != 0 )  
+				         snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
+                  else 
+					      strcpy(largs,"");
+
+                  if ( access(depXp->xpd_lock,R_OK) == 0 ) {
+                     get_time(Time,4); 
 					      pleaf=(char *) getPathLeaf(depXp->xpd_snode);
 					      /* where to put listing :xp/listings/server_host/datestamp/node_container/nonde_name and loop */
 					      snprintf(listings,sizeof(listings),"%s/listings/%s%s",depXp->xpd_sname, l2d2.host, depXp->xpd_container);
 					      if ( access(listings,R_OK) != 0 )  ret=r_mkdir(listings,1);
 					      if ( ret != 0 ) fprintf(dmlg,"DM:: Could not create directory:%s\n",listings);
-                                              memset(listings,'\0',sizeof(listings));
+                     memset(listings,'\0',sizeof(listings));
 					      if ( strcmp(depXp->xpd_slargs,"") != 0 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s_%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_container,pleaf,depXp->xpd_slargs,depXp->xpd_sxpdate,Time);
-                                              } else {
+                     } else {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_container,pleaf,depXp->xpd_sxpdate,Time);
 					      }
 					      /* build command */
@@ -241,18 +249,18 @@ void DependencyManager (_l2d2server l2d2 ) {
 					             unlink(buf);
 					             unlink(linkname);
 					             ret=system(cmd); 
-                                              }
+                     }
 					} else {
 					      epoch_diff=(int)(current_epoch - atoi(depXp->xpd_regtimepoch))/3600; 
 					      if ( epoch_diff > l2d2.dependencyTimeOut ) {
-					            unlink(linkname);
-					            unlink(ffilename);
-	                                            fprintf(dmlg,"============= Dependency Timed Out ============\n");
-	                                            fprintf(dmlg,"DependencyManager(): Dependency:%s Timed Out\n",filename);
-	                                            fprintf(dmlg,"source name:%s\n",depXp->xpd_sname);
-	                                            fprintf(dmlg,"name       :%s\n",depXp->xpd_name);
-	                                            fprintf(dmlg,"current_epoch=%d registred_epoch=%d registred_epoch_str=%s epoch_diff=%d\n",current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
-						    fprintf(dmlg,"\n");
+					         unlink(linkname);
+					         unlink(ffilename);
+	                     fprintf(dmlg,"============= Dependency Timed Out ============\n");
+	                     fprintf(dmlg,"DependencyManager(): Dependency:%s Timed Out\n",filename);
+	                     fprintf(dmlg,"source name:%s\n",depXp->xpd_sname);
+	                     fprintf(dmlg,"name       :%s\n",depXp->xpd_name);
+	                     fprintf(dmlg,"current_epoch=%d registred_epoch=%d registred_epoch_str=%s epoch_diff=%d\n",current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
+						      fprintf(dmlg,"\n");
 					      }
 					}
 					/* register dependency in web page */

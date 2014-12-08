@@ -70,6 +70,7 @@ static int setEndState(const char *_signal, const SeqNodeDataPtr _nodeDataPtr);
 static void setAbortState(const SeqNodeDataPtr _nodeDataPtr, char * current_action);
 static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waited_one, const char* waited_status);
 static void clearAllOtherStates( SeqNodeDataPtr _nodeDataPtr, char *fullNodeName, char *originator, char *current_signal); 
+int   isNodeXState (const char* node, const char* loopargs, const char * datestamp, const char* exp, const char * state);  
 
 /* submission utilities */
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* signal );
@@ -87,6 +88,7 @@ char* formatWaitingMsg( SeqDependsScope _dep_scope, const char* _dep_exp,
 
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope  _dep_scope, const char* _dep_name, const char* _dep_index,
                           const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char* _depProt, const char * _dep_user);
+
 
 
 /* Rochdi: Server related */
@@ -1664,7 +1666,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    memset(depArgs,'\0',sizeof depArgs);
    memset(submitCmd,'\0',sizeof submitCmd);
 
-
    /* local dependencies (same exp) are fetched from sequencing/status/depends/$datestamp,
       remote dependencies are fetched from sequencing/status/remote_depends/$datestamp */
    for( count=0; count < 2; count++ ) {
@@ -1688,41 +1689,44 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                   depUser, depExp, depNode, depDatestamp, depArgs );
                SeqUtil_TRACE( "maestro.submitDependencies() waited file data depUser:%s depExp:%s depNode:%s depDatestamp:%s depArgs:%s\n", 
                   depUser, depExp, depNode, depDatestamp, depArgs );
+               /* is the dependant still waiting? if not, don't submit. */
+               if (isNodeXState (depNode, depArgs, depDatestamp, depExp, "waiting") == 0) {
+                   SeqUtil_TRACE( "maestro.submitDependencies() dependant node not currently in wait state, skipping submission. \n");
+                   continue; 
+               }
                if ( strlen( depArgs ) > 0 ) {
-	          SeqUtil_stringAppend( &submitDepArgs, "-l " );
-	       }
-	       SeqUtil_stringAppend( &submitDepArgs, depArgs );
+	               SeqUtil_stringAppend( &submitDepArgs, "-l " );
+	            }
+	            SeqUtil_stringAppend( &submitDepArgs, depArgs );
                if( strcmp( depUser, USERNAME ) == 0 && strcmp( depExp, EXPNAME ) != 0 ) {
                   /* different exp, same user */
-	          if ( getenv("SEQ_BIN") != NULL ) {
-                      sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", 
-		                        depExp, depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
-					
-                  } else {
-                      sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", 
+	               if ( getenv("SEQ_BIN") != NULL ) {
+                     sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", 
+		                       depExp, depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
+					   } else {
+                     sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", 
 		                        depExp, depDatestamp, depNode, submitDepArgs );
-	          }
+	               }
                } else {
-	       
-                  /* for now, we treat the rest as same exp, same user */
-	          if ( getenv("SEQ_BIN") != NULL ) {
-                     sprintf( submitCmd, "(export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
-                  } else {
-                     sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, submitDepArgs );
-	          }
+	            /* for now, we treat the rest as same exp, same user */
+	                if ( getenv("SEQ_BIN") != NULL ) {
+                      sprintf( submitCmd, "(export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
+                   } else {
+                      sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, submitDepArgs );
+	                }
                }
- 	       /* add nodes to be submitted if not already there */
- 	       if ( SeqListNode_isItemExists( cmdList, submitCmd ) == 0 ) {
- 	          SeqListNode_insertItem( &cmdList, submitCmd );
-	       }
+ 	            /* add nodes to be submitted if not already there */
+ 	            if ( SeqListNode_isItemExists( cmdList, submitCmd ) == 0 ) {
+ 	                SeqListNode_insertItem( &cmdList, submitCmd );
+	            }
 	       
- 	       submitDepArgs = NULL;
- 	       depUser[0] = '\0'; depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
+ 	            submitDepArgs = NULL;
+ 	            depUser[0] = '\0'; depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
             } /* end while loop */
             fclose(waitedFile);
  
- 	    /* warn if file empty ... */
- 	    if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",filename );
+ 	         /* warn if file empty ... */
+ 	         if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",filename );
 
             /* we don't need to keep the file */
             ret=_removeFile(filename);
@@ -1746,6 +1750,55 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    free(tmpExt);
    free(tmpValue);
 }
+
+/*
+isNodeXState 
+
+Returns an integer saying whether the targetted node is in a given state. 1 if node is in the desired state, 0 if not. 
+
+Inputs:
+const char * node - target node 
+const char * loopargs - what is the target node's loop index in csv name=value format
+const char * datestamp - what datestamp are we verifying
+const char * exp - what experiment is the node in 
+const char * state - what state are we verifying 
+
+*/
+int isNodeXState (const char* node, const char* loopargs, const char* datestamp, const char* exp, const char* state) {  
+
+  SeqNameValuesPtr loopArgs = NULL;
+  char stateFile[SEQ_MAXFIELD];
+  char * extension=NULL;
+  int result=0; 
+  memset( stateFile, '\0', sizeof (stateFile));
+
+  SeqUtil_TRACE( "isNodeXState node=%s, loopargs=%s, datestamp=%s, exp=%s, state=%s \n", node, loopargs, datestamp, exp, state ); 
+
+  if(strlen (loopargs) != 0) {
+
+    if( SeqLoops_parseArgs( &loopArgs, loopargs ) == -1 ) {
+       raiseError("ERROR: Invalid loop arguments: %s\n",loopargs);
+    }
+    SeqUtil_stringAppend( &extension, ".");
+    SeqUtil_stringAppend( &extension, SeqLoops_getExtFromLoopArgs(loopArgs)); 
+
+  } else {
+    SeqUtil_stringAppend( &extension, "");
+  } 
+  sprintf(stateFile,"%s/sequencing/status/%s/%s%s.%s", exp, datestamp, node, extension, state);
+  
+  result=(_access(stateFile,R_OK) == 0); 
+  if (result) 
+     SeqUtil_TRACE( "isNodeXState file=%s found. Returning 1.\n", stateFile); 
+  else 
+     SeqUtil_TRACE( "isNodeXState file=%s not found. Returning 0.\n", stateFile); 
+ 
+  SeqNameValues_deleteWholeList( &loopArgs );
+  free(extension);
+  return result; 
+
+}
+
 
 /*
 writeNodeWaitedFile

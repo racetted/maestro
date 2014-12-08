@@ -2,7 +2,6 @@
 #define L2D2COMMUN_H
 #include <openssl/md5.h>
 
-
 void get_time (char * , int  );
 int  get_Inode ( const char *pathname );
 void* xmalloc (size_t size);

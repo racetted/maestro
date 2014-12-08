@@ -52,7 +52,6 @@
 #include <libgen.h>
 #include <regex.h>
 #include "initvar.h"
-#include "nodelogger_svr.h"
 
 #ifdef sun
 #include <strings.h>

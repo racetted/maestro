@@ -21,6 +21,9 @@
 #include "l2d2_roxml.h"
 #include "l2d2_server.h"
 #include "l2d2_Util.h"
+#include "SeqLoopsUtil.h"
+#include "SeqNameValues.h"
+#include "SeqUtil.h"
 
 extern _l2d2server L2D2;
 extern FILE *mlog,*mlogerr;
@@ -1188,3 +1191,54 @@ int initsem(key_t key, int nsems)  /* key from ftok() */
 
     return semid;
 }
+
+
+/*
+l2d2_Util_isNodeXState 
+
+Returns an integer saying whether the targetted node is in a given state. 1 if node is in the desired state, 0 if not. 
+
+Inputs:
+const char * node - target node 
+const char * loopargs - what is the target node's loop index in csv name=value format
+const char * datestamp - what datestamp are we verifying
+const char * exp - what experiment is the node in 
+const char * state - what state are we verifying 
+
+*/
+int l2d2_Util_isNodeXState (const char* node, const char* loopargs, const char* datestamp, const char* exp, const char* state) {  
+
+  SeqNameValuesPtr loopArgs = NULL;
+  char stateFile[1024];
+  char * extension=NULL;
+  int result=0; 
+  memset( stateFile, '\0', sizeof (stateFile));
+
+  SeqUtil_TRACE( "l2d2_Util_isNodeXState node=%s, loopargs=%s, datestamp=%s, exp=%s, state=%s \n", node, loopargs, datestamp, exp, state ); 
+
+  if(strlen (loopargs) != 0) {
+
+    if( SeqLoops_parseArgs( &loopArgs, loopargs ) == -1 ) {
+       fprintf(stderr,"ERROR: Invalid loop arguments: %s\n",loopargs);
+    }
+    SeqUtil_stringAppend( &extension, ".");
+    SeqUtil_stringAppend( &extension, SeqLoops_getExtFromLoopArgs(loopArgs)); 
+
+  } else {
+    SeqUtil_stringAppend( &extension, "");
+  } 
+  sprintf(stateFile,"%s/sequencing/status/%s/%s%s.%s", exp, datestamp, node, extension, state);
+  
+  result=(access(stateFile,R_OK) == 0); 
+  if (result) 
+     fprintf(stderr, "l2d2_Util_isNodeXState file=%s found. Returning 1.\n", stateFile); 
+  else 
+     fprintf(stderr, "l2d2_Util_isNodeXState file=%s not found. Returning 0.\n", stateFile); 
+ 
+  SeqNameValues_deleteWholeList( &loopArgs );
+  free(extension);
+  return result; 
+
+}
+
+
