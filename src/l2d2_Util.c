@@ -298,32 +298,31 @@ int  writeNodeWaitedFile ( const char * string , FILE *mlog )
     FILE *waitingFile;
     char tmp_line[1024];
     char line[1024];
-    char statusFile[1024],waitfile[1024],user[250],exp[250],node[256],datestamp[25],loopArgs[128];
+    char statusFile[1024],waitfile[1024],exp[250],node[256],datestamp[25],loopArgs[128];
     int n,found=0;
 
     memset(tmp_line,'\0',sizeof(tmp_line));
     memset(line,'\0',sizeof(tmp_line));
     memset(statusFile,'\0',sizeof(statusFile));
     memset(waitfile,'\0',sizeof(waitfile));
-    memset(user,'\0',sizeof(user));
     memset(exp,'\0',sizeof(exp));
     memset(node,'\0',sizeof(node));
     memset(datestamp,'\0',sizeof(datestamp));
     memset(loopArgs,'\0',sizeof(loopArgs));
    
-    n=sscanf(string,"sfile=%s wfile=%s user=%s exp=%s node=%s datestamp=%s args=%s",statusFile,waitfile,user,exp,node,datestamp,loopArgs);
+    n=sscanf(string,"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",statusFile,waitfile,exp,node,datestamp,loopArgs);
     
-    if ( (n <= 5 ) || ( n == 6 && strlen(loopArgs) != 0) ) {
-        fprintf(stderr,"wrong number of argument given by sscanf for writeNodeWaitFile:%d should be 7\n",n);
-	return(1);
+    if ( (n <= 4 ) || ( n == 5 && strlen(loopArgs) != 0) ) {
+        fprintf(mlog,"wrong number of argument given by sscanf for writeNodeWaitFile:%d should be 5, 6 with loop args\n",n);
+	     return(1);
     }
    
     if ((waitingFile=fopen(waitfile,"a+")) == NULL ) {
-                fprintf(stderr,"writeNodeWaitedFile(mserver) cannot open file:%s for appending \n",waitfile );
+        fprintf(mlog,"writeNodeWaitedFile(mserver) cannot open file:%s for appending \n",waitfile );
 		return(1);
     }
   
-    sprintf( tmp_line, "user=%s exp=%s node=%s datestamp=%s args=%s\n",user,exp,node,datestamp,loopArgs );
+    sprintf( tmp_line, "exp=%s node=%s datestamp=%s args=%s\n",exp,node,datestamp,loopArgs );
     while( fgets(line, 1024, waitingFile) != NULL ) {
            if( strcmp( line, tmp_line ) == 0 ) {
               found = 1;
@@ -387,20 +386,20 @@ int writeInterUserDepFile (const char * tbuffer, FILE *mlog)
        } else if ( strncmp(token,"dst",3) == 0 ) {
             sprintf(datestamp,"%s",&token[4]);
        } else {
-             fprintf(stderr,"Inrecognized string:%s\n",token);
+             fprintf(mlog,"Inrecognized string:%s\n",token);
        }
          token = strtok_r(NULL, delimiter, &saveptr1);
      }
 
      if ( (r=touch(filename)) != 0 ) {
-               fprintf(stderr,"maestro server cannot create interUser dependency file:%s\n",filename );
+               fprintf(mlog,"maestro server cannot create interUser dependency file:%s\n",filename );
 	       return(1);
      }
 
      /* in case of ocm dep. and depending on a loop the file exist already
       * from last iteration */
      if ((fp=fopen(filename,"w")) == NULL) {
-               fprintf(stderr,"maestro server cannot write to interUser dependency file:%s\n",filename );
+               fprintf(mlog,"maestro server cannot write to interUser dependency file:%s\n",filename );
 	       return(1);
      }
 
@@ -408,16 +407,16 @@ int writeInterUserDepFile (const char * tbuffer, FILE *mlog)
      fclose(fp);
 
      if ( stat(filename,&st) != 0 ) {
-               fprintf(stderr,"maestro server cannot stat interUser dependency file:%s\n",filename );
+               fprintf(mlog,"maestro server cannot stat interUser dependency file:%s\n",filename );
 	       return(1);
-     } else fprintf(stderr,"size of InterUserDepFile is :%ld\n",st.st_size);
+     } else fprintf(mlog,"size of InterUserDepFile is :%ld\n",st.st_size);
 
      /* Create server dependency directory (based on maestro version) 
       * Note: multiple clients from diff. experiment could try to create this */
      snprintf(buff, sizeof(buff), "%s/.suites/maestrod/dependencies/polling/v%s",ppwdir,mversion);
      if ( access(buff,R_OK) != 0 ) {
           if ( r_mkdir ( buff , 1 ) != 0 ) {
-                  fprintf(stderr,"Could not create dependency directory:%s\n",buff);
+                  fprintf(mlog,"Could not create dependency directory:%s\n",buff);
 	          return(1);
           }
      }
@@ -428,7 +427,7 @@ int writeInterUserDepFile (const char * tbuffer, FILE *mlog)
      /* have to check for re-runs  */
      r=unlink(DepFileName);
      if ( (r=symlink(filename,DepFileName)) != 0 ) {
-             fprintf(stderr,"writeInterUserDepFile: symlink returned with error:%d\n",r );
+             fprintf(mlog,"writeInterUserDepFile: symlink returned with error:%d\n",r );
      }
      
      
@@ -762,7 +761,7 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
       memset(buffer, '\0' , sizeof(buffer));
 
       if  ( (doc=fopen(filename, "r")) == NULL ) {
-               fprintf(stderr,"ParseXmlDepFile: Cannot Open XML Polling dependency file:%s \n",filename);
+               fprintf(dmlogerr,"ParseXmlDepFile: Cannot Open XML Polling dependency file:%s \n",filename);
 	       return(NULL);
       }
 
@@ -781,10 +780,10 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
       c=roxml_get_content(type,bf,sizeof(bf),&size);
 
       if ( strcmp(bf,"pol") != 0 ) {
-             fprintf(stderr,"ParseXmlDepFile: Incorrect root node name in xml polling dependency file:%s\n",filename);
+             fprintf(dmlogerr,"ParseXmlDepFile: Incorrect root node name in xml polling dependency file:%s\n",filename);
 	     return (NULL);
       } else if  ( (listParam=(struct _depParameters *) malloc(sizeof(struct _depParameters)))  == NULL ) {
-	          fprintf(stderr,"ParseXmlDepFile: Cannot malloc on heap inside ParseXmlDepFile ... exiting \n");
+	          fprintf(dmlogerr,"ParseXmlDepFile: Cannot malloc on heap inside ParseXmlDepFile ... exiting \n");
 		  exit(1);
       }
 		    
@@ -839,15 +838,6 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
                   strcpy(listParam->xpd_largs,"");
       }
 
-      node_t *xp_susr = roxml_get_chld(item,"susr",0);
-      node_t *xp_susrtxt = roxml_get_txt(xp_susr,0);
-      if ( xp_susr != NULL && xp_susrtxt != NULL ) {
-                  c=roxml_get_content(xp_susrtxt,bf,sizeof(bf),&size);
-                  strcpy(listParam->xpd_susr,bf);
-      } else {
-                  strcpy(listParam->xpd_susr,"");
-      }
-             
       node_t *xp_sxp = roxml_get_chld(item,"sxp",0);
       node_t *xp_sxptxt = roxml_get_txt(xp_sxp,0);
       if ( xp_sxp != NULL && xp_sxptxt != NULL ) {
@@ -952,7 +942,7 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
                              strcpy(listParam->xpd_regtimepoch,bf);
                    } else strcpy(listParam->xpd_regtimepoch,"");
      } else {
-            fprintf(stderr,"regtime null\n");
+            fprintf(dmlogerr,"regtime null\n");
             strcpy(listParam->xpd_regtimedate,"");
             strcpy(listParam->xpd_regtimepoch,"");
      }

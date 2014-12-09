@@ -63,8 +63,10 @@ int isFileExists_svr ( const char* lockfile, const char *caller ) {
  */
 int access_svr ( const char* filename , int mode ) {
    int status;
-  
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename ,"" ); 
+   char string[2]; 
+   memset(string,'\0',sizeof(string));
+   sprintf(string,"%d",mode);
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename , string); 
 
    SeqUtil_TRACE("maestro.access_svr(): %s return:%d\n",filename,status);
    return (status);
@@ -107,7 +109,6 @@ int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *ep
   the dependency lockfile in the directory of the node that this current node is waiting for.
   
   Inputs:
-     _dep_user     - the user id where the dependant node belongs
      _dep_exp_path - the SEQ_EXP_HOME of the dependant node
      _dep_node     - the path of the node including the container
      _dep_status   - the status that the node is waiting for (end,abort,etc)
@@ -116,7 +117,7 @@ int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *ep
       Sfile        - Status file of the dependent node
 */ 
 
-int WriteNodeWaitedFile_svr ( const char* pwname, const char* seq_xp_home, const char* nname, const char* datestamp, const char* loopArgs, 
+int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const char* datestamp, const char* loopArgs, 
                               const char* filename, const char* statusfile ) 
 {
  
@@ -127,7 +128,7 @@ int WriteNodeWaitedFile_svr ( const char* pwname, const char* seq_xp_home, const
 
     memset(buffer,'\0',sizeof(buffer));
     
-    snprintf(buffer,sizeof(buffer),"sfile=%s wfile=%s user=%s exp=%s node=%s datestamp=%s args=%s",statusfile,filename,pwname,seq_xp_home, nname, datestamp, loopArgs);
+    snprintf(buffer,sizeof(buffer),"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",statusfile,filename,seq_xp_home, nname, datestamp, loopArgs);
     
     status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_WNF, buffer , "" );
     
@@ -144,6 +145,7 @@ int WriteNodeWaitedFile_svr ( const char* pwname, const char* seq_xp_home, const
 *  write it under proper tree (interdepen/....) 
 *  The routine split the buffer in chunks
 */
+/*
 int WriteInterUserDepFile_svr (const char *filename, const char *DepBuf, const char *ppwdir, const char *maestro_version, 
                                const char *datestamp, const char *md5sum) 
 {
@@ -178,6 +180,8 @@ int WriteInterUserDepFile_svr (const char *filename, const char *DepBuf, const c
 
     return(status);
 }
+*/
+
 
 /**
  * fopen_svr

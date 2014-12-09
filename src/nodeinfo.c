@@ -103,7 +103,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const char *nodeName = NULL;
-   char *depType = NULL, *depUser = NULL, *depExp=NULL, *depName = NULL,  *depPath = NULL, *depProt=NULL, *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL, *depValidHour=NULL, *depValidDOW=NULL;
+   char *depType = NULL, *depExp=NULL, *depName = NULL,  *depPath = NULL, *depProt=NULL, *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL, *depValidHour=NULL, *depValidDOW=NULL;
    char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *tmpstrtok=NULL, *parsedDepName=NULL, *tmpLoopName=NULL; 
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL;
    SeqLoopsPtr loopsPtr = NULL;
@@ -146,16 +146,15 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
          if ( depType == NULL ) depType=strdup("node");
 
          if ( strcmp( depType, "node" ) == 0 ) {
-            depUser = (char *) xmlGetProp( nodePtr, "user" );
             depExp = (char *) xmlGetProp( nodePtr, "exp" );
             depName = (char *) xmlGetProp( nodePtr, "dep_name" );
             parsedDepName=SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
 
             depProt  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
             /* default interuser protocol if not defined */
-            if ((depProt == NULL) && (depUser != NULL)) depProt=strdup("polling"); 
+            if (depProt == NULL) depProt=strdup("polling"); 
             depIndex = (char *) xmlGetProp( nodePtr, "index" );
-	    depLocalIndex = (char *) xmlGetProp( nodePtr, "local_index" );
+	         depLocalIndex = (char *) xmlGetProp( nodePtr, "local_index" );
             /* look for keywords in index fields */
          
 	    /* add loop context in case of intra dep */
@@ -303,20 +302,18 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             SeqUtil_TRACE( "nodeinfo.parseDepends() fullDepIndex: %s \n", fullDepIndex);
             SeqUtil_TRACE( "nodeinfo.parseDepends() fullDepLocalIndex: %s\n", fullDepLocalIndex );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depPath: %s\n", depPath );
-            SeqUtil_TRACE( "nodeinfo.parseDepends() dep user: %s\n", depUser );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depValidHour: %s\n", depValidHour );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depValidDOW: %s\n", depValidDOW );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
             SeqUtil_TRACE( "nodeinfo.parseDepends() depProt: %s\n", depProt ); /* added by Rochdi */
-            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depUser, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depProt, depValidHour, depValidDOW );
+            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depProt, depValidHour, depValidDOW );
 	    SeqUtil_TRACE( "nodeinfo.parseDepends() done\n" );
             free( depName );
             free( depIndex );
             free( depPath );
             free( depStatus );
-            free( depUser );
             free( depProt );
             free( depExp );
             free( depHour );

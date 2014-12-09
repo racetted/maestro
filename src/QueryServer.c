@@ -32,7 +32,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
     switch (action) {
 
            case SVR_ACCESS:
-                            sprintf(buffer,"A %s",buf);
+                            sprintf(buffer,"A %s %s",buf, buf2);
 	                    break;
            case SVR_TOUCH:
                             sprintf(buffer,"T %s",buf);
@@ -174,8 +174,8 @@ int revert_nfs (  const char * buf , ServerActions action , const char *buf2 )
 		                memset(nname,'\0',sizeof(nname));
 		                memset(datestamp,'\0',sizeof(datestamp));
 		                memset(loopArgs,'\0',sizeof(loopArgs));
-		                ret = sscanf(buf,"sfile=%s wfile=%s user=%s exp=%s node=%s datestamp=%s args=%s",sfile,filename,pwname,seq_xp_home,nname,datestamp,loopArgs);
-				ret = WriteNodeWaitedFile_nfs ( pwname, seq_xp_home, nname, datestamp, loopArgs, filename, sfile);
+		                ret = sscanf(buf,"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",sfile,filename,seq_xp_home,nname,datestamp,loopArgs);
+				          ret = WriteNodeWaitedFile_nfs ( seq_xp_home, nname, datestamp, loopArgs, filename, sfile);
 	                        break;
                       case SVR_WRITE_USERDFILE: /* have to be reviewed , if server shutdon we may only have the first chunk of transmission 
 		                                    we need the 2 of them to resolve all variables */
@@ -186,8 +186,8 @@ int revert_nfs (  const char * buf , ServerActions action , const char *buf2 )
 		                memset(mversion,'\0',sizeof(mversion));
 		                memset(md5sum,'\0',sizeof(md5sum));
 		                memset(datestamp,'\0',sizeof(datestamp));
-		                ret = sscanf(buf,"K file=%s Dbf=%s pwd=%s mv=%s m5s=%s dstmp=%s",filename,sfile,pwname,mversion,md5sum,datestamp);
-				ret = WriteInterUserDepFile_nfs( filename, sfile, pwname, mversion, datestamp, md5sum);
+                      ret = sscanf(buf,"K file=%s Dbf=%s pwd=%s mv=%s m5s=%s dstmp=%s",filename,sfile,pwname,mversion,md5sum,datestamp);
+				          ret = WriteInterUserDepFile_nfs( filename, sfile, pwname, mversion, datestamp, md5sum);
 	                        break;
                       default  :
 	                       fprintf (stderr,"@@@@@@@@@@@ ERROR Inrecognized action for the Server:%d Buffer=%s @@@@@@@@@@@ \n",action,buf);

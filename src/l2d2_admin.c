@@ -287,7 +287,6 @@ int main (int argc, char* argv[])
                                              fprintf(stdout,"xpd_xpdate      :%s\n",depXp->xpd_xpdate);
                                              fprintf(stdout,"xpd_status      :%s\n",depXp->xpd_status);
                                              fprintf(stdout,"xpd_largs       :%s\n",depXp->xpd_largs);
-                                             fprintf(stdout,"xpd_susr        :%s\n",depXp->xpd_susr);
                                              fprintf(stdout,"xpd_sname       :%s\n",depXp->xpd_sname);
                                              fprintf(stdout,"xpd_snode       :%s\n",depXp->xpd_snode);
                                              fprintf(stdout,"xpd_sxpdate     :%s\n",depXp->xpd_sxpdate);

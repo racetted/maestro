@@ -24,7 +24,7 @@ int   isFileExists_nfs( const char* lockfile, const char *caller );
 int   globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno));
 int   SeqUtil_mkdir_nfs ( const char* dir_name, int is_recursive );
 FILE* fopen_nfs (const char *path, int sock );
-int   WriteNodeWaitedFile_nfs (const char* ,const char* ,const char* ,const char* ,const char * ,const char *,const char *);
+int   WriteNodeWaitedFile_nfs (const char* ,const char* ,const char* ,const char * ,const char *,const char *);
 int   WriteInterUserDepFile_nfs (const char *, const char * ,const char *,const char *,const char *,const char *);
 int   lock_nfs ( const char *filename , const char * datestamp );
 int   unlock_nfs ( const char *filename , const char * datestamp );
@@ -36,7 +36,6 @@ char* SeqUtil_resub (const char *regex_text, const char *repl_text, const char *
 void  SeqUtil_stringAppend( char** source, char* data );
 int   SeqUtil_tokenCount( const char* source, const char* tokenSeparator );
 char* SeqUtil_fixPath ( const char* source );
-char* SeqUtil_getExpPath( const char* username, const char* exp ) ;
 void  SeqUtil_waitForFile( char* filename, int secondsLimit, int intervalTime); 
 char* SeqUtil_getdef( const char* filename, const char* key ) ;
 char* SeqUtil_parsedef( const char* filename, const char* key ) ;

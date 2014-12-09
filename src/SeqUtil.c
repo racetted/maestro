@@ -160,7 +160,7 @@ int access_nfs (const char *filename , int stat ) {
    int status=0;
 
    SeqUtil_TRACE("SeqUtil.access_nfs() accessing %s\n", filename);
-   status = access(filename, R_OK);
+   status = access(filename, stat);
    return (status);
 }
  
@@ -456,27 +456,6 @@ char* SeqUtil_fixPath ( const char* source ) {
 }
 
 
-/* validates username + exp against the current user and current
-exp and returns the path of the suite */
-/* 2010-10-21... not used anymore, should be removed later... */
-char* SeqUtil_getExpPath( const char* username, const char* exp ) {
-   char *home = NULL, *expPath = NULL, *currentUser = NULL;
-   char *currentExpPath = getenv("SEQ_EXP_HOME");
-   struct passwd* currentPasswd = NULL;
-   currentPasswd = (struct passwd*) getpwuid(getuid());
-   currentUser = strdup( currentPasswd->pw_name );
-
-   SeqUtil_stringAppend( &expPath, "" );
-   if( strcmp( (char*) username, currentUser) == 0 ) {
-      home = getenv("HOME");
-      SeqUtil_stringAppend( &expPath, home );
-      SeqUtil_stringAppend( &expPath, "/.suites/" );
-      SeqUtil_stringAppend( &expPath, (char*) exp );
-   }
-   SeqUtil_TRACE( "SeqUtil_getExpPath returning value: %s\n", expPath );
-   return expPath;
-}
-
 /* waits for the presence of a file (checking every timeInterval) or max time elapses */
 
 void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
@@ -729,7 +708,6 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
  * Writes (nfs) the dependency lockfile in the directory of the node that this current node is waiting for.
  * 
  * Inputs:
- *    _dep_user     - the user id where the dependant node belongs
  *    _dep_exp_path - the SEQ_EXP_HOME of the dependant node
  *    _dep_node     - the path of the node including the container
   *    _dep_status   - the status that the node is waiting for (end,abort,etc)
@@ -739,7 +717,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
   *     xpinode      - Experiment Inode
  */ 
 
-int WriteNodeWaitedFile_nfs ( const char* pwname, const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
+int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
                                       const char* filename, const char* statusfile) {
  
     FILE *waitingFile = NULL;
@@ -760,7 +738,7 @@ int WriteNodeWaitedFile_nfs ( const char* pwname, const char* seq_xp_home, const
     SeqUtil_TRACE( "maestro.writeNodeWaitedFile_nfs updating %s\n", filename);
  
     /* sua need to add more logic for duplication and handle more than one entry in the waited file */
-    sprintf( tmp_line, "user=%s exp=%s node=%s datestamp=%s args=%s\n", pwname,seq_xp_home, nname, datestamp, loopArgs );
+    sprintf( tmp_line, "exp=%s node=%s datestamp=%s args=%s\n", seq_xp_home, nname, datestamp, loopArgs );
     while( fgets(line, SEQ_MAXFIELD, waitingFile) != NULL ) {
        if( strcmp( line, tmp_line ) == 0 ) {
           found = 1;

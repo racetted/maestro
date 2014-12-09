@@ -309,16 +309,18 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
   fd_set master_set, working_set;
   int buflen,num,ret;
   int i,j,k,count,try;
+  int mode=0;
   unsigned int pidSent;
   int _ZONE_ = 1, STOP = -1, SelecTimeOut;
   
   char buf[1024],buff[1024];
-  char Astring[1024],inode[128], expName[256], expInode[64], hostname[128]; 
+  char Astring[1024],inode[128], expName[256], expInode[64], hostname[128], username[256]; 
   char Bigstr[2048];
   char mlogName[1024];
-  char node[256], signal[256], username[256];
+  char node[256], signal[256];
   char Stime[25],Etime[25], tlog[10];
   char m5[40];
+  char filename[1024];
 
   _l2d2client l2d2client[1024]; /* the select can take 1024 max  */
 
@@ -553,60 +555,63 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
                    /* work on data      */
                    buff[rc > 0 ? rc : 0] = '\0';
                    switch (buff[0]) {
-	                       case 'A': /* test existence of lock file on local xp */
-	                                ret = access (&buff[2], R_OK);
+	                   case 'A': /* test existence of lock file on local xp */
+                         memset(filename,'\0',sizeof(filename)); 
+                         ret=sscanf(&buff[2],"%s %d",filename, &mode);
+                         logZone(_ZONE_,L2D2.dzone,mlog,"filename=%s mode=%d\n",filename,mode);
+	                      ret = access (filename, mode);
 			                send_reply(i,ret);
-					l2d2client[i].trans++;
+					          l2d2client[i].trans++;
 			                break;
-	                       case 'C': /*  create a Lock file on local xp */
+	                   case 'C': /*  create a Lock file on local xp */
 	                                ret = CreateLock ( &buff[2] );
 			                send_reply(i,ret);
 					l2d2client[i].trans++;
 			                break;
-	                       case 'D': /* mkdir on local xp */
+	                   case 'D': /* mkdir on local xp */
 	                                ret = r_mkdir ( &buff[2] , 1);
 			                send_reply(i,ret);
 					l2d2client[i].trans++;
 			                break;
-	                       case 'F': /* test existence of lock file on local xp */
+	                   case 'F': /* test existence of lock file on local xp */
 	                                ret = isFileExists ( &buff[2] );
 			                send_reply(i,ret);
 					l2d2client[i].trans++;
 			                break;
-	                       case 'G': /* glob local xp */
+	                   case 'G': /* glob local xp */
 			                ret = globPath (&buff[2], GLOB_NOSORT, 0 );
 			                send_reply(i,ret);
 					l2d2client[i].trans++;
 			                break;
-	                       case 'I': 
-			                 pidSent=0;
-					 memset(expInode,'\0',sizeof(expInode));
-					 memset(expName,'\0',sizeof(expName));
-					 memset(node,'\0',sizeof(node));
-					 memset(hostname,'\0',sizeof(hostname));
-					 memset(username,'\0',sizeof(username));
-					 memset(m5,'\0',sizeof(m5));
-                                         ret=sscanf(&buff[2],"%d %s %s %s %s %s %s %s",&pidSent,expInode,expName,node,signal,hostname,username,m5);
-                                         get_time(Stime,3);
-                                         if ( ret != 8 ) {
-	                                         send_reply(i,1);
-                                                 fprintf (mlog,"Got wrong number of parameters at LOGIN, number=%d instead of 8 buff=>%s<\n",buff);
-	                                         /* close(i);same comment as for the S case below */
-			                         ret=shutdown(i,SHUT_WR);
-					         ceiling--;
-                                                 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s ... Wrong number of arguments ",hostname , Stime, expName, node, signal);
-                                         } else if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
-	                                         send_reply(i,0);
-						 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s pid=%d NumberOfConn=%d ",hostname, Stime, expName, node ,signal, pidSent, ceiling);
-                                         } else {
-	                                         send_reply(i,1);
-	                                         /* close(i);same comment as for the S case below */
-			                         ret=shutdown(i,SHUT_WR);
-						 ceiling--;
-                                                 snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s pid_svr=%d pid_sent=%d m5_client=%s ",hostname , Stime, expName, node, signal, pidTken, pidSent, m5);
-                                         }
+	                   case 'I': 
+			                pidSent=0;
+					          memset(expInode,'\0',sizeof(expInode));
+					          memset(expName,'\0',sizeof(expName));
+					          memset(node,'\0',sizeof(node));
+					          memset(hostname,'\0',sizeof(hostname));
+					          memset(username,'\0',sizeof(username));
+					          memset(m5,'\0',sizeof(m5));
+                         ret=sscanf(&buff[2],"%d %s %s %s %s %s %s %s",&pidSent,expInode,expName,node,signal,hostname,username,m5);
+                         get_time(Stime,3);
+                         if ( ret != 8 ) {
+	                            send_reply(i,1);
+                               fprintf (mlog,"Got wrong number of parameters at LOGIN, number=%d instead of 8 buff=>%s<\n",ret,buff);
+	                            /* close(i);same comment as for the S case below */
+			                      ret=shutdown(i,SHUT_WR);
+					                ceiling--;
+                               snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s ... Wrong number of arguments ",hostname , Stime, expName, node, signal);
+                         } else if ( pidTken == pidSent && strcmp(m5,L2D2.m5sum) == 0 ) {
+	                            send_reply(i,0);
+						             snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Open Session Host:%s AT:%s Exp=%s Node=%s Signal=%s pid=%d NumberOfConn=%d ",hostname, Stime, expName, node ,signal, pidSent, ceiling);
+                               } else {
+	                            send_reply(i,1);
+	                            /* close(i);same comment as for the S case below */
+			                     ret=shutdown(i,SHUT_WR);
+						            ceiling--;
+                              snprintf(l2d2client[i].Open_str,sizeof(l2d2client[i].Open_str),"Session Refused with Host:%s AT:%s Exp=%s Node=%s Signal=%s pid_svr=%d pid_sent=%d m5_client=%s ",hostname , Stime, expName, node, signal, pidTken, pidSent, m5);
+                              }
                                          /* gather info for this client */
-					 l2d2client[i].trans=0;
+					           l2d2client[i].trans=0;
 			                 strcpy(l2d2client[i].host,hostname);
 			                 strcpy(l2d2client[i].xp,expName);
 			                 strcpy(l2d2client[i].node,node);
@@ -721,7 +726,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 					l2d2client[i].trans++;
 			                break;
 	                       case 'W': /* write Node Wait file  under dependent-ON xp */
-                                        get_time(Stime,3);
+                         get_time(Stime,3);
 			                ret = writeNodeWaitedFile ( &buff[2] , mlog );
 			                send_reply(i,ret);
 					l2d2client[i].trans++;
