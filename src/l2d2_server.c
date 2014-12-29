@@ -122,11 +122,33 @@ void DependencyManager (_l2d2server l2d2 ) {
      char *pleaf=NULL;
      int ret,running = 0;
      int r, _ZONE_ = 2;
+     int fd=0;
      
          
      l2d2.depProcPid=getpid();
-     umask(0);
-
+     /* redirect  streams 
+        Note : dup2 should handle close and open , but it does not !!*/
+     close(STDIN_FILENO);
+     if (fd = open("/dev/null", O_RDONLY) != -1) {
+        if(dup2(fd, STDIN_FILENO) < 0) {
+           exit (1);
+        }
+     }
+     close(STDOUT_FILENO);
+     close(STDERR_FILENO);
+     if (fd = open("/dev/null", O_WRONLY) != -1) {
+        if(dup2(fd, STDOUT_FILENO) < 0) {
+           exit (1);
+        }
+        if(dup2(fd, STDERR_FILENO) < 0) {
+           exit (1);
+        }
+     }
+     if (fd > STDERR_FILENO) {
+        if(close(fd) < 0) {
+           exit (1);
+        }
+     }
 
      /* open log files */
      get_time(Time,1);
@@ -135,11 +157,6 @@ void DependencyManager (_l2d2server l2d2 ) {
             fprintf(stdout,"Dependency Manager: Could not open dmlog stream\n");
      }
     
-     /* close 0,1,2 streams */
-     close(0);
-     close(1);
-     close(2);
-     
      /* streams will be unbuffered */
      setvbuf(dmlg, NULL, _IONBF, 0);
 
@@ -240,7 +257,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_container,pleaf,depXp->xpd_sxpdate,Time);
 					      }
 					      /* build command */
-					      snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, listings);
+					      snprintf(cmd,sizeof(cmd),"export SEQ_MAESTRO_SHORTCUT=\"%s\"; %s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut,l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, listings);
 					      fprintf(dmlg,"dependency submit cmd=%s\n",cmd); 
 					      /* take account of concurrency here ie multiple dependency managers! */
 					      snprintf(buf,sizeof(buf),"%s/.%s",l2d2.dependencyPollDir,filename);
@@ -261,6 +278,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 	                     fprintf(dmlg,"name       :%s\n",depXp->xpd_name);
 	                     fprintf(dmlg,"current_epoch=%d registred_epoch=%d registred_epoch_str=%s epoch_diff=%d\n",current_epoch,atoi(depXp->xpd_regtimepoch),depXp->xpd_regtimepoch, epoch_diff);
 						      fprintf(dmlg,"\n");
+                        snprintf(cmd,sizeof(cmd),"%s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; nodelogger -s info -n %s %s",l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs);
+                        ret=system(cmd); 
 					      }
 					}
 					/* register dependency in web page */
@@ -558,7 +577,6 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 	                   case 'A': /* test existence of lock file on local xp */
                          memset(filename,'\0',sizeof(filename)); 
                          ret=sscanf(&buff[2],"%s %d",filename, &mode);
-                         logZone(_ZONE_,L2D2.dzone,mlog,"filename=%s mode=%d\n",filename,mode);
 	                      ret = access (filename, mode);
 			                send_reply(i,ret);
 					          l2d2client[i].trans++;
@@ -792,7 +810,7 @@ void maestro_l2d2_main_process_server (int fserver)
 {
   FILE *smlog;
   pid_t pid_eworker, kpid;  /* pid_eworker : pid of eternal worker */
-  int ret,status,i=0,j;
+  int ret,status,i=0,j,fd;
   char *m5sum=NULL, *Auth_token=NULL;
   struct passwd *passwdEnt = getpwuid(getuid());
   char authorization_file[1024],filename[1024];
@@ -813,11 +831,34 @@ void maestro_l2d2_main_process_server (int fserver)
   } else {
             fprintf(smlog,"Main server: starting .... PID=%d\n",L2D2.pid);
   }
-  
-  /* close 0,1,2 streams */
-  close(0);
-  close(1);
-  close(2);
+ 
+  /* redirect streams : same commnet as in Dependency manager */
+  close(STDIN_FILENO);
+  if (fd = open("/dev/null", O_RDONLY, 0) != -1) {
+     if(dup2(fd, STDIN_FILENO) < 0) {
+         perror("dup2 stdin");
+         exit (1);
+     }
+  }
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+ 
+  if (fd = open("/dev/null", O_RDWR, 0) != -1) {
+     if(dup2(fd, STDOUT_FILENO) < 0) {
+        perror("dup2 stdout");
+        exit (1);
+     }
+     if(dup2(fd, STDERR_FILENO) < 0) {
+        perror("dup2 stderr");
+        exit (1);
+     }
+  }
+  if (fd > STDERR_FILENO) {
+      if(close(fd) < 0) {
+         perror("close");
+         exit (1);
+      }
+  }
 
   /* streams will be unbuffered */
   setvbuf(smlog, NULL, _IONBF, 0);

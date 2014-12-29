@@ -248,7 +248,7 @@ char *getPathBase (const char *full_path) {
  * Name        : NodeLogr
  * Description :  
  */
-int NodeLogr (char *nodeLogerBuffer , int pid, FILE *mlog)
+int NodeLogr (char *nodeLoggerBuffer , int pid, FILE *mlog)
 {
      int NodeLogfile;
      int bwrite, num=0,ret;
@@ -256,14 +256,14 @@ int NodeLogr (char *nodeLogerBuffer , int pid, FILE *mlog)
      char firsin[512],Stime[40],Etime[40];
      char logBuffer[1024];
 
-     if ( nodeLogerBuffer == NULL ) {
-            fprintf(mlog,"NodeLogr: arg. nodeLogerBuffer is NULL \n");
+     if ( nodeLoggerBuffer == NULL ) {
+            fprintf(mlog,"NodeLogr: arg. nodeLoggerBuffer is NULL \n");
             return (1);
      }
 
      memset(firsin,'\0',sizeof(firsin));
-     if ( (num=sscanf(nodeLogerBuffer,"%[^:]:%[^:]:%[^\n]",user,firsin,logBuffer)) != 3 ) {
-             fprintf(mlog,"NodeLogr: Error with the format of nodeLogerBuffer\n");
+     if ( (num=sscanf(nodeLoggerBuffer,"%[^:]:%[^:]:%[^\n]",user,firsin,logBuffer)) != 3 ) {
+             fprintf(mlog,"NodeLogr: Error with the format of nodeLoggerBuffer\n");
 	     return (1);
      }
      
@@ -1194,6 +1194,7 @@ const char * loopargs - what is the target node's loop index in csv name=value f
 const char * datestamp - what datestamp are we verifying
 const char * exp - what experiment is the node in 
 const char * state - what state are we verifying 
+const char * state - what state are we verifying 
 
 */
 int l2d2_Util_isNodeXState (const char* node, const char* loopargs, const char* datestamp, const char* exp, const char* state) {  
@@ -1203,8 +1204,6 @@ int l2d2_Util_isNodeXState (const char* node, const char* loopargs, const char* 
   char * extension=NULL;
   int result=0; 
   memset( stateFile, '\0', sizeof (stateFile));
-
-  SeqUtil_TRACE( "l2d2_Util_isNodeXState node=%s, loopargs=%s, datestamp=%s, exp=%s, state=%s \n", node, loopargs, datestamp, exp, state ); 
 
   if(strlen (loopargs) != 0) {
 
@@ -1220,10 +1219,6 @@ int l2d2_Util_isNodeXState (const char* node, const char* loopargs, const char* 
   sprintf(stateFile,"%s/sequencing/status/%s/%s%s.%s", exp, datestamp, node, extension, state);
   
   result=(access(stateFile,R_OK) == 0); 
-  if (result) 
-     fprintf(stderr, "l2d2_Util_isNodeXState file=%s found. Returning 1.\n", stateFile); 
-  else 
-     fprintf(stderr, "l2d2_Util_isNodeXState file=%s not found. Returning 0.\n", stateFile); 
  
   SeqNameValues_deleteWholeList( &loopArgs );
   free(extension);

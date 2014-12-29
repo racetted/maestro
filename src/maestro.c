@@ -1640,6 +1640,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD];
    char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL;
    int submitCode = 0, count = 0, line_count=0, ret;
+
    SeqUtil_TRACE( "maestro.submitDependencies() executing for %s\n", _nodeDataPtr->nodeName );
 
    LISTNODEPTR cmdList = NULL;
@@ -1697,11 +1698,13 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
 	               SeqUtil_stringAppend( &submitDepArgs, "-l " );
 	            }
 	            SeqUtil_stringAppend( &submitDepArgs, depArgs );
-
-	            if ( getenv("SEQ_BIN") != NULL ) {
-                  sprintf( submitCmd, "(export SEQ_DATE=%s; %s/maestro -s submit -f continue -n %s %s)", depDatestamp, getenv("SEQ_BIN"), depNode, submitDepArgs );
-               } else {
-                  sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, submitDepArgs );
+               
+               if( strcmp( depExp, _nodeDataPtr->expHome ) != 0 ) {
+                /* different exp, same user */
+                   sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", 
+ 		                      depExp, depDatestamp, depNode, submitDepArgs );
+ 	            } else {
+                   sprintf( submitCmd, "(export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", depDatestamp, depNode, submitDepArgs );
 	            }
  	            /* add nodes to be submitted if not already there */
  	            if ( SeqListNode_isItemExists( cmdList, submitCmd ) == 0 ) {
@@ -1906,6 +1909,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
    SeqDependsScope depScope = IntraSuite;
+   int thisInode, rcInode; /* seq_exp_home vs xp given in resource */
 
    memset(filename,'\0',sizeof filename);
    memset(seqPath,'\0',sizeof seqPath);
@@ -1932,8 +1936,15 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          }
          sprintf(seqPath,"%s/sequencing/status",depExp);
          if (_access(seqPath,W_OK) == 0) {
-            depScope = IntraSuite;
-            SeqUtil_TRACE( "maestro.validateDependencies() depScope=%d -> IntraSuite \n", depScope );
+	          thisInode=get_Inode (_nodeDataPtr->expHome);
+      	    rcInode=get_Inode(depExp);
+      	    if ( thisInode == rcInode ){ 
+                 depScope = IntraSuite;  /* yes -> intraSuite ,will write under ...../status/depends/ */
+                 SeqUtil_TRACE( "maestro.validateDependencies() depScope=%d -> IntraSuite \n", depScope );
+      	    } else {
+                 depScope = IntraUser;   /* no  -> intraUser  ,will write under ...../status/remote_depends/ */
+                 SeqUtil_TRACE( "maestro.validateDependencies() depScope=%d -> IntraUser \n", depScope );
+             }
          } else {
             depScope = InterUser;
             SeqUtil_TRACE( "maestro.validateDependencies() depScope=%d -> InterUser \n", depScope );
@@ -2061,7 +2072,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
    if (strncmp(_dep_prot,"ocm",3) != 0 ) {
     /* maestro stuff */
        if  (! doesNodeExist(_dep_name, _dep_exp, _dep_datestamp)) {
-           SeqUtil_TRACE("maestro.processDepStatus() dependant node (%s) of exp (%s) does not exist, skipping dependency \n",_dep_name,_dep_exp);  
+           nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, "Dependant node (%s) of exp (%s) does not exist, dependency ignored.\n",_nodeDataPtr->datestamp, _dep_name, _dep_exp ); 
            return(0);
        }
        depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL, _dep_datestamp );
