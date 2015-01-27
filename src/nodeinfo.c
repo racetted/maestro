@@ -1563,7 +1563,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       tmpstrtok = (char*) strtok(NULL,",");
    }
    newNode = (char*) SeqUtil_fixPath( node );
-   SeqUtil_TRACE ( "nodeinfo.nodefinfo() trying to create node %s\n", newNode );
+   SeqUtil_TRACE ( "nodeinfo.nodeinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
    SeqNode_setSeqExpHome(nodeDataPtr,seq_exp_home); 
 
