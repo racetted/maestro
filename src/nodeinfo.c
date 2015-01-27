@@ -109,8 +109,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    SeqLoopsPtr loopsPtr = NULL;
    int i=0;
    
-   char *tmpsubstr = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpDepIndex = NULL, *tmpLocalIndexValue = NULL;
-   char *tmpDepLocalIndex = NULL, *resourceFile, *_seq_exp_home = _nodeDataPtr->expHome;
+   char *tmpsubstr = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpLocalIndexValue = NULL;
+   char *resourceFile, *_seq_exp_home = _nodeDataPtr->expHome;
    char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpTokenLine, *indexToken = NULL;
    FILE *fp;
    int find_index_token = 0;
@@ -133,11 +133,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 	 /* reset variables to null after being freed at the end of the loop for reuse*/
 	 fullDepIndex=NULL;
 	 fullDepLocalIndex=NULL;
-	 tmpDepLocalIndex = NULL;
-	 tmpDepIndex = NULL;
 	 nodePtr = nodeset->nodeTab[i];
 	 nodeName = nodePtr->name;
 	 find_index_token = 0;
+	 indexToken = NULL;
 	 tmpCompare = 0;
 	 alreadySet = 0;
 	 SeqUtil_TRACE( "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
@@ -153,7 +152,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 	    depProt  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
 	    /* default interuser protocol if not defined */
 	    if (depProt == NULL) depProt=strdup("polling"); 
-						depIndex = (char *) xmlGetProp( nodePtr, "index" );
+	    depIndex = (char *) xmlGetProp( nodePtr, "index" );
 	    depLocalIndex = (char *) xmlGetProp( nodePtr, "local_index" );
 	    /* look for keywords in index fields */
 	    
@@ -186,7 +185,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 		  while(fgets(temp, 512, fp) != NULL) {
 		     if (find_index_token == 0) {
 			if((strstr(temp, "$((")) != NULL) {
-			   SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token, checking dependency\n");
+			SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token, checking dependency\n");
 			strcpy(tokenLine, temp);
 			find_index_token = 1;
 			}
@@ -215,26 +214,6 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
 		     }
 		  }
-		  
-		  /* parse dependency loop index and local index */
-		  if (depIndex != NULL) {
-		     tmpDepIndex = depIndex;
-		     sepIndex = strchr(tmpDepIndex, '=');
-		     tmpDepIndex = sepIndex + 1;
-		  }
-		  if (depLocalIndex != NULL) {
-		     tmpDepLocalIndex = depLocalIndex;
-		     sepLocal = strchr(tmpDepLocalIndex, '=');
-		     tmpDepLocalIndex = sepLocal + 1;
-		  }
-		  
-		  /*remember if index corresponds local index */
-		  if (tmpDepIndex != NULL && tmpDepLocalIndex != NULL && indexToken != NULL) {
-		     if (strstr(tmpDepIndex, indexToken) != NULL && strstr(tmpDepLocalIndex, indexToken) != NULL) {
-			//tmpCompare = 1;
-			SeqUtil_TRACE("Nodeinfo_parseDepends() dependency got matching token\n");
-		     }
-		  }
 	       }
 	    }
 	    
@@ -249,7 +228,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
 			}   
-		     } else if (strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
+		     } else if (indexToken != NULL && strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
 			if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL) {
 			   SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   tmpLocalIndexValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name);
@@ -273,11 +252,9 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   SeqNameValues_setValue( &depArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
 			}
-		     } else if(strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
-			if (tmpIterator->name != NULL) {
-			   if (tmpLocalIndexValue != NULL) {
-			      SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpLocalIndexValue);
-			   }
+		     } else if(indexToken != NULL && strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
+			if (tmpIterator->name != NULL && tmpLocalIndexValue != NULL) {
+			   SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpLocalIndexValue);
 			}
 		     }
 		     tmpIterator=tmpIterator->nextPtr;
