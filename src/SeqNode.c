@@ -537,38 +537,50 @@ void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data ) {
    SeqListNode_insertItem( &(node_ptr->abort_actions), data );
 }
 
-/* default numerical loop with start, step, set, end */
+/* default numerical loop with start, step, set, end or an expression with START1:END1:STEP1:SET1,STARTN:ENDN:STEPN:SETN,... */
 
-void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end ) {
+void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end, char* expression ) {
    SeqLoopsPtr loopsPtr = NULL;
-   char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end;
+   char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end, *tmpExpression = expression;
    char *defFile = NULL, *value = NULL;
    
    defFile = malloc ( strlen ( node_ptr->expHome ) + strlen("/resources/resources.def") + 1 );
    sprintf( defFile, "%s/resources/resources.def", node_ptr->expHome );
    
-   if (strstr(start, "${") != NULL) {
-      if ( (value = SeqUtil_keysub( start, defFile, NULL)) != NULL ){
-	tmpStart = value;
+   if (strcmp(tmpExpression, "") == 0) {
+      if (strstr(start, "${") != NULL) {
+	 if ( (value = SeqUtil_keysub( start, defFile, NULL)) != NULL ){
+	    tmpStart = value;
+	 }
       }
-   }
-   if (strstr(step, "${") != NULL) {
-      if ( (value = SeqUtil_keysub( step, defFile, NULL)) != NULL ){
-	tmpStep = value;
+      if (strstr(step, "${") != NULL) {
+	 if ( (value = SeqUtil_keysub( step, defFile, NULL)) != NULL ){
+	    tmpStep = value;
+	 }
       }
-   }
-   if (strstr(set, "${") != NULL) {
-      if ( (value = SeqUtil_keysub( set, defFile, NULL)) != NULL ){
-	tmpSet = value;
+      if (strstr(set, "${") != NULL) {
+	 if ( (value = SeqUtil_keysub( set, defFile, NULL)) != NULL ){
+	    tmpSet = value;
+	 }
       }
-   }
-   if (strstr(end, "${") != NULL) {
-      if ( (value = SeqUtil_keysub( end, defFile, NULL)) != NULL ){
-	tmpEnd = value;
+      if (strstr(end, "${") != NULL) {
+	 if ( (value = SeqUtil_keysub( end, defFile, NULL)) != NULL ){
+	    tmpEnd = value;
+	 }
+      }
+   } else {
+      if (strstr(expression, "${") != NULL) {
+	 if ( (value = SeqUtil_keysub( expression, defFile, NULL)) != NULL ){
+	    tmpExpression = value;
+	 }
       }
    }
    
-   SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, start, step, set, tmpEnd );
+   if (strcmp(tmpExpression, "") == 0) {
+      SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, start, step, set, tmpEnd );
+   } else {
+      SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, expression:%s, \n",loop_name, expression );
+   }
 
    loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
    loopsPtr->type = Numerical;
@@ -578,6 +590,7 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
    SeqNameValues_insertItem( &loopsPtr->values, "STEP", tmpStep );
    SeqNameValues_insertItem( &loopsPtr->values, "SET", tmpSet );
    SeqNameValues_insertItem( &loopsPtr->values, "END", tmpEnd );
+   SeqNameValues_insertItem( &loopsPtr->values, "EXPRESSION", tmpExpression );
    free(defFile);
 }
 

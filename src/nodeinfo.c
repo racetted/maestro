@@ -313,40 +313,48 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
-   xmlChar *loopStart = NULL, *loopStep = strdup("1"), *loopEnd = NULL, *loopSet = strdup("1");
+   xmlChar *loopStart = strdup(""), *loopStep = strdup("1"), *loopEnd = strdup(""), *loopSet = strdup("1"), *loopExpression = strdup("");
    int i=0;
+   
    if (_result) {
       nodeset = _result->nodesetval;
       SeqUtil_TRACE( "nodeinfo.parseLoopAttributes()   *** loop info***\n");
+      
       for (i=0; i < nodeset->nodeNr; i++) {
-         nodePtr = nodeset->nodeTab[i];
-         nodeName = nodePtr->name;
-         SeqUtil_TRACE( "nodeinfo.parseLoopAttributes() nodeName=%s, value:%s\n", nodeName, nodePtr->children->content);
-         if ( nodePtr->children != NULL ) {
-            if( strcmp( nodeName, "start" ) == 0 ) {
-               loopStart = strdup( nodePtr->children->content );
-            } else if( strcmp( nodeName, "step" ) == 0 ) {
+	 nodePtr = nodeset->nodeTab[i];
+	 nodeName = nodePtr->name;
+	 SeqUtil_TRACE( "nodeinfo.parseLoopAttributes() nodeName=%s, value:%s\n", nodeName, nodePtr->children->content);
+	 if ( nodePtr->children != NULL ) {
+	    if( strcmp( nodeName, "start" ) == 0 ) {
+	       loopStart = strdup( nodePtr->children->content );
+	    } else if( strcmp( nodeName, "step" ) == 0 ) {
 	       free( loopStep );
-               loopStep = strdup( nodePtr->children->content );
-            } else if( strcmp( nodeName, "set" ) == 0 ) {
+	       loopStep = strdup( nodePtr->children->content );
+	    } else if( strcmp( nodeName, "set" ) == 0 ) {
 	       free( loopSet );
-               loopSet = strdup( nodePtr->children->content );
-            } else if( strcmp( nodeName, "end" ) == 0 ) {
-               loopEnd = strdup( nodePtr->children->content );
-            }
-         }
+	       loopSet = strdup( nodePtr->children->content );
+	    } else if( strcmp( nodeName, "end" ) == 0 ) {
+	       loopEnd = strdup( nodePtr->children->content );
+	    } else if( strcmp( nodeName, "expression" ) == 0 ) {
+	       loopExpression = strdup( nodePtr->children->content );
+	       break;
+	    }
+	 }
       }
 
-      if( loopStep != NULL || loopSet != NULL ) {
+      if( loopStep != NULL || loopSet != NULL || loopExpression != NULL) {
          SeqNode_addNumLoop ( _nodeDataPtr, _loop_node_path, 
-            loopStart, loopStep, loopSet, loopEnd );
+            loopStart, loopStep, loopSet, loopEnd, loopExpression );
       }
    }
-
-   free( loopStart );
+   if (loopStart != NULL)
+      free( loopStart );
    free( loopStep );
    free( loopSet );
-   free( loopEnd );
+   if (loopEnd != NULL)
+      free( loopEnd );
+   if (loopExpression != NULL)
+      free( loopExpression );
    
 }
 

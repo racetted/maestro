@@ -16,6 +16,8 @@
 
 static char* EXT_TOKEN = "+";
 
+LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr );
+LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex );
 
 /* function to parse the loop arguments
    returns 0 if succeeds
@@ -191,7 +193,7 @@ char* SeqLoops_ContainerExtension( SeqLoopsPtr loops_ptr, SeqNameValuesPtr loop_
       loops_ptr  = loops_ptr->nextPtr;
    }
 
-   if( isError == 1 )
+   if( isError == 1 && SeqNameValues_getValue(loop_args_ptr, "newdef") == NULL )
       return NULL;
 
    return extension;
@@ -232,22 +234,32 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
    int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
-   LISTNODEPTR loopExtensions = NULL;
+   char *tmpExpression = NULL;
+   LISTNODEPTR loopExtensions = NULL, tmpLoopExtensions = NULL;
    memset( tmp, '\0', sizeof tmp );
    baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
    nodeSpecPtr = _nodeDataPtr->data;
+   
+   tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+   if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+      SeqUtil_TRACE("SeqLoops_childExtensionsInReverse expression: %s\n", tmpExpression);
+      tmpLoopExtensions = (LISTNODEPTR) SeqLoops_childExtensions(_nodeDataPtr);
+      SeqListNode_reverseList ( &tmpLoopExtensions );
+      loopExtensions = tmpLoopExtensions;
+   } else {
 
-   loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-      loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
-   }
-   loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-   SeqUtil_TRACE("SeqLoops_childExtensionsInReverse extension:%s baseExtension:%s START:%d END:%d\n",_nodeDataPtr->extension, baseExtension, loopEnd, loopStart );
-   loopCount = loopEnd;
-   while( loopCount >= loopStart ) {
-      sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
-      SeqListNode_insertItem( &loopExtensions, tmp );
-      loopCount = loopCount - loopStep;
+      loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
+      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
+	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+      }
+      loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+      SeqUtil_TRACE("SeqLoops_childExtensionsInReverse extension:%s baseExtension:%s START:%d END:%d\n",_nodeDataPtr->extension, baseExtension, loopEnd, loopStart );
+      loopCount = loopEnd;
+      while( loopCount >= loopStart ) {
+	 sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
+	 SeqListNode_insertItem( &loopExtensions, tmp );
+	 loopCount = loopCount - loopStep;
+      }
    }
 
    return loopExtensions;
@@ -262,23 +274,81 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
 LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
-   int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
+   int expressionArray[256], i, startIndex=0, endIndex=1, stepIndex=2, setIndex=3, detectedEnd=0;
+   char *tmpExpression = NULL, *tmpArrayValue = NULL;
+   int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0, breakFlag, firstFlag=1;
    LISTNODEPTR loopExtensions = NULL;
    memset( tmp, '\0', sizeof tmp );
    baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
    nodeSpecPtr = _nodeDataPtr->data;
 
-   SeqUtil_TRACE("SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
-   loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-      loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+   tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+   
+   if ((tmpExpression != NULL && strcmp(tmpExpression, "") != 0) && ((SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) != NULL) ||
+      (SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) != NULL) ||
+      (SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL) ||
+      (SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL))) {
+      raiseError("SeqLoops_childExtensions Error: loop syntax must be defined with start, end, step, step attributes OR with an expression attribute\n");
    }
-   loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-   loopCount = loopStart;
-   while( loopCount <= loopEnd ) {
-      sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
-      SeqListNode_insertItem( &loopExtensions, tmp );
-      loopCount = loopCount + loopStep;
+   
+   if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+      SeqUtil_TRACE("SeqLoops_childExtensions expression: %s\n", tmpExpression);
+      
+      i=0;
+      tmpArrayValue = strtok (tmpExpression,":,");
+      while (tmpArrayValue != NULL) {
+	 expressionArray[i] = atoi(tmpArrayValue);
+	 //End is the biggest number of the expression
+	 if (expressionArray[i]>detectedEnd)
+	    detectedEnd=expressionArray[i];
+	 i++;
+	 tmpArrayValue = strtok (NULL,":,");
+      }
+      
+      while( loopCount <= detectedEnd ) {
+	 loopCount = expressionArray[startIndex];
+	 breakFlag = 0;
+	 if ((startIndex-4) >= 0 && loopCount != expressionArray[endIndex-4]) {
+	    firstFlag = 1;
+	 }
+	 while( loopCount <= expressionArray[endIndex] && breakFlag == 0){
+	    if (firstFlag == 0) {
+	       if ((loopCount+expressionArray[stepIndex]) <= expressionArray[endIndex]) {
+		  loopCount = loopCount + expressionArray[stepIndex];
+	       } else {
+		  breakFlag = 1;
+	       }
+	    } else {
+	       firstFlag = 0;
+	    }
+	    if (breakFlag == 0) {
+	       sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
+	       SeqListNode_insertItem( &loopExtensions, tmp );
+	    }
+	 }
+	 if ((stepIndex+4) < i) {
+	    endIndex=endIndex+4;
+	    stepIndex=stepIndex+4;
+	    startIndex=startIndex+4;
+	 } else {
+	    break;
+	 }
+      }
+      
+   } else {
+      
+      SeqUtil_TRACE("SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
+      loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
+      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
+	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+      }
+      loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+      loopCount = loopStart;
+      while( loopCount <= loopEnd ) {
+	 sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
+	 SeqListNode_insertItem( &loopExtensions, tmp );
+	 loopCount = loopCount + loopStep;
+      }
    }
 
    return loopExtensions;
@@ -312,6 +382,7 @@ int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
 LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[100], *baseExtension = NULL;
+   char *tmpExpression = NULL;
    int foundIt = 0, loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
    LISTNODEPTR loopExtensions = NULL, tmpLoopExts = NULL;
    SeqNameValuesPtr loopsDataPtr = NULL;
@@ -322,7 +393,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 
    memset( tmp, '\0', sizeof tmp );
    SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse depIndex: %s\n", depIndex);  
-
+   
    /* looping over each depedency index argument */
    while (depArgs != NULL){
         SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse dealing with argument %s=%s\n", depArgs->name, depArgs->value);  
@@ -333,18 +404,30 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
   	    while (loopsPtr != NULL && !foundIt ) {
                  loopsDataPtr =  loopsPtr->values;
                  if (loopsDataPtr != NULL ) {
-                     SeqUtil_TRACE("%s\n", loopsPtr->loop_name);
+		     SeqUtil_TRACE("%s\n", loopsPtr->loop_name);
 		     /* find the right loop arg to match*/
                      if (strcmp(SeqUtil_getPathLeaf(loopsPtr->loop_name),depArgs->name)==0) {
-		         loopsDataPtr = loopsDataPtr->nextPtr;
-                         loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
-                         if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
-                             loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
-                         }
-                         loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
-                         loopCount = loopEnd;
-                         SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
-			 foundIt=1;
+			loopsDataPtr = loopsDataPtr->nextPtr;
+			tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
+			//if loop is defined by an expression, return SeqLoops_getLoopContainerExtensions in reverse
+			if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse expression: %s\n", tmpExpression);
+			   tmpLoopExts = SeqLoops_getLoopContainerExtensions(_nodeDataPtr, depIndex);
+			   SeqListNode_reverseList( &tmpLoopExts );
+			   //SeqListNode_printList( tmpLoopExts );
+			   loopExtensions = tmpLoopExts;
+			   return loopExtensions;
+			}
+			
+			loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
+			if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
+			   loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
+			}
+			loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+			loopCount = loopEnd;
+			SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
+			
+			foundIt=1;
 		     } else {
 		         loopsPtr = loopsPtr->nextPtr; 
 		     }
@@ -356,12 +439,12 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 	    if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
                SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse targetting a loop node\n");  
 	       loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
-               if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
-                   loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
-               }
-               loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
-               loopCount = loopEnd;
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
+	       if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
+		  loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
+	       }
+	       loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+	       loopCount = loopEnd;
+	       SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
 	    }
 
 	    /*reset for next loop to find*/
@@ -427,6 +510,8 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[100], *baseExtension = NULL;
+   int expressionArray[256], i, j, startIndex=0, endIndex=1, stepIndex=2, setIndex=3, detectedEnd=0, breakFlag=0, firstFlag=1, detectedStart;
+   char *tmpExpression = NULL, *tmpArrayValue = NULL;
    int foundIt = 0, loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
    LISTNODEPTR loopExtensions = NULL, tmpLoopExts = NULL;
    SeqNameValuesPtr loopsDataPtr = NULL;
@@ -448,17 +533,22 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
   	    while (loopsPtr != NULL && !foundIt ) {
                  loopsDataPtr =  loopsPtr->values;
                  if (loopsDataPtr != NULL ) {
-                     SeqUtil_TRACE("%s\n", loopsPtr->loop_name);
 		     /* find the right loop arg to match*/
                      if (strcmp(SeqUtil_getPathLeaf(loopsPtr->loop_name),depArgs->name)==0) {
 		         loopsDataPtr = loopsDataPtr->nextPtr;
-                         loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
-                         if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
-                             loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
-                         }
-                         loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
-                         loopCount = loopStart;
-                         SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+			 
+			 tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
+			 if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions expression: %s\n", tmpExpression);
+			 } else {
+			   loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
+			   if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
+			      loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
+			   }
+			   loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+			   loopCount = loopStart;
+			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+			 }
 			 foundIt=1;
 		     } else {
 		         loopsPtr = loopsPtr->nextPtr; 
@@ -469,14 +559,42 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
             /* if targetting a loop node as a dependency, _nodeDataPtr->data will have the loop attributes */
             loopsDataPtr=_nodeDataPtr->data; 
 	    if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions targetting a loop node\n");  
-	       loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
-               if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
-                   loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
-               }
-               loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
-               loopCount = loopStart;
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions targetting a loop node\n");
+	       tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
+	       if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+		  SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions expression: %s\n", tmpExpression);
+	       } else {
+		  loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
+		  if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
+		     loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
+		  }
+		  loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+		  loopCount = loopStart;
+		  SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+	       }
+	    }
+	    
+	    // parse the loop expression to expressionArray
+	    if (strcmp(tmpExpression, "") != 0) {
+	       i=0;
+	       tmpArrayValue = strtok (tmpExpression,":,");
+	       while (tmpArrayValue != NULL) {
+		  expressionArray[i] = atoi(tmpArrayValue);
+		  //End is the biggest number of the expression
+		  if (expressionArray[i]>detectedEnd)
+		     detectedEnd=expressionArray[i];
+		  i++;
+		  tmpArrayValue = strtok (NULL,":,");
+	       }
+	       detectedStart=detectedEnd;
+	       for (j=0; j<i; j=j+4) {
+		  if(expressionArray[j]<detectedStart){
+		     detectedStart=expressionArray[j];
+		     startIndex=j;
+		  }
+	       }
+	       loopCount=detectedStart;
+	       loopEnd=detectedEnd;
 	    }
 
 	    /*reset for next loop to find*/
@@ -491,23 +609,62 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 
         /* add values to the list of extensions */ 
 	do {
-
-            while( loopCount <= loopEnd ) {
-                if( loopExtensions != NULL ) {
-	           sprintf( tmp, "%s%s%d", loopExtensions->data, EXT_TOKEN, loopCount );
-                } else {
-	           sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
-	        }
-	        /* build the tmp list of extensions */
-	        SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added:%s\n", tmp );
-                SeqListNode_insertItem( &tmpLoopExts, tmp );
-                loopCount = loopCount + loopStep;
-            }
+	   if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0 && loopEnd != loopCount) {
+	       while( loopCount <= detectedEnd ) {
+		  loopCount = expressionArray[startIndex];
+		  breakFlag = 0;
+		  if ((startIndex-4) >= 0 && loopCount != expressionArray[endIndex-4]) {
+		     firstFlag = 1;
+		  }
+		  while( loopCount <= expressionArray[endIndex] && breakFlag == 0){
+		     if (firstFlag == 0) {
+			if ((loopCount+expressionArray[stepIndex]) <= expressionArray[endIndex]) {
+			   loopCount = loopCount + expressionArray[stepIndex];
+			} else {
+			   breakFlag = 1;
+			}
+		     } else {
+			firstFlag = 0;
+		     }
+		     if (breakFlag == 0) {
+			if( loopExtensions != NULL ) {
+			   sprintf( tmp, "%s%s%d", loopExtensions->data, EXT_TOKEN, loopCount );
+			} else {
+			   sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
+			}
+			//SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added based on expression:%s\n", tmp );
+			SeqListNode_insertItem( &tmpLoopExts, tmp );
+		     }
+		  }
+		  if ((stepIndex+4) < i) {
+		     endIndex=endIndex+4;
+		     stepIndex=stepIndex+4;
+		     startIndex=startIndex+4;
+		  } else {
+		     break;
+		  }
+	       }
+	    } else {
+	       while( loopCount <= loopEnd ) {
+		  if( loopExtensions != NULL ) {
+		     sprintf( tmp, "%s%s%d", loopExtensions->data, EXT_TOKEN, loopCount );
+		  } else {
+		     sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
+		  }
+		  /* build the tmp list of extensions */
+		  SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added:%s\n", tmp );
+		  SeqListNode_insertItem( &tmpLoopExts, tmp );
+		  loopCount = loopCount + loopStep;
+	       }
+	    }
 
 	        /* if not done, do next */
             if( loopExtensions != NULL ) {
 	       loopExtensions = loopExtensions->nextPtr;
-               loopCount = loopStart;
+	       if (strcmp(tmpExpression, "") != 0)
+		  loopCount = detectedStart;
+	       else
+		  loopCount = loopStart;
             }
 		 
         } while( loopExtensions != NULL );
@@ -522,7 +679,9 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 	tmpLoopExts = NULL;
 
         /* re-init loop values */
-        loopCount = 0; loopStep = 1; loopStart = 0; loopEnd = 0;
+        loopCount = 0; loopStep = 1; loopStart = 0; loopEnd = 0; breakFlag = 0; firstFlag = 1;
+	detectedEnd = 0; startIndex=0; endIndex=1; stepIndex=2; setIndex=3;
+	tmpExpression = NULL; tmpArrayValue = NULL;
         /* get next loop argument */
         depArgs = depArgs->nextPtr;
    } 
@@ -584,8 +743,8 @@ void SeqLoops_printLoopArgs( SeqNameValuesPtr _loop_args, const char* _caller ) 
 SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
    SeqNameValuesPtr newLoopsArgsPtr = NULL, loopArgsTmpPtr = NULL;
    SeqNameValuesPtr nodeSpecPtr = NULL;
-   char *loopStart = NULL;
-   int foundExt = 0;
+   char *loopStart = NULL, *tmpExpression = NULL, *tmpArrayValue = NULL;
+   int foundExt = 0, _i, _j, expressionArray[256], detectedEnd=0, detectedStart;
    loopArgsTmpPtr = _loop_args;
    while( loopArgsTmpPtr != NULL ) {
       if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
@@ -602,9 +761,35 @@ SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
       /* get the first loop iteration */
       nodeSpecPtr = _nodeDataPtr->data;
       /* for now, we only support numerical data */
-      loopStart = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" );
-      fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
-      SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
+      
+      tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+      if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+	 _i=0;
+	 tmpArrayValue = strtok (tmpExpression,":,");
+	 while (tmpArrayValue != NULL) {
+	    expressionArray[_i] = atoi(tmpArrayValue);
+	    //End is the biggest number of the expression
+	    if (expressionArray[_i]>detectedEnd)
+	       detectedEnd=expressionArray[_i];
+	    _i++;
+	    tmpArrayValue = strtok (NULL,":,");
+	 }
+	 detectedStart=detectedEnd;
+	 for (_j=0; _j<_i; _j=_j+4) {
+	    if(expressionArray[_j]<detectedStart){
+	       detectedStart=expressionArray[_j];
+	    }
+	 }
+	 loopStart = (char *) detectedStart;
+	 fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
+	 SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
+	 
+      } else {
+      
+	 loopStart = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" );
+	 fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
+	 SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
+      }
    }
    free( loopStart );
    return newLoopsArgsPtr;
@@ -617,8 +802,9 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20];
    char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL, *loopSetStr = NULL;
-   int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0;
-   int isLast = 0;
+   char *loopStart = NULL, *tmpExpression = NULL, *tmpArrayValue = NULL;
+   int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0, _i, expressionArray[256], detectedEnd=0;
+   int isLast = 0, endIndex=1;
    memset( tmp, '\0', sizeof(tmp) );
    /* get the first loop iteration */
    nodeSpecPtr = _nodeDataPtr->data;
@@ -627,21 +813,44 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
    /* get the current iteration from the loop arguments */
    if( (loopCurrentStr = SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) ) != NULL )
       loopCurrent = atoi(loopCurrentStr);
-   /* get the iteration step */
-   if( ( loopStepStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) ) != NULL )
-      loopStep = atoi(loopStepStr);
-   /* if the set has a value, the next iteration is (current iteration + set value)*/
-   if( ( loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) ) != NULL )
-      loopSet = atoi(loopSetStr);
-   /* get the iteration end */
-   if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
-      loopTotal = atoi(loopEndStr);
+   
+   tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+   if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+      _i=0;
+      tmpArrayValue = strtok (tmpExpression,":,");
+      while (tmpArrayValue != NULL) {
+	 expressionArray[_i] = atoi(tmpArrayValue);
+	 //End is the biggest number of the expression
+	 if (expressionArray[_i]>detectedEnd) {
+	    detectedEnd=expressionArray[_i];
+	    endIndex = _i;
+	 }
+	 _i++;
+	 tmpArrayValue = strtok (NULL,":,");
+      }
+      
+      if (loopCurrent > expressionArray[endIndex-1]) {
+	 if ((loopCurrent + (expressionArray[endIndex+2] * expressionArray[endIndex+1])) > detectedEnd) {
+	    isLast = 1;
+	 }
+      }
+   } else {
+      /* get the iteration step */
+      if( ( loopStepStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) ) != NULL )
+	 loopStep = atoi(loopStepStr);
+      /* if the set has a value, the next iteration is (current iteration + set value)*/
+      if( ( loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) ) != NULL )
+	 loopSet = atoi(loopSetStr);
+      /* get the iteration end */
+      if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
+	 loopTotal = atoi(loopEndStr);
 
-   fprintf(stdout,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
+      fprintf(stdout,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
 
-   /* have we reached the end? */
-   if( (loopCurrent + (loopSet * loopStep)) > loopTotal ) {
-      isLast = 1;
+      /* have we reached the end? */
+      if( (loopCurrent + (loopSet * loopStep)) > loopTotal ) {
+	 isLast = 1;
+      }
    }
    
    return isLast;
@@ -654,29 +863,95 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
 SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
    SeqNameValuesPtr newLoopsArgsPtr = NULL;
    SeqNameValuesPtr nodeSpecPtr = NULL;
-   char tmp[20];
-   int loopCurrent = 0, loopSet = 1 , loopStep = 1, loopTotal = 0;
+   SeqNameValuesPtr tmpLoopsArgsPtr = NULL;
+   SeqNameValuesPtr tmpLastArg = NULL;
+   char *tmpExpression = NULL, *tmpArrayValue = NULL;
+   char tmp[20], newset[100];
+   int loopCurrent = 0, loopSet = 1 , loopStep = 1, loopTotal = 0, _i, expressionArray[256], detectedEnd=0, endIndex=1, startIndex=0;
+   int loopCount=0, loopSetCount=0, tmpLoopCount=0, tmpSetCount=0;
    memset( tmp, '\0', sizeof(tmp) );
    /* get the first loop iteration */
    nodeSpecPtr = _nodeDataPtr->data;
    /* for now, we only support numerical data */
    loopCurrent = atoi( SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) );
-   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-      loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
-   }
-   if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
-      loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
-   }
+   
+   tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+   if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+      _i=0;
+      tmpArrayValue = strtok (tmpExpression,":,");
+      while (tmpArrayValue != NULL) {
+	 expressionArray[_i] = atoi(tmpArrayValue);
+	 //End is the biggest number of the expression
+	 if (expressionArray[_i]>detectedEnd) {
+	    detectedEnd=expressionArray[_i];
+	    endIndex = _i;
+	 }
+	 _i++;
+	 tmpArrayValue = strtok (NULL,":,");
+      }
+      
+      /*find the current loop definition*/
+      while (((startIndex+4) < _i) && (expressionArray[startIndex+1]<loopCurrent)) {
+	 startIndex=startIndex+4;
+      }
+      
+      fprintf(stdout,"SeqLoops_nextLoopArgs() found multi-definition loop expression, current definition index: %d\n",
+		 (startIndex/4));
+      fprintf(stdout,"SeqLoops_nextLoopArgs() loopCurrent:%d loopSet:%d loopStep:%d loopTotal:%d\n",
+	      loopCurrent, expressionArray[startIndex+3], expressionArray[startIndex+2], expressionArray[startIndex+1]);
+      
+      /*search for the last iteration for the current definition*/
+      loopCount = expressionArray[startIndex];
+      while( loopCount <= expressionArray[startIndex+1] ) {
+	 sprintf( tmp, "%d", loopCount );
+	 SeqLoops_setLoopAttribute( &tmpLastArg, _nodeDataPtr->nodeName, tmp );
+	 loopCount = loopCount + expressionArray[startIndex+2];
+      }
+      
+      if ((loopCurrent + (expressionArray[startIndex+3] * expressionArray[startIndex+2])) <= expressionArray[startIndex+1]) {
+	 sprintf( tmp, "%d", loopCurrent + (expressionArray[startIndex+3] * expressionArray[startIndex+2]) );
+	 newLoopsArgsPtr = SeqNameValues_clone( _loop_args );
+	 SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, tmp );
+      } else if (expressionArray[startIndex+1] != detectedEnd &&
+	 (atoi(SeqLoops_getLoopAttribute(tmpLastArg, _nodeDataPtr->nodeName)) == loopCurrent))  {
+	    fprintf(stdout,"SeqLoops_nextLoopArgs() changing loop definition from multi-definition expression\n");
+	    //we are in the last iteration of a definition in case of multi-definition loop
+	    //add a newdef flag for maestro to know that the submission is a new set for the new loop definition
+	    startIndex=startIndex+4;
+	    if (loopCurrent != expressionArray[startIndex]) {
+	       loopCount = expressionArray[startIndex];
+	    } else {
+	       loopCount = expressionArray[startIndex] + expressionArray[startIndex+2];
+	    }
+	    /* calculate next iteration */
+	    newLoopsArgsPtr = SeqNameValues_clone( _loop_args );
+	    while( loopCount <= expressionArray[startIndex+1] && loopSetCount < expressionArray[startIndex+3] ) {
+	       sprintf( tmp, "%d", loopCount );
+	       SeqNameValues_insertItem( &newLoopsArgsPtr,  "newdef", tmp);
+	       SeqUtil_TRACE("newdef=%s", tmp);
+	       loopCount=loopCount+expressionArray[startIndex+2];
+	       loopSetCount++;
+	    }
+      } 
+   } else {
+      
+      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
+	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+      }
+      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
+	 loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+      }
 
-   loopTotal = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+      loopTotal = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
 
-   fprintf(stdout,"SeqLoops_nextLoopArgs() loopCurrent:%d loopSet:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopSet, loopStep, loopTotal);
+      fprintf(stdout,"SeqLoops_nextLoopArgs() loopCurrent:%d loopSet:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopSet, loopStep, loopTotal);
 
-   /* calculate next iteration */
-   if( (loopCurrent + (loopSet * loopStep)) <= loopTotal ) {
-      sprintf( tmp, "%d", loopCurrent + (loopSet * loopStep) );
-      newLoopsArgsPtr = SeqNameValues_clone( _loop_args );
-      SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, tmp );
+      /* calculate next iteration */
+      if( (loopCurrent + (loopSet * loopStep)) <= loopTotal ) {
+	 sprintf( tmp, "%d", loopCurrent + (loopSet * loopStep) );
+	 newLoopsArgsPtr = SeqNameValues_clone( _loop_args );
+	 SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, tmp );
+      }
    }
    return newLoopsArgsPtr;
 }
@@ -714,6 +989,8 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
          raiseError( "SeqLoops_validateLoopArgs(): Missing loop arguments for container loop!\n" );
       }
       SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop extension:%s\n", loopExtension );
+   } else {
+      SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop pointer not found\n" );
    }
 
    /* build extension for current node if loop */
@@ -781,12 +1058,12 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
    SeqNameValuesPtr nodeSpecPtr = NULL;
    SeqNameValuesPtr loopArgsTmpPtr = _loop_args;
 
-
    char tmp[20];
    int loopStart = 0, loopEnd= 0, loopSet = 1, loopStep = 1,
        loopCount = 0, loopSetCount = 0;
+   char *tmpExpression=NULL, *tmpArrayValue=NULL;
+   int _i, _j, expressionArray[256], detectedEnd=0, endIndex=1, startIndex=0, detectedStart;
    memset( tmp, '\0', sizeof(tmp) );
-
    int foundExt = 0;
    /* see if the user has provied an ext for this loop */
    while( loopArgsTmpPtr != NULL ) {
@@ -801,24 +1078,56 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
    if( ! foundExt ) {
       /* we need to submit the full set */
       nodeSpecPtr = _nodeDataPtr->data;
+      
+      tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+      if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+	 fprintf(stdout,"SeqLoops_getLoopSetArgs() loop expression:%s\n", tmpExpression);
+	 _i=0;
+	 tmpArrayValue = strtok (tmpExpression,":,");
+	 while (tmpArrayValue != NULL) {
+	    expressionArray[_i] = atoi(tmpArrayValue);
+	    //End is the biggest number of the expression
+	    if (expressionArray[_i]>detectedEnd) {
+	       detectedEnd=expressionArray[_i];
+	       endIndex = _i;
+	    }
+	    _i++;
+	    tmpArrayValue = strtok (NULL,":,");
+	 }
+	 detectedStart=detectedEnd;
+	 for (_j=0; _j<_i; _j=_j+4) {
+	    if(expressionArray[_j]<detectedStart){
+	       detectedStart=expressionArray[_j];
+	       startIndex=_j;
+	    }
+	 }
+	 loopCount=detectedStart;
+	 /* calculate next iteration */
+	 while (loopCount <= expressionArray[startIndex+1] && loopSetCount < expressionArray[startIndex+3]) {
+	    sprintf( tmp, "%d", loopCount );
+	    SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
+	    loopCount=loopCount+expressionArray[startIndex+2];
+	    loopSetCount++;
+	 }
+      } else {
+	 loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
+	 if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
+	    loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+	 }
+	 if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
+	    loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+	 }
+	 loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+	 fprintf(stdout,"SeqLoops_getLoopSetArgs() loopstart:%d loopSet:%d loopStep:%d loopEnd:%d\n", loopStart, loopSet, loopStep, loopEnd);
 
-      loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-         loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
-      }
-      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
-         loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
-      }
-      loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-      fprintf(stdout,"SeqLoops_getLoopSetArgs() loopstart:%d loopSet:%d loopStep:%d loopEnd:%d\n", loopStart, loopSet, loopStep, loopEnd);
-
-      loopCount = loopStart;
-      /* calculate next iteration */
-      while( loopCount <= loopEnd && loopSetCount < loopSet ) {
-         sprintf( tmp, "%d", loopCount );
-         SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
-         loopCount=loopCount+loopStep;
-         loopSetCount++;
+	 loopCount = loopStart;
+	 /* calculate next iteration */
+	 while( loopCount <= loopEnd && loopSetCount < loopSet ) {
+	    sprintf( tmp, "%d", loopCount );
+	    SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
+	    loopCount=loopCount+loopStep;
+	    loopSetCount++;
+	 }
       }
    } else {
       /* we need to submit only one iteration */
