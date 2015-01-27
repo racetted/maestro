@@ -125,3 +125,26 @@ void SeqListNode_printList(LISTNODEPTR currentPtr)
       }
  }
 }
+
+/********************************************************************************
+ * SeqListNode_reverseList: reverse the contents of the list
+ ********************************************************************************/
+void SeqListNode_reverseList(LISTNODEPTR *sPtr)
+{
+   LISTNODEPTR p, q, r;
+   
+   p = q = r = *sPtr;
+   p = p->nextPtr->nextPtr;
+   q = q->nextPtr;
+   r->nextPtr = NULL;
+   q->nextPtr = r;
+   
+   while (p != NULL)
+   {
+      r = q;
+      q = p;
+      p = p->nextPtr;
+      q->nextPtr = r;
+   }
+   *sPtr = q;
+}
