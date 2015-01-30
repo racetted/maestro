@@ -43,6 +43,9 @@ void SeqListNode_deleteWholeList(LISTNODEPTR *list);
 *****************************************************************/
 void SeqListNode_printList(LISTNODEPTR list);
 
+/********************************************************************************
+ * SeqListNode_reverseList: reverse the contents of the list
+ ********************************************************************************/
 void SeqListNode_reverseList(LISTNODEPTR *sPtr);
 
 #endif
