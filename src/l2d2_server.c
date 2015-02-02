@@ -257,7 +257,8 @@ void DependencyManager (_l2d2server l2d2 ) {
 					              snprintf(listings,sizeof(listings),"%s/listings/%s/%s/%s.submit.mserver.%s.%s",depXp->xpd_sname,l2d2.host, depXp->xpd_container,pleaf,depXp->xpd_sxpdate,Time);
 					      }
 					      /* build command */
-					      snprintf(cmd,sizeof(cmd),"export SEQ_MAESTRO_SHORTCUT=\"%s\"; %s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue >%s 2>&1",l2d2.mshortcut,l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, listings);
+					      snprintf(cmd,sizeof(cmd),"export SEQ_MAESTRO_SHORTCUT=\"%s\"; %s; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f continue > %s 2>&1; nodetracer -n %s %s -d %s -type submission -i %s",
+						       l2d2.mshortcut,l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, listings, depXp->xpd_snode, depXp->xpd_slargs, depXp->xpd_sxpdate, listings);
 					      fprintf(dmlg,"dependency submit cmd=%s\n",cmd); 
 					      /* take account of concurrency here ie multiple dependency managers! */
 					      snprintf(buf,sizeof(buf),"%s/.%s",l2d2.dependencyPollDir,filename);
