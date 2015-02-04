@@ -681,7 +681,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
             SeqUtil_stringAppend(&returnString,prevPtr);
             SeqUtil_TRACE("SeqUtil_relativePathEvaluation(): parent keyword replacement: replacing %s with %s\n",path,returnString);
             free(tmpString);
-       } else {
+       } else if ((tmpString=strstr(path, "./")) !=NULL) {
 
             if (! (returnString=malloc(strlen(path) - 1  + strlen(_nodeDataPtr->container) + 1 )) ){
                raiseError("SeqUtil_stripSubstring malloc: Out of memory!\n"); 
@@ -693,7 +693,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
 	    if (strstr(returnString,"./") != NULL) {
                raiseError("SeqUtil_relativePathEvaluation(): \"./\" keyword should only occur once. Check your dep_name = %s", path );
 	    }
-       }   
+       }
 
    } else {
    /* doesn't contain keywords, just create a copy of the input string and return */
