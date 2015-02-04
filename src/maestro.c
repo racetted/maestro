@@ -1315,10 +1315,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    sprintf( nodeFullPath, "%s/modules/%s.tsk", SEQ_EXP_HOME, _nodeDataPtr->taskPath );
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
    sprintf( defFile, "%s/resources/resources.def", SEQ_EXP_HOME);
+   _SeqUtil_mkdir( listingDir, 1 );
    if (!(strlen( _nodeDataPtr->extension ) > 0)) {
-      sprintf(submissionDir, "%s/sequencing/output%s.submission.%s.pgmout%d", SEQ_EXP_HOME, _nodeDataPtr->name, getenv("SEQ_DATE"), getpid());
+      sprintf(submissionDir, "%s/sequencing/output%s.submission.%s.pgmout%d", SEQ_EXP_HOME, _nodeDataPtr->name, _nodeDataPtr->datestamp, getpid());
    } else {
-      sprintf(submissionDir, "%s/sequencing/output%s.%s.submission.%s.pgmout%d", SEQ_EXP_HOME, _nodeDataPtr->name, _nodeDataPtr->extension, getenv("SEQ_DATE"), getpid());
+      sprintf(submissionDir, "%s/sequencing/output%s.%s.submission.%s.pgmout%d", SEQ_EXP_HOME, _nodeDataPtr->name, _nodeDataPtr->extension, _nodeDataPtr->datestamp, getpid());
    }
    
    SeqUtil_stringAppend( &fullExtName, _nodeDataPtr->name );
@@ -1459,7 +1460,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          fprintf(stdout,"normal submit cmd=%s\n", cmd );
 	 fprintf(stdout,"sending submission output to %s\n", submissionDir );
-	 sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, getenv("SEQ_DATE"), submissionDir);
+	 sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
 	 strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1; "); strcat(cmd, nodetracercmd);
 	 
          error_status = system(cmd);
@@ -1485,7 +1486,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          fprintf(stdout,"container submit cmd=%s\n", cmd );
 	 fprintf(stdout,"sending submission output to %s\n", submissionDir );
-	 sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, getenv("SEQ_DATE"), submissionDir);
+	 sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
 	 strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1; "); strcat(cmd, nodetracercmd);
          error_status=system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
