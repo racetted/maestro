@@ -652,7 +652,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
    char *returnString = NULL, *tmpString=NULL, *tmpstrtok=NULL, *prevPtr=NULL; 
    int count=0;
 
-   if (strstr(path, ".") != NULL) {
+   if (strstr(path, "..") != NULL || strstr(path, "./") != NULL) {
    /* contains keywords to be replaced */
         /*check which case we're refering to*/
        if ((tmpString=strstr(path, "...")) !=NULL) {
