@@ -25,8 +25,10 @@
 #include "SeqNameValues.h"
 #include "SeqUtil.h"
 
+
 extern _l2d2server L2D2;
-extern FILE *mlog,*mlogerr;
+extern FILE *mlog;
+dpnode *PRT_listdep;
 static void pdir (const char * dir_name);
 
 /**
@@ -96,9 +98,7 @@ int touch (char *filename) {
             fclose(actionfile);
             utime(filename,NULL); /*set the access and modification times to current time */
    } else {
-      if ((actionfile = fopen(filename,"w+")) == NULL) 
-      {
-        fprintf(stderr,"touch: Cannot touch file:%s\n",filename);
+      if ((actionfile = fopen(filename,"w+")) == NULL) {
         return(1);
       }
       
@@ -156,8 +156,8 @@ int isDirExists ( const char* path_name ) {
 /**
  * create a directory  1+ level 
  */
-int r_mkdir ( const char* dir_name, int is_recursive ) {
-   char tmp[1000];
+int r_mkdir ( const char* dir_name, int is_recursive , FILE *mlog) {
+   char tmp[1024];
    char *split = NULL, *work_string = NULL;
   
    if ( is_recursive == 1) {
@@ -171,7 +171,7 @@ int r_mkdir ( const char* dir_name, int is_recursive ) {
          strcat( tmp, "/" );
          if( ! isDirExists( tmp ) ) {
             if ( mkdir(tmp,0755 ) == -1 ) {
-                 fprintf (stderr, "ERROR: %s\n", strerror(errno) );
+                 fprintf (mlog, "ERROR: %s\n", strerror(errno) ); 
                  return(EXIT_FAILURE);
             }
          }
@@ -184,7 +184,7 @@ int r_mkdir ( const char* dir_name, int is_recursive ) {
    } else {
       if( ! isDirExists( dir_name ) ) {
          if ( mkdir(dir_name,0755 ) == -1 ) {
-                   fprintf (stderr,"ERROR: %s\n", strerror(errno) );
+                   fprintf (mlog,"ERROR: %s\n", strerror(errno) ); 
                    return(EXIT_FAILURE);
          }
       }
@@ -198,7 +198,7 @@ int r_mkdir ( const char* dir_name, int is_recursive ) {
  * Description : Wrapper to glob :
  *               find pathnames matching a pattern  
  */
-int globPath (char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) )
+int globPath (char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) , FILE *mlog)
 {
     glob_t glob_p;
     int ret;
@@ -207,10 +207,10 @@ int globPath (char *pattern, int flags, int (*errfunc) (const char *epath, int e
     ret = glob(pattern, GLOB_NOSORT,  0 , &glob_p);
     switch (ret) {
         case GLOB_NOSPACE:
-	             fprintf(stderr,"globPath: Glob running out of memory \n");
+	             fprintf(mlog,"globPath: Glob running out of memory \n"); 
 		     break;
 	case GLOB_ABORTED:
-	             fprintf(stderr,"globPath: Glob read error\n");
+	             fprintf(mlog,"globPath: Glob read error\n"); 
 		     break;
 	case GLOB_NOMATCH:
                      globfree(&glob_p);
@@ -246,9 +246,9 @@ char *getPathBase (const char *full_path) {
 
 /**
  * Name        : NodeLogr
- * Description :  
+ * Description : write in .../logs/YYYYMMDDHH0000_nodelog file 
  */
-int NodeLogr (char *nodeLoggerBuffer , int pid, FILE *mlog)
+int NodeLogr (char *nodeLogerBuffer , int pid, FILE *mlog)
 {
      int NodeLogfile;
      int bwrite, num=0,ret;
@@ -256,23 +256,23 @@ int NodeLogr (char *nodeLoggerBuffer , int pid, FILE *mlog)
      char firsin[512],Stime[40],Etime[40];
      char logBuffer[1024];
 
-     if ( nodeLoggerBuffer == NULL ) {
-            fprintf(mlog,"NodeLogr: arg. nodeLoggerBuffer is NULL \n");
-            return (1);
+     if ( nodeLogerBuffer == NULL ) {
+            fprintf(mlog,"NodeLogr: arg. nodeLogerBuffer is NULL \n");
+            return (0);
      }
 
      memset(firsin,'\0',sizeof(firsin));
-     if ( (num=sscanf(nodeLoggerBuffer,"%[^:]:%[^:]:%[^\n]",user,firsin,logBuffer)) != 3 ) {
-             fprintf(mlog,"NodeLogr: Error with the format of nodeLoggerBuffer\n");
+     if ( (num=sscanf(nodeLogerBuffer,"%[^:]:%[^:]:%[^\n]",user,firsin,logBuffer)) != 3 ) {
+             fprintf(mlog,"NodeLogr: Error with the format of nodeLogerBuffer\n");
 	     return (1);
      }
      
-     /* test existence of Exp. and datestamp 
+     /* test existence of Exp. and datestamp  
      if ( access(firsin,R_OK) != 0 ) {
              fprintf(mlog,"NodeLogr: Experiment:%s do not exists\n",firsin);
-	     return (1);
      }
      */
+
      strcat(logBuffer,"\n");
      if ((NodeLogfile = open(firsin, O_WRONLY|O_APPEND|O_CREAT, 00666)) != -1 ) {
            bwrite = write(NodeLogfile,logBuffer , strlen(logBuffer));
@@ -290,52 +290,78 @@ int NodeLogr (char *nodeLoggerBuffer , int pid, FILE *mlog)
 
 /**
  * Name        : writeNodeWaitedFile
- * Description : write the node waited file under dependent-ON Xp. 
- * Return value: 
+ * Description : write the node waited file under dependee Xp.
+ *               we examine duplicate in  wait file before inserting a dependency
+ * Return value: 0 success, 1 failure  
  */
 int  writeNodeWaitedFile ( const char * string , FILE *mlog ) 
 {
     FILE *waitingFile;
-    char tmp_line[1024];
     char line[1024];
-    char statusFile[1024],waitfile[1024],exp[250],node[256],datestamp[25],loopArgs[128];
-    int n,found=0;
+    char this_line[1024];
+    char statusFile[1024],waitfile[1024],exp[256],node[256],datestamp[25],loopArgs[128];
+    char this_exp[256],this_node[256],this_datestamp[25],this_loopArgs[128];
+    int  n, this_inode, inode, found=0;
+    size_t num;
 
-    memset(tmp_line,'\0',sizeof(tmp_line));
-    memset(line,'\0',sizeof(tmp_line));
+    memset(line,'\0',sizeof(line));
+    memset(this_line,'\0',sizeof(this_line));
     memset(statusFile,'\0',sizeof(statusFile));
     memset(waitfile,'\0',sizeof(waitfile));
     memset(exp,'\0',sizeof(exp));
     memset(node,'\0',sizeof(node));
     memset(datestamp,'\0',sizeof(datestamp));
     memset(loopArgs,'\0',sizeof(loopArgs));
-   
-    n=sscanf(string,"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",statusFile,waitfile,exp,node,datestamp,loopArgs);
     
-    if ( (n <= 4 ) || ( n == 5 && strlen(loopArgs) != 0) ) {
-        fprintf(mlog,"wrong number of argument given by sscanf for writeNodeWaitFile:%d should be 5, 6 with loop args\n",n);
-	     return(1);
-    }
+    memset(this_exp,'\0',sizeof(this_exp));
+    memset(this_node,'\0',sizeof(this_node));
+    memset(this_datestamp,'\0',sizeof(this_datestamp));
+    memset(this_loopArgs,'\0',sizeof(this_loopArgs));
    
+    n=sscanf(string,"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",statusFile,waitfile,this_exp,this_node,this_datestamp,this_loopArgs);
+
+    /* check if we have the right number of tokens */
+    if ( (n <= 4 ) || ( n == 5 && strlen(this_loopArgs) != 0) ) {
+        fprintf(mlog,"writeNodeWaitFile: Wrong number of argument given by sscanf got:%d should be 6\n",n);
+	return(1);
+    }
+    
+    /* if could not get inode, forget about this dependency, log it in mserver logs */
+    if ( (this_inode=get_Inode(this_exp)) < 0 ) {
+        fprintf(mlog,"writeNodeWaitFile: Cannot get inode of xp, dependency not written to file string=%s\n",string);
+	return(1);
+    }
+  
+    /* be carfull here, argument a will position both read and write pointer at the end, 
+       while a+ will position read at beginning and write at the end 
+       NOTE: the file is open through NFS from the same machine, probably the append 
+             mode will be atomic in case of concurrent append. Concurrent append will happen 
+	     when we will have multiple workers and if in the future we have issues with this 
+	     we could use locking (same as for Logging to nodelog files) to resolve this */
     if ((waitingFile=fopen(waitfile,"a+")) == NULL ) {
-        fprintf(mlog,"writeNodeWaitedFile(mserver) cannot open file:%s for appending \n",waitfile );
+                fprintf(mlog,"writeNodeWaitedFile: Cannot open file:%s in appending mode\n",waitfile );
 		return(1);
     }
   
-    sprintf( tmp_line, "exp=%s node=%s datestamp=%s args=%s\n",exp,node,datestamp,loopArgs );
     while( fgets(line, 1024, waitingFile) != NULL ) {
-           if( strcmp( line, tmp_line ) == 0 ) {
-              found = 1;
-              break;
+           n=sscanf(line,"exp=%s node=%s datestamp=%s args=%s",exp,node,datestamp,loopArgs);
+	   if (  (inode=get_Inode(exp) ) < 0 ) {
+                    fprintf(mlog,"writeNodeWaitFile: Cannot get inode of registred xp=%s\n",exp);
+		    continue;
+	   }
+	   if ( inode == this_inode && strcmp(node,this_node) == 0 && strcmp(datestamp,this_datestamp) == 0 && strcmp(loopArgs,this_loopArgs) == 0 ) {
+                found = 1;
+                break;
            }
     }
      
-    /* if ( !found ) n = write(waitingFile,tmp_line , strlen(tmp_line)); */
-
-    if ( !found ) fprintf( waitingFile,"%s", tmp_line ); 
+    if ( !found ) {
+          snprintf(this_line, sizeof(this_line),"exp=%s node=%s datestamp=%s args=%s\n",this_exp,this_node,this_datestamp,this_loopArgs); 
+          /* fprintf( waitingFile,"%s", this_line );  */
+          num = fwrite(this_line ,sizeof(char) , strlen(this_line) , waitingFile); 
+	  if ( num != strlen(this_line) )  fprintf(mlog,"writeNodeWaitFile Error: written:%zu out of:%d \n",num,strlen(this_line));
+    }
     fclose( waitingFile );
-
-    
     return(0);
 
 }
@@ -415,7 +441,7 @@ int writeInterUserDepFile (const char * tbuffer, FILE *mlog)
       * Note: multiple clients from diff. experiment could try to create this */
      snprintf(buff, sizeof(buff), "%s/.suites/maestrod/dependencies/polling/v%s",ppwdir,mversion);
      if ( access(buff,R_OK) != 0 ) {
-          if ( r_mkdir ( buff , 1 ) != 0 ) {
+          if ( r_mkdir ( buff , 1 , mlog ) != 0 ) {
                   fprintf(mlog,"Could not create dependency directory:%s\n",buff);
 	          return(1);
           }
@@ -518,7 +544,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 
       FILE *doc=NULL;
 
-      char bf[250];
+      char bf[256];
       char buffer[2048];
       char *c;
       int size,status;
@@ -528,33 +554,44 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
       memset(bf, '\0' , sizeof(bf));
       memset(buffer, '\0' , sizeof(buffer));
 
+      /* force clean of logs */
+      pl2d2->clean_times.clean_flag=1;
+      /* default values for clean (hours) */
+      pl2d2->clean_times.controller_clntime=48;
+      pl2d2->clean_times.dpmanager_clntime=48;
+      pl2d2->clean_times.eworker_clntime=25;
+      pl2d2->clean_times.tworker_clntime=25;
+
       if  ( (doc=fopen(filename, "r")) == NULL ) {
                fprintf(stderr,"Cannot Open XML Configuration file for mserver:%s ... Setting Defaults\n",filename);
 
-	       sprintf(buffer,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
-	       status=r_mkdir(buffer , 1);
+	       sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
+	       if ( (status=r_mkdir(pl2d2->logdir,1,stderr)) != 0 ) {
+                       fprintf(stderr,"Could not create log dir :%s\n",pl2d2->logdir);
+		       exit(1);
+	       }
+               fprintf(stderr,"Setting Defaults for log directory:%s\n",pl2d2->logdir);
 
-	       sprintf(buffer,"%s/.suites/log/v%s/mlog",getenv("HOME"),pl2d2->mversion);
-	       strcpy(pl2d2->mlog,buffer);
-	       sprintf(buffer,"%s/.suites/log/v%s/mlogerr",getenv("HOME"),pl2d2->mversion);
-	       strcpy(pl2d2->mlogerr,buffer);
-	       
-	       sprintf(buffer,"%s/.suites/log/v%s/dmlog",getenv("HOME"),pl2d2->mversion);
-	       strcpy(pl2d2->dmlog,buffer);
-	       sprintf(buffer,"%s/.suites/log/v%s/dmlogerr",getenv("HOME"),pl2d2->mversion);
-	       strcpy(pl2d2->dmlogerr,buffer);
-
-	       sprintf(buffer,"%s/public_html",getenv("HOME"));
-	       if ( access(buffer,R_OK) != 0 ) {
-	              status=mkdir(buffer , S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	       sprintf(pl2d2->mlog,"%s/.suites/log/v%s/mcontroller",getenv("HOME"),pl2d2->mversion);
+	       sprintf(pl2d2->dmlog,"%s/.suites/log/v%s/mdpmanager",getenv("HOME"),pl2d2->mversion);
+	       sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
+	       if ( access(pl2d2->web,R_OK) != 0 ) {
+	              if ( (status=r_mkdir(pl2d2->web,1,stderr)) != 0 ) {
+                                  fprintf(stderr,"Could not create web dir :%s\n",pl2d2->web);
+				  exit(1);
+		      }
                }
-	       sprintf(buffer,"%s/public_html/dependencies_stat_v%s.html",getenv("HOME"),pl2d2->mversion);
-	       strcpy(pl2d2->web_dep,buffer);
-
+               fprintf(stderr,"Setting Defaults for web directory:%s\n",pl2d2->web);
+	       sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web,pl2d2->mversion);
+	       sprintf(pl2d2->emailTO,"%s@ec.gc.ca",pl2d2->user);
+	       sprintf(pl2d2->emailCC,"");
 	       pl2d2->maxNumOfProcess=4;
-	       pl2d2->maxClientPerProcess=20;
-	       pl2d2->pollfreq=30;
+	       pl2d2->maxClientPerProcess=50;
+	       pl2d2->pollfreq=30;       /* sec */
 	       pl2d2->dependencyTimeOut=24; /* hours */
+               pl2d2->dzone=0;
+               fprintf(stderr,"Setting Defaults for maxNumOfProcess:%d maxClientPerProcess:%d\n",pl2d2->maxNumOfProcess,pl2d2->maxClientPerProcess);
+               fprintf(stderr,"Setting Defaults for pollfreq:%d dependencyTimeOut:%d\n",pl2d2->pollfreq,pl2d2->dependencyTimeOut);
 	       return(0);
       }
 
@@ -569,73 +606,66 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 
       if ( strcmp(bf,"mserver") == 0 ) {
              node_t *log_n = roxml_get_chld(item,"log",0);
-             if ( log_n != NULL ) { 
-                   node_t *log_txt = roxml_get_txt(log_n,0);
-                   if ( (c=roxml_get_content(log_txt,bf,sizeof(bf),&size)) != NULL ) {
+             node_t *log_txt = roxml_get_txt(log_n,0);
+             if ( log_n != NULL && log_txt != NULL && (c=roxml_get_content(log_txt,bf,sizeof(bf),&size)) != NULL && size > 0 ) { 
 	                    sprintf(pl2d2->logdir,"%s/v%s",bf,pl2d2->mversion);
-	                    status=r_mkdir(pl2d2->logdir , 1);
-			    if ( status == 1 ) {
+			    /* ADD statfs here to check filesys type */
+	                    status=r_mkdir(pl2d2->logdir ,1,stderr);
+			    if ( status != 0 ) {
 			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
                                     exit(1);
 			    }
-	                    snprintf(pl2d2->mlog,sizeof(pl2d2->mlog),"%s/mlog",pl2d2->logdir);
-	                    snprintf(pl2d2->mlogerr,sizeof(pl2d2->mlogerr),"%s/mlogerr",pl2d2->logdir);
+	                    snprintf(pl2d2->mlog,sizeof(pl2d2->mlog),"%s/mcontroller",pl2d2->logdir);
 			    /* set files */
-			    snprintf(pl2d2->dmlog,sizeof(pl2d2->dmlog),"%s/dmlog",pl2d2->logdir);
-	                    snprintf(pl2d2->dmlogerr,sizeof(pl2d2->dmlogerr),"%s/dmlogerr",pl2d2->logdir);
-			    fprintf(stdout,"In Xml Config File found log directory=%s\n",pl2d2->logdir);
-                   } else {
+			    snprintf(pl2d2->dmlog,sizeof(pl2d2->dmlog),"%s/mdpmanager",pl2d2->logdir);
+			    fprintf(stdout,"In xml Config File found log directory=%s\n",pl2d2->logdir);
+             } else {
 	                    sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
-	                    status=r_mkdir(pl2d2->logdir , 1);
-			    if ( status == 1 ) {
+	                    status=r_mkdir(pl2d2->logdir,1,stderr);
+			    if ( status != 0 ) {
 			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
                                     exit(1);
 			    }
 			    /* set files */
-	                    sprintf(pl2d2->mlog,"%s/mlog",pl2d2->logdir);
-	                    sprintf(pl2d2->mlogerr,"%s/mlogerr",pl2d2->logdir);
-	                    
-			    sprintf(pl2d2->dmlog,"%s/dmlog",pl2d2->logdir);
-	                    sprintf(pl2d2->dmlogerr,"%s/dmlogerr",pl2d2->logdir);
+	                    sprintf(pl2d2->mlog,"%s/mcontroller",pl2d2->logdir);
+			    sprintf(pl2d2->dmlog,"%s/mdpmanager",pl2d2->logdir);
                             fprintf(stderr,"Setting Defaults for log directory:%s\n",pl2d2->logdir);
-                          }
              }
+             
              node_t *web_n = roxml_get_chld(item,"web",0);
-	     if ( web_n != NULL ) {
-                   node_t *web_txt = roxml_get_txt(web_n,0);
-                   if ( (c=roxml_get_content(web_txt,bf,sizeof(bf),&size)) != NULL ) {
+             node_t *web_txt = roxml_get_txt(web_n,0);
+	     if ( web_n != NULL && web_txt != NULL && (c=roxml_get_content(web_txt,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    sprintf(pl2d2->web,"%s/v%s",bf,pl2d2->mversion);
-	                    status=r_mkdir(pl2d2->web , 1);
-			    if ( status == 1 ) {
+	                    status=r_mkdir(pl2d2->web,1,stderr);
+			    if ( status != 0 ) {
 			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
                                     exit(1);
 			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
-			    fprintf(stdout,"In Xml Config File found web directory=%s\n",pl2d2->web);
-                   } else {
+			    fprintf(stdout,"In xml Config File found web directory=%s\n",pl2d2->web);
+             } else {
 	                    sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
-	                    status=r_mkdir(pl2d2->web , 1);
-			    if ( status == 1 ) {
+	                    status=r_mkdir(pl2d2->web,1,stderr);
+			    if ( status != 0 ) {
 			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
                                     exit(1);
 			    }
-	                    sprintf(pl2d2->web_dep,"%s/dependencies_stat_v%s.html",pl2d2->web,pl2d2->mversion);
+	                    sprintf(pl2d2->web_dep,"%s/dependencies_stat.html",pl2d2->web);
                             fprintf(stderr,"Setting Defaults for web path:%s\n",pl2d2->web);
-                          }
              }
              
 	     node_t *pparam_n = roxml_get_chld(item,"pparams",0);
              if ( pparam_n != NULL ) {
                       node_t *prc_n = roxml_get_attr(pparam_n,"maxNumOfProcess",0);
-                      if ( (c=roxml_get_content(prc_n,bf,sizeof(bf),&size)) != NULL ) {
+                      if ( prc_n != NULL && (c=roxml_get_content(prc_n,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    if ( (pl2d2->maxNumOfProcess=atoi(bf)) <= 0 ) {
-			              pl2d2->maxNumOfProcess=1;
-			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
-                            } else if ( (pl2d2->maxNumOfProcess=atoi(bf)) > 10 ) {
 			              pl2d2->maxNumOfProcess=4;
 			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
+                            } else if ( (pl2d2->maxNumOfProcess=atoi(bf)) > 8 ) {
+			              pl2d2->maxNumOfProcess=8;
+			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             } else {
-			         fprintf(stdout,"In Xml Config File found maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
+			              fprintf(stdout,"In xml Config File found maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             }
                       } else {
 		            pl2d2->maxNumOfProcess=4;
@@ -643,33 +673,37 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                       }
 
                       node_t *pmc_n = roxml_get_attr(pparam_n,"maxClientPerProcess",0);
-                      if ( (c=roxml_get_content(pmc_n,bf,sizeof(bf),&size)) != NULL ) {
+                      if ( pmc_n != NULL && (c=roxml_get_content(pmc_n,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    if ( (pl2d2->maxClientPerProcess=atoi(bf)) <= 10 ) {
-			              pl2d2->maxClientPerProcess=20; 
+			              pl2d2->maxClientPerProcess=50; 
 			              fprintf(stdout,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
-                            } else if ( (pl2d2->maxClientPerProcess=atoi(bf)) > 45 ) {
-			              pl2d2->maxClientPerProcess=20;
+                            } else if ( (pl2d2->maxClientPerProcess=atoi(bf)) > 512 ) {
+			              pl2d2->maxClientPerProcess=512;
 			              fprintf(stdout,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
                             } else {
-			         fprintf(stdout,"In Xml Config File found maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+			              fprintf(stdout,"In xml Config File found maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
                             }
                       } else {
-		            pl2d2->maxClientPerProcess=20;
+		            pl2d2->maxClientPerProcess=50;
                             fprintf(stderr,"Setting Defaults for maxClientPerProcess:%d\n",pl2d2->maxClientPerProcess);
                       }
-             } 
+             } else {
+		       pl2d2->maxNumOfProcess=4;
+		       pl2d2->maxClientPerProcess=50;
+                       fprintf(stderr,"Setting Defaults for maxNumOfProcess:%d maxClientPerProcess:%d\n",pl2d2->maxNumOfProcess,pl2d2->maxClientPerProcess);
+	     }
 
+             
              node_t *param_n = roxml_get_chld(item,"dparams",0);
-
 	     if ( param_n != NULL ) {
                    node_t *pfq = roxml_get_attr(param_n, "poll-freq",0);
-                   if ( (c=roxml_get_content(pfq,bf,sizeof(bf),&size)) != NULL ) {
+                   if ( pfq != NULL && (c=roxml_get_content(pfq,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    if ( (pl2d2->pollfreq=atoi(bf)) <= 15 || (pl2d2->pollfreq=atoi(bf)) > 120 ) { 
 			           pl2d2->pollfreq=30;
 			           fprintf(stdout,"Forcing polling frequency=%d\n",pl2d2->pollfreq);
                             } else {
 			           pl2d2->pollfreq=atoi(bf);
-			           fprintf(stdout,"In Xml Config File found polling frequency=%d\n",pl2d2->pollfreq);
+			           fprintf(stdout,"In xml Config File found polling frequency=%d\n",pl2d2->pollfreq);
                             } 
                    } else {
 	                    pl2d2->pollfreq=30;
@@ -677,36 +711,100 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 		   }
              
 		   node_t *dto = roxml_get_attr(param_n, "dependencyTimeOut",0);
-	           if ( dto != NULL ) {
-                          if ( (c=roxml_get_content(dto,bf,sizeof(bf),&size)) != NULL ) {
-	                          if (  (pl2d2->dependencyTimeOut=atoi(bf)) <= 0 || (pl2d2->dependencyTimeOut=atoi(bf)) > 168 ) {
+                   if ( dto != NULL && (c=roxml_get_content(dto,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                     if (  (pl2d2->dependencyTimeOut=atoi(bf)) <= 0 || (pl2d2->dependencyTimeOut=atoi(bf)) > 168 ) {
 	                                 pl2d2->dependencyTimeOut=24;
-			                           fprintf(stdout,"dependencyTimeOut invalid or too high. Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
+			                 fprintf(stdout,"dependencyTimeOut invalid or too high. Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
                              } else {
 	                                 pl2d2->dependencyTimeOut=atoi(bf);
-                                    fprintf(stderr,"In Xml Config file found dependency time out period=%d\n",pl2d2->dependencyTimeOut);
-				  }
-                          } else {
-	                          pl2d2->dependencyTimeOut=24;
-                                  fprintf(stderr,"Setting Defaults for dependency time out period=%d\n",pl2d2->dependencyTimeOut);
-			  }
-                   }
+                                         fprintf(stderr,"In xml Config file found dependency time out period=%d\n",pl2d2->dependencyTimeOut);
+			     }
+                   } else {
+	                   pl2d2->dependencyTimeOut=24;
+                           fprintf(stderr,"Setting Defaults for dependency time out period=%d\n",pl2d2->dependencyTimeOut);
+		   }
+	     } else {
+	                   pl2d2->pollfreq=30;
+	                   pl2d2->dependencyTimeOut=24;
+                           fprintf(stderr,"Setting Defaults for pollfreq:%d dependencyTimeOut:%d\n",pl2d2->pollfreq,pl2d2->dependencyTimeOut);
 	     }
+
              node_t *dbz_n = roxml_get_chld(item,"debug_zone",0);
-	     if ( dbz_n != NULL ) {
-                    node_t *dbz_txt = roxml_get_txt(dbz_n,0);
-                    if ( (c=roxml_get_content(dbz_txt,bf,sizeof(bf),&size)) != NULL ) {
-		            if ( (pl2d2->dzone=atoi(bf)) < 0 ) {
-		                  pl2d2->dzone=1;
-			          fprintf(stdout,"Setting Defaults for debuging dzone=%d\n",pl2d2->dzone);
-                            } else {
-			          pl2d2->dzone=atoi(bf);
-			          fprintf(stdout,"In Xml Config File found dzone=%d\n",pl2d2->dzone);
-                            }
-                    } else {
-		            pl2d2->dzone=0;
-                            fprintf(stderr,"Setting Defaults for debuging Zone=%d\n",pl2d2->dzone);
-		    }
+             node_t *dbz_txt = roxml_get_txt(dbz_n,0);
+             if ( dbz_n != NULL && (c=roxml_get_content(dbz_txt,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+		      if ( (pl2d2->dzone=atoi(bf)) < 0 || (pl2d2->dzone=atoi(bf)) > 3 ) {
+		                   pl2d2->dzone=1;
+			           fprintf(stdout,"Setting Defaults for debug zone=%d\n",pl2d2->dzone);
+                      } else {
+			           pl2d2->dzone=atoi(bf);
+			           fprintf(stdout,"In xml Config File found debug zone=%d\n",pl2d2->dzone);
+                      }
+             } else {
+		       pl2d2->dzone=0;
+                       fprintf(stderr,"Setting Defaults for debuging Zone=%d\n",pl2d2->dzone);
+	     }
+
+             node_t *eml_n = roxml_get_chld(item,"email",0);
+	     if ( eml_n != NULL ) {
+                   node_t *emlto = roxml_get_attr(eml_n,"to",0);
+                   if ( emlto != NULL && (c=roxml_get_content(emlto,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    sprintf(pl2d2->emailTO,"%s",bf);
+			    fprintf(stdout,"in xml file found  email to=%s\n",pl2d2->emailTO);
+                   } else {
+	                    sprintf(pl2d2->emailTO,"%s@ec.gc.ca",pl2d2->user);
+		   }
+             
+		   node_t *emlcc = roxml_get_attr(eml_n, "cc",0);
+                   if ( emlcc != NULL && (c=roxml_get_content(emlcc,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    sprintf(pl2d2->emailCC,"%s",bf);
+			    fprintf(stdout,"in xml file found  email cc=%s\n",pl2d2->emailCC);
+                   } else {
+	                    sprintf(pl2d2->emailCC,"");
+		   }
+	     }
+            
+	     /* logs clean: validated numbers  */
+	     node_t *cln_n = roxml_get_chld(item,"cleanlog",0);
+	     if ( cln_n != NULL ) {
+	         node_t *cln_cntr = roxml_get_attr(cln_n,"controller",0);
+                 if ( cln_cntr != NULL && (c=roxml_get_content(cln_cntr,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    pl2d2->clean_times.controller_clntime=atoi(bf);
+			    fprintf(stdout,"in xml file found clean main controller=%d\n",pl2d2->clean_times.controller_clntime);
+                 } 
+	     
+	         node_t *cln_dmgr = roxml_get_attr(cln_n,"dpmanager",0);
+                 if ( cln_dmgr != NULL && (c=roxml_get_content(cln_dmgr,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    pl2d2->clean_times.dpmanager_clntime=atoi(bf);
+			    fprintf(stdout,"in xml file found clean dependency manager=%d\n",pl2d2->clean_times.dpmanager_clntime);
+                 } 
+	     
+	         node_t *cln_ewrk = roxml_get_attr(cln_n,"eworker",0);
+                 if ( cln_ewrk != NULL && (c=roxml_get_content(cln_ewrk,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    pl2d2->clean_times.eworker_clntime=atoi(bf);
+			    fprintf(stdout,"in xml file found clean eternal worker=%d\n",pl2d2->clean_times.eworker_clntime);
+                 } 
+	     
+	         node_t *cln_twrk = roxml_get_attr(cln_n,"tworker",0);
+                 if ( cln_twrk != NULL && (c=roxml_get_content(cln_twrk,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    pl2d2->clean_times.tworker_clntime=atoi(bf);
+			    fprintf(stdout,"in xml file found clean transient worker=%d\n",pl2d2->clean_times.tworker_clntime);
+                 } 
+             }
+
+	     /* port range */
+	     node_t *prt_n = roxml_get_chld(item,"portrange",0);
+	     if ( prt_n != NULL ) {
+	         node_t *prt_min = roxml_get_attr(prt_n,"min",0);
+                 if ( prt_min != NULL && (c=roxml_get_content(prt_min,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    pl2d2->port_min=atoi(bf);
+			    fprintf(stdout,"in xml file found start port=%d\n",pl2d2->port_min);
+                 }
+	         
+		 node_t *prt_max = roxml_get_attr(prt_n,"max",0);
+                 if ( prt_max != NULL && (c=roxml_get_content(prt_max,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
+	                    pl2d2->port_max=atoi(bf);
+			    fprintf(stdout,"in xml file found end port=%d\n",pl2d2->port_max);
+                 }
              }
       } else {
              fprintf(stderr,"Incorrect root node name in xml config file:%s ... Setting Defaults \n",filename);
@@ -717,23 +815,27 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
              pl2d2->dzone=0;
 
 	     sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
-	     status=r_mkdir(pl2d2->web , 1);
-	     if ( status == 1 ) {
-	            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->logdir);
+	     status=r_mkdir(pl2d2->web,1,stderr);
+	     if ( status != 0 ) {
+	            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
                     exit(1);
 	     }
 
 	     sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
 	     sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
-	     status=r_mkdir(pl2d2->logdir , 1);
-	     if ( status == 1 ) {
-	            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+	     status=r_mkdir(pl2d2->logdir,1,stderr);
+	     if ( status != 0 ) {
+	            fprintf(stdout,"Could not create log directory=%s ... exiting\n",pl2d2->logdir);
                     exit(1);
 	     }
-	     sprintf(pl2d2->mlog,"%s/mlog",pl2d2->logdir);
-	     sprintf(pl2d2->mlogerr,"%s/mlogerr",pl2d2->logdir);
-	     sprintf(pl2d2->dmlog,"%s/dmlog",pl2d2->logdir);
-	     sprintf(pl2d2->dmlogerr,"%s/dmlogerr",pl2d2->logdir);
+	     sprintf(pl2d2->mlog,"%s/mcontroller",pl2d2->logdir);
+	     sprintf(pl2d2->dmlog,"%s/mdpmanager",pl2d2->logdir);
+	     sprintf(pl2d2->emailTO,"%s@ec.gc.ca",pl2d2->user);
+	     sprintf(pl2d2->emailCC,"");
+             fprintf(stderr,"Setting Defaults for log directory:%s\n",pl2d2->logdir);
+             fprintf(stderr,"Setting Defaults for web directory:%s\n",pl2d2->web);
+	     fprintf(stderr,"Setting Defaults for maxNumOfProcess:%d maxClientPerProcess:%d\n",pl2d2->maxNumOfProcess,pl2d2->maxClientPerProcess);
+	     fprintf(stderr,"Setting Defaults for pollfreq:%d dependencyTimeOut:%d\n",pl2d2->pollfreq,pl2d2->dependencyTimeOut);
       }
 
       roxml_release(RELEASE_ALL);
@@ -744,13 +846,13 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 /**
  * parse dependency file (polling for the moment )
  */
-struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dmlogerr)
+struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog )
 {
 
       FILE *doc=NULL;
       node_t *dep, *name, *inode, *lock , *sub;
       struct _depParameters *listParam=NULL;
-      char bf[250];
+      char bf[256];
       char bfl[1024];
       char buffer[2048];
       char tmpbf[2048];
@@ -761,7 +863,7 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
       memset(buffer, '\0' , sizeof(buffer));
 
       if  ( (doc=fopen(filename, "r")) == NULL ) {
-               fprintf(dmlogerr,"ParseXmlDepFile: Cannot Open XML Polling dependency file:%s \n",filename);
+               fprintf(dmlog,"ParseXmlDepFile: Cannot Open XML Polling dependency file:%s \n",filename);
 	       return(NULL);
       }
 
@@ -780,10 +882,10 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
       c=roxml_get_content(type,bf,sizeof(bf),&size);
 
       if ( strcmp(bf,"pol") != 0 ) {
-             fprintf(dmlogerr,"ParseXmlDepFile: Incorrect root node name in xml polling dependency file:%s\n",filename);
+             fprintf(dmlog,"ParseXmlDepFile: Incorrect root node name in xml polling dependency file:%s\n",filename);
 	     return (NULL);
       } else if  ( (listParam=(struct _depParameters *) malloc(sizeof(struct _depParameters)))  == NULL ) {
-	          fprintf(dmlogerr,"ParseXmlDepFile: Cannot malloc on heap inside ParseXmlDepFile ... exiting \n");
+	          fprintf(dmlog,"ParseXmlDepFile: Cannot malloc on heap inside ParseXmlDepFile ... exiting \n");
 		  exit(1);
       }
 		    
@@ -838,6 +940,15 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
                   strcpy(listParam->xpd_largs,"");
       }
 
+      node_t *xp_susr = roxml_get_chld(item,"susr",0);
+      node_t *xp_susrtxt = roxml_get_txt(xp_susr,0);
+      if ( xp_susr != NULL && xp_susrtxt != NULL ) {
+                  c=roxml_get_content(xp_susrtxt,bf,sizeof(bf),&size);
+                  strcpy(listParam->xpd_susr,bf);
+      } else {
+                  strcpy(listParam->xpd_susr,"");
+      }
+             
       node_t *xp_sxp = roxml_get_chld(item,"sxp",0);
       node_t *xp_sxptxt = roxml_get_txt(xp_sxp,0);
       if ( xp_sxp != NULL && xp_sxptxt != NULL ) {
@@ -883,15 +994,6 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
                   strcpy(listParam->xpd_lock,"");
       }
 
-      node_t *xp_ndfile = roxml_get_chld(item,"depfilename",0);
-      node_t *xp_ndfiletxt = roxml_get_txt(xp_ndfile,0);
-      if ( xp_ndfile != NULL && xp_ndfiletxt != NULL ) {
-                  c=roxml_get_content(xp_ndfiletxt,bf,sizeof(bf),&size);
-                  strcpy(listParam->xpd_dfilename,bf);
-      } else {
-                  strcpy(listParam->xpd_dfilename,"");
-      }
-
       node_t *xp_cnt = roxml_get_chld(item,"container",0);
       node_t *xp_cnttxt = roxml_get_txt(xp_cnt,0);
       if ( xp_cnt != NULL && xp_cnttxt != NULL ) {
@@ -928,6 +1030,15 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
                   strcpy(listParam->xpd_key,"");
       }
 
+      node_t *xp_flow = roxml_get_chld(item,"flow",0);
+      node_t *xp_flowtxt = roxml_get_txt(xp_flow,0);
+      if ( xp_flow != NULL && xp_flowtxt != NULL ) {
+                  c=roxml_get_content(xp_flowtxt,bf,sizeof(bf),&size);
+                  strcpy(listParam->xpd_flow,bf);
+      } else {
+                  strcpy(listParam->xpd_flow,"");
+      }
+
       node_t *xp_regtime = roxml_get_chld(item,"regtime",0);
       if ( xp_regtime != NULL ) {
                    node_t *xp_regtimedate = roxml_get_attr(xp_regtime,"date",0);
@@ -942,7 +1053,7 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
                              strcpy(listParam->xpd_regtimepoch,bf);
                    } else strcpy(listParam->xpd_regtimepoch,"");
      } else {
-            fprintf(dmlogerr,"regtime null\n");
+            fprintf(dmlog,"regtime null\n");
             strcpy(listParam->xpd_regtimedate,"");
             strcpy(listParam->xpd_regtimepoch,"");
      }
@@ -956,7 +1067,7 @@ struct _depParameters * ParseXmlDepFile(char *filename , FILE * dmlog, FILE * dm
 
 /** 
 *  logZone : log to file
-*  this need synchro. btw all the processes
+*  there is  no synchro. btw processes
 *  Note : errors are logged what ever the Zone is 
 */
 void logZone(int this_Zone, int conf_Zone, FILE *fp  , char * txt, ...)
@@ -996,31 +1107,33 @@ char typeofFile(mode_t mode)
 }
 /**
  * SendFile
- * Send  waited_end file to client  
+ * Send  *.waited_${signal} file to client  
  *
- * 
+ * Note: socket mode is non-blocking
+ *
  */
 int SendFile (const char * filename , int sock, FILE *mlog ) 
 {
     char * buffer;
-    char fsize[11]; /* size of the file encoded in 11 char, max : 99999999999 wow! */
+    char   fsize[11]; /* size of the file encoded in 10 char, max : 9999999999 wow! */
     FILE * waitf;
     
     int bytes_written=0, bytes_read=0, bytes_left=0, total=0;
-    
     struct stat st;
 
     /* get & format size of file in bytes */ 
     if ( stat(filename,&st) != 0 ) {
           fprintf(mlog,"SendFile:mserver cannot stat waitfile:%s\n", filename );
+	  /* send a zero size */
+          snprintf(fsize,sizeof(fsize),"%d",total);
+          bytes_written=write(sock, fsize, sizeof(fsize));
           return(1);
     }
     
-    snprintf(fsize,sizeof(fsize),"%d",st.st_size);
-
+    snprintf(fsize,sizeof(fsize),"%lld",(long long) st.st_size);
     /* have to malloc here */
     if ( (buffer=(char *) malloc( st.st_size * sizeof(char))) == NULL ) {
-          fprintf(mlog,"SendFile:Could not malloc\n");
+          fprintf(mlog,"SendFile: Could not malloc\n");
 	  return(1);
     }
    
@@ -1035,11 +1148,9 @@ int SendFile (const char * filename , int sock, FILE *mlog )
     fclose(waitf);
 
     /* send size of file */
-    bytes_written=write(sock, fsize, sizeof(fsize));
+    bytes_written = write(sock, fsize, sizeof(fsize));
 
-    
     bytes_left = st.st_size;
-     
     while ( total < st.st_size ) 
     {
         bytes_written = send(sock, buffer+total, bytes_left, 0);
@@ -1070,7 +1181,7 @@ int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node , FILE *ml
    time_t now;
    double diff_t=0.0;
    
-   sprintf(src,"%s/end_task_lock",L2D2.tmpdir);
+   sprintf(src,"%s/END_TASK_LOCK",L2D2.tmpdir);
    if ( access(src,R_OK) != 0 ) { 
            if ( (ret=touch(src)) != 0 ) {
 	         fprintf(mlog,"cannot Touch file: lock on Tmpdir Xp=%s Node=%s\n",xpn,node);
@@ -1079,25 +1190,18 @@ int lock ( char *md5Token , _l2d2server L2D2 , char *xpn , char *node , FILE *ml
    }
   
    sprintf(dest,"%s/%s",L2D2.tmpdir,md5Token);
-
-   /* Code Moved to client side
-   for ( i=0 ; i < 5 ; i++ ) {
-        get_time(Ltime,3);
-        ret=symlink("end_task_lock",dest);
-        if ( ret == 0 )  {
-	       break;
-        }
-	usleep(500000);  
-   }
-   */
-
-   ret=symlink("end_task_lock",dest);
+   ret=symlink("END_TASK_LOCK",dest);
    if ( ret != 0 ) {
         if ( (lstat(dest,&st)) == 0 ) {
               time(&now);
 	      if ( (diff_t=difftime(now,st.st_mtime)) > LOCK_TIME_TO_LIVE ) {
 	             ret=unlink(dest);
-                     fprintf(mlog,"symlink timeout xpn=%s node=%s Token:%s diff=%f\n",xpn,node,md5Token,diff_t);
+		     if ( ret == 0 ) 
+                             fprintf(mlog,"symlink timeout xpn=%s node=%s Token:%s diff=%f removed\n",xpn,node,md5Token,diff_t);
+                     else
+                             fprintf(mlog,"symlink timeout xpn=%s node=%s Token:%s diff=%f could not remove\n",xpn,node,md5Token,diff_t);
+
+		     return(1);
 	      }
 	} 
    } 
@@ -1127,62 +1231,99 @@ int unlock ( char *md5Token , _l2d2server L2D2, char *xpn, char *node, FILE *mlo
 
    return(0); 
 }
-/*
-** initsem() -- inspired by W. Richard Stevens' UNIX Network
-** Programming 2nd edition, volume 2, lockvsem.c, page 295.
+
+/**
+*  send mail routine
+*  Note : message must end with \n.
+*         message must not contain substring "\n.\n"
 */
-int initsem(key_t key, int nsems)  /* key from ftok() */
+int sendmail(const char *to, const char *from, const char *cc , const char *subject, const char *message, FILE * mlog )
 {
-    int i;
-    union semun arg;
-    struct semid_ds buf;
-    struct sembuf sb;
-    int semid;
+     int retval = -1;
+     FILE *mailpipe = popen("/usr/lib/sendmail -t", "w");
+	      
+     if (mailpipe != NULL) {
+            fprintf(mailpipe, "To: %s\n", to);
+            fprintf(mailpipe, "From: %s\n", from);
+            fprintf(mailpipe, "CC: %s\n", cc);
+            fprintf(mailpipe, "Subject: %s\n\n", subject);
+            fwrite(message, 1, strlen(message), mailpipe);
+            fwrite(".\n", 1, 2, mailpipe);
+            pclose(mailpipe);
+            retval = 0;
+     } else {
+             /* freopen(stderr, "w+", stderr); */
+              fprintf(mlog,"Failed to invoke sendmail\n"); 
+     }
 
-    semid = semget(key, nsems, IPC_CREAT | IPC_EXCL | 0666);
-
-    if (semid >= 0) { /* we got it first */
-        sb.sem_op = 1; sb.sem_flg = 0;
-        arg.val = 1;
-        for(sb.sem_num = 0; sb.sem_num < nsems; sb.sem_num++) { 
-            /* do a semop() to "free" the semaphores. */
-            /* this sets the sem_otime field, as needed below. */
-            if (semop(semid, &sb, 1) == -1) {
-                int e = errno;
-                semctl(semid, 0, IPC_RMID); /* clean up */
-                errno = e;
-                return -1; /* error, check errno */
-            }
-        }
-
-    } else if (errno == EEXIST) { /* someone else got it first */
-        int ready = 0;
-
-        semid = semget(key, nsems, 0); /* get the id */
-        if (semid < 0) return semid; /* error, check errno */
-
-        /* wait for other process to initialize the semaphore: */
-        arg.buf = &buf;
-        for(i = 0; i < MAX_RETRIES && !ready; i++) {
-            semctl(semid, nsems-1, IPC_STAT, arg);
-            if (arg.buf->sem_otime != 0) {
-                ready = 1;
-            } else {
-                sleep(1);
-            }
-        }
-        if (!ready) {
-            errno = ETIME;
-            return -1;
-        }
-    } else {
-        return semid; /* error, check errno */
-    }
-
-    return semid;
+     return retval;
 }
 
+/**
+* getDependencyFiles
+* return parameteres of inter-dependencies
+* located under $HOME/.suites/maestrod/dependencies/polling/$version
+*/
+dpnode *getDependencyFiles(char *DDep, char *xp ,FILE *fp, const char *deptype)
+{
+   glob_t g_depFiles;
+   size_t cnt;
+   ssize_t r;
+   int  g_ldp,ret;
+   int Inode,this_inode;
+   char buf[1024],  linkname[1024];
+   struct _depParameters *depXp=NULL;
+   char **p;
 
+   /* get inode of xp , we dont rely on strcmp */
+   if ( strcmp(xp,"all") != 0 ) {  
+       if ( (Inode=get_Inode(xp)) == -1 ) return(NULL);
+   }
+
+   snprintf(buf,sizeof(buf),"%s/[1-2][0-9]*_[a-f0-9]*",DDep); 
+
+   g_ldp = glob(buf, GLOB_NOSORT , globerr, &g_depFiles);
+   if (  g_ldp == 0 && g_depFiles.gl_pathc > 0  ) {
+        for (p=g_depFiles.gl_pathv , cnt=g_depFiles.gl_pathc ; cnt ; p++, cnt--) {
+                /* must be a link */
+                r=readlink(*p,linkname,1023); linkname[r] = '\0';
+                if (  (depXp=(struct _depParameters *) ParseXmlDepFile(linkname,fp)) == NULL ) {
+                        fprintf(stderr,"Problem parsing xml file:%s\n",linkname);
+                        continue;
+                } else {
+                        /* use inode */
+			if ( strcmp(deptype,"depender") == 0 ) {
+                            /*This xp is the depender,  check on which xp this experiment depend  */
+			    /* insert list_ptr, depender xp, depender node, dependee xp name, dependee node, depender date, dependee date, depender loop args, dependee loop ars, file, link */
+                            if ( strcmp(xp,"all") == 0 ) {
+                                     ret=insert(&PRT_listdep, xp, depXp->xpd_snode, depXp->xpd_name, depXp->xpd_node, depXp->xpd_sxpdate, depXp->xpd_xpdate, depXp->xpd_slargs, depXp->xpd_largs, depXp->xpd_key, *p, linkname);
+                            } else {
+                                     this_inode=get_Inode(depXp->xpd_sname);
+                                     if ( this_inode == Inode  ) { 
+                                           ret=insert(&PRT_listdep, xp, depXp->xpd_snode, depXp->xpd_name, depXp->xpd_node, depXp->xpd_sxpdate, depXp->xpd_xpdate, depXp->xpd_slargs, depXp->xpd_largs, depXp->xpd_key, *p, linkname);
+                                     }
+                            }
+			} else {
+                            /* This xp is the dependee, check which experiment depends on this xp */
+			    /* insert list_ptr, dependee xp, depender node, dependee xp name, dependee node, depender date, dependee date, depender loop args, dependee loop ars, file, link */
+                            this_inode=get_Inode(depXp->xpd_name);
+                            if ( this_inode == Inode  ) { 
+                                      ret=insert(&PRT_listdep, xp, depXp->xpd_snode, depXp->xpd_name, depXp->xpd_node, depXp->xpd_sxpdate, depXp->xpd_xpdate, depXp->xpd_slargs, depXp->xpd_largs, depXp->xpd_key, *p, linkname);
+                            }
+			}
+                }
+        }
+        globfree(&g_depFiles);
+   }
+
+   return (PRT_listdep);  
+}
+
+int globerr(const char *path, int eerrno)
+{
+    fprintf(stderr, "%s: %s\n", path, strerror(eerrno));
+    return 0; /* let glob() keep going */
+}
 /*
 l2d2_Util_isNodeXState 
 
@@ -1225,5 +1366,3 @@ int l2d2_Util_isNodeXState (const char* node, const char* loopargs, const char* 
   return result; 
 
 }
-
-

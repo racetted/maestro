@@ -62,6 +62,7 @@ main (int argc, char * argv[])
    int c,r;
  
    struct sigaction act;
+   memset (&act, '\0', sizeof(act));
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgsPtr = NULL;
@@ -125,7 +126,7 @@ main (int argc, char * argv[])
       }
 
       /* register SIGALRM signal */
-      act.sa_handler = alarm_handler;
+      act.sa_handler = &alarm_handler;
       act.sa_flags = 0;
       sigemptyset (&act.sa_mask);
       r = sigaction (SIGALRM, &act, NULL);
@@ -133,7 +134,7 @@ main (int argc, char * argv[])
 
       validDate=malloc(dateSize+1); 
       if ( hasDate == 0) {
-      /* getting the experiment date */
+           /* getting the experiment date */
            strcpy(validDate,(char *)tictac_getDate(seq_exp_home,"", NULL));
       }
       else {

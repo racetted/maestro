@@ -40,11 +40,13 @@ static const char* CATCHUP_UNSUBMIT_MSG = "CATCHUP mode: this job will not be su
 static char OCSUB[256];
 static char SEQ_EXP_HOME[SEQ_MAXFIELD];
 char *CurrentNode;
-pid_t ChildPid;
 
 /* static char DATESTAMP[SEQ_MAXFIELD]; */
 static char USERNAME[32];
 static char EXPNAME[128];
+
+/* external Function declarations */
+ extern int get_Inode (const char * );
 
 /* Function declarations */
 static int go_abort(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPtr);
@@ -81,13 +83,13 @@ static void submitLoopSetNodeList ( const SeqNodeDataPtr _nodeDataPtr,
 /* dependancy related */
 static int writeNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char* _dep_exp_path, const char* _dep_node, 
                                 const char* _dep_status, const char* _dep_index, const char* _dep_datestamp, SeqDependsScope _dep_scope, const char * StatusFile);
-static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr);
+static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *_flow );
 
 char* formatWaitingMsg( SeqDependsScope _dep_scope, const char* _dep_exp, 
                        const char *_dep_node, const char *_dep_index, const char *_dep_datestamp );
 
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope  _dep_scope, const char* _dep_name, const char* _dep_index,
-                          const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char* _depProt);
+                      const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char* _depProt, const char *_flow );
 
 
 
@@ -107,7 +109,7 @@ static int  (*_WriteInterUserDepFile) (const char *filename , const char * depBu
                                         const char *datestamp, const char *md5sum );
  
 int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char* _dep_name, const char* _dep_index, char *depIndexPtr, const char *_dep_datestamp, 
-                                   const char *_dep_status, const char* _dep_exp , const char* _dep_prot , const char* statusFile);
+                                   const char *_dep_status, const char* _dep_exp , const char* _dep_prot , const char* statusFile, const char * _flow);
 static void useNFSlocking();
 static void useSVRlocking();
  
@@ -162,7 +164,7 @@ static void useNFSlocking()
   _fopen = fopen_nfs;
   _lock  = lock_nfs;
   _unlock  = unlock_nfs;
-  fprintf(stderr,"@@@@@@@@@@@@@@@@@@@@@@ Using Normal locking mecanism @@@@@@@@@@@@@@@@@@@@@@\n"); 
+  fprintf(stderr,"@@@@@@@@@@@@@@@@@@@@@@ Using NFS locking mecanism @@@@@@@@@@@@@@@@@@@@@@\n"); 
 }
  
 static void useSVRlocking()
@@ -873,8 +875,8 @@ static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    /* Obtain a lock to protect end state */ 
    ret=_lock( filename , _nodeDataPtr->datestamp ); 
-   get_time(Time,3);
-   fprintf(stderr,"\n Time_in=%s lock=%s\n",Time,filename);
+   /* ADD TIME GIVEN BY THE SERVER */ 
+
    /* Handling multiple concurrent "endx" submissions of a container 
       The above lock will ensure that only one child is executing
       this section. If the child finds a ${container}.end file, it
@@ -884,9 +886,9 @@ static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    /* if this node is a container do this */
     if ( _nodeDataPtr->type != Task && _nodeDataPtr->type != NpassTask ) {
-        isEndContainerExist = _access(filename, R_OK);
-        fprintf(stderr,"\n>>> CONTAINER_END_LOCK_FILE:%s\n",filename);
-	 }
+             isEndContainerExist = _access(filename, R_OK);
+             fprintf(stderr,"\nThis Task has Ended the CONTAINER :%s\n",filename);
+    }
 
    /* create the node end lock file name if not exists*/
    _CreateLockFile( MLLServerConnectionFid , filename , "go_end() ");
@@ -913,8 +915,8 @@ static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    /* Release lock here */
    ret=_unlock( filename , _nodeDataPtr->datestamp  );
-   get_time(Time,3);
-   fprintf(stderr,"\n Time_out=%s lock=%s\n",Time,filename);
+   /* ADD TIME GIVEN BY THE SERVER */ 
+  
 
    free( extName );
    SeqNameValues_deleteWholeList( &newArgs);
@@ -1344,7 +1346,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    }
 
    /* check ignoreAllDeps first so that it does not write the waiting file */
-   if( ignoreAllDeps == 1 || validateDependencies( _nodeDataPtr ) == 0 ) {
+   if ( ignoreAllDeps == 1 || validateDependencies( _nodeDataPtr, _flow ) == 0 ) {
       setSubmitState( _nodeDataPtr ) ;
 
       /* dependencies are satisfied */
@@ -1466,14 +1468,42 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          error_status = system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
          if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
+<<<<<<< HEAD
 	    rename(movedTarFile,tarFile);
 	    SeqUtil_TRACE("maestro.go_submit() moving temporary tar file %s to %s \n", movedTarFile, tarFile); 
 	    _touch(readyFile);
+=======
+             rename(movedTarFile,tarFile);
+	          SeqUtil_TRACE("maestro.go_submit() moving temporary tar file %s to %s \n", movedTarFile, tarFile); 
+	          _touch(readyFile);
+>>>>>>> dc9e38070cca3a8602efb30e63f9e5724a448def
 	 }
 
-         if (!error_status){
+         if (!error_status) {
              nodesubmit(_nodeDataPtr, _nodeDataPtr->datestamp);
-         } 
+         }
+	 
+	 /* 
+	    remove  *waiting.interUser* file if ignore dependency.
+	    AT any time, we will only have 1 dependency file (for any task) in inter_depend_dir, 
+	    we should remove the dep. file and mserver will remove link ($datestamp_$key) 
+	    in $HOME/.suites/maestrod/dependencies/polling/$version/ when the link became
+	    a dangling link. I have hardcoded depstatus to "end", to minimize code and cuse this
+	    is the status that we are depending on Now.
+	 */
+	  if ( ignoreAllDeps == 1 ) {
+                 memset(tmpfile,'\0',sizeof tmpfile);
+	         loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
+	         if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
+	                      snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s_%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, loopArgs);
+	         } else {
+	                      snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name);
+	         }
+	         if ( _access(tmpfile , R_OK) == 0 ) {
+	                 fprintf(stderr,"removing dependency file:%s\n",tmpfile);
+	                 ret=unlink(tmpfile);
+	         }
+	   }
       } else {   /* container */
          memset( noendwrap, '\0', sizeof( noendwrap ) );
          memset(tmpfile,'\0',sizeof tmpfile);
@@ -1482,12 +1512,18 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          _nodeDataPtr->submits == NULL ? strcpy( noendwrap, "" ) : strcpy( noendwrap, "-noendwrap" ) ;
 
+<<<<<<< HEAD
          sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
 
          fprintf(stdout,"container submit cmd=%s\n", cmd );
 	 fprintf(stdout,"sending submission output to %s\n", submissionDir );
 	 sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
 	 strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1; "); strcat(cmd, nodetracercmd);
+=======
+	      snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	 
+	      fprintf(stdout,"container submit cmd=%s\n", cmd );
+>>>>>>> dc9e38070cca3a8602efb30e63f9e5724a448def
          error_status=system(cmd);
          SeqUtil_TRACE("maestro.go_submit() ord return status: %d \n",error_status);
 
@@ -1763,10 +1799,10 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             } /* end while loop */
             fclose(waitedFile);
  
- 	         /* warn if file empty ... */
- 	         if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",filename );
+ 	    /* warn if file empty ... */
+ 	    if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",filename );
 
-            /* we don't need to keep the file */
+            /* we don't need to keep the file , must remove file on /tmp is TMPDIR is not set */
             ret=_removeFile(filename);
          } else {
             raiseError( "maestro cannot read file: %s (submitDependencies) \n", filename );
@@ -1852,9 +1888,9 @@ Inputs:
 
 */
 
-static int writeNodeWaitedFile(  const SeqNodeDataPtr _nodeDataPtr, const char* _dep_exp_path,
-                               const char* _dep_node, const char* _dep_status,
-                               const char* _dep_index, const char* _dep_datestamp, SeqDependsScope _dep_scope, const char *statusfile ) {
+static int writeNodeWaitedFile( const SeqNodeDataPtr _nodeDataPtr, const char* _dep_exp_path,
+                                const char* _dep_node, const char* _dep_status,
+                                const char* _dep_index, const char* _dep_datestamp, SeqDependsScope _dep_scope, const char *statusfile ) {
    FILE *waitingFile = NULL;
    char filename[SEQ_MAXFIELD];
    char *loopArgs = NULL, *depBase = NULL;
@@ -1902,6 +1938,7 @@ static int writeNodeWaitedFile(  const SeqNodeDataPtr _nodeDataPtr, const char* 
            break;
        case 1:
            raiseError( "maestro cannot write Node Waited file: %s (writeNodeWaitedFile)\n", filename );
+	   fprintf(stderr,"HAHA\n");
            break; /* not reached */
        case 9:
            status=0;
@@ -1941,10 +1978,11 @@ Checks if the dependencies are satisfied for a given node.
 
 Inputs:
   _nodeDataPtr - pointer to the node targetted by the execution
+  _flow         - continue | stop 
 
 */
 
-static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
+static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *_flow ) {
    int isWaiting = 0, isDepIndexWildcard = 0, isDepInScope = 0;
    char filename[SEQ_MAXFIELD];
    char seqPath[SEQ_MAXFIELD];
@@ -2027,15 +2065,15 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
          /* verify status files and write waiting files */
          if (isDepInScope) {
  	         SeqUtil_TRACE( "maestro.validateDependencies() calling processDepStatus depExp=%s depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depExp, depName, depIndex, depDatestamp, depStatus );
- 	         isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, depExp, depProt);
+ 	         isWaiting = processDepStatus( _nodeDataPtr, depScope, depName, depIndex, depDatestamp, depStatus, depExp, depProt, _flow);
          } else {
             SeqUtil_TRACE( "maestro.validateDependencies() Skipping dependency, out of scope. depExp=%s depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depExp, depName, depIndex, depDatestamp, depStatus );
          }
          
          free(depName); free(depStatus); free(depExp);
          free(localIndexString); free(depProt);
-	      free(depDatestamp); free(depIndexString);
-	      free(depHour); free(depIndex); free(localIndex);
+	 free(depDatestamp); free(depIndexString);
+	 free(depHour); free(depIndex); free(localIndex);
          free(depValidHour); free(depValidDOW);
 
          SeqNameValues_deleteWholeList(&loopArgsPtr);
@@ -2072,12 +2110,14 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr) {
  *
  * added by Rochdi:
  * _dep_prot:      the way we remote depend
+ * _flow    : the server will submit with -f flow
  */
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_scope, const char* _dep_name, const char* _dep_index,
-                          const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char * _dep_prot) {
+                      const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char * _dep_prot, const char * _flow ) {
    char statusFile[SEQ_MAXFIELD];
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
    char *waitingMsg = NULL, *depIndexPtr = NULL, *extString = NULL;
+   char msg[1024];
    /* ocm related */
    char dhour[3];
    char c[10];
@@ -2119,8 +2159,9 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
    if (strncmp(_dep_prot,"ocm",3) != 0 ) {
     /* maestro stuff */
        if  (! doesNodeExist(_dep_name, _dep_exp, _dep_datestamp)) {
-           nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, "Dependant node (%s) of exp (%s) does not exist, dependency ignored.\n",_nodeDataPtr->datestamp, _dep_name, _dep_exp ); 
-           return(0);
+              snprintf(msg,sizeof(msg),"Dependant node:%s of exp: %s does not exist, dependency ignored\n",_dep_name, _dep_exp);
+              nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,_nodeDataPtr->datestamp);
+              return(0);
        }
        depNodeDataPtr = nodeinfo( _dep_name, "all", NULL, _dep_exp, NULL, _dep_datestamp );
        /* check catchup value of the node */
@@ -2139,7 +2180,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
            ret=_lock( statusFile ,_nodeDataPtr->datestamp ); 
            if ( (undoneIteration=! _isFileExists( statusFile, "maestro.processDepStatus()")) ) {
               if( _dep_scope == InterUser ) {
-	                isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile);
+	                isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
               } else {
                    isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depIndexPtr, _dep_datestamp, _dep_scope, statusFile);
  	           }
@@ -2165,7 +2206,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
                } else {
  	                depIndexPtr = extensions->data;
                    if( _dep_scope == InterUser ) {
- 	                    isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile);
+ 	                    isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
  		             } else {
                        isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depIndexPtr, _dep_datestamp, _dep_scope, statusFile);
  		             }
@@ -2208,10 +2249,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
  	
       /* check if a loop job */
       if ( strncmp(ocmjinfo_res->loop_reference,"REG",3) != 0) { /* loop job */
-	      loop_start=atoi(ocmjinfo_res->loop_start);
-	      loop_total=atoi(ocmjinfo_res->loop_total);
-         loop_set=atoi(ocmjinfo_res->loop_set);
-         loop_trotte=loop_start;
+	   loop_start=atoi(ocmjinfo_res->loop_start);
+	   loop_total=atoi(ocmjinfo_res->loop_total);
+           loop_set=atoi(ocmjinfo_res->loop_set);
+           loop_trotte=loop_start;
       }
  
       if ( strncmp(_dep_index,"ocmloop",7) == 0 ) {
@@ -2222,7 +2263,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
                   snprintf(c,sizeof(c),"%c%c%d",depIndexPtr[0],depIndexPtr[1],loop_trotte);
  		            free(depIndexPtr);
  		            depIndexPtr=&c;
- 	               isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile);
+ 	               isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
  	               break; 
                }
                loop_trotte++;
@@ -2232,7 +2273,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
              if ( ! (undoneIteration= ! _isFileExists(statusFile,"maestro.processDepStatus()"))) { 
  	        return(0); 
  	     } else {
- 	        isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile);
+ 	        isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile,_flow);
  	     }
  	 }
       } else {
@@ -2240,7 +2281,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
           if ( ! (undoneIteration = ! _isFileExists(statusFile,"maestro.processDepStatus()"))) { 
              return(0);
  	  } else {
- 	     isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile);
+ 	     isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile,_flow);
  	  }
       }
    }
@@ -2265,7 +2306,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
  *
  */
 int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char* _dep_name, const char* _dep_index, char *depIndexPtr, const char *_dep_datestamp, 
-                                   const char *_dep_status, const char* _dep_exp , const char* _dep_prot , const char* statusFile) {
+                                   const char *_dep_status, const char* _dep_exp , const char* _dep_prot , const char* statusFile, const char * _flow) {
 
    struct passwd *current_passwd = NULL;
    char filename[SEQ_MAXFIELD];
@@ -2322,6 +2363,7 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    /* 
     * create directory where to put the *waiting.interUser* file 
     * we will be able to erase it when doing init[branche] actions 
+    * Also when submiting with no depend.
    */
 
    depBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
@@ -2341,7 +2383,7 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
 
    snprintf(depParam,sizeof(depParam)," <xp>%s</xp>\n <node>%s</node>\n <indx>%s</indx>\n <xdate>%s</xdate>\n <status>%s</status>\n <largs>%s</largs>\n \
 <sxp>%s</sxp>\n <snode>%s</snode>\n <sxdate>%s</sxdate>\n <slargs>%s</slargs>\n <lock>%s</lock>\n <container>%s</container>\n \
-<mdomain>%s</mdomain>\n <mversion>%s</mversion>\n <regtime date=\"%s\" epoch=\"%ld\" />\n <key>%s</key>\n",_dep_exp,_dep_name,depIndexPtr,_dep_datestamp,_dep_status,_dep_index,SEQ_EXP_HOME,_nodeDataPtr->name,_nodeDataPtr->datestamp,loopArgs,statusFile,_nodeDataPtr->container,maestro_shortcut,maestro_version,registration_time,current_time,md5sum);
+<mdomain>%s</mdomain>\n <mversion>%s</mversion>\n <regtime date=\"%s\" epoch=\"%ld\" />\n <flow>%s</flow>\n<key>%s</key>\n",_dep_exp,_dep_name,depIndexPtr,_dep_datestamp,_dep_status,_dep_index,SEQ_EXP_HOME,_nodeDataPtr->name,_nodeDataPtr->datestamp,loopArgs,statusFile,_nodeDataPtr->container,maestro_shortcut,maestro_version,registration_time,current_time,_flow,md5sum);
 
    /* get the protocole : polling(P), .... others to be determined  */
    if ( strncmp(_dep_prot,"pol",3) == 0 || strncmp(_dep_prot,"ocm",3) == 0 ) {        /* === Doing maestro Polling === */
@@ -2523,13 +2565,15 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
     *   SIGALRM to be able to time out socket routines This handler must be installed only once 
     *   SIGPIPE : in case of socket closed */
    if ( QueDeqConnection == 0 ) {
-       alrm.sa_handler = alarm_handler;
+       memset (&alrm, '\0', sizeof(alrm));
+       alrm.sa_handler = &alarm_handler;
        alrm.sa_flags = 0;
        sigemptyset (&alrm.sa_mask);
        r = sigaction (SIGALRM, &alrm, NULL);
        if (r < 0) perror (__func__);
-       
-       pipe.sa_handler = pipe_handler;
+      
+       memset (&pipe, '\0', sizeof(pipe));
+       pipe.sa_handler = &pipe_handler;
        pipe.sa_flags = 0;
        sigemptyset (&pipe.sa_mask);
        r = sigaction (SIGPIPE, &pipe, NULL);

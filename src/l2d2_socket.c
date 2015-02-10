@@ -22,13 +22,11 @@
 
 extern char * str2md5(const char *, int );
 
-/* GetHostName special gethostname with IBM p690 name substitution */
+/* GetHostName */
 int GetHostName(char *name, size_t len) 
 {
   int junk;
-
   junk = gethostname(name, len);
-
   return(junk);
 }
 
@@ -94,7 +92,7 @@ void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , 
 {
      int fd;
      char buf[1024];
-     int nc;
+     int nc,rt;
      struct passwd *ppass;
     
      if (  (ppass=getpwnam(username)) == NULL ) {
@@ -111,8 +109,8 @@ void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , 
      }
 
      nc = snprintf(buf, sizeof(buf), "seqpid=%u seqhost=%s seqip=%s seqport=%d\n", pid, hostn, hip, port);
-     write(fd, buf, nc);
-     close(fd);
+     rt = write(fd, buf, nc);
+     rt = close(fd);
      
      /* compute md5sum here */
      *m5sum=str2md5(buf,strlen(buf));
@@ -333,7 +331,7 @@ int connect_to_hostport(char *target2)
 }
 /** 
  *  given a hostip and a port specification, connect to it
- * connect to it. The return value is the connected socket
+ *  The return value is the connected socket
  */
 int connect_to_host_port_by_ip (char *hostip, int portno )  
 {
@@ -362,22 +360,25 @@ int connect_to_host_port_by_ip (char *hostip, int portno )
 }
 
 /**
- * send reply to command: 00 if success 11 if not  
+ * send reply to command: 00 if success 11 if not. 
+ *
+ * The socket mode is non-blocking
+ * We should normaly add a test on ret < 0 and  put close_conn=TRUE, but we test at the beginning
+ * of the loop the client connection and we set up the variable close_conn=TRUE to remove this
+ * client from the list.
  */
-void send_reply(int fclient, int status)  
+void send_reply(int fclient, int status )  
 {
    int ret;
-   
    if (status == 0 )
          ret=write(fclient, "00\0", 3);
    else
          ret=write(fclient, "11\0", 3);
-
-
-   if (ret <= 0 ) fprintf(stderr,"Could not send reply \n");
 }
+
 /**
  * read from socket with time out 
+ * Not used !
  */
 int read_socket (int sock , char *buf , int size , unsigned int timeout) 
 {
@@ -394,22 +395,24 @@ int read_socket (int sock , char *buf , int size , unsigned int timeout)
 
 /**
  * receive from socket with time out 
+ * The socket mode here is blocking
  */
 int recv_socket (int sock , char *buf , int size , unsigned int timeout) 
 {
-        int bytes_write=0;
+        int bytes_read=0;
 
 	alarm(timeout);
-	bytes_write=recv(sock, buf, size, 0);
+	bytes_read=recv(sock, buf, size, 0);
 	alarm(0);
 
-        if ( bytes_write <=  0 ) return (-1);
+        if ( bytes_read <=  0 ) return (-1);
 
-	return (bytes_write);
+	return (bytes_read);
 }
 
 /**
  * send to socket with time out 
+ * The socket mode here is blocking
  */
 int send_socket (int sock , char *buf , int size , unsigned int timeout) 
 {
@@ -433,7 +436,7 @@ int do_Login( int sock , unsigned int pid , char *node, char *xpname , char *sig
     char buffer[1024];
     char *path_status=NULL;
     char resolved[MAXPATHLEN];
-    int bytes_read, bytes_sent;
+    int  bytes_read, bytes_sent;
     struct stat fileStat;
 
     memset(bLogin,'\0',sizeof(bLogin));
@@ -444,13 +447,13 @@ int do_Login( int sock , unsigned int pid , char *node, char *xpname , char *sig
 
     /* need to have what the exp is pointing to : true_path */
     if ( (path_status=realpath(xpname,resolved)) == NULL ) {
-               fprintf(stderr,"do_Login:Probleme avec le path=%s\n",xpname);
+               fprintf(stderr,"do_Login: Probleme avec le path=%s\n",xpname);
                return (1);
     } 
 
     /* get inode */
     if (stat(resolved,&fileStat) < 0) {    
-               fprintf(stderr,"do_Login:Cannot stat on path=%s\n",resolved);
+               fprintf(stderr,"do_Login: Cannot stat on path=%s\n",resolved);
                return (1);
     }
 
@@ -460,7 +463,7 @@ int do_Login( int sock , unsigned int pid , char *node, char *xpname , char *sig
                return (1);
     }
 
-    snprintf(bLogin,sizeof(bLogin),"I %u %d %s %s %s %s %s %s", pid, fileStat.st_ino, xpname, node , signl , host, username, *m5);
+    snprintf(bLogin,sizeof(bLogin),"I %u %ld %s %s %s %s %s %s", pid, (long) fileStat.st_ino, xpname, node , signl , host, username, *m5);
     if ( (bytes_sent=send_socket (sock , bLogin , sizeof(bLogin) , SOCK_TIMEOUT_CLIENT)) <= 0 ) { 
                 fprintf(stderr,"LOGIN FAILED (Timeout sending) with %s Maestro server from host=%s node=%s signal=%s\n",username, host, node, signl );
     	        return(1);
@@ -481,19 +484,20 @@ int do_Login( int sock , unsigned int pid , char *node, char *xpname , char *sig
 
 }
 /**
- *
- * rec_full 
- * receive all the stream based on a size 
- * Need a timeout
+ * recv_full 
+ * receive all the stream based on a size with timeout 
+ * 
  */
 int recv_full ( int sock , char * buff, int rsize )
 {
         int received = 0, r;
+
+       	
         while ( received < rsize )
         {
-           r = recv( sock, buff + received, rsize - received, 0);
+           r = recv_socket( sock, buff + received, rsize - received, SOCK_TIMEOUT_CLIENT );
            if ( r <= 0 ) {
-	           fprintf(stderr,"Client break\n");
+	           fprintf(stderr,"Client break in recv_full\n");
 		   break;
            }
            received += r;

@@ -81,7 +81,6 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
     }
     
     memset(Rbuffer,'\0', sizeof(Rbuffer));
-
     if ( (bytes_read=recv_socket (sock , Rbuffer , sizeof(Rbuffer) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
            fprintf(stderr,"%%%%%%%%%%%% Query_L2D2_Server: socket closed at recv   %%%%%%%%%%%%%%\n");
 	   fprintf(stderr, "====== Reverting to Nfs Routines ====== \n");

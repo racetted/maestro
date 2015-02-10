@@ -11,8 +11,8 @@ LIBTH=-lpthread
 CFLAGS1 = -g
 CFLAGS2 = -lefence -g -I../inc -DUNITTEST -DREENTRANT -DLINUX -Wall -Wextra -Wno-unused -D__DEBUG -DIGNORE_EMPTY_TEXT_NODES
 ROXML_OBJECTS = l2d2_roxml.o l2d2_roxml-internal.o l2d2_roxml-parse-engine.o
-L2D2SOBJECTS  = l2d2_server.o l2d2_socket.o l2d2_Util.o l2d2_commun.o $(ROXML_OBJECTS) SeqUtil.o SeqLoopsUtil.o SeqNameValues.o SeqNode.o SeqListNode.o
-L2D2AOBJECTS  = l2d2_admin.o l2d2_socket.o l2d2_Util.o l2d2_commun.o $(ROXML_OBJECTS)  SeqUtil.o SeqLoopsUtil.o SeqNameValues.o SeqNode.o SeqListNode.o
+L2D2SOBJECTS  = l2d2_server.o l2d2_socket.o l2d2_Util.o l2d2_commun.o l2d2_lists.o $(ROXML_OBJECTS) SeqUtil.o SeqLoopsUtil.o SeqNameValues.o SeqNode.o SeqListNode.o
+L2D2AOBJECTS  = l2d2_admin.o l2d2_socket.o l2d2_Util.o l2d2_commun.o l2d2_lists.o $(ROXML_OBJECTS)  SeqUtil.o SeqLoopsUtil.o SeqNameValues.o SeqNode.o SeqListNode.o
 
 all: prep 
 	eval $(COMPILER_SSM_CMD); $(MAKE) runcontrol mserver madmin
@@ -99,6 +99,9 @@ prep:
 
 ocmjinfo.o:	ocmjinfo.c ocmjinfo.h 
 	s.compile $(CFLAGS) -src ocmjinfo.c
+
+l2d2_lists.o: l2d2_lists.h l2d2_lists.c
+	$(CC) $(CFLAGS1) -c l2d2_lists.c
 
 l2d2_Util.o: l2d2_Util.c l2d2_Util.h
 	$(CC) $(CFLAGS1) -c l2d2_Util.c

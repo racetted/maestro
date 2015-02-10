@@ -12,10 +12,10 @@
 ******************************************************************************/
 
 
-extern int touch_svr(char *filename) ;
+extern int touch_svr(const char *filename) ;
 extern int touch_nfs(const char *filename) ;
-extern int get_Inode (const char * );
-extern int  (*_touch)(char * );
+extern int get_Inode(const char * );
+extern int (*_touch)(const char * );
 
 /* 
 tictac_setDate

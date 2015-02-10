@@ -54,6 +54,8 @@ main (int argc, char * argv [])
    int c=0,returnDate=0, r;
    struct sigaction act;
 
+   memset (&act, '\0', sizeof(act));
+
    if (argc >= 2) {
       while ((c = getopt(argc, argv, "d:s:f:hv")) != -1) {
             switch(c) {
@@ -78,11 +80,12 @@ main (int argc, char * argv [])
 	       break; 
             case 'h':
                printUsage();
+               exit(0); 
                break;
             case '?':
-                 printf ("Argument s or f must be specified!\n");
-                 printUsage();
-                 exit(1);
+               printf ("Argument s or f must be specified!\n");
+               printUsage();
+               exit(1);
             }
       }
 
@@ -91,7 +94,7 @@ main (int argc, char * argv [])
       } else {
 
         /* register SIGALRM signal */
-        act.sa_handler = alarm_handler;
+        act.sa_handler = &alarm_handler;
         act.sa_flags = 0;
         sigemptyset (&act.sa_mask);
         r = sigaction (SIGALRM, &act, NULL);

@@ -295,7 +295,7 @@ char *SeqUtil_getPathBase (const char *full_path) {
 
 
 /**
-  *
+  * Create directory hierarchy
   *
   */
 int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
@@ -710,45 +710,71 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
  * Inputs:
  *    _dep_exp_path - the SEQ_EXP_HOME of the dependant node
  *    _dep_node     - the path of the node including the container
-  *    _dep_status   - the status that the node is waiting for (end,abort,etc)
-  *    _dep_index    - the loop index that this node is waiting for (.+1+6)
-  *    _dep_scope    - dependency scope
-  *     Sfile        - Status file of the dependent node
-  *     xpinode      - Experiment Inode
+ *    _dep_status   - the status that the node is waiting for (end,abort,etc)
+ *    _dep_index    - the loop index that this node is waiting for (.+1+6)
+ *    _dep_scope    - dependency scope
+ *     Sfile        - Status file of the dependent node
+ *     xpinode      - Experiment Inode
  */ 
 
 int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
-                                      const char* filename, const char* statusfile) {
+                              const char* filename, const char* statusfile) {
  
     FILE *waitingFile = NULL;
     char tmp_line[SEQ_MAXFIELD];
     char line[SEQ_MAXFIELD];
-    int found=0;
+    char Lexp[256],Lnode[256],Ldatestamp[25],LloopArgs[128];
+    int inode,Linode,n,found=0;
+    size_t num;
  
     fprintf(stderr,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_nfs routine\n");
 
-
     memset(tmp_line,'\0',sizeof(tmp_line));
     memset(line,'\0',sizeof(line));
+    memset(Lexp,'\0',sizeof(Lexp));
+    memset(Lnode,'\0',sizeof(Lnode));
+    memset(Ldatestamp,'\0',sizeof(Ldatestamp));
+    memset(LloopArgs,'\0',sizeof(LloopArgs));
 
+    /* if cannot get inode of xp, skip this dependency */
+    if   ( (inode=get_Inode(seq_xp_home)) < 0 ) {
+             fprintf(stderr,"writeNodeWaitedFile_nfs: Cannot get Inode of xp=%s\n",seq_xp_home);
+             return (1);
+    }
+
+    /* be carfull here, argument a will position both read and write pointer at the end, 
+       while a+ will position read at beginning and write at the end.
+       NOTE: the file is open through NFS from different machines, we dont know the exact 
+             behaviour of the append command */
     if ((waitingFile = fopen(filename,"a+")) == NULL) {
             raiseError( "maestro.WriteNodeWaitedFile_nfs cannot write to file:%s\n",filename );
     }
- 
+
     SeqUtil_TRACE( "maestro.writeNodeWaitedFile_nfs updating %s\n", filename);
- 
-    /* sua need to add more logic for duplication and handle more than one entry in the waited file */
-    sprintf( tmp_line, "exp=%s node=%s datestamp=%s args=%s\n", seq_xp_home, nname, datestamp, loopArgs );
+
+    /* sua   : need to add more logic for duplication and handle more than one entry in the waited file 
+       Rochdi: we added comparaison of xp inode:  /.suites vs /maestro_suites (ie real case) */
     while( fgets(line, SEQ_MAXFIELD, waitingFile) != NULL ) {
-       if( strcmp( line, tmp_line ) == 0 ) {
-          found = 1;
-          break;
-       }
+           n=sscanf(line,"exp=%s node=%s datestamp=%s args=%s",Lexp,Lnode,Ldatestamp,LloopArgs);
+           if ( (Linode=get_Inode(Lexp)) < 0 ) {
+                   fprintf(stderr,"writeNodeWaitedFile_nfs: Cannot get Inode of registred xp=%s\n",Lexp);
+                   continue;
+           }
+           if ( Linode == inode && strcmp(Lnode,nname) == 0 && strcmp(Ldatestamp,datestamp) == 0 && strcmp(LloopArgs,loopArgs) == 0 ) {
+                  found = 1;
+                  break;
+           }
+
     }
- 
-    if ( !found ) fprintf( waitingFile,"%s", tmp_line );
+
+    if ( !found ) {
+             snprintf( tmp_line, sizeof(tmp_line), "exp=%s node=%s datestamp=%s args=%s\n",seq_xp_home, nname, datestamp, loopArgs );
+             /* fprintf( waitingFile,"%s", tmp_line );  */
+	     num = fwrite(tmp_line ,sizeof(char) , strlen(tmp_line) , waitingFile);
+	     if ( num != strlen(tmp_line) )  fprintf(stderr,"writeNodeWaitFile Error: written:%zu out of:%d \n",num,strlen(tmp_line));
+    }
+
     fclose( waitingFile );
- 
     return(0);
 }
 /**
@@ -781,7 +807,7 @@ int  WriteInterUserDepFile_nfs (const char *filename , const char * DepBuf , con
           }
      }
 
-     /* build dependency filename and link it to true dependency file under the xp. tree*/
+     /* build dependency filename and link it to true dependency file under the xp. tree */
      snprintf(DepFileName,sizeof(DepFileName),"%s/.suites/maestrod/dependencies/polling/v%s/%s_%s",ppwdir,maestro_version,datestamp,md5sum);
 
      /* have to check for re-runs */
@@ -809,7 +835,7 @@ void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
 }
 
 /**
- * build a symlink on sequencing/sync/$version
+ * build a symlink on sequencing/sync/$datestamp/$version
  *
  */
 int lock_nfs ( const char * filename , const char * datestamp ) 
@@ -833,17 +859,17 @@ int lock_nfs ( const char * filename , const char * datestamp )
      snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",seq_exp_home,datestamp,mversion);
      if ( access(lpath,R_OK) != 0 ) ret=SeqUtil_mkdir_nfs(lpath , 1);
 
-     sprintf(src,"%s/end_task_lock",lpath);
+     snprintf(src,sizeof(src),"%s/END_TASK_LOCK",lpath);
      if ( access(src,R_OK) != 0 ) {
                  if ( (ret=touch_nfs(src)) != 0 ) fprintf(stderr,"cannot touch file:lock on %s \n",lpath);
      }
 
      md5Token = (char *) str2md5(filename,strlen(filename));
-     sprintf(dest,"%s/%s",lpath,md5Token);
+     snprintf(dest,sizeof(dest),"%s/%s",lpath,md5Token);
 
      for ( i=0 ; i < 5 ; i++ ) {
           get_time(Ltime,3);
-          ret=symlink("end_task_lock",dest);
+          ret=symlink("END_TASK_LOCK",dest);
           if ( ret == 0 )  {
                  fprintf(stdout,"symlink obtained loop=%d AT:%s xpn=%s Token:%s\n",i,Ltime,seq_exp_home,md5Token);
                  break;
@@ -865,6 +891,9 @@ int lock_nfs ( const char * filename , const char * datestamp )
      return(ret);
 }
 
+/*
+* remove a symlink in sequencing/sync/$datestamp/$version
+*/
 int unlock_nfs ( const char * filename , const char * datestamp ) 
 {
      char lpath[1024], src[1024], Ltime[25];
@@ -872,18 +901,21 @@ int unlock_nfs ( const char * filename , const char * datestamp )
      int ret=0;
 
      if ( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
-	            fprintf(stderr,"lock_nfs: Cannot get SEQ_EXP_HOME variable ...\n");
+	            fprintf(stderr,"lock_nfs: Cannot get SEQ_EXP_HOME variable\n");
      }
 
      if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
-                     fprintf(stderr, "lock_nfs: Cannot get env. var SEQ_MAESTRO_VERSION\n");
+                     fprintf(stderr, "lock_nfs: Cannot get SEQ_MAESTRO_VERSION variable\n");
      }
      
      snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",seq_exp_home,datestamp,mversion);
-     if ( access(lpath,R_OK) != 0 ) ret=SeqUtil_mkdir_nfs(lpath , 1);
+     if ( access(lpath,R_OK) != 0 ) {
+             fprintf(stderr,"unlock_nfs: dir=%s not exist\n",lpath);
+	     return(1);
+     }
     
      md5Token = (char *) str2md5(filename,strlen(filename));
-     sprintf(src,"%s/%s",lpath,md5Token);
+     snprintf(src,sizeof(src),"%s/%s",lpath,md5Token);
 
      get_time(Ltime,3);
      if ( access(src,R_OK) == 0 ) {
@@ -899,8 +931,7 @@ int unlock_nfs ( const char * filename , const char * datestamp )
      }
 
      free(md5Token);
-      fprintf(stdout,"maestro.unlock_nfs() filename:%s return:%d\n",filename,ret);
-      return(ret);
+     return(ret);
 
 }
 
