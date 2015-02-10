@@ -5,7 +5,9 @@
 *.ssm
 *.swp
 bin
-ssm
+ssm/*.ssm
+ssm/maestro_* 
+ssm/profile*
 src/maestro
 src/nodelogger
 src/mserver

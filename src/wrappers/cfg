@@ -73,7 +73,7 @@ function Sys_LoadLevelerHeader
 
 function Sys_NoCfgError
 {
-   echo FatalError cannot find configuration file ${1}
+   echo warning: cannot find configuration file ${1}. Using default. 
 }
 
 function Sys_JobHeader
