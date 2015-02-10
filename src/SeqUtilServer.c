@@ -64,6 +64,7 @@ int isFileExists_svr ( const char* lockfile, const char *caller ) {
 int access_svr ( const char* filename , int mode ) {
    int status;
    char string[2]; 
+   
    memset(string,'\0',sizeof(string));
    sprintf(string,"%d",mode);
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename , string); 
@@ -188,6 +189,7 @@ int WriteInterUserDepFile_svr (const char *filename, const char *DepBuf, const c
  *   routine to download the waited_end (any size) file from server  
  *   to TMPDIR of client host, open it and give the handle
  *   to work with.
+ * Note : socket mode is blocking
  */
 FILE * fopen_svr ( const char * filename , int sock ) 
 {
@@ -199,17 +201,18 @@ FILE * fopen_svr ( const char * filename , int sock )
   int  size;
   int  bytes_sent,bytes_read,error=0;
 
+  unsigned int pid=getpid();
+
   if ( getenv("TMPDIR") != NULL ) {
           snprintf(wfilename,sizeof(wfilename),"%s/waitfile",getenv("TMPDIR"));
-  } else {
-          snprintf(wfilename,sizeof(wfilename),"/tmp/waitfile");
-  }
+  } else { 
+          snprintf(wfilename,sizeof(wfilename),"/tmp/waitfile.%d",pid);
+  } 
 
   SeqUtil_TRACE("fopen_svr(): wait file:%s===== \n",filename);
 
   /* build command */
-  sprintf(tmp,"Z %s",filename);
-
+  snprintf(tmp,sizeof(tmp),"Z %s",filename);
   if ( (bytes_sent=send_socket(sock , tmp , sizeof(tmp) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
 	    SeqUtil_TRACE("fopen_svr(): socket closed at send\n");
             SeqUtil_TRACE("fopen_svr(): Reverting to nfs Routines\n");
@@ -217,19 +220,24 @@ FILE * fopen_svr ( const char * filename , int sock )
             return (fp);
   }
 
-  /* read size of file */
-  bytes_read=recv(sock,csize,sizeof(csize),0); 
-
-  if ( bytes_read <= 0 ) {
-	     /* should revert to nfs routine */
+  /* read (get) size of file */
+  if ( (bytes_read=recv_socket(sock, csize, sizeof(csize), SOCK_TIMEOUT_CLIENT)) <= 0 ) {
+             /* should revert to nfs routine */
              SeqUtil_TRACE("fopen_svr(): Could not receive size of waited file ... Reverting to nfs Routines\n");
-	     fp=fopen_nfs(filename , sock);
+             fp=fopen_nfs(filename , sock);
              return (fp);
   } else {
              size=atoi(csize);
              SeqUtil_TRACE("Received size of waited file=%d\n",size);
   }
- 
+
+  /* if size is 0 , server did not find the wait file, try nfs */
+  if ( size == 0 ) {
+             SeqUtil_TRACE("fopen_svr(): received 0 size of waited file ... Reverting to nfs Routines\n");
+             fp=fopen_nfs(filename , sock);
+             return (fp);
+  }
+
   /* allocate an extra 1 byte for null char */
   if ( (buffer=(char *) malloc( (1+size) * sizeof(char))) == NULL ) {
 	     raiseError("ERROR: OutOfMemory in fopen_svr()\n");
@@ -248,8 +256,9 @@ FILE * fopen_svr ( const char * filename , int sock )
        }
        buffer[size]='\0';
        fwrite(buffer, sizeof(char) , size , fp);
-       fsync(fp);
-       SeqUtil_TRACE( "\nReceived Buffer lenght=%d:%s\n",strlen(buffer),buffer);
+       fflush(fp);
+       fsync(fileno(fp));  /* fsync work with file descriptor */
+       SeqUtil_TRACE( "\nReceived Buffer length=%d:%s\n",strlen(buffer),buffer);
        free(buffer); 
        fclose(fp); /* rewind at beg. of file */
   } else {
@@ -259,9 +268,7 @@ FILE * fopen_svr ( const char * filename , int sock )
          return (fp);
   }
 
-  /* now the waited_end file is local (TMPDIR) , open it a give the
-   * handle to routine ... */
-  
+  /* now the waited_end file is local (TMPDIR) , open it a give the handle to routine ... */
   if ( (fp=fopen(wfilename,"r")) == NULL) { 
              SeqUtil_TRACE("fopen_svr():Crap, Could not open local waited_end file:%s ... Reverting to nfs Routines\n",wfilename);
 	     fp=fopen_nfs(filename , sock);
@@ -273,7 +280,7 @@ FILE * fopen_svr ( const char * filename , int sock )
 
 
 /**
- * lock_svr: create a link  which will behave as a lock    
+ * lock_svr: create a link  (on server /tmp) which will behave as a lock    
  * returns 1 if succeeds, 0 on failure 
  */
 int lock_svr (  const char* filename , const char * datestamp ) {

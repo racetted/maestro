@@ -1,4 +1,3 @@
-#include "nodelogger.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,12 +14,14 @@
 #include <time.h>
 #include <utime.h>
 #include <unistd.h>
+#include "nodelogger.h"
 #include "l2d2_socket.h"
+#include "SeqUtil.h"
 #include <libgen.h>
 #include <strings.h>
 
 #define NODELOG_BUFSIZE 1024
-#define NODELOG_FILE_LENGTH 500
+#define NODELOG_FILE_LENGTH 512
 #define TIMEOUT_NFS_SYNC 3
 
 
@@ -28,6 +29,8 @@
 static char nodelogger_buf[NODELOG_BUFSIZE];
 static char nodelogger_buf_top[NODELOG_BUFSIZE];
 static char nodelogger_buf_short[NODELOG_BUFSIZE];
+static char nodelogger_buf_notify[NODELOG_BUFSIZE];
+static char nodelogger_buf_notify_short[NODELOG_BUFSIZE];
 extern int MLLServerConnectionFid;
 extern int OpenConnectionToMLLServer (const char *, const char *);
 
@@ -41,9 +44,10 @@ static char LOG_PATH[1024];
 static char TMP_LOG_PATH[1024];
 static char TOP_LOG_PATH[1024];
 
-static int write_line(int sock, int top);
+static int write_line(int sock, int top, const char* type);
 static void gen_message (const char *job, const char *type, const char* loop_ext, const char *message);
 static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp, const char *logtype);
+static  void NotifyUser (int sock , int top , char mode );
 extern char* str2md5 (const char *str, int length);
 
 static void log_alarm_handler() { fprintf(stderr,"=== EXCEEDED TIME IN LOOP ITERATIONS ===\n"); };
@@ -155,7 +159,8 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        }
        /* install SIGALRM handler */
        /* set the signal handler */
-       sa.sa_handler = log_alarm_handler;
+       memset (&sa, '\0', sizeof(sa));
+       sa.sa_handler = &log_alarm_handler;
        sa.sa_flags = 0; /* was SA_RESTART  */
        sigemptyset(&sa.sa_mask);
        /* register signals */
@@ -188,18 +193,17 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     /* if we are here socket is Up then why the second test > -1 ??? */ 
     gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
     if ( sock > -1 ) {
-      if ((write_ret=write_line(sock, 0)) == -1) {
+      if ((write_ret=write_line(sock, 0, type )) == -1) {
         logtocreate = "nodelog";
         ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
       }
       if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
-         if ((write_ret=write_line(sock, 1)) == -1) {
+         if ((write_ret=write_line(sock, 1, type )) == -1) {
            logtocreate = "toplog";
            ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
          }
       }
-      if (write_ret == -1)
-         return;
+      if (write_ret == -1) return;
     } else {
       if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
         logtocreate = "both";
@@ -229,11 +233,13 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
  * write a buffer to socket with timeout
  * and receive an ack 0 || 1
  */
-static int write_line(int sock, int top)
+static int write_line(int sock, int top, const char* type)
 {
 
    int bytes_read, bytes_sent;
+   int fileid;
    char bf[512];
+
 
    memset(bf, '\0', sizeof(bf));
    
@@ -243,20 +249,32 @@ static int write_line(int sock, int top)
         return(-1);
      }
    } else {
+     /* create tolog file */
+     if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                        fprintf(stderr,"Nodelogger::could not create toplog:%s\n",TOP_LOG_PATH);
+			/* return something */
+     }
+
      if ( ((bytes_sent=send_socket(sock , nodelogger_buf_top , sizeof(nodelogger_buf_top) , SOCK_TIMEOUT_CLIENT)) <= 0)) {
        fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at send  %%%%%%%%%%%%%%\n");
        return(-1);
      }
    }
+
    if ( (bytes_read=recv_socket (sock , bf , sizeof(bf) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
      fprintf(stderr,"%%%%%%%%%%%% NODELOGGER: socket closed at recv   %%%%%%%%%%%%%%\n");
      return(-1);
    }
-   
    if ( bf[0] != '0' ) {
-     fprintf(stderr,"Nodelogger::write_line: errno=%d bf=%s nodelogger_buf_top=%s\n",errno,bf,nodelogger_buf_top);
+     bf[bytes_read > 0 ? bytes_read : 0] = '\0';  
+     fprintf(stderr,"Nodelogger::write_line: Error=%s bf=%s nodelogger_buf=%s\n",strerror(errno),bf,nodelogger_buf);
      return(-1);
    }
+   /* Notify user if he is using nfs mode, this will be done at begin and end of root node 
+      Note : we notify user when using inter-dependencies
+   if ( top != 0 && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( sock , top ,'S' );  */
+   
+
    return(0);
 }
 
@@ -296,17 +314,28 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     /* write the message into "nodelogger_buf", which will be sent to a socket if server up */
     memset(nodelogger_buf, '\0', NODELOG_BUFSIZE );
     memset(nodelogger_buf_short, '\0', NODELOG_BUFSIZE );
+    memset(nodelogger_buf_notify, '\0', NODELOG_BUFSIZE );
+    memset(nodelogger_buf_notify_short, '\0', NODELOG_BUFSIZE );
     SeqUtil_TRACE ( "\nNODELOGGER node:%s type:%s message:%s\n", node, type, message );
 
     if ( loop_ext != NULL ) {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
 	snprintf(nodelogger_buf_top,sizeof(nodelogger_buf_top),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,TOP_LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
         snprintf(nodelogger_buf_short,sizeof(nodelogger_buf_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
+	 snprintf(nodelogger_buf_notify,sizeof(nodelogger_buf_notify),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=info:SEQLOOP=%s:SEQMSG=",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,loop_ext); 
+         snprintf(nodelogger_buf_notify_short,sizeof(nodelogger_buf_notify_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=info:SEQLOOP=%s:SEQMSG=",c_year,c_month,c_day,c_hour,c_min,c_sec,node,loop_ext); 
     } else {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,message);
 	snprintf(nodelogger_buf_top,sizeof(nodelogger_buf_top),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQMSG=%s\n",username,TOP_LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,message);
         snprintf(nodelogger_buf_short,sizeof(nodelogger_buf_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQMSG=%s\n",c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,message);
+	snprintf(nodelogger_buf_notify,sizeof(nodelogger_buf_notify),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=info:SEQMSG=",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node); 
+        snprintf(nodelogger_buf_notify_short,sizeof(nodelogger_buf_notify_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=info:SEQMSG=",c_year,c_month,c_day,c_hour,c_min,c_sec,node); 
     }
+    /* root node is NOT a loop node , no need to duplicate under loop_ext 
+    snprintf(nodelogger_buf_notify,sizeof(nodelogger_buf_notify),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=info:SEQMSG=",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node);
+    snprintf(nodelogger_buf_notify_short,sizeof(nodelogger_buf_notify_short),"TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=info:SEQMSG=",c_year,c_month,c_day,c_hour,c_min,c_sec,node);
+    */
+    
 }
 
 
@@ -338,10 +367,10 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     time_t now;
     char *seq_exp_home=NULL, *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_log_path=NULL;
     char resolved[MAXPATHLEN];
-    char host[100], lock[1024],flock[1024],lpath[1024],buf[1024];
+    char host[128], lock[1024],flock[1024],lpath[1024],buf[1024];
     char time_string[40],Stime[40],Etime[40],Atime[40];
     char ffilename[1024],filename[256];
-    char host_pid[50],TokenHostPid[250],underline[2];
+    char host_pid[64],TokenHostPid[256],underline[2];
     double Tokendate,date,modiftime,actualtime;
     double diff_t;
 
@@ -468,7 +497,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
                 if ( st.st_nlink == 2 ) {
 		  if ( logtype == "toplog" ) {
 		    if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                        fprintf(stderr,"Nodelogger::could not open filename:%s\n",TOP_LOG_PATH);
+                        fprintf(stderr,"Nodelogger::could not open toplog:%s\n",TOP_LOG_PATH);
                     } else {
  	                off_t s_seek=lseek(fileid, 0, SEEK_END);
 		        num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
@@ -516,8 +545,59 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
        /* erase the lock  will lower load on the remaining clients */
        ret=unlink(flock);
     }
+    /* Notify user if server not running  here we are at the level of root node so
+       Only one task (root Node) is running
+       Note : we notify user when using inter-dependencies
+    if ( (strcmp(logtype,"toplog") == 0)  && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( -1 , 1 ,'N' ); */
+    
     alarm(0);
     return(0);
 }
 
+/** 
+* Notify User if he is using nfs mode, This notification will happen twice a run :
+* in the beginning and end of root Node
+*/
+static void NotifyUser (int sock , int top , char mode)
+{
+   char bf[512];
+   char *rcfile, *lmech ;
+   int bytes_sent, bytes_read, fileid, num;
 
+   if ( top != 0 ) {
+         if ( (rcfile=malloc( strlen (getenv("HOME")) + strlen("/.maestrorc") + 2 )) != NULL ) {
+	     sprintf(rcfile, "%s/.maestrorc", getenv("HOME"));
+	     if ( (lmech=SeqUtil_getdef( rcfile, "SEQ_LOGGING_MECH" )) != NULL ) {
+		  switch ( mode ) {
+		        case 'S': /* mserver is up but logging mechanism is through NFS */
+			         strcat(nodelogger_buf_notify,"Please initialize SEQ_LOGGING_MECH=server in ~/.maestrorc file\n");
+	                         if ( strcmp(lmech,"nfs") == 0 ) {
+                                     if ( ((bytes_sent=send_socket(sock , nodelogger_buf_notify , sizeof(nodelogger_buf_notify) , SOCK_TIMEOUT_CLIENT)) <= 0)) {
+	                                     free(rcfile);free(lmech);
+                                             return;
+                                     }
+                                     if ( (bytes_read=recv_socket (sock , bf , sizeof(bf) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
+	                                     free(rcfile);free(lmech);
+                                             return;
+                                     }
+		                  }
+				  break;
+		        case 'N': /* mserver is down and logging mech. is through NFS */
+			         strcat(nodelogger_buf_notify_short,"Please start mserver and initialize SEQ_LOGGING_MECH=server in ~/.maestrorc file\n");
+	                         if ( strcmp(lmech,"nfs") == 0 ) {
+                                       if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) > 0 ) {
+ 	                                        off_t s_seek=lseek(fileid, 0, SEEK_END);
+		                                num = write(fileid, nodelogger_buf_notify_short, strlen(nodelogger_buf_notify_short));
+		                                fsync(fileid);
+		                                close(fileid);
+                                       } 
+				 } 
+				 break;
+                  }
+		  free(lmech);
+	     }
+	     free(rcfile);
+	 }
+   }
+
+}
