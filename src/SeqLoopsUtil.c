@@ -298,7 +298,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
       tmpArrayValue = strtok (tmpExpression,":,");
       while (tmpArrayValue != NULL) {
 	 expressionArray[i] = atoi(tmpArrayValue);
-	 //End is the biggest number of the expression
+	 /*End is the biggest number of the expression*/
 	 if (expressionArray[i]>detectedEnd)
 	    detectedEnd=expressionArray[i];
 	 i++;
@@ -409,12 +409,12 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
                      if (strcmp(SeqUtil_getPathLeaf(loopsPtr->loop_name),depArgs->name)==0) {
 			loopsDataPtr = loopsDataPtr->nextPtr;
 			tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
-			//if loop is defined by an expression, return SeqLoops_getLoopContainerExtensions in reverse
+			/*if loop is defined by an expression, return SeqLoops_getLoopContainerExtensions in reverse*/
 			if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
 			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse expression: %s\n", tmpExpression);
 			   tmpLoopExts = SeqLoops_getLoopContainerExtensions(_nodeDataPtr, depIndex);
 			   SeqListNode_reverseList( &tmpLoopExts );
-			   //SeqListNode_printList( tmpLoopExts );
+			   /*SeqListNode_printList( tmpLoopExts );*/
 			   loopExtensions = tmpLoopExts;
 			   return loopExtensions;
 			}
@@ -574,13 +574,13 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 	       }
 	    }
 	    
-	    // parse the loop expression to expressionArray
+	    /* parse the loop expression to expressionArray */
 	    if (strcmp(tmpExpression, "") != 0) {
 	       i=0;
 	       tmpArrayValue = strtok (tmpExpression,":,");
 	       while (tmpArrayValue != NULL) {
 		  expressionArray[i] = atoi(tmpArrayValue);
-		  //End is the biggest number of the expression
+		  /*End is the biggest number of the expression*/
 		  if (expressionArray[i]>detectedEnd)
 		     detectedEnd=expressionArray[i];
 		  i++;
@@ -632,7 +632,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 			} else {
 			   sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
 			}
-			//SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added based on expression:%s\n", tmp );
+			/*SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added based on expression:%s\n", tmp );*/
 			SeqListNode_insertItem( &tmpLoopExts, tmp );
 		     }
 		  }
@@ -768,7 +768,7 @@ SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 	 tmpArrayValue = strtok (tmpExpression,":,");
 	 while (tmpArrayValue != NULL) {
 	    expressionArray[_i] = atoi(tmpArrayValue);
-	    //End is the biggest number of the expression
+	    /*End is the biggest number of the expression*/
 	    if (expressionArray[_i]>detectedEnd)
 	       detectedEnd=expressionArray[_i];
 	    _i++;
@@ -820,7 +820,7 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
       tmpArrayValue = strtok (tmpExpression,":,");
       while (tmpArrayValue != NULL) {
 	 expressionArray[_i] = atoi(tmpArrayValue);
-	 //End is the biggest number of the expression
+	 /*End is the biggest number of the expression*/
 	 if (expressionArray[_i]>detectedEnd) {
 	    detectedEnd=expressionArray[_i];
 	    endIndex = _i;
@@ -881,7 +881,7 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
       tmpArrayValue = strtok (tmpExpression,":,");
       while (tmpArrayValue != NULL) {
 	 expressionArray[_i] = atoi(tmpArrayValue);
-	 //End is the biggest number of the expression
+	 /*End is the biggest number of the expression*/
 	 if (expressionArray[_i]>detectedEnd) {
 	    detectedEnd=expressionArray[_i];
 	    endIndex = _i;
@@ -915,8 +915,8 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
       } else if (expressionArray[startIndex+1] != detectedEnd &&
 	 (atoi(SeqLoops_getLoopAttribute(tmpLastArg, _nodeDataPtr->nodeName)) == loopCurrent))  {
 	    fprintf(stdout,"SeqLoops_nextLoopArgs() changing loop definition from multi-definition expression\n");
-	    //we are in the last iteration of a definition in case of multi-definition loop
-	    //add a newdef flag for maestro to know that the submission is a new set for the new loop definition
+	    /*we are in the last iteration of a definition in case of multi-definition loop*/
+	    /*add a newdef flag for maestro to know that the submission is a new set for the new loop definition*/
 	    startIndex=startIndex+4;
 	    if (loopCurrent != expressionArray[startIndex]) {
 	       loopCount = expressionArray[startIndex];
@@ -1086,7 +1086,7 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 	 tmpArrayValue = strtok (tmpExpression,":,");
 	 while (tmpArrayValue != NULL) {
 	    expressionArray[_i] = atoi(tmpArrayValue);
-	    //End is the biggest number of the expression
+	    /*End is the biggest number of the expression*/
 	    if (expressionArray[_i]>detectedEnd) {
 	       detectedEnd=expressionArray[_i];
 	       endIndex = _i;

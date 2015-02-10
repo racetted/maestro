@@ -51,7 +51,8 @@ unsigned long int epoch_diff;
 double diff_t;
 
 /* global default data for l2d2server */
-_l2d2server L2D2 = {0,0,0,0,30,24,1,4,20,'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0',0,0,{1,48,48,25,25}};
+_clean_times L2D2_cleantimes = {1,48,48,25,25};
+_l2d2server L2D2 = {0,0,0,0,30,24,1,4,20,'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0',0,0};
 
 /* variable for Signal handlers */
 volatile sig_atomic_t ProcessCount = 0; /* number of workers */
@@ -64,7 +65,6 @@ volatile sig_atomic_t sig_child = 0;
 /* signal handler for sesion control not used for the moment  */
 static void recv_handler ( int notused ) { sig_recv = 1; }
 
-/* Signal handler for Exiting childs  */
 static void child_handler(int signo, siginfo_t *siginfo, void *context)
 {
      wait(0);
@@ -1319,6 +1319,9 @@ int main ( int argc , char * argv[] )
   char *home = NULL;
   char *ip=NULL;
 
+  /* default values for L2D2.clean_times */
+  L2D2.clean_times=L2D2_cleantimes;
+  
   /* get maestro current version and shortcut */
   if (  (L2D2.mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
             fprintf(stderr, "maestro_server(),Could not get maestro current version. do a proper ssmuse \n");
