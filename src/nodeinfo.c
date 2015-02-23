@@ -704,7 +704,7 @@ char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
  */
 
 void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home) {
-   char *xmlFile = NULL, *defFile = NULL, *value=NULL;
+   char *xmlFile = NULL, *defFile = NULL, *value=NULL, *abortValue=NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
    int i,extraSpace = 0;
@@ -824,6 +824,8 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseAbortActions( result, _nodeDataPtr ); 
+      } else if ( (abortValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_ABORT_ACTION" )) != NULL ){
+	 SeqNode_addAbortAction( _nodeDataPtr, abortValue );
       }
 
       xmlXPathFreeObject (result);
@@ -860,6 +862,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    free(xmlFile);
    free(defFile);
    free(value);
+   free(abortValue);
 }
 
 /* Returns 1 if the node exists within known context*/
