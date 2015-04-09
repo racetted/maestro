@@ -477,7 +477,7 @@ void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
 } 
 
 char* SeqUtil_getdef( const char* filename, const char* key ) {
-  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def";
+  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def", *defpath=NULL, *defext="/.suites/default_resources.def";
   char *seq_exp_home=NULL;
   struct passwd *passwdEnt;
   struct stat fileStat;
@@ -492,11 +492,16 @@ char* SeqUtil_getdef( const char* filename, const char* key ) {
   passwdEnt = getpwuid(fileStat.st_uid);
   home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
+  defpath = (char *) malloc( strlen(home) + strlen(defext) + 1 );
   sprintf( ovpath, "%s%s", home, ovext );
+  sprintf( defpath, "%s%s", home, defext );
   SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
   if ( (retval = SeqUtil_parsedef(ovpath,key)) == NULL ){
     SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,filename);
-    retval = SeqUtil_parsedef(filename,key); 
+    if ( (retval = SeqUtil_parsedef(filename,key)) == NULL ){
+       SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,defpath);
+       retval = SeqUtil_parsedef(defpath,key);
+    }
   } 
   free(ovpath);
   return retval;
