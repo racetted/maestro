@@ -44,7 +44,9 @@ void XmlUtils_resolve (char *_docname, xmlXPathContextPtr _context, char *_deffi
   for (i=0; i < nodeset->nodeNr; i++){
     nodePtr = nodeset->nodeTab[i];
     nodeContent = (char *) xmlNodeGetContent(nodePtr);
-    xmlNodeSetContent(nodePtr,(xmlChar *)SeqUtil_keysub(nodeContent,_deffile,_docname));
+    if (strstr(nodeContent, "${") != NULL) {
+       xmlNodeSetContent(nodePtr,(xmlChar *)SeqUtil_keysub(nodeContent,_deffile,_docname));
+    }
     free(nodeContent);
   }
   xmlXPathFreeObject(result);
