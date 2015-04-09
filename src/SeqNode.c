@@ -200,6 +200,17 @@ void SeqNode_setMachine ( SeqNodeDataPtr node_ptr, const char* machine ) {
    }
 }
 
+void SeqNode_setShell ( SeqNodeDataPtr node_ptr, const char* shell ) {
+   if ( shell != NULL ) {
+      free( node_ptr->shell );
+      if (node_ptr->shell = malloc( strlen(shell) + 1 )){
+	 strcpy( node_ptr->shell, shell );
+      } else {
+	 raiseError("OutOfMemory exception in SeqNode_setShell()\n");
+      }
+   }
+}
+
 void SeqNode_setMemory ( SeqNodeDataPtr node_ptr, const char* memory ) {
    if ( memory != NULL ) {
       free( node_ptr->memory );
@@ -670,6 +681,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->switchAnswers = NULL;
    nodePtr->workdir = NULL;
    nodePtr->workerPath= NULL;
+   nodePtr->shell= NULL;
    SeqNode_setName( nodePtr, "" );
    SeqNode_setContainer( nodePtr, "" );
    SeqNode_setIntramoduleContainer( nodePtr, "" );
@@ -689,6 +701,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setExtension( nodePtr, "" );
    SeqNode_setDatestamp( nodePtr, "" );
    SeqNode_setWorkdir( nodePtr, "" );
+   SeqNode_setShell( nodePtr, "" );
    nodePtr->error = 0;
    nodePtr->errormsg = NULL;
 }

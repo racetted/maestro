@@ -91,7 +91,9 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
              _nodeDataPtr->wallclock = atoi( nodePtr->children->content );
          } else if ( strcmp( nodeName, "catchup" ) == 0 ) {
              _nodeDataPtr->catchup = atoi( nodePtr->children->content );
-         } else {
+	 } else if ( strcmp( nodeName, "shell" ) == 0 ) {
+	    SeqNode_setShell( _nodeDataPtr, nodePtr->children->content );
+	 } else {
              raiseError("nodeinfo.parseBatchResources() ERROR: Unprocessed attribute=%s\n", nodeName);
          }
       }
@@ -704,7 +706,7 @@ char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
  */
 
 void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home) {
-   char *xmlFile = NULL, *defFile = NULL, *value=NULL, *abortValue=NULL;
+   char *xmlFile = NULL, *defFile = NULL, *value=NULL, *abortValue=NULL, *shellValue=NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
    int i,extraSpace = 0;
@@ -847,6 +849,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
        SeqNode_setMachine( _nodeDataPtr, workerNodeDataPtr->machine );
        SeqNode_setMemory( _nodeDataPtr,  workerNodeDataPtr->memory );
        SeqNode_setArgs( _nodeDataPtr,  workerNodeDataPtr->soumetArgs );
+       SeqNode_setShell( _nodeDataPtr,  workerNodeDataPtr->shell );
        SeqNode_freeNode( workerNodeDataPtr );
    }
 
@@ -859,6 +862,17 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
           raiseError("ERROR: Required machine attribute of BATCH tag in %s or default machine key SEQ_DEFAULT_MACHINE in %s not set.\n",xmlFile, defFile); 
       }
    }
+   
+   /* search for a defined SEQ_DEFAULT_SHELL */
+   if ( strcmp(_nodeDataPtr->shell,"") == 0) { 
+      /* get default shell*/
+      if ( (shellValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_SHELL" )) != NULL ){
+	 SeqNode_setShell( _nodeDataPtr, shellValue );
+      } else {
+	 SeqNode_setShell( _nodeDataPtr, "/bin/ksh" );
+      }
+   }
+   
    free(xmlFile);
    free(defFile);
    free(value);
