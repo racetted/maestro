@@ -110,6 +110,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL;
    SeqLoopsPtr loopsPtr = NULL;
    int i=0;
+   TOKENNODEPTR tokenList = NULL;
    
    char *tmpsubstr = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpLocalIndexValue = NULL;
    char *resourceFile, *_seq_exp_home = _nodeDataPtr->expHome;
@@ -185,36 +186,35 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 	       } else {
 		  memset(tokenLine,'\0',sizeof tokenLine);
 		  while(fgets(temp, 512, fp) != NULL) {
-		     if (find_index_token == 0) {
-			if((strstr(temp, "$((")) != NULL) {
+		     if((strstr(temp, "$((")) != NULL) {
 			SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token, checking dependency\n");
 			strcpy(tokenLine, temp);
 			find_index_token = 1;
+			
+			/* ... second retrieve the token within the line found */
+			if (tokenLine != NULL && strstr(tokenLine, "$((") != NULL) {
+			   tmpTokenLine = (char *) malloc( strlen(tokenLine) + 1 );
+			   sprintf( tmpTokenLine, tokenLine);
+			   tmpsubstr = strtok_r(tmpTokenLine,"$((",&tmpSavePtr1);
+			   //SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);
+			   while (tmpsubstr != NULL) {
+			      indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
+			      tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);
+			   }
+			   if (indexToken != NULL) {
+			      strcpy(tmpIndexToken, indexToken);
+			      sprintf(indexToken, "((%s))", tmpIndexToken);
+			      SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
+			      SeqListNode_insertTokenItem( &tokenList, indexToken, "" );
+			   }
 			}
-		     }  
+		     }
 		  }
 		  if(find_index_token == 0) {
 		     SeqUtil_TRACE("Nodeinfo_parseDepends() did not find any associative index token\n");
 		  }
 		  if(fp) {
 		     fclose(fp);
-		  }
-		  
-		  /* ... second retrieve the token within the line found */
-		  if (tokenLine != NULL && strstr(tokenLine, "$((") != NULL) {
-		     tmpTokenLine = (char *) malloc( strlen(tokenLine) + 1 );
-		     sprintf( tmpTokenLine, tokenLine);
-		     tmpsubstr = strtok_r(tmpTokenLine,"$((",&tmpSavePtr1);
-		     //SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);
-		     while (tmpsubstr != NULL) {
-			indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
-			tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);
-		     }
-		     if (indexToken != NULL) {
-			strcpy(tmpIndexToken, indexToken);
-			sprintf(indexToken, "((%s))", tmpIndexToken);
-			SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
-		     }
 		  }
 	       }
 	    }
@@ -230,11 +230,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
 			}   
-		     } else if (indexToken != NULL && strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
-			if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL) {
+		     } else if (tokenList != NULL && SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL &&
+			SeqListNode_isTokenItemExists(tokenList, tmpIterator->value)) /*checks if token association is satisfied */ {
 			   SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
-			   tmpLocalIndexValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name);
-			}
+			   SeqListNode_insertTokenItem(&tokenList, tmpIterator->value, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 		     }
 		     tmpIterator=tmpIterator->nextPtr;
 		  }
@@ -254,7 +253,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   SeqNameValues_setValue( &depArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
 			}
-		     } else if(indexToken != NULL && strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
+		     } else if(tokenList != NULL && SeqListNode_isTokenItemExists(tokenList, tmpIterator->value)) /*checks if token association is satisfied */ {
+			tmpLocalIndexValue = SeqListNode_getTokenData(tokenList, tmpIterator->value);
 			if (tmpIterator->name != NULL && tmpLocalIndexValue != NULL) {
 			   SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpLocalIndexValue);
 			}

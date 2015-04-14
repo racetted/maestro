@@ -40,6 +40,42 @@ void SeqListNode_insertItem(LISTNODEPTR *sPtr, char *chaine)
 /*printf("SeqListNode_insertItem() called done\n", chaine); */
 }
 
+void SeqListNode_insertTokenItem(TOKENNODEPTR *sPtr, char *token, char *data)
+{
+   /*printf("SeqListNode_insertTokenItem() called token=%s\n", token); */
+   TOKENNODEPTR newPtr=NULL, previousPtr=NULL, currentPtr=NULL;
+   
+   newPtr = malloc(sizeof(TOKENNODE));
+   
+   if (newPtr != NULL) { /* is space available */
+      newPtr->token = (char *) malloc(strlen(token)+1);
+      strcpy(newPtr->token,token);
+      newPtr->data = (char *) malloc(strlen(data)+1);
+      strcpy(newPtr->data,data);
+      newPtr->nextPtr = NULL;
+      
+      previousPtr = NULL;
+      currentPtr = *sPtr;
+      
+      /* position ourselve at end of list */
+      while (currentPtr != NULL) {
+	 previousPtr = currentPtr; 
+	 currentPtr = currentPtr->nextPtr;
+      }
+      
+      if (previousPtr == NULL) {
+	 newPtr->nextPtr=*sPtr;
+	 *sPtr = newPtr;
+      } else {
+	 previousPtr->nextPtr=newPtr;
+	 newPtr->nextPtr=currentPtr;
+      }
+   } else {
+      printf("%s not inserted. No memory available.\n",token);
+   }
+   /*printf("SeqListNode_insertTokenItem() called done\n", token); */
+}
+
 /********************************************************************************
 * SeqListNode_deleteItem: deletes an element from the list and return it.
 ********************************************************************************/
@@ -95,6 +131,42 @@ int SeqListNode_isItemExists(LISTNODEPTR sPtr, char *data)
    }
 
    return found;
+}
+
+int SeqListNode_isTokenItemExists(TOKENNODEPTR sPtr, char *token)
+{
+   TOKENNODEPTR currentPtr = sPtr;
+   int found = 0;
+   
+   /* position ourselve at beginning of list */
+   while (currentPtr != NULL && found == 0) {
+      if ( strcmp( currentPtr->token, token ) == 0 ) {
+	 /* item exists */
+	 found = 1;
+	 if (strcmp(currentPtr->data, "") == 0 ) {
+	    SeqListNode_deleteItem(&sPtr);
+	 }
+	 break;
+      }
+      currentPtr = currentPtr->nextPtr;
+   }
+   
+   return found;
+}
+
+char *SeqListNode_getTokenData(TOKENNODEPTR sPtr, char *token)
+{
+   TOKENNODEPTR currentPtr = sPtr;
+   int found = 0;
+   
+   /* position ourselve at beginning of list */
+   while (currentPtr != NULL && found == 0) {
+      if ( strcmp( currentPtr->token, token ) == 0 ) {
+	 /* item exists */
+	 return currentPtr->data;
+      }
+      currentPtr = currentPtr->nextPtr;
+   }
 }
 
 /********************************************************************************
