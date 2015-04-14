@@ -1001,8 +1001,15 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
 		      free(tmpAnswer); 
 		      free(xmlFile);
 		      free(currentFlowNode);
-		      SeqUtil_TRACE("nodeinfo.doesNodeExist() return = 0 \n");
-		      return(0);
+            /* Check if we're simply targetting the switch and not something within the switch. Node will not exist if there are no default value and we're targetting something inside. */
+            tmpstrtok = (char*) strtok(NULL,"/");
+            if  ( tmpstrtok != NULL ) {
+		        SeqUtil_TRACE("nodeinfo.doesNodeExist() targetting something that does not exist within the switch. return = 0 \n");
+		        return(0);
+            } else {
+              SeqUtil_TRACE("nodeinfo.doesNodeExist() targetting switch only, return = 1 \n");
+		        return(1);
+            }
 		    } else {
 		      SeqUtil_TRACE("nodeinfo.doesNodeExist() Query %s found default value SWITCH ITEM in XML flow file! (doesNodeExist)\n", query );
 		      /* query returned results */
