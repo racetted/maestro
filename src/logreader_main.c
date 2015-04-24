@@ -12,19 +12,30 @@
 /* global */
 struct _ListListNodes MyListListNodes = { -1 , NULL , NULL };
 struct _NodeLoopList MyNodeLoopList = {"first",NULL,NULL};
-/* read_type: 0=all, 1=statuses, 2=stats*/
+
+struct _StatsNode *rootStatsNode;
+
+/* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=averages*/
 int read_type = 0;
+int stats_days = 7;
+char *datestamp = NULL;
+char *exp = NULL;
 
 struct stat pt;
 FILE *log;
+FILE *stats;
 
 static void printUsage()
 {
    printf("Logreader usage:\n");
-   printf("     log reader -i inputfile [-t type]\n");
+   printf("     logreader (-i inputfile [-t type] [-o statsoutputfile] | -t avg [-n days]) -e exp -d datestamp [-v]\n");
    printf("         where:\n");
-   printf("         inputfile    is the logfile to read (mandatory)\n");
-   printf("         type   is one of all, statuses or stats (default is all)\n");
+   printf("         inputfile        is the logfile to read (mandatory if type is statuses or stats)\n");
+   printf("         type             is one of all (statuses & stats), statuses, stats or avg (default is all)\n");
+   printf("         statsoutputfile  is the file where the stats are logged (if defined)\n");
+   printf("         exp              is the experiment path (mandatory)\n");
+   printf("         datestamp        is the initial date for averages computation (mandatory)\n");
+   printf("         days             is used with -t avg to define the number of days for the averages since \"datestamp\" (default is 7)\n");
    exit(1);
 }
 
@@ -35,65 +46,111 @@ main ( int argc, char * argv[] )
 #endif
 {
    /*extern char *optarg;*/
-   char *base, *type=NULL;
+   char *base, *type=NULL, *n_buffer=NULL;
    char filename[128];
-   int fp=-1, c;
+   int fp=-1,  c;
+   int i_defined=0, t_defined=0, n_defined=0, o_defined=0, d_defined=0, e_defined=0;
    
    if ( argc == 1 || argc == 2) {
       printUsage();
    }
    
-   while ((c = getopt(argc, (char* const*) argv, "i:t:")) != -1) {
+   log = NULL;
+   stats = NULL;
+   rootStatsNode = NULL;
+   
+   while ((c = getopt(argc, (char* const*) argv, "i:t:n:o:d:e:v")) != -1) {
       switch(c) {
 	 case 'i':
+	    i_defined=1;
 	    fp = open(optarg, O_RDONLY, 0 );
 	    break;
 	 case 't':
+	    t_defined=1;
 	    type = malloc( strlen( optarg ) + 1 );
 	    strcpy(type,optarg);
 	    break;
+	 case 'n':
+	    n_defined=1;
+	    n_buffer = malloc( strlen( optarg ) + 1 );
+	    strcpy(n_buffer, optarg);
+	    stats_days = atoi(n_buffer);
+	    break;
+	 case 'o':
+	    o_defined=1;
+	    stats = fopen(optarg, "w+");
+	    if (stats == NULL) {
+	       fprintf(stderr, "Cannot Open stats output file");
+	    }
+	    break;
+	 case 'd':
+	    d_defined=1;
+	    datestamp = malloc( strlen( optarg ) + 1 );
+	    strcpy(datestamp,optarg);
+	    break;
+	 case 'e':
+	    e_defined=1;
+	    exp = malloc( strlen( optarg ) + 1 );
+	    strcpy(exp,optarg);
+	    break;
+	 case 'v':
+	    SeqUtil_setTraceLevel(1);
+	    break;
       }
-   }
-   
-   if ( fp < 0 ) {
-      fprintf(stderr,"Cannot Open file\n");
-      exit(1);
    }
    
    if (type != NULL) {
       if(strcmp(type, "statuses") == 0) {
+	 SeqUtil_TRACE("logreader type: statuses\n");
 	 read_type=1;
       } else if (strcmp(type, "stats") == 0){
+	 SeqUtil_TRACE("logreader type: stats\n"); 
 	 read_type=2;
+      } else if (strcmp(type, "avg") == 0) {
+	 SeqUtil_TRACE("logreader type: compute averages\n");
+	 read_type=3;
       }
    }
    
-   if ( fstat(fp,&pt) != 0 ) {
-      fprintf(stderr,"Cannot fstat file\n");
-      exit(1);
-   }
+   if(read_type != 3) {
+      if ( fp < 0 ) {
+         fprintf(stderr,"Cannot Open input file\n");
+         exit(1);
+      }
    
-   if ( ( base = mmap(NULL, pt.st_size, PROT_READ, MAP_SHARED, fp, (off_t)0) ) == (char *) MAP_FAILED ) {
-      fprintf(stderr,"Map failed \n");
-      close(fp);
-      exit(1);
-   }
+      if ( fstat(fp,&pt) != 0 ) {
+         fprintf(stderr,"Cannot fstat file\n");
+         exit(1);
+      }
+   
+      if ( ( base = mmap(NULL, pt.st_size, PROT_READ, MAP_SHARED, fp, (off_t)0) ) == (char *) MAP_FAILED ) {
+         fprintf(stderr,"Map failed \n");
+         close(fp);
+         exit(1);
+      }
    
    
-   if ( (log=fopen("./output","w+")) == NULL ) {
-      fprintf(stderr,"could not open in write mode output file\n");
-      exit(1);
+      if ( (log=fopen("./output","w+")) == NULL ) {
+         fprintf(stderr,"could not open in write mode output file\n");
+         exit(1);
+      } else {
+         setvbuf(log, NULL, _IONBF, 0);
+      }
+   
+      read_file(base,log); 
+   
+      /* unmap */
+      munmap(base, pt.st_size);  
+      
+      /*parse avg file*/
+      getAverage(exp, datestamp);
+      
+      /*print nodes*/
+      print_LListe ( MyListListNodes , log, stats );
    } else {
-      setvbuf(log, NULL, _IONBF, 0);
+      computeAverage(exp, datestamp);
    }
    
-   read_file(base,log); 
-   
-   /* unmap */
-   munmap(base, pt.st_size);  
-   
-   /* Print Nodes */
-   print_LListe ( MyListListNodes , log );
-   
-   fclose(log);
+   if (log != NULL) fclose(log);
+   if (stats != NULL) fclose(stats);
 }
