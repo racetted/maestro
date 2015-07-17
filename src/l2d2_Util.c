@@ -159,7 +159,9 @@ int isDirExists ( const char* path_name ) {
 int r_mkdir ( const char* dir_name, int is_recursive , FILE *mlog) {
    char tmp[1024];
    char *split = NULL, *work_string = NULL;
-  
+ 
+   memset(tmp,'\0',sizeof(tmp));
+
    if ( is_recursive == 1) {
       work_string = strdup( dir_name );
       strcpy( tmp, "/" );
