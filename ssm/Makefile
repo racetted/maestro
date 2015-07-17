@@ -10,7 +10,9 @@ ssm:	profile.sh  ../bin/$(BASE_ARCH)
 	if [ ! -d $(SSMPACKAGE) ]; then \
 	   mkdir $(SSMPACKAGE); \
 	fi;
-	cp -r $(SWDEST)/* $(SSMPACKAGE); 
+#not copying the libs -- only used for static compile
+	cp -r $(SWDEST)/bin $(SSMPACKAGE);
+	cp -r $(SWDEST)/include $(SSMPACKAGE);
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
