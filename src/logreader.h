@@ -38,6 +38,7 @@ typedef struct _LoopExt {
    char ldtime[18];
    char exectime[10];
    char submitdelay[10];
+   char deltafromstart[10];
    char LastAction;
    int ignoreNode;
    struct _LoopExt *next;
@@ -80,12 +81,11 @@ extern char *datestamp;
 extern char *exp;
 
 extern struct stat pt;
-extern FILE *log;
 extern FILE *stats;
 
-extern void read_file  ( char *base, FILE *log);
+extern void read_file  ( char *base);
 extern void insert_node( char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime, char *itime , char *wtime, char *dtime, char * exectime, char * submitdelay); 
-extern void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *stats);
+extern void print_LListe ( struct _ListListNodes MyListListNodes, FILE *stats);
 
 extern void getAverage(char *exp, char *datestamp);
 extern char *getNodeAverageLine(char *node, char *member);

@@ -143,15 +143,8 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
          printf("%.*s", 2, &dateValue[10] );
       if (strcmp(tmpstrtok,"S")==0)
          printf("%.*s", 2, &dateValue[12] );
-      if (strcmp(tmpstrtok,"CMC")==0) {
-         sprintf(cmd, "r.date %.*s", 10, &dateValue[0]);
-         returnValue=system(cmd);
-         if (returnValue) {
-	    raiseError("ERROR: r.date unable to be executed on date %s.\n", dateValue ); 
-         } 
       }
-      tmpstrtok = (char*) strtok(NULL,"%");
-   }
+   tmpstrtok = (char*) strtok(NULL,"%");
    free (tmpstrtok);
 
    if (returnDate = malloc( strlen(dateValue) + 1 )) {

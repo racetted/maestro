@@ -34,7 +34,6 @@ printf("                         %%D = day\n");
 printf("                         %%H = hour\n");
 printf("                         %%Min = minute\n");
 printf("                         %%S = second\n");
-printf("                         %%CMC = 9 digit CMC format datestamp\n");
 printf("      EXPHOME=%s\n\n",seq_exp_home);
 printf("Example: tictac -s 2009053000\n");
 printf("             will set the experiment's datefile to that date\n");

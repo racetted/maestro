@@ -940,3 +940,24 @@ int unlock_nfs ( const char * filename , const char * datestamp )
 
 }
 
+/* Returns the average of the input array, but sorting it, and removing the removal_quantity of extreme values from each side. */
+
+int SeqUtil_basicTruncatedMean(int *unsorted_int_array, int elements, int removal_quantity) {
+   int total=0; 
+   int i;
+   if (elements <= 2*removal_quantity) return 0; 
+   qsort (unsorted_int_array, elements, sizeof(int), SeqUtil_compareInt);
+   for(i=removal_quantity; i < elements-removal_quantity; ++i) { 
+       total+=unsorted_int_array[i];
+   } 
+   return (total/(elements-2*removal_quantity)); 
+}
+
+/* Returns the integer differences, used for sorting algorithm qsort. */
+
+
+int SeqUtil_compareInt (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
+}
+

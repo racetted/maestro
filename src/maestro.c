@@ -2044,7 +2044,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
          }
 	      if( depHour != NULL && strlen(depHour) > 0 ) {
 	         /* calculate relative datestamp based on the current one */
-	         depDatestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, atoi(depHour) );
+	         depDatestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp,0, atoi(depHour),0,0 );
 	      } else {
 	         depDatestamp = strdup( _nodeDataPtr->datestamp );
 	      }	

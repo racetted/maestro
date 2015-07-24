@@ -236,7 +236,7 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
       }
 }
 
-void read_file (char *base , FILE *log)
+void read_file (char *base)
 {
    char *ptr, *q, *qq, *pp;
    char string[1024];
@@ -268,9 +268,6 @@ void read_file (char *base , FILE *log)
 	  indx=qq-(pp+1);
           strncpy(loop,pp+1, indx);
   
-           /* (char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime , char *itime, char * exectime, char * submitdelay, int len )  */
-          //fprintf(log,"dstamp=%s node=%s signal=%s loop=%s\n",dstamp,&node[9],signal,&loop[8]);  
-	  
 	  switch (signal[0]) 
 	  {
 	     case 'a': /* [a]bort */
@@ -309,19 +306,29 @@ void read_file (char *base , FILE *log)
 
 }
 
-void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *stats) 
+void print_LListe ( struct _ListListNodes MyListListNodes, FILE *stats) 
 {
       struct _ListNodes      *ptr_Ltrotte;
-      struct _ListListNodes  *ptr_LLtrotte;
+      struct _ListListNodes  *ptr_LLtrotte, *ptr_shortest_LLNode;
       struct _NodeLoopList  *ptr_NLoopHead, *ptr_NLHtrotte, *ptr_NLHpreced;
       struct _LoopExt       *ptr_LEXHead,   *ptr_LXHtrotte, *ptr_LXHpreced ;
       struct tm ti;
-      time_t Sepoch,Bepoch,Eepoch;
-      time_t ExeTime, SubDelay;
-      int hre,min,sec,n, found_loopNode, i, j;
-      static char sbuffer[10],ebuffer[10];
+      time_t Sepoch,Bepoch,Eepoch,TopNodeSubmitTime;
+      time_t ExeTime, SubDelay, RelativeEnd;
+      int hre,min,sec,n, found_loopNode, i, j, shortestLength=256;
+      static char sbuffer[10],ebuffer[10], rbuffer[10];
       char *last_ext, *tmp_last_ext, *tmp_Lext, *stats_output = NULL, *avg_output=NULL, *tmp_output;
       char output_buffer[256], tmp_line[256];
+
+      /* Traverse the list to find the top node (shortest nodelength) to get its submit time to do the relative end time calculation */ 
+      for ( ptr_LLtrotte = &MyListListNodes; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next) {
+          if ( ptr_LLtrotte->Nodelength < shortestLength ) {
+              ptr_shortest_LLNode=ptr_LLtrotte; 
+              shortestLength=ptr_LLtrotte->Nodelength;
+          } 
+      }
+      n=sscanf(ptr_shortest_LLNode->Ptr_LNode->PNode.stime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
+      TopNodeSubmitTime=mktime(&ti);
 
       for ( ptr_LLtrotte = &MyListListNodes; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next)
       {
@@ -342,13 +349,17 @@ void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *sta
 
 
 	       ExeTime = Eepoch - Bepoch;
-	       SubDelay = Bepoch - Sepoch; /* chek sign */
+	       SubDelay = Bepoch - Sepoch; /* check sign */
+          RelativeEnd = Eepoch - TopNodeSubmitTime; 
 
 	       memset(ebuffer,'\0', sizeof(ebuffer));
 	       memset(sbuffer,'\0', sizeof(sbuffer));
+	       memset(rbuffer,'\0', sizeof(rbuffer));
 
 	       strftime (ebuffer,10,"%H:%M:%S",localtime(&ExeTime));
 	       strftime (sbuffer,10,"%H:%M:%S",localtime(&SubDelay));
+	       strftime (rbuffer,10,"%H:%M:%S",localtime(&RelativeEnd));
+          
 	       /* end timing */
    
 	       /*if ( strcmp(ptr_Ltrotte->PNode.loop,"") != 0 ) {*/
@@ -370,6 +381,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *sta
 					  strcpy(ptr_LEXHead->lwtime,ptr_Ltrotte->PNode.wtime);
 					  strcpy(ptr_LEXHead->exectime, ebuffer);
 					  strcpy(ptr_LEXHead->submitdelay, sbuffer);
+					  strcpy(ptr_LEXHead->deltafromstart, rbuffer);
 					  ptr_LEXHead->LastAction=ptr_Ltrotte->PNode.LastAction;
 					  ptr_LEXHead->ignoreNode=ptr_Ltrotte->PNode.ignoreNode;
 					  ptr_LEXHead->next = NULL;
@@ -401,6 +413,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *sta
 				       strcpy(ptr_LXHpreced->next->ldtime,ptr_Ltrotte->PNode.dtime);
 				       strcpy(ptr_LXHpreced->next->exectime,ebuffer);
 				       strcpy(ptr_LXHpreced->next->submitdelay,sbuffer);
+				       strcpy(ptr_LXHpreced->next->deltafromstart,rbuffer);
 				       ptr_LXHpreced->next->LastAction=ptr_Ltrotte->PNode.LastAction;
 				       ptr_LXHpreced->next->ignoreNode=ptr_Ltrotte->PNode.ignoreNode;
 				       ptr_LXHpreced->next->next = NULL;
@@ -429,13 +442,13 @@ void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *sta
 					     strcpy(ptr_LEXHead->ldtime,ptr_Ltrotte->PNode.dtime);
 					     strcpy(ptr_LEXHead->exectime,ebuffer);
 					     strcpy(ptr_LEXHead->submitdelay,sbuffer);
+					     strcpy(ptr_LEXHead->deltafromstart,rbuffer);
 					     ptr_LEXHead->LastAction=ptr_Ltrotte->PNode.LastAction;
 					     ptr_LEXHead->ignoreNode=ptr_Ltrotte->PNode.ignoreNode;
 					     ptr_LEXHead->next = NULL;
 				    }
 			   }
 			}
-			
 	    
 	   }
       }
@@ -454,9 +467,9 @@ void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *sta
 	       }
                for ( ptr_LXHtrotte = ptr_NLHtrotte->ptr_LoopExt; ptr_LXHtrotte != NULL ; ptr_LXHtrotte = ptr_LXHtrotte->next) {
 		  if ( ptr_LXHtrotte->ignoreNode == 0 ) {
-		     sprintf(output_buffer, "%s {exectime %s submitdelay %s begintime %s endtime %s} ", 
+		     sprintf(output_buffer, "%s {exectime %s submitdelay %s begintime %s endtime %s deltafromstart %s} ",
 			   ptr_LXHtrotte->Lext, ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay,
-			   ptr_LXHtrotte->lbtime,  ptr_LXHtrotte->letime);
+			   ptr_LXHtrotte->lbtime,  ptr_LXHtrotte->letime, ptr_LXHtrotte->deltafromstart);
 		     tmp_output=strdup(stats_output);
 		     stats_output=sconcat(tmp_output, output_buffer);
 		     strcpy(tmp_line, getNodeAverageLine(ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext));
@@ -490,14 +503,11 @@ void print_LListe ( struct _ListListNodes MyListListNodes , FILE *log, FILE *sta
 		     }
 		  }
 		  
-		  
 		  if (stats != NULL) {
 		     fprintf(stats, "SEQNODE=/%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
 			     ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext, ptr_LXHtrotte->lbtime, ptr_LXHtrotte->letime,
-			     ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, "");
+			     ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->deltafromstart );
 		  }
-		  
-		  
 	       }
 	       sprintf(output_buffer, "}");
 	       tmp_output=strdup(stats_output);
@@ -526,7 +536,7 @@ void getAverage(char *exp, char *datestamp){
    char_datestamp[14]='\0';
    snprintf(char_datestamp, 15, "%s", datestamp);
    strcpy(prev, char_datestamp);
-   snprintf(char_datestamp, 15, "%s", previousDay(prev));
+   snprintf(char_datestamp, 15, "%s", SeqDatesUtil_getPrintableDate(prev,-1,0,0,0));
    
    SeqUtil_TRACE("logreader parsing averages on exp: %s for datestamp: %s\n", exp, datestamp);
    
@@ -565,8 +575,8 @@ char *getNodeAverageLine(char *node, char *member){
    }
    if(strcmp(node_tmpptr->node+1,node) == 0 && strcmp(node_tmpptr->member, member) == 0) {
       time_tmpptr=node_tmpptr->times;
-      snprintf(line, 256, "exectime %s submitdelay %s begintime %s endtime %s", time_tmpptr->exectime, time_tmpptr->submitdelay,
-          time_tmpptr->start, time_tmpptr->end);
+      snprintf(line, 256, "exectime %s submitdelay %s begintime %s endtime %s deltafromstart %s", time_tmpptr->exectime, time_tmpptr->submitdelay,
+          time_tmpptr->start, time_tmpptr->end, time_tmpptr->deltafromstart);
    } else {
       return "";
    }
@@ -605,7 +615,7 @@ void computeAverage(char *exp, char *datestamp){
       }
       
       strcpy(prev, char_datestamp);
-      snprintf(char_datestamp, 15, "%s", previousDay(prev));
+      snprintf(char_datestamp, 15, "%s", SeqDatesUtil_getPrintableDate(prev,-1,0,0,0));
    }
    processStats(exp, datestamp);
 }
@@ -769,9 +779,9 @@ int processStats(char *exp, char *datestamp){
    StatsNode *node_tmpptr;
    PastTimes *time_tmpptr;
    char *start=NULL, *end=NULL, *submitdelay=NULL, *exectime=NULL, *deltafromstart=NULL;
-   int int_start, int_end, int_submitdelay, int_exectime, int_deltafromstart;
+   int int_start[30], int_end[30], int_submitdelay[30], int_exectime[30], int_deltafromstart[30];
    char *avg_path=NULL, *buffer_1=NULL, *buffer_2=NULL;
-   int avg_counter;
+   int avg_counter, iter_counter,i,truncate_amount=0;
    FILE *avg=NULL;
    
    if(read_type==3){
@@ -792,33 +802,45 @@ int processStats(char *exp, char *datestamp){
    
    while(node_tmpptr != NULL){
       time_tmpptr=node_tmpptr->times;
-      
-      int_start=0;
-      int_end=0;
-      int_submitdelay=0;
-      int_exectime=0;
-      int_deltafromstart=0;
+      iter_counter=0;
+      for(i=0; i<30; ++i) {
+        int_start[i]=0;
+        int_end[i]=0;
+        int_submitdelay[i]=0;
+        int_exectime[i]=0;
+        int_deltafromstart[i]=0;
+      }
       
       avg_counter=node_tmpptr->times_counter;
-      
+      if (avg_counter > 30) {
+          raiseError("ERROR: Maximum average count is 30. Please reduce the amount of days you wish to calculate the mean. \n"); 
+      }
+       
       while(time_tmpptr != NULL){
-         int_start += charToSeconds(time_tmpptr->start);
-         int_end += charToSeconds(time_tmpptr->end);
-         int_submitdelay += charToSeconds(time_tmpptr->submitdelay);
-         int_exectime += charToSeconds(time_tmpptr->exectime);
-         /*TODO deltafromstart*/
-         
+         int_start[iter_counter] = charToSeconds(time_tmpptr->start);
+         int_end[iter_counter] = charToSeconds(time_tmpptr->end);
+         int_submitdelay[iter_counter] = charToSeconds(time_tmpptr->submitdelay);
+         int_exectime[iter_counter] = charToSeconds(time_tmpptr->exectime);
+         int_deltafromstart[iter_counter] = charToSeconds(time_tmpptr->deltafromstart);
+         iter_counter++; 
          time_tmpptr=time_tmpptr->next;
       }
       
-      start=secondsToChar(int_start/avg_counter);
-      end=secondsToChar(int_end/avg_counter);
-      submitdelay=secondsToChar(int_submitdelay/avg_counter);
-      exectime=secondsToChar(int_exectime/avg_counter);
-      
+      /* truncating at least 1 extreme on each side per 10 elements, starting at 5 */
+      if (avg_counter < 4) {
+          truncate_amount=0;
+      } else {
+          truncate_amount=(avg_counter + 9) / 10;
+      }
+      start=secondsToChar(SeqUtil_basicTruncatedMean(&int_start, avg_counter, truncate_amount));
+      end=secondsToChar(SeqUtil_basicTruncatedMean(&int_end, avg_counter, truncate_amount));
+      submitdelay=secondsToChar(SeqUtil_basicTruncatedMean(&int_submitdelay, avg_counter,truncate_amount));
+      exectime=secondsToChar(SeqUtil_basicTruncatedMean(&int_exectime, avg_counter,truncate_amount));
+      deltafromstart=secondsToChar(SeqUtil_basicTruncatedMean(&int_deltafromstart, avg_counter,truncate_amount));
+ 
       if(read_type==3){
          fprintf(avg, "SEQNODE=%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
-             node_tmpptr->node, node_tmpptr->member, start, end, submitdelay, exectime, "");
+             node_tmpptr->node, node_tmpptr->member, start, end, exectime, submitdelay, deltafromstart);
       }
       
       node_tmpptr=node_tmpptr->next;
@@ -918,65 +940,7 @@ char *addToAverage(char *_toAdd, char *average, int counter){
    return strdup(buffer);
 }
 
-/*returns the datestamp of the previous day*/
-char *previousDay(char *today){
-   char year[5], month[3], day[3], hour[7];
-   char result[15];
-   int int_year, int_month, int_day;
-   int i, j;
-   
-   for(i=0; i<4; i++) year[i]=today[i];
-   j=0;
-   for(i=4; i<6; i++) {
-      month[j]=today[i];
-      j++;
-   }
-   j=0;
-   for(i=6; i<8; i++){
-      day[j]=today[i];
-      j++;
-   }
-   j=0;
-   for(i=8; i<14; i++){
-      hour[j]=today[i];
-      j++;
-   }
-   
-   year[4]='\0';
-   month[2]='\0';
-   day[2]='\0';
-   hour[6]='\0';
-   
-   int_year=atoi(year);
-   int_month=atoi(month);
-   int_day=atoi(day);
-   
-   if(int_day-1 < 1) {
-      if (int_month-1 < 1) {
-         int_year=int_year-1;
-         int_month=12;
-         int_day=31;
-      } else {
-         int_month=int_month-1;
-         if(int_month == 1 || int_month == 3 || int_month == 5 ||
-             int_month == 7 || int_month == 8 || int_month == 10) {
-            int_day=31;
-         } else if (int_month == 2) {
-            int_day=28;
-         } else {
-            int_day=30;
-         }
-      }
-   } else {
-      int_day=int_day-1;
-   }
-   
-   result[14]='\0';
-   snprintf(result, 15, "%d%02i%02i%s", int_year, int_month, int_day, hour);
-   return result;
-}
-
-/*edited from http://www.c4learn.com/c-programming/c-concating-strings-dynamic-allocation/*/
+/*edited from http://www.c4learn.com/c-programming/c-concating-strings-dynamic-allocation */
 char *sconcat(char *ptr1,char *ptr2){
    int len1,len2;
    int i,j;

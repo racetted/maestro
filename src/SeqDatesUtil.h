@@ -1,14 +1,13 @@
 #ifndef _SEQ_DATES_UTIL
 #define _SEQ_DATES_UTIL
 
-/* function - getPrintableDate
- *  * given a date(dat1), time (tim1), and increment (nhours 6 or -6)
- *   * in hours, compute resulting date and hour and  return printable format
- *    */
-char* SeqDatesUtil_getPrintableDate( char* printable_date, int increment );
+char* SeqDatesUtil_getPrintableDate( char* printable_date, int day, int hour, int minute, int second );
 int SeqDatesUtil_dow(int y, int m, int d);
 int SeqDatesUtil_isDepHourValid( char* date, char* hourToCheck); 
 int SeqDatesUtil_isDepDOWValid( char* date, char* dowToCheck); 
 
+long long FromDaysToSeconds (int day, int hour, int minute, int second);
+void DateFromJulian (long long jsec, int *yyyymmdd, int *hhmmss);
+long long JulianSecond(int year, int month, int day, int hour, int minute, int second);
 
 #endif

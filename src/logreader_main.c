@@ -22,18 +22,17 @@ char *datestamp = NULL;
 char *exp = NULL;
 
 struct stat pt;
-FILE *log;
 FILE *stats;
 
 static void printUsage()
 {
    printf("Logreader usage:\n");
-   printf("     logreader (-i inputfile [-t type] [-o statsoutputfile] | -t avg [-n days]) -e exp -d datestamp [-v]\n");
+   printf("     logreader (-i inputfile [-t type] [-o statsoutputfile] | -t avg [-n days]) [-e exp] -d datestamp [-v]\n");
    printf("         where:\n");
    printf("         inputfile        is the logfile to read (mandatory if type is statuses or stats)\n");
    printf("         type             is one of all (statuses & stats), statuses, stats or avg (default is all)\n");
    printf("         statsoutputfile  is the file where the stats are logged (if defined)\n");
-   printf("         exp              is the experiment path (mandatory)\n");
+   printf("         exp              is the experiment path (default is SEQ_EXP_HOME env. variable)\n");
    printf("         datestamp        is the initial date for averages computation (mandatory)\n");
    printf("         days             is used with -t avg to define the number of days for the averages since \"datestamp\" (default is 7)\n");
    exit(1);
@@ -46,16 +45,16 @@ main ( int argc, char * argv[] )
 #endif
 {
    /*extern char *optarg;*/
-   char *base, *type=NULL, *n_buffer=NULL;
+   char *base, *type=NULL, *n_buffer=NULL, *exp=NULL;
    char filename[128];
    int fp=-1,  c;
    int i_defined=0, t_defined=0, n_defined=0, o_defined=0, d_defined=0, e_defined=0;
    
    if ( argc == 1 || argc == 2) {
       printUsage();
+      exit(1);
    }
    
-   log = NULL;
    stats = NULL;
    rootStatsNode = NULL;
    
@@ -98,7 +97,13 @@ main ( int argc, char * argv[] )
 	    break;
       }
    }
-   
+
+   if (! d_defined) { 
+     if ((datestamp=getenv("SEQ_DATE")) == NULL){
+       raiseError("-d or SEQ_DATE must be defined.\n");
+     }
+   }
+
    if (type != NULL) {
       if(strcmp(type, "statuses") == 0) {
 	 SeqUtil_TRACE("logreader type: statuses\n");
@@ -110,6 +115,13 @@ main ( int argc, char * argv[] )
 	 SeqUtil_TRACE("logreader type: compute averages\n");
 	 read_type=3;
       }
+   }
+   
+   if (! e_defined) {
+     if ((exp=getenv("SEQ_EXP_HOME")) == NULL){
+       raiseError("-e or SEQ_EXP_HOME must be defined.\n");
+     }
+
    }
    
    if(read_type != 3) {
@@ -129,15 +141,7 @@ main ( int argc, char * argv[] )
          exit(1);
       }
    
-   
-      if ( (log=fopen("./output","w+")) == NULL ) {
-         fprintf(stderr,"could not open in write mode output file\n");
-         exit(1);
-      } else {
-         setvbuf(log, NULL, _IONBF, 0);
-      }
-   
-      read_file(base,log); 
+      read_file(base); 
    
       /* unmap */
       munmap(base, pt.st_size);  
@@ -146,11 +150,14 @@ main ( int argc, char * argv[] )
       getAverage(exp, datestamp);
       
       /*print nodes*/
-      print_LListe ( MyListListNodes , log, stats );
+      print_LListe ( MyListListNodes, stats );
    } else {
       computeAverage(exp, datestamp);
    }
    
-   if (log != NULL) fclose(log);
    if (stats != NULL) fclose(stats);
+
+   free(type); 
+   free(n_buffer); 
+
 }
