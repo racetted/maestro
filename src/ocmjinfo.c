@@ -4,7 +4,6 @@
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
-#include <rpnmacros.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <libgen.h>
@@ -15,9 +14,6 @@
 #include "runcontrollib.h"
 #include "ocmjinfo.h"
 
-
-extern incdatr(); /* rmnlib.a */
-extern newdate(); /* rmnlib.a */
 
 /* name: ocmjinfo
  * 
@@ -148,7 +144,6 @@ static int JINFO_OFFSET, JINFO_FLAG_LOOPS;
 static FILE  *jinfo_master, *jinfo_mastertable, *jinfo_aliastable;
 
 static void message (char *msg1,char *msg2,char *var);
-static int gendtstmp(char plusorminus,char tmphour[5],char datestamp[11]);
 static int convert_tmphour(char plusorminus,char tmphour[5],char final_tmphour[5]);
 static int getmaster(char *controlDir,char *suite,char *run,char **masterfile);
 static void check4alias(char *job);
@@ -321,11 +316,6 @@ void deallocateOcmjinfo(struct ocmjinfos **ptrocmjinfo)
     tempocmjinfo->run=NULL;
  }
 
- if (tempocmjinfo->datestamp != NULL) {
-    free(tempocmjinfo->datestamp);
-    tempocmjinfo->datestamp=NULL;
- }
-
  if (tempocmjinfo->hour != NULL) {
     free(tempocmjinfo->hour);
     tempocmjinfo->hour=NULL;
@@ -420,7 +410,6 @@ void printOcmjinfo(struct ocmjinfos *ptrocmjinfo)
        printf("'\n");
     }
     printf("ocmjinfo_run=%s\n", ptrocmjinfo->run);
-    printf("ocmjinfo_datestamp=%s\n", ptrocmjinfo->datestamp);
     printf("ocmjinfo_hour=%s\n", ptrocmjinfo->hour);
     if (ptrocmjinfo->loop_current != NULL) {
        printf("ocmjinfo_loop_current=%s\n", ptrocmjinfo->loop_current);
@@ -510,7 +499,6 @@ struct ocmjinfos ocmjinfo(char *job)
  ocmjinfo_res.depend = NULL;
  ocmjinfo_res.submit = NULL;
  ocmjinfo_res.run = NULL;
- ocmjinfo_res.datestamp = NULL;
  ocmjinfo_res.hour = NULL;
  ocmjinfo_res.loop_current = NULL;
  ocmjinfo_res.loop_start = NULL;
@@ -814,17 +802,6 @@ struct ocmjinfos ocmjinfo(char *job)
  ocmjinfo_res.run = (char *) malloc(strlen(JINFO_RUN)+1);
  strcpy(ocmjinfo_res.run,JINFO_RUN);
 
- if (gendtstmp('+',"0",JINFO_DATESTAMP) == 0) {
-    ocmjinfo_res.datestamp = (char *) malloc(strlen(JINFO_DATESTAMP)+1);
-    strcpy(ocmjinfo_res.datestamp,JINFO_DATESTAMP);
- } else {
-    memset(tmp,'\0',sizeof tmp);
-    sprintf(tmp,"Error: ocmjinfo unable to open %s\n",jinfo_spma);
-    ocmjinfo_res.error = 1;
-    strcpy(ocmjinfo_res.errormsg,tmp);
-    return ocmjinfo_res;
- }
-
  ocmjinfo_res.hour = (char *) malloc(strlen(JINFO_HOUR)+1);
  strcpy(ocmjinfo_res.hour,JINFO_HOUR);
 
@@ -1027,99 +1004,6 @@ char field[JINFO_MAX_FIELD];
 
 
 /*****************************************************************************
-* NAME: listEndOfBranchJobs
-* PURPOSE: list all end of branches of a 'run' with a catchup value less than 9
-*          and put it into 'branches'.
-*          Note: if the end of branches job is an loop job then all members are
-*               happens to 'branches'.
-* INPUT: run - 2 characters (ex: r1)
-* OUTPUT: branches - contains all jobs of end of branches.
-* example: listEndOfBranchJobs("r1",branches);
-*******************************************************************************/
-static int listEndOfBranchJobs(run,branches)
-char run[3];
-char branches[JINFO_MAX_FIELD];
-{
- char line[JINFO_MAXLINE];
- char end_job[10];
- char search_string[JINFO_MAXLINE];
- char jobname[JINFO_MAX_TMP];
- char junk[500];
- char fmt_s8[JINFO_MAX_FMT];
- char tmp_depend[JINFO_MAX_TMP];
- char tmp_result[JINFO_MAX_FIELD];
- char tempo[JINFO_MAX_FMT];
-
- int catchup,loop_limit,set,start;
- static FILE *f_master=NULL;
- int reach_end=0, k;
- char datestamp[11];
-
- memset(tmp_result, '\0', sizeof tmp_result);
- memset(fmt_s8,'\0',sizeof fmt_s8);
- strcpy(fmt_s8, "%s.%10.10s ");
-
- f_master = fopen(JINFO_MASTER,"r");
- if (f_master == NULL) {
-    printf("Cannot open master=%s\n",JINFO_MASTER);
-    exit(-1);
- }
-
- memset(branches,'\0',sizeof branches);
- memset(end_job,'\0',sizeof end_job);
- sprintf(end_job,"^%s%s",run,"end");
- memset(search_string,'\0',sizeof search_string);
- sprintf(search_string,"^%s.* none\n",run);
- gendtstmp('+',"00",datestamp);
-
- while (reach_end == 0) {
-       if (fgets(line,JINFO_MAXLINE,f_master) == NULL) {
-           reach_end = 1;
-       } else {
-	 if(match(line,end_job) == 1) {
-           reach_end = 1;
-         } else if (match(line,search_string) == 1) {
-             memset(jobname,'\0',sizeof jobname);
-             memset(junk,'\0',sizeof junk);
-             sscanf(line,"%s %d %s",jobname,&catchup,junk);
-	     if (strlen(JINFO_HOUR) == 2) {
-		 strcat(jobname,"_");
-		 strcat(jobname,JINFO_HOUR);
-	     }             
-             /* only consider jobs that has a catchup value less than 9 */
-             if (catchup < 9) {
-                 if (  getJobLoopInfos("NONE","NONE",jobname,&loop_limit,&set,&start) == 1) {
-                     if (JINFO_FLAG_LOOPS) {
-		        strcat(jobname,"_");
-		        strcat(jobname,JINFO_LOOP_CURRENT);
-                        memset(tempo, '\0', sizeof tempo);
-                        sprintf(tempo,fmt_s8, jobname, datestamp);
-                        strcat(tmp_result,tempo);
-		     } else {
-                         for (k = start; k <= loop_limit; k++) {
-                              memset(tmp_depend,'\0', sizeof tmp_depend);
-                              sprintf(tmp_depend,"%s_%d",jobname,k);
-                              memset(tempo, '\0', sizeof tempo);
-                              sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                              strcat(tmp_result,tempo);
-                         }
-                     }                 
-                 } else {
-                     memset(tempo, '\0', sizeof tempo);
-                     sprintf(tempo,fmt_s8, jobname, datestamp);
-                     strcat(tmp_result,tempo);
-                 }
-             } 
-         }
-       }
- }
- fclose(f_master);
- strcpy(branches,tmp_result);
- return(1);
-}
-
-
-/*****************************************************************************
 * NAME: splitfield
 * PURPOSE: split the string 'field' and put the result into 'result'.
 *          'var' will tell us what type of field it is.
@@ -1147,7 +1031,6 @@ char result[JINFO_MAX_FIELD];
  char tmp_depend[JINFO_MAX_TMP];
  char tmphour[5];
  char final_tmphour[5];
- char datestamp[11];
  char plusorminus;
  char fmt_s_term[JINFO_MAX_FMT];
  char fmt_term[JINFO_MAX_FMT];
@@ -1276,313 +1159,6 @@ char result[JINFO_MAX_FIELD];
     return(0);   
  } /* var=submit */
 
- if ( strcmp(var,"depend") == 0) {
-    memset(end_job,'\0', sizeof end_job);
-    memset(run,'\0', sizeof run);
-    strncpy(run,JINFO_RUN,2);
-    sprintf(end_job,"%s%s%s",run,"end",run);
-    tmpstrtok = strtok(field,":");
-    while ( tmpstrtok != NULL) {
-          memset(tmpfield,'\0', sizeof tmpfield);
-          memset(tmp, '\0', sizeof tmp);
-          strcpy(tmpfield,tmpstrtok);
-          memset(filter,'\0', sizeof filter);
-	  strcpy(filter,".*@.*.*@.*");
-          memset(filter2,'\0', sizeof filter2);
-	  strcpy(filter2,".*@.*");          
-          memset(user, '\0', sizeof user);
-          memset(controlDir, '\0', sizeof controlDir);
-          memset(suite, '\0', sizeof suite);
-          memset(remote_job, '\0', sizeof remote_job);
-          memset(between_suite, '\0', sizeof between_suite);
-          strcpy(user,"NONE");
-          strcpy(controlDir,"NONE");
-          strcpy(suite,"NONE");
-          strcpy(between_suite,"NO");
-          if (match(tmpfield,filter) == 1) {
-             sscanf(tmpfield,"%[^@]@%[^@]@%s",user,suite,remote_job);
-             pw = getpwnam(user);
-             if ( strcmp("OCMNU",suite) == 0 ) {
-                sprintf(controlDir,"%s/%s",pw->pw_dir,"ocm/control/");
-             } else {
-                sprintf(controlDir,"%s/.ocm/%s/%s",pw->pw_dir,suite,"ocm/control/");
-             }
-             strcpy(tmpfield,remote_job);
-             strcpy(between_suite,"DIFFERENT_USER");
-          } else if (match(tmpfield,filter2) == 1) {
-	     /* the depend field is something like this: $suite@$jobname */
-	     sscanf(tmpfield,"%[^@]@%s",suite,remote_job);
-             ocmpath=getenv("CMC_OCMPATH");
-             if ( ocmpath != NULL ) {
-	       ocmpath2 = strdup(ocmpath);
-               sprintf(controlDir,"%s/%s/%s",dirname(ocmpath2),suite,"ocm/control/");               
-             } else {
-               /* JINFO_MASTERBASE equals to /home/binops/afsi/sio/ocm/control/ */
-               sprintf(controlDir,"%s",JINFO_MASTERBASE);
-             }
-             strcpy(tmpfield,remote_job);
-             strcpy(between_suite,"SAME_USER");
-          }
-	  if (strlen(tmpfield) == 1 && tmpfield[0] == '*' && strcmp(JINFO_JOB,end_job) == 0) {
-             /* ${RUN}end${RUN} has a '*' on the dependency field */
-             memset(branches, '\0', sizeof branches);
-             listEndOfBranchJobs(run,branches);
-             strcat(tmp_result,branches);
-          } else if (tmpfield[0] == '+') {
-	    /* event detected. ex: +kwbc144 */
-             sprintf(tmp,fmt_s,tmpfield);
-             strcat(tmp_result,tmp); 
-          } else if (strlen(tmpfield) > 8 && tmpfield[7] == '_' && tmpfield[8] == '-') {
-	     /* depend on previous members. ex: h1nlmso_-1 */
-             strncpy(tmp,tmpfield,8);
-             if (strlen(JINFO_HOUR) == 2) {
-                strcat(tmp,JINFO_HOUR);
-             }
-             if (gendtstmp('+',"00",datestamp) != 0) {
-	       /* problem with datestamp */
-                 return(1);
-             }
-             if ( getJobLoopInfos(controlDir,suite,tmp,&loop_limit,&set,&start) == 1 ) {
-                memset(minus_str,'\0',sizeof minus_str);
-                strncat(minus_str,tmpfield+9,strlen(tmpfield)-8);
-                /* minus_str equal something like '-1' */
-                minus_int = atoi(JINFO_LOOP_CURRENT) - atoi(minus_str);
-                if ( minus_int >= start) {
-                    memset(tmp_depend,'\0', sizeof tmp_depend);
-                    sprintf(tmp_depend,"%s_%d",tmp,minus_int);
-                    memset(tempo, '\0', sizeof tempo);
-                    if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0) {
-                       sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                    } else {
-		      if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                          sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                      } else {
-		          sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                      }
-                    }
-                    strcat(tmp_result,tempo);                                                             
-                }
-             } else {
-                printf("Error ocmjinfo: not a loop job=%s\n",tmp);
-                return(1);
-             }
-          } else if (strlen(tmpfield) > 8 && tmpfield[7] == '_' && tmpfield[8] == '*') {
-	     /* depend on all loops. ex:e1gemdm_* */
-             strncpy(tmp,tmpfield,8);
-             if (strlen(JINFO_HOUR) == 2) {
-                strcat(tmp,JINFO_HOUR);
-             }
-             if (gendtstmp('+',"00",datestamp) != 0) {
-	        /* problem with datestamp */
-                 return(1);
-             }
-             if ( getJobLoopInfos(controlDir,suite,tmp,&loop_limit,&set,&start) == 1) {
-	        for (i = start; i <= loop_limit; i++) {
-                     memset(tmp_depend,'\0', sizeof tmp_depend);
-                     
-                     memset(tempo, '\0', sizeof tempo);
-                     sprintf(tmp_depend,"%s_%d",tmp,i);
-                     if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                        sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                     } else {
-                         if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                             sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                         } else {
-		             sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                         }
-                     }
-                     strcat(tmp_result,tempo);
-                }
-	     } else {
-                printf("Error ocmjinfo: not a loop job=%s\n",tmp);
-                return(1);
-             }
-          } else if (strlen(tmpfield) > 8 && tmpfield[7] == '[') {
-	     /* depend job with hour. ex: f2gemdm[+06] */
-             strncpy(tmp,tmpfield,7);
-             strcat(tmp,"_");
-             invalidextension=0;
-	     if ( tmpfield[8] == '-' || tmpfield[8] == '+' ) {
-	        plusorminus=tmpfield[8];
-	        memset(tmphour,'\0',sizeof tmphour);
-	        strcpy(final_tmphour,"9999");
-           done=0;
-           counter=9;
-           tmphourCounter=0;
-           /* added this fix to process syntax in the form g1mindm[-6]_2
-            was giving g1mindm_12_0.2008052612 instead of g1mindm_12_2.2008052612 */
-           while ( done != 1 ) {
-            if ( isdigit(tmpfield[counter])) {
-               tmphour[tmphourCounter] = tmpfield[counter];
-               pos=counter;
-               counter++;
-               tmphourCounter++;
-            } else if ( tmpfield[counter] == ']' ) {
-               done = 1;
-            } else {
-                printf("Error ocmjinfo: invalid loop dependancy syntax job=%s\n",tmp);
-                return(1);
-            }
-           }
-	        if ( convert_tmphour(plusorminus,tmphour,final_tmphour) != 0)
-	           invalidextension=1;  
-	     }
-
-             if ( invalidextension == 0 ) {
-	         if (strlen(final_tmphour)==2) {
-	            if (gendtstmp(plusorminus,tmphour,datestamp) == 0) { 
-	               strcat(tmp,final_tmphour);
-	            } else {
-                       return(1);
-	            } 
-	         } else {
-	            if (gendtstmp(plusorminus,"00",datestamp) == 0) {
-	                strcat(tmp,JINFO_HOUR);
-	            } else {
-                        return(1);
-	            }
-	         }
-                 if (tmpfield[pos+1] == ']' && tmpfield[pos+2] == '_'  && tmpfield[pos+3] == '*') {
-		     /* depend job with hour which depend on all loops. ex: f2gemdm[+00]_* */
-                     if (  getJobLoopInfos(controlDir,suite,tmp,&loop_limit,&set,&start) == 1) {
-	                 for (i = start; i <= loop_limit; i++) {
-                              memset(tmp_depend,'\0', sizeof tmp_depend);
-                              sprintf(tmp_depend,"%s_%d",tmp,i);
-                              memset(tempo, '\0', sizeof tempo);
-                              if ( strcmp("NONE",controlDir) == 0 && strcmp("NONE",suite) == 0 ) {
-                                 sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                              } else {
-                                 if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                                     sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                                 } else {
-                                     sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                                 }
-                              }
-                              strcat(tmp_result,tempo);                   
-                         }
-	             } else {
-                         printf("Error ocmjinfo: not a loop job=%s\n",tmp);
-                         return(1);
-                     }
-                 } else if (tmpfield[pos+1] == ']' && tmpfield[pos+2] == '_' ) {
-	             /* depend on a specific loop ex: g1addpp[-6]_15 */
-                     memset(loop_str,'\0', sizeof minus_str);
-                     strcat(loop_str,tmpfield+pos+3);
-                     memset(tmp_depend,'\0', sizeof tmp_depend);
-                     sprintf(tmp_depend,"%s_%s",tmp,loop_str);
-                     memset(tempo, '\0', sizeof tempo);
-                     if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                        sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                     } else {
-                          if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                             sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                          } else {
-                             sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                          }
-                     }
-                     strcat(tmp_result,tempo);
-                 } else {
-                     /* depend on the CURRENT loop. ex: g1addpp[+12] */
-                     if ( getJobLoopInfos(controlDir,suite,tmp,&loop_limit,&set,&start) == 1) {
-                          memset(tmp_depend,'\0', sizeof tmp_depend);
-                          sprintf(tmp_depend,"%s_%d",tmp,atoi(JINFO_LOOP_CURRENT));
-                          memset(tempo, '\0', sizeof tempo);
-                          if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                             sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                          } else {
-                              if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                                 sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                              } else {
-                                 sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                              }
-                          }
-                          strcat(tmp_result,tempo);
-	             } else {
-                         memset(tempo, '\0', sizeof tempo);
-                         if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                            sprintf(tempo,fmt_s8, tmp, datestamp);
-                         } else {
-                            if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                               sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp,datestamp);
-                            } else {
-                               sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp,datestamp);
-                            }
-                         }
-                         strcat(tmp_result,tempo);
-                     }
-                 }
-	     } /*invalidextension=0*/
-          } else if (strlen(tmpfield) > 8 && tmpfield[7] == '_') {
-	     /* depend on a specific loop member. ex: e1gemdm_15 */
-             strncpy(tmp,tmpfield,8);
-             if (strlen(JINFO_HOUR) == 2) {
-                strcat(tmp,JINFO_HOUR);
-             }
-             if (gendtstmp('+',"00",datestamp) != 0) {
-	        /* problem with datestatmp */
-                 return(1);
-             }
-             memset(loop_str,'\0',sizeof minus_str);
-             strncat(loop_str,tmpfield+8,strlen(tmpfield)-7); 
-             memset(tmp_depend,'\0', sizeof tmp_depend);
-             sprintf(tmp_depend,"%s_%s",tmp,loop_str);
-             memset(tempo, '\0', sizeof tempo);
-             if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-             } else {
-                 if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                     sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                 } else {
-                     sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                 }
-             }
-             strcat(tmp_result,tempo);                                            
-          } else if (strlen(tmpfield) == 7) {
-	     /* depend job has a length of 7 */
-             strcpy(tmp,tmpfield);
-             if (strlen(JINFO_HOUR) == 2) {
-                strcat(tmp,"_");
-                strcat(tmp,JINFO_HOUR);
-             }
-             if (gendtstmp('+',"00",datestamp) != 0) {
-	       /* problem with datestamp */
-                return(1);
-             }
-             if ( getJobLoopInfos(controlDir,suite,tmp,&loop_limit,&set,&start) == 1 ) { 
-                 memset(tmp_depend,'\0', sizeof tmp_depend);
-                 sprintf(tmp_depend,"%s_%d",tmp,atoi(JINFO_LOOP_CURRENT));
-                 memset(tempo, '\0', sizeof tempo);
-                 if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                    sprintf(tempo,fmt_s8, tmp_depend, datestamp);
-                 } else {
-                     if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                        sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp_depend,datestamp);
-                     } else {
-                        sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp_depend,datestamp);
-                     }
-                 }
-                 strcat(tmp_result,tempo);                   
-             } else if (strlen(JINFO_HOUR) == 2) {
-                  memset(tempo, '\0', sizeof tempo);
-                  if ( strcmp("NONE",user) == 0 && strcmp("NONE",suite) == 0 ) {
-                     sprintf(tempo,fmt_s8, tmp, datestamp);
-                  } else {
-                     if ( strcmp("SAME_USER",between_suite) == 0 ) {
-                         sprintf(tempo,"%s%s%s.%s ",suite,"@",tmp,datestamp);
-                     } else {
-                         sprintf(tempo,"%s%s%s%s%s.%s ",user,"@",suite,"@",tmp,datestamp);
-                     }
-                  }
-                  strcat(tmp_result,tempo);                                           
-             } else {
-                  strcat(tmp_result,tmp);        
-             }
-          }
-          tmpstrtok = strtok(NULL,":");
-    }/*while*/
-    strcpy(result,tmp_result);
-    return(0);
- } /* var=depend */
  return(1);
 }
 
@@ -1835,122 +1411,6 @@ static int convert_tmphour(char plusorminus,char tmphour[5],char final_tmphour[5
     sprintf(final_tmphour,"%02d", ans.rem);
  }
  return(status);
-}
-
-/*****************************************************************************
-* NAME: gendtstmp
-* PURPOSE: generate datestamp and put result into 'datestamp'.
-* INPUT: plusorminus - '-' or '+'
-*        tmphour - the number of hours we want to increment or decrement
-* OUTPUT: return 0 if successful and put result into 'datestamp'
-* example: gendtstmp('+',"00",datestamp);
-*******************************************************************************/
-static int gendtstmp(char plusorminus, char tmphour[5],char datestamp[11])
-{
- char tempatim[11];
- int adat,atim,code,ret;
- int i,hour;
- struct stat statBuf;
- double retro  = 0.0;
-
- int dtg = 0;
- int dtginc = 0;
- int runsize = 0;
-
- char line[80];
- char tmpretro[10];
- char subrun[5];
- char runmaj[5];
-
- memset(runmaj,'\0', sizeof runmaj);
-
- sprintf(tmpretro,"%c%s",plusorminus,tmphour);
-
- retro = atof(tmpretro);
-
- /* convert run to upper case to compare with jinfo_spma file */
-
- runsize = strlen(JINFO_RUN);
-
- for(i=0;i<runsize;i++)
-    runmaj[i] = toupper(JINFO_RUN[i]);
-
- /* get the date/time stamp from the jinfo_spma file	*/
-
- if ((jinfo_su = fopen(jinfo_spma,"r")) == NULL) {
-    message("OCMJINFO ERROR: Can't open dtstmp file ",
-	    "OCMJINFO ERREUR: Impossible d'ouvrir fichier de dtstmp ",
-	    jinfo_spma);
-    return(1);
- }
-
- if (stat(jinfo_spma,&statBuf) == 0) {
-     /* fichier exists */
-    if (statBuf.st_blocks == 0) { /* file size is equal to zero */
-       sleep(5); /* sleep for 5 secondes cause the jinfo_spma file is being updated */
-    }
- }
-
- dtg = 0;
- while ((fgets(line,40,jinfo_su)) != NULL) {
-       if(!strncmp(runmaj,line,runsize))dtg = atoi(&line[8]);
- }
-
- if ( dtg == 0 ) {
-
-    hour=atoi(&runmaj[2]);
-    if (hour < 6) {
-       sprintf(subrun,"%s","OP00");
-    } else if (hour < 12) {
-       sprintf(subrun,"%s","OP06");
-    } else if (hour < 18) {
-       sprintf(subrun,"%s","OP12");
-    } else if (hour < 24) {
-       sprintf(subrun,"%s","OP18");
-    }
-
-    if (strlen(&runmaj[2]) == 0) {
-       /* job without hour extension */
-       /* start building the output file string */
-       memset(datestamp,'\0', sizeof datestamp);
-       fclose(jinfo_su);
-       return(0);
-    } else {
-       rewind(jinfo_su);
-       while ((fgets(line,40,jinfo_su)) != NULL) {
-	  if(!strncmp(subrun,line,runsize))dtg = atoi(&line[8]);
-       }
-    }
- }
- fclose(jinfo_su);
-
- /* adjust date as per retro switch */
- f77name(incdatr)(&dtginc,&dtg,&retro);  /* decrement by nhours */
- /* if it returns 101010101 it means it receives invalid arguments */
- if ( dtginc == 101010101 ) {
-    fprintf(stderr,"Can't increment a date (incdatr).\n");
-    return(1);
- }
-
- /* CMCstamp to printable */
- code = -3;
- if ((ret=f77name(newdate)(&dtginc,&adat,&atim,&code)) != 0) {
-    fprintf(stderr,"Can't have a true date (newdate, mode=-3)\n");
-    return(1);
- } 
-
- /* start building the output file string */
-  memset(datestamp,'\0', sizeof datestamp);
-  memset(tempatim,'\0', sizeof tempatim);
-     
- /* copy YYYYMMDD into datestamp */
- sprintf(datestamp,"%08d",adat);
-
- /* concat HH into datestamp */
- sprintf(tempatim,"%08d",atim);
- strncat(datestamp,tempatim,2);
-
- return(0);
 }
 
 /**********************************************************************

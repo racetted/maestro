@@ -16,7 +16,7 @@ struct _NodeLoopList MyNodeLoopList = {"first",NULL,NULL};
 struct _StatsNode *rootStatsNode;
 
 /* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=averages*/
-int read_type = 0;
+extern int read_type = 0;
 int stats_days = 7;
 char *datestamp = NULL;
 char *exp = NULL;

@@ -34,7 +34,6 @@ struct ocmjinfos {
    JLISTNODEPTR depend;
    JLISTNODEPTR submit;
    char *run;
-   char *datestamp;
    char *hour;
    char *loop_current;
    char *loop_start;

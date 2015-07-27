@@ -91,55 +91,6 @@ void actionsEnd(char *signal, char* flow, char* node) {
 }
 
 /********************************************************************************
-*genFileList: scan a directory 'directory' and return a list of files 'filelist'
-*  using the the filter 'filters'.
-*******************************************************************************
-int genFileList(LISTNODEPTR *fileList,const char *directory,LISTNODEPTR *filterList) {
-
-LISTNODEPTR tmplist=NULL;
-LISTNODEPTR tmpfilters=NULL;
-char *filter=NULL;
-DIR *dirp=NULL;
-struct dirent *direntp=NULL;
-
- direntp=(struct dirent *) malloc(sizeof(struct dirent));
-
- tmpfilters=*filterList;
-
- filter = (char *) malloc(strlen(tmpfilters->data)+1);
- strcpy(filter,tmpfilters->data);
-
- while (filter != NULL) {
-    SeqUtil_TRACE("maestro.genFileList() opening directory=%s trying to match pattern %s\n",directory, filter);
-    dirp = opendir(directory);
-    if (dirp == NULL) {
-       fprintf(stderr,"maestro: invalid directory path %s\n",directory);
-       *fileList = NULL;
-       return(1);
-    }
-    while ( (direntp = readdir(dirp)) != NULL) {
-       if (match(direntp->d_name,filter) == 1) {
-          SeqUtil_TRACE("maestro.genFileList() found file matching=%s\n",direntp->d_name );
-          SeqListNode_insertItem(&tmplist,direntp->d_name);
-       }
-    }
-    closedir(dirp);
-    free(filter);
-    tmpfilters=tmpfilters->nextPtr;
-    if (tmpfilters != NULL) {
-       filter = (char *) malloc(strlen(tmpfilters->data)+1);
-       strcpy(filter,tmpfilters->data);
-    } else {
-       filter=NULL;
-    }
- }
- free(direntp);
- *fileList = tmplist;
- return(0);
-}
-*/
-
-/********************************************************************************
 *removeFile_nfs: Removes the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/

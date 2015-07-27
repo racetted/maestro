@@ -143,8 +143,8 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
          printf("%.*s", 2, &dateValue[10] );
       if (strcmp(tmpstrtok,"S")==0)
          printf("%.*s", 2, &dateValue[12] );
+      tmpstrtok = (char*) strtok(NULL,"%");
       }
-   tmpstrtok = (char*) strtok(NULL,"%");
    free (tmpstrtok);
 
    if (returnDate = malloc( strlen(dateValue) + 1 )) {

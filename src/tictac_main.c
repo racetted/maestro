@@ -41,12 +41,7 @@ printf("Example: tictac -f %%Y%%M%%S\n");
 printf("             will return to stdout the value of the date in a %%Y%%M%%S format\n");
 }
 
-#ifdef Mop_linux
-main_tictac (int argc, char * argv [])
-#else
 main (int argc, char * argv [])
-#endif
-
 {
    extern char *optarg;
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
@@ -72,11 +67,11 @@ main (int argc, char * argv [])
                expHome = getenv("SEQ_EXP_HOME");
                format = malloc( strlen( optarg ) + 1 );
                strcpy(format,optarg);
-	       returnDate=1;
+               returnDate=1;
                break;
-	    case 'v':
-	       SeqUtil_setTraceLevel(1);
-	       break; 
+	         case 'v':
+	            SeqUtil_setTraceLevel(1);
+	            break; 
             case 'h':
                printUsage();
                exit(0); 

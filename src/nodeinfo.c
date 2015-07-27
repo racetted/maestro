@@ -196,7 +196,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   tmpTokenLine = (char *) malloc( strlen(tokenLine) + 1 );
 			   sprintf( tmpTokenLine, tokenLine);
 			   tmpsubstr = strtok_r(tmpTokenLine,"$((",&tmpSavePtr1);
-			   //SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);
+			   /*SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);*/
 			   while (tmpsubstr != NULL) {
 			      indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
 			      tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);

@@ -4,6 +4,9 @@
 #include "nodeinfo.h"
 #include "SeqLoopsUtil.h"
 #include "SeqNameValues.h"
+
+int MLLServerConnectionFid=0;
+
 static void printUsage()
 {
    char *seq_exp_home = NULL;
@@ -31,11 +34,7 @@ static void printUsage()
    exit(1);
 }
 
-#ifdef Mop_linux
-main_nodeinfo ( int argc, char * argv[] )
-#else
 main ( int argc, char * argv[] )
-#endif
 {
    extern char *optarg;
    char * loops = NULL; 

@@ -30,7 +30,6 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
       
       if ( MyListListNodes.Nodelength == -1 ) {
            /* first time */
-	   //fprintf(stdout,"First Time\n");
            MyListListNodes.Nodelength=len;
 	   if ( (ptr_lhead=(struct _ListNodes *) malloc(sizeof(struct _ListNodes))) != NULL ) {
 	              strcpy(ptr_lhead->PNode.Node,ComposedNode);
@@ -48,31 +47,24 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 		      switch ( S ) 
 		      {
 		        case 'a':
-			         //fprintf(stdout,"atime=%s\n",atime);
 	                         strcpy(ptr_lhead->PNode.atime,atime);
 				 break;
 		        case 'b':
-			         //fprintf(stdout,"btime=%s\n",btime);
 	                         strcpy(ptr_lhead->PNode.btime,btime);
 				 break;
 		        case 'e':
-			         //fprintf(stdout,"etime=%s\n",etime);
 	                         strcpy(ptr_lhead->PNode.etime,etime);
 				 break;
 		        case 'i':
-			         //fprintf(stdout,"itime=%s\n",itime);
 	                         strcpy(ptr_lhead->PNode.itime,itime);
 				 break;
 		        case 's':
-			         //fprintf(stdout,"atime=%s\n",stime);
 	                         strcpy(ptr_lhead->PNode.stime,stime);
 				 break;
 			case 'w':
-			         //fprintf(stdout,"atime=%s\n",stime);
 			         strcpy(ptr_lhead->PNode.wtime,wtime);
 				 break;
 			case 'd':
-			         //fprintf(stdout,"atime=%s\n",stime);
 			         strcpy(ptr_lhead->PNode.dtime,dtime);
 				 break;
 		      }
@@ -91,14 +83,12 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
        /* parcouriri la liste for (  ptr_trotte = ptrHEADLLN; ptr_trotte != NULL ; ptr_trotte = ptr_trotte->next)  {  ptr_preced = ptr_trotte; } */
        /* go to end of list for ( ptr_LLtrotte = ptrHEADLLN; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next)  { ptr_LLpreced = ptr_LLtrotte; } */
        /* find node with the same length */
-       //fprintf(stdout,"Not First Time\n");
        for ( ptr_LLtrotte = &MyListListNodes; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next)
        { 
            if ( ptr_LLtrotte->Nodelength == len ) {
 	        found_len=1;
                 /* found same length, find  exact node if any  */
                 for ( ptr_Ltrotte = ptr_LLtrotte->Ptr_LNode; ptr_Ltrotte != NULL ; ptr_Ltrotte = ptr_Ltrotte->next) {
-		               //fprintf(stdout,"Compring Pnode=%s with node=%s\n",ptr_Ltrotte->PNode.Node,node);
                                if ( strcmp(ptr_Ltrotte->PNode.Node,ComposedNode) == 0 ) {
                                     found_node=1;
 				    /* complete insertion of parameteres */
@@ -179,15 +169,12 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 	   ptr_LLpreced = ptr_LLtrotte;
        } 
 
-       //fprintf(stdout,"did not find  nodes with same length\n");
 
        if ( found_len == 0 && (ptr_LLpreced->next = (struct _ListListNodes *) malloc(sizeof(struct _ListListNodes ))) != NULL ) {
 	       ptr_LLpreced->next->Nodelength=len;
 	       ptr_LLpreced->next->next= NULL;
-               //fprintf(stdout,"Inserting other node with diff length\n");
 	       
 	       if ( (ptr_Ltrotte = (struct _ListNodes *) malloc(sizeof(struct _ListNodes ))) != NULL ) {
-                      //fprintf(stdout,"Inserting other node with new length\n");
 	               strcpy(ptr_Ltrotte->PNode.Node,ComposedNode);
 	               strcpy(ptr_Ltrotte->PNode.TNode,node);
 	               strcpy(ptr_Ltrotte->PNode.loop,loop);
