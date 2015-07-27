@@ -751,39 +751,6 @@ struct ocmjinfos ocmjinfo(char *job)
    }
  }
 
- if ( strcmp(JINFO_DEPEND, JINFO_NONE) != 0 ) {
-
-    if ( strcmp(JINFO_RUN,"em") == 0 || strcmp(JINFO_RUN,"ew") == 0 ) {
-       strcpy(JINFO_HOUR,"18");
-       if (splitfield("depend", JINFO_DEPEND,tmp_result) == 0) {
-          tmpstrtok = strtok(tmp_result," ");
-          while ( tmpstrtok != NULL) {
-                insertItem(&(ocmjinfo_res.depend),tmpstrtok);
-                tmpstrtok = strtok(NULL," ");
-	  }
-       } else {
-          memset(ocmjinfo_res.errormsg,'\0',sizeof ocmjinfo_res.errormsg);
-          sprintf(ocmjinfo_res.errormsg,"Error: omcjinfo: on splitfield passing parameter field depend=%s\n",JINFO_DEPEND);
-          ocmjinfo_res.error = 1;
-          return ocmjinfo_res;
-       }
-       strcpy(JINFO_HOUR,"");
-    } else {
-       if (splitfield("depend", JINFO_DEPEND,tmp_result) == 0) {
-          tmpstrtok = strtok(tmp_result," ");
-          while ( tmpstrtok != NULL) {
-             insertItem(&(ocmjinfo_res.depend),tmpstrtok);
-             tmpstrtok = strtok(NULL," ");
-          }
-       } else {
-          memset(ocmjinfo_res.errormsg,'\0',sizeof ocmjinfo_res.errormsg);
-          sprintf(ocmjinfo_res.errormsg,"Error: omcjinfo: on splitfield passing parameter field depend=%s\n",JINFO_DEPEND);
-          ocmjinfo_res.error = 1;
-          return ocmjinfo_res;
-       }
-    }
-  }
-
  if ( strcmp(JINFO_SUBMIT, JINFO_NONE) != 0 ) {
     if (splitfield("submit", JINFO_SUBMIT,tmp_result) == 0) {
        tmpstrtok = strtok(tmp_result," ");

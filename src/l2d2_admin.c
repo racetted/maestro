@@ -349,21 +349,21 @@ int main (int argc, char* argv[])
 	       /* add datestamp !! */
 	       case DEP_ALL: /* insert list_ptr, DEPENDER xp, depender node, dependee xp name, dependee node, depender date, dependee date, depender loop args, dependee loop ars, file, link */
 			    for ( LP=getDependencyFiles(depdir,"all",fp,"depender"); LP != NULL ; LP=LP->next ) {
-	                          fprintf(stdout,"node:%s depend_on_exp:%s node:%s loop_args:%s\n",LP->snode,LP->depOnXp, LP->depOnNode, LP->depOnLargs);
+	                          fprintf(stdout,"node:%s depend_on_exp:%s node:%s loop_args:%s key:%s \n",LP->snode,LP->depOnXp, LP->depOnNode, LP->depOnLargs, LP->key);
 			          /* LP->waitfile */
 			    }
 			    free_list ( PRT_listdep );
                             break;
 	       case DEP_EXP:
 			   for ( LP=getDependencyFiles(depdir,xp,fp,"depender"); LP != NULL ; LP=LP->next ){
-	                          fprintf(stdout,"node=%s depend_on_exp=%s node:%s lopp_args:%s\n",LP->snode, LP->depOnXp, LP->depOnNode, LP->depOnLargs);
+	                          fprintf(stdout,"node=%s depend_on_exp=%s node:%s loop_args:%s key:%s\n",LP->snode, LP->depOnXp, LP->depOnNode, LP->depOnLargs, LP->key);
 	                          /* fprintf(stdout,"link=%s\n",LP->link); fprintf(stdout,"wfile=%s\n",LP->waitfile); */
 			   }
 			   free_list ( PRT_listdep );
 			   break;
 	       case DEP_KEY:
 			   for ( LP= getDependencyFiles(depdir,xp,fp,"depender"); LP != NULL ; LP=LP->next ) {
-	                          fprintf(stdout,"node=%s depend_on_exp=%s node=%s loop_args:%s\n",LP->snode, LP->depOnXp, LP->depOnNode, LP->depOnLargs);
+	                          fprintf(stdout,"node=%s depend_on_exp=%s node=%s loop_args:%s key:%s\n",LP->snode, LP->depOnXp, LP->depOnNode, LP->depOnLargs, LP->key);
 	                          /* fprintf(stdout,"link=%s\n",LP->link); fprintf(stdout,"wfile=%s\n",LP->waitfile); */
 			   }
 			   free_list ( PRT_listdep );
