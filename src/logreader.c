@@ -568,7 +568,7 @@ char *getNodeAverageLine(char *node, char *member){
       return "";
    }
    
-   return line;
+   return strdup(line);
 }
 
 /*used to generate averages from stats*/

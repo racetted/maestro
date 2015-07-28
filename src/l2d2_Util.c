@@ -582,7 +582,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 		      }
                }
                fprintf(stderr,"Setting Defaults for web directory:%s\n",pl2d2->web);
-	       sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web,pl2d2->mversion);
+	       sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
 	       sprintf(pl2d2->emailTO,"%s@ec.gc.ca",pl2d2->user);
 	       sprintf(pl2d2->emailCC,"");
 	       pl2d2->maxNumOfProcess=4;

@@ -77,27 +77,22 @@ void SeqListNode_insertTokenItem(TOKENNODEPTR *sPtr, char *token, char *data)
 }
 
 /********************************************************************************
-* SeqListNode_deleteItem: deletes an element from the list and return it.
+* SeqListNode_deleteTokenItem: deletes the first token node from the list.
 ********************************************************************************/
-char *SeqListNode_deleteItem(LISTNODEPTR *sPtr)
+void SeqListNode_deleteTokenItem(TOKENNODEPTR *sPtr)
 {
-LISTNODEPTR tempPtr=NULL;
- char *data=NULL;
-
+ TOKENNODEPTR tempPtr=NULL;
  tempPtr = *sPtr;
- data = (char *) malloc(strlen(tempPtr->data) + 1);
-
- strcpy(data,(*sPtr)->data);
  *sPtr = (*sPtr)->nextPtr;
  tempPtr->nextPtr=NULL;
  free(tempPtr->data);
+ free(tempPtr->token); 
  free(tempPtr);
  tempPtr=NULL;
- return(data);
 }
 
 /********************************************************************************
-* SeqListNode_deleteWholeList: deletes an element from the list and return it.
+* SeqListNode_deleteWholeList: deletes an element from the list.
 ********************************************************************************/
 void SeqListNode_deleteWholeList(LISTNODEPTR *sPtr)
 {
@@ -144,7 +139,7 @@ int SeqListNode_isTokenItemExists(TOKENNODEPTR sPtr, char *token)
 	 /* item exists */
 	 found = 1;
 	 if (strcmp(currentPtr->data, "") == 0 ) {
-	    SeqListNode_deleteItem(&sPtr);
+	    SeqListNode_deleteTokenItem(&sPtr);
 	 }
 	 break;
       }

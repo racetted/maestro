@@ -26,11 +26,10 @@ void SeqListNode_insertItem(LISTNODEPTR *list, char *s);
 void SeqListNode_insertTokenItem(TOKENNODEPTR *list, char *token, char *data);
 
 /****************************************************************
-*deleteItem: Delete the first item from the list 'list'. It returns
-*the string that had been deleted. The memory will be deallocated by
-*deleteItem.
+*deleteItem: Delete the first item from the token node list pointer 'list'. 
+*The memory will be deallocated by deleteItem.
 *****************************************************************/
-char* SeqListNode_deleteItem(LISTNODEPTR *list);
+void SeqListNode_deleteTokenItem(TOKENNODEPTR *sPtr);
 
 /****************************************************************
 *isListEmpty: Returns 1 if list 'sPtr' is empty, eitherwise 0
