@@ -26,6 +26,7 @@ Revision:
 *****************************************************************/
 
 
+int MLLServerConnectionFid=0;
 
 static void alarm_handler() { fprintf(stderr,"@@@@@@ EXCEEDED TIME IN LOOP ITERATIONS @@@@@@\n"); };
 
@@ -48,11 +49,7 @@ static void printUsage()
    printf("Example: nodelogger -n regional/assimilation/00/task_0 -s abort -m \"invalid hour number\"\n");
 }
 
-#ifdef Mop_linux
-main_nodelogger (int argc,char * argv[])
-#else
 main (int argc, char * argv[])
-#endif
 
 {
    extern char *optarg;

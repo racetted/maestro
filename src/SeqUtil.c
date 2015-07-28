@@ -91,55 +91,6 @@ void actionsEnd(char *signal, char* flow, char* node) {
 }
 
 /********************************************************************************
-*genFileList: scan a directory 'directory' and return a list of files 'filelist'
-*  using the the filter 'filters'.
-*******************************************************************************
-int genFileList(LISTNODEPTR *fileList,const char *directory,LISTNODEPTR *filterList) {
-
-LISTNODEPTR tmplist=NULL;
-LISTNODEPTR tmpfilters=NULL;
-char *filter=NULL;
-DIR *dirp=NULL;
-struct dirent *direntp=NULL;
-
- direntp=(struct dirent *) malloc(sizeof(struct dirent));
-
- tmpfilters=*filterList;
-
- filter = (char *) malloc(strlen(tmpfilters->data)+1);
- strcpy(filter,tmpfilters->data);
-
- while (filter != NULL) {
-    SeqUtil_TRACE("maestro.genFileList() opening directory=%s trying to match pattern %s\n",directory, filter);
-    dirp = opendir(directory);
-    if (dirp == NULL) {
-       fprintf(stderr,"maestro: invalid directory path %s\n",directory);
-       *fileList = NULL;
-       return(1);
-    }
-    while ( (direntp = readdir(dirp)) != NULL) {
-       if (match(direntp->d_name,filter) == 1) {
-          SeqUtil_TRACE("maestro.genFileList() found file matching=%s\n",direntp->d_name );
-          SeqListNode_insertItem(&tmplist,direntp->d_name);
-       }
-    }
-    closedir(dirp);
-    free(filter);
-    tmpfilters=tmpfilters->nextPtr;
-    if (tmpfilters != NULL) {
-       filter = (char *) malloc(strlen(tmpfilters->data)+1);
-       strcpy(filter,tmpfilters->data);
-    } else {
-       filter=NULL;
-    }
- }
- free(direntp);
- *fileList = tmplist;
- return(0);
-}
-*/
-
-/********************************************************************************
 *removeFile_nfs: Removes the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/
@@ -477,7 +428,7 @@ void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
 } 
 
 char* SeqUtil_getdef( const char* filename, const char* key ) {
-  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def";
+  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def", *defpath=NULL, *defext="/.suites/default_resources.def";
   char *seq_exp_home=NULL;
   struct passwd *passwdEnt;
   struct stat fileStat;
@@ -492,11 +443,16 @@ char* SeqUtil_getdef( const char* filename, const char* key ) {
   passwdEnt = getpwuid(fileStat.st_uid);
   home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
+  defpath = (char *) malloc( strlen(home) + strlen(defext) + 1 );
   sprintf( ovpath, "%s%s", home, ovext );
+  sprintf( defpath, "%s%s", home, defext );
   SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
   if ( (retval = SeqUtil_parsedef(ovpath,key)) == NULL ){
     SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,filename);
-    retval = SeqUtil_parsedef(filename,key); 
+    if ( (retval = SeqUtil_parsedef(filename,key)) == NULL ){
+       SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,defpath);
+       retval = SeqUtil_parsedef(defpath,key);
+    }
   } 
   free(ovpath);
   return retval;
@@ -933,5 +889,26 @@ int unlock_nfs ( const char * filename , const char * datestamp )
      free(md5Token);
      return(ret);
 
+}
+
+/* Returns the average of the input array, but sorting it, and removing the removal_quantity of extreme values from each side. */
+
+int SeqUtil_basicTruncatedMean(int *unsorted_int_array, int elements, int removal_quantity) {
+   int total=0; 
+   int i;
+   if (elements <= 2*removal_quantity) return 0; 
+   qsort (unsorted_int_array, elements, sizeof(int), SeqUtil_compareInt);
+   for(i=removal_quantity; i < elements-removal_quantity; ++i) { 
+       total+=unsorted_int_array[i];
+   } 
+   return (total/(elements-2*removal_quantity)); 
+}
+
+/* Returns the integer differences, used for sorting algorithm qsort. */
+
+
+int SeqUtil_compareInt (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
 }
 

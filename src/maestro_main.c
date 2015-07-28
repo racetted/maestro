@@ -52,8 +52,6 @@ main (int argc, char * argv [])
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
 	SeqNameValuesPtr loopsArgs = NULL;
 
-   //maestroNodeUnitTest();
-   //testmaestro();
    if ( argc < 5 ) {
       printSeqUsage();
    }

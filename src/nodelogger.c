@@ -447,7 +447,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     time(&now);
     alarm(TIMEOUT_NFS_SYNC);
     get_time(Stime,3);
-    while ( loop < 500 ) {
+    while ( loop < 1000 ) {
        if ( (dp=opendir(lpath)) == NULL ) {
           fprintf(stderr,"Nodelogger::Cannot open dir:%s\n",lpath);
           loop=loop+1;

@@ -26,12 +26,7 @@ static void printUsage()
 
 }
 
-#ifdef Mop_linux
-main_expcatchup (int argc, char * argv [])
-#else
 main (int argc, char * argv [])
-#endif
-
 {
    extern char *optarg;
    int catchupValue = 8;
@@ -52,7 +47,6 @@ main (int argc, char * argv [])
                   fprintf(stderr, "ERROR: invalid catchup value=%s, must be integer value between [0-%d]\n", optarg, CatchupMax );
                   exit(1);
                }
-               // printf( "catchup set value=%d\n", catchupValue );
                break;
             case 'g':
                isGetArg = 1;

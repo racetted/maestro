@@ -21,7 +21,7 @@
 ******************************************************************************/
 const char* CATCHUP_XML_FILE = "/resources/catchup.xml";
 const char* XML_NODE_NAME = "CATCHUP";
-const xmlChar* CATCHUP_QUERY = "/CATCHUP/@value";
+const char* CATCHUP_QUERY = "/CATCHUP/@value";
 
 /*
  * retrieves the catchup value from the experiment catchup file $SEQ_EXP_HOME/resources/catchup.xml

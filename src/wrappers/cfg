@@ -121,10 +121,6 @@ function Sys_AddWrapper
 
    printf "\n printf \"Starting \$SEQ_NODE \$(date) \\n \" " >> ${dest_file}
  
-   #build the flow if necessary
-   if [[ -f ${SEQ_UTILS_BIN}/flowbuilder.py ]] ; then 
-       printf "\n make -f \${SEQ_UTILS_BIN}/flowbuilder.make" >> ${dest_file}
-   fi
    printf "\n cd \${TMPDIR}" >> ${dest_file}
    printf "\n${seqBegin}" >> ${dest_file}
 

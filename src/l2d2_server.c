@@ -303,7 +303,7 @@ void DependencyManager (_l2d2server l2d2 ) {
 					      }
 					      /* build command */
 					      snprintf(cmd,sizeof(cmd),"%s >/dev/null 2>&1; export SEQ_EXP_HOME=%s; export SEQ_DATE=%s; maestro -s submit -n %s %s -f %s >%s 2>&1",
-					      l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, depXp->xpd_flow, listings);
+						   l2d2.mshortcut, depXp->xpd_sname, depXp->xpd_sxpdate, depXp->xpd_snode, largs, depXp->xpd_flow, listings);
 					      fprintf(dmlg,"dependency submit cmd=%s\n",cmd); 
 					      /* take account of concurrency here ie multiple dependency managers! */
 					      snprintf(buf,sizeof(buf),"%s/.%s",l2d2.dependencyPollDir,filename);

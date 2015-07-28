@@ -91,7 +91,9 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
              _nodeDataPtr->wallclock = atoi( nodePtr->children->content );
          } else if ( strcmp( nodeName, "catchup" ) == 0 ) {
              _nodeDataPtr->catchup = atoi( nodePtr->children->content );
-         } else {
+	 } else if ( strcmp( nodeName, "shell" ) == 0 ) {
+	    SeqNode_setShell( _nodeDataPtr, nodePtr->children->content );
+	 } else {
              raiseError("nodeinfo.parseBatchResources() ERROR: Unprocessed attribute=%s\n", nodeName);
          }
       }
@@ -108,6 +110,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL;
    SeqLoopsPtr loopsPtr = NULL;
    int i=0;
+   TOKENNODEPTR tokenList = NULL;
    
    char *tmpsubstr = NULL, *sepLocal = NULL, *sepIndex = NULL, *tmpLocalIndexValue = NULL;
    char *resourceFile, *_seq_exp_home = _nodeDataPtr->expHome;
@@ -183,36 +186,35 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 	       } else {
 		  memset(tokenLine,'\0',sizeof tokenLine);
 		  while(fgets(temp, 512, fp) != NULL) {
-		     if (find_index_token == 0) {
-			if((strstr(temp, "$((")) != NULL) {
+		     if((strstr(temp, "$((")) != NULL) {
 			SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token, checking dependency\n");
 			strcpy(tokenLine, temp);
 			find_index_token = 1;
+			
+			/* ... second retrieve the token within the line found */
+			if (tokenLine != NULL && strstr(tokenLine, "$((") != NULL) {
+			   tmpTokenLine = (char *) malloc( strlen(tokenLine) + 1 );
+			   sprintf( tmpTokenLine, tokenLine);
+			   tmpsubstr = strtok_r(tmpTokenLine,"$((",&tmpSavePtr1);
+			   /*SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);*/
+			   while (tmpsubstr != NULL) {
+			      indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
+			      tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);
+			   }
+			   if (indexToken != NULL) {
+			      strcpy(tmpIndexToken, indexToken);
+			      sprintf(indexToken, "((%s))", tmpIndexToken);
+			      SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
+			      SeqListNode_insertTokenItem( &tokenList, indexToken, "" );
+			   }
 			}
-		     }  
+		     }
 		  }
 		  if(find_index_token == 0) {
 		     SeqUtil_TRACE("Nodeinfo_parseDepends() did not find any associative index token\n");
 		  }
 		  if(fp) {
 		     fclose(fp);
-		  }
-		  
-		  /* ... second retrieve the token within the line found */
-		  if (tokenLine != NULL && strstr(tokenLine, "$((") != NULL) {
-		     tmpTokenLine = (char *) malloc( strlen(tokenLine) + 1 );
-		     sprintf( tmpTokenLine, tokenLine);
-		     tmpsubstr = strtok_r(tmpTokenLine,"$((",&tmpSavePtr1);
-		     //SeqUtil_TRACE("tmpsubstr : %s\n", tmpsubstr);
-		     while (tmpsubstr != NULL) {
-			indexToken = strtok_r(tmpsubstr,")",&tmpSavePtr2);
-			tmpsubstr = strtok_r(NULL, "$((", &tmpSavePtr1);
-		     }
-		     if (indexToken != NULL) {
-			strcpy(tmpIndexToken, indexToken);
-			sprintf(indexToken, "((%s))", tmpIndexToken);
-			SeqUtil_TRACE("Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
-		     }
 		  }
 	       }
 	    }
@@ -228,11 +230,10 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
 			}   
-		     } else if (indexToken != NULL && strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
-			if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL) {
+		     } else if (tokenList != NULL && SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL &&
+			SeqListNode_isTokenItemExists(tokenList, tmpIterator->value)) /*checks if token association is satisfied */ {
 			   SeqNameValues_setValue( &localArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
-			   tmpLocalIndexValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name);
-			}
+			   SeqListNode_insertTokenItem(&tokenList, tmpIterator->value, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 		     }
 		     tmpIterator=tmpIterator->nextPtr;
 		  }
@@ -252,7 +253,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 			   SeqNameValues_setValue( &depArgs, tmpIterator->name, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name));
 			   /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
 			}
-		     } else if(indexToken != NULL && strcmp(tmpIterator->value, indexToken)==0) /*checks if token association is satisfied */ {
+		     } else if(tokenList != NULL && SeqListNode_isTokenItemExists(tokenList, tmpIterator->value)) /*checks if token association is satisfied */ {
+			tmpLocalIndexValue = SeqListNode_getTokenData(tokenList, tmpIterator->value);
 			if (tmpIterator->name != NULL && tmpLocalIndexValue != NULL) {
 			   SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpLocalIndexValue);
 			}
@@ -313,7 +315,7 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
-   xmlChar *loopStart = strdup(""), *loopStep = strdup("1"), *loopEnd = strdup(""), *loopSet = strdup("1"), *loopExpression = strdup("");
+   xmlChar *loopStart = strdup("0"), *loopStep = strdup("1"), *loopEnd = strdup("1"), *loopSet = strdup("1"), *loopExpression = strdup("");
    int i=0;
    
    if (_result) {
@@ -704,7 +706,7 @@ char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
  */
 
 void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home) {
-   char *xmlFile = NULL, *defFile = NULL, *value=NULL;
+   char *xmlFile = NULL, *defFile = NULL, *value=NULL, *abortValue=NULL, *shellValue=NULL;
    char query[256];
    char *fixedNodePath = (char*) SeqUtil_fixPath( _nodePath );
    int i,extraSpace = 0;
@@ -824,6 +826,8 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       SeqUtil_TRACE ( "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseAbortActions( result, _nodeDataPtr ); 
+      } else if ( (abortValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_ABORT_ACTION" )) != NULL ){
+	 SeqNode_addAbortAction( _nodeDataPtr, abortValue );
       }
 
       xmlXPathFreeObject (result);
@@ -845,6 +849,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
        SeqNode_setMachine( _nodeDataPtr, workerNodeDataPtr->machine );
        SeqNode_setMemory( _nodeDataPtr,  workerNodeDataPtr->memory );
        SeqNode_setArgs( _nodeDataPtr,  workerNodeDataPtr->soumetArgs );
+       SeqNode_setShell( _nodeDataPtr,  workerNodeDataPtr->shell );
        SeqNode_freeNode( workerNodeDataPtr );
    }
 
@@ -857,9 +862,21 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
           raiseError("ERROR: Required machine attribute of BATCH tag in %s or default machine key SEQ_DEFAULT_MACHINE in %s not set.\n",xmlFile, defFile); 
       }
    }
+   
+   /* search for a defined SEQ_DEFAULT_SHELL */
+   if ( strcmp(_nodeDataPtr->shell,"") == 0) { 
+      /* get default shell*/
+      if ( (shellValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_SHELL" )) != NULL ){
+	 SeqNode_setShell( _nodeDataPtr, shellValue );
+      } else {
+	 SeqNode_setShell( _nodeDataPtr, "/bin/ksh" );
+      }
+   }
+   
    free(xmlFile);
    free(defFile);
    free(value);
+   free(abortValue);
 }
 
 /* Returns 1 if the node exists within known context*/
