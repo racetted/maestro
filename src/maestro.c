@@ -313,7 +313,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
          }
          
          memset(tmpString, '\0', sizeof tmpString);
-	 sprintf(tmpString,"BOMBED: it has been resubmitted. job_ID=%s", jobID);
+	      sprintf(tmpString,"BOMBED: it has been resubmitted. job_ID=%s", jobID);
          SeqUtil_TRACE( "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
          nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,tmpString,_nodeDataPtr->datestamp, jobID);
          go_submit( "submit", _flow , _nodeDataPtr, 1 );
@@ -1296,8 +1296,8 @@ Returns the error status of the ord_soumet call.
 */
 
 static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _nodeDataPtr, int ignoreAllDeps ) {
-   char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD], workerEndFile[SEQ_MAXFIELD], workerAbortFile[SEQ_MAXFIELD];
-   char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD];
+   char tmpfile[SEQ_MAXFIELD], noendwrap[12], nodeFullPath[SEQ_MAXFIELD], workerEndFile[SEQ_MAXFIELD], workerAbortFile[SEQ_MAXFIELD], submissionDir[SEQ_MAXFIELD];
+   char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD], nodetracercmd[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
    char tmpDate[5],STime[40],ETime[40];
    char pidbuf[100];
@@ -1305,9 +1305,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL;
    char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL;
    int catchup = CatchupNormal;
-   int error_status = 0, ret;
+   int error_status = 0, nodetracer_status=0, ret;
    SeqNodeDataPtr workerDataPtr = NULL;
    char mpi_flag[5];
+
+   loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
    
    SeqUtil_TRACE( "maestro.go_submit() node=%s signal=%s flow=%s ignoreAllDeps=%d\n ", _nodeDataPtr->name, _signal, _flow, ignoreAllDeps );
    actions( (char*) _signal, _flow, _nodeDataPtr->name );
@@ -1318,6 +1320,12 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    sprintf( listingDir, "%s/sequencing/output/%s", SEQ_EXP_HOME, _nodeDataPtr->container );
    sprintf( defFile, "%s/resources/resources.def", SEQ_EXP_HOME);
    _SeqUtil_mkdir( listingDir, 1 );
+
+   if (!(strlen( _nodeDataPtr->extension ) > 0)) {
+       sprintf(submissionDir, "%s/sequencing/output%s.submission.%s.pgmout%d", SEQ_EXP_HOME, _nodeDataPtr->name, _nodeDataPtr->datestamp, getpid());
+   } else {
+       sprintf(submissionDir, "%s/sequencing/output%s.%s.submission.%s.pgmout%d", SEQ_EXP_HOME, _nodeDataPtr->name, _nodeDataPtr->extension, _nodeDataPtr->datestamp, getpid());
+   }
    
    SeqUtil_stringAppend( &fullExtName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
@@ -1345,8 +1353,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       setSubmitState( _nodeDataPtr ) ;
 
       /* dependencies are satisfied */
-      loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
-      
       SeqUtil_stringAppend( &tmpCfgFile,  getenv("SEQ_EXP_HOME"));
       SeqUtil_stringAppend( &tmpCfgFile, "/sequencing/tmpfile/" );
       SeqUtil_stringAppend( &tmpdir, tmpCfgFile );
@@ -1455,7 +1461,9 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, getenv("SEQ_BIN"),_nodeDataPtr->args, _nodeDataPtr->soumetArgs);
          }
 
-         fprintf(stdout,"Normal Submit Cmd=%s\n", cmd );
+         fprintf(stdout,"Temporarily sending submission output to %s\n", submissionDir );
+         strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
+         fprintf(stdout,"Task type node submit command: %s\n", cmd );
 	      get_time(STime,2);
          error_status = system(cmd);
 	      get_time(ETime,2);
@@ -1475,6 +1483,17 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	         get_time(ETime,2);
             fprintf(stdout,"TASK: TIMING_OF_NODESUBMIT_COMMAND: START=%s   END=%s\n",STime, ETime);
          }
+
+         if ( strlen( loopArgs ) > 0 ) {
+            sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
+         } else {
+            sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
+         }
+
+         nodetracer_status = system(nodetracercmd);
+         if ( nodetracer_status ) {
+            fprintf(stderr,"Problem with nodetracer call, listing may not be available in the listings directory, possibly in $SEQ_EXP_HOME/sequencing/output.\n");
+         }
 	 
 	 /* 
 	    remove  *waiting.interUser* file if ignore dependency.
@@ -1484,9 +1503,8 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	    a dangling link. I have hardcoded depstatus to "end", to minimize code and cuse this
 	    is the status that we are depending on Now.
 	 */
-	  if ( ignoreAllDeps == 1 ) {
+	      if ( ignoreAllDeps == 1 ) {
                  memset(tmpfile,'\0',sizeof tmpfile);
-	         loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
 	         if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
 	                      snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s_%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, loopArgs);
 	         } else {
@@ -1496,17 +1514,24 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	                 fprintf(stderr,"removing dependency file:%s\n",tmpfile);
 	                 ret=unlink(tmpfile);
 	         }
-	   }
+	      }
       } else {   /* container */
          memset( noendwrap, '\0', sizeof( noendwrap ) );
          memset(tmpfile,'\0',sizeof tmpfile);
          sprintf(tmpfile,"%s/sequencing/tmpfile/container.tsk",SEQ_EXP_HOME);
          if ( _touch(tmpfile) != 0 ) raiseError( "Cannot create lockfile: %s\n", tmpfile );
 
-         _nodeDataPtr->submits == NULL ? strcpy( noendwrap, "" ) : strcpy( noendwrap, "-noendwrap" ) ;
+         /* TODO check if it is Switch(i) or L(i), Switch / L without iteration should never have an end wrapper */
+         if ((( _nodeDataPtr->type == Switch ) ||  _nodeDataPtr->type == Loop  ) && ((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) == NULL)) {
+            strcpy( noendwrap, "-noendwrap" );
+         } else {     /* All other containers need to check if it submits nothing*/ 
+            _nodeDataPtr->submits == NULL ? strcpy( noendwrap, "" ) : strcpy( noendwrap, "-noendwrap" ) ;
+         }
 
-	 snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
-         fprintf(stdout,"container submit cmd=%s\n", cmd );
+	      snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",OCSUB, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+         fprintf(stdout,"Temporarily sending submission output to %s\n", submissionDir );
+         strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
+         fprintf(stdout,"Container submit command: %s\n", cmd );
 	      get_time(STime,2);
          error_status=system(cmd);
 	      get_time(ETime,2);
@@ -1522,8 +1547,20 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          } 
       }
       free(cpu);
+      if ( strlen( loopArgs ) > 0 ) {
+         sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
+      } else {
+         sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
+      }
+
+      nodetracer_status = system(nodetracercmd);
+      if ( nodetracer_status ) {
+         fprintf(stderr,"Problem with nodetracer call, listing may not be available in the listings directory, possibly in $SEQ_EXP_HOME/sequencing/output.\n");
+      }
    }
+
    actionsEnd( (char*) _signal, _flow, _nodeDataPtr->name );
+   free( loopArgs ); 
    free( tmpCfgFile );
    free( tmpTarPath );
    free( tarFile); 
