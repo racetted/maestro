@@ -577,7 +577,7 @@ void computeAverage(char *exp, char *datestamp){
    char *full_path = NULL;
    char char_datestamp[15];
    char prev[15];
-   int i;
+   int i, count=0;
    
    FILE *f=NULL;
    prev[14] = '\0';
@@ -598,11 +598,16 @@ void computeAverage(char *exp, char *datestamp){
             SeqUtil_TRACE("logreader error while parsing the following stats file:\n");
             SeqUtil_TRACE("%s\n", full_path);
          }
+         ++count;
          fclose(f);
       }
       
       strcpy(prev, char_datestamp);
       snprintf(char_datestamp, 15, "%s", SeqDatesUtil_getPrintableDate(prev,-1,0,0,0));
+   }
+   if (count == 0) {
+      fprintf(stderr,"Unable to calculate average; missing required statistics files under %s/stats\n", exp);
+      exit(1); 
    }
    processStats(exp, datestamp);
 }
