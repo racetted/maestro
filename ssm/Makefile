@@ -11,7 +11,11 @@ ssm:	profile.sh  ../bin/$(BASE_ARCH)
 	   mkdir $(SSMPACKAGE); \
 	fi;
 	cp -r $(SWDEST)/* $(SSMPACKAGE); 
+	cp ../Makefile $(SSMPACKAGE); 
+	cp -r ../config $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
+	mkdir -p $(SSMPACKAGE)/ssm;
+	cp Makefile post-install $(SSMPACKAGE)/ssm; 
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
 	cp ../src/Makefile ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
