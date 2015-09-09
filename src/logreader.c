@@ -1,3 +1,24 @@
+/* logreader.c - log and statistics reader/creator used by the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -7,9 +28,19 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "logreader.h"
 #include "SeqUtil.h"
+#include "SeqDatesUtil.h" 
 
+/* global */
+struct _ListListNodes MyListListNodes = { -1 , NULL , NULL };
+struct _NodeLoopList MyNodeLoopList = {"first",NULL,NULL};
+struct _StatsNode *rootStatsNode;
+
+/* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=averages*/
+int read_type;
+struct stat pt;
 
 void insert_node(char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime , char *itime, char *wtime, char *dtime, char * exectime, char * submitdelay) {
 
@@ -230,70 +261,66 @@ void read_file (char *base)
    char dstamp[18];
    char node[128], signal[16],loop[32];
    int n,len,indx=0;
-   for ( ptr = base ; ptr < &base[pt.st_size]; ptr++)
-   {
-          memset(dstamp,'\0',sizeof(dstamp));
-          memset(node,'\0',sizeof(node));
-          memset(signal,'\0',sizeof(signal));
-          memset(loop,'\0',sizeof(loop));
+   for ( ptr = base ; ptr < &base[pt.st_size]; ptr++) {
+      memset(dstamp,'\0',sizeof(dstamp));
+      memset(node,'\0',sizeof(node));
+      memset(signal,'\0',sizeof(signal));
+      memset(loop,'\0',sizeof(loop));
 
-          /* Time stamp */
-          strncpy(dstamp,ptr+10,17);
+      /* Time stamp */
+      strncpy(dstamp,ptr+10,17);
           
-	  /* Node */
-	  qq = strchr(ptr+28,':');
-	  indx=qq-(ptr+28);
-          strncpy(node,ptr+28, indx);
+      /* Node */
+      qq = strchr(ptr+28,':');
+      indx=qq-(ptr+28);
+      strncpy(node,ptr+28, indx);
 
-	  /* signal */
-          pp = strchr(qq+1,':');
-          indx=pp-(qq+9);
-          strncpy(signal,qq+9, indx);
+      /* signal */
+      pp = strchr(qq+1,':');
+      indx=pp-(qq+9);
+      strncpy(signal,qq+9, indx);
   
-          /* loop */ 
-	  qq = strchr(pp+1,':');
-	  indx=qq-(pp+1);
-          strncpy(loop,pp+1, indx);
+      /* loop */ 
+      qq = strchr(pp+1,':');
+      indx=qq-(pp+1);
+      strncpy(loop,pp+1, indx);
+      switch (signal[0]) {
+         case 'a': /* [a]bort */
+             insert_node('a', &node[9], &loop[8], "", "", "", dstamp, "", "", "", "", ""); 
+             break;
+         case 's': /* [s]ubmit */
+             insert_node('s', &node[9], &loop[8], dstamp, "", "", "", "", "", "", "", ""); 
+             break;
+         case 'b': /* [b]egin */
+             insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
+             break;
+         case 'e': /* [e]nd */
+            if (signal[1] == 'n') {
+               insert_node('e', &node[9], &loop[8], "",  "", dstamp, "", "", "", "", "", ""); 
+            }
+            break;
+         case 'i': /* [i]nit */
+            if (signal[2] == 'i'){
+               insert_node('i', &node[9], &loop[8], "",  "", "", "", dstamp, "", "", "", ""); 
+            }
+            break;
+         case 'w': /* [w]ait */
+            insert_node('w', &node[9], &loop[8], "",  "", "", "", "", dstamp, "", "", ""); 
+            break;
+         case 'd': /* [d]iscret */
+            insert_node('d', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", ""); 
+            break;
+
+      }
+
+      qq = strchr(ptr,'\n');
+      ptr=qq;
   
-	  switch (signal[0]) 
-	  {
-	     case 'a': /* [a]bort */
-                     insert_node('a', &node[9], &loop[8], "", "", "", dstamp, "", "", "", "", ""); 
-	             break;
-	     case 's': /* [s]ubmit */
-                     insert_node('s', &node[9], &loop[8], dstamp, "", "", "", "", "", "", "", ""); 
-	             break;
-	     case 'b': /* [b]egin */
-                     insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
-	             break;
-	     case 'e': /* [e]nd */
-		     if (signal[1] == 'n') {
-                        insert_node('e', &node[9], &loop[8], "",  "", dstamp, "", "", "", "", "", ""); 
-		     }
-	             break;
-	     case 'i': /* [i]nit */
-		     if (signal[2] == 'i'){
-                        insert_node('i', &node[9], &loop[8], "",  "", "", "", dstamp, "", "", "", ""); 
-		     }
-	             break;
-	     case 'w': /* [w]ait */
-		     insert_node('w', &node[9], &loop[8], "",  "", "", "", "", dstamp, "", "", ""); 
-		     break;
-	     case 'd': /* [d]iscret */
-		     insert_node('d', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", ""); 
-		     break;
-
-	  }
-
-          /*  n=sscanf(ptr,"%[^\n]",string);*/ 
-          qq = strchr(ptr,'\n');
-	  ptr=qq;
-	  
    }
 
 }
 
-void print_LListe ( struct _ListListNodes MyListListNodes, FILE *stats) 
+void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile) 
 {
       struct _ListNodes      *ptr_Ltrotte;
       struct _ListListNodes  *ptr_LLtrotte, *ptr_shortest_LLNode;
@@ -490,8 +517,8 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *stats)
 		     }
 		  }
 		  
-		  if (stats != NULL) {
-		     fprintf(stats, "SEQNODE=/%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
+		  if (outputFile != NULL) {
+		     fprintf(outputFile, "SEQNODE=/%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
 			     ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext, ptr_LXHtrotte->lbtime, ptr_LXHtrotte->letime,
 			     ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->deltafromstart );
 		  }
@@ -572,7 +599,7 @@ char *getNodeAverageLine(char *node, char *member){
 }
 
 /*used to generate averages from stats*/
-void computeAverage(char *exp, char *datestamp){
+void computeAverage(char *exp, char *datestamp, int stats_days){
    char *stats_file_path = NULL;
    char *full_path = NULL;
    char char_datestamp[15];
@@ -1001,3 +1028,124 @@ void delete_node(struct _ListNodes *node, struct _ListListNodes *list) {
       todelete=NULL;
    }
 }
+
+
+/* logreader API call
+*
+*  inputFilePath -- reading target, default is $exp/logs/$datestamp_nodelog
+*  outputFilePath -- writing target, default is $exp/stats/$datestamp[,_avg]
+*  exp -- target experimentreading target, default is $exp/logs/$datestamp_nodelog
+*  inputFilePath -- reading target, default is $exp/logs/$datestamp_nodelog
+*
+*/ 
+void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow ) {
+
+   FILE *output_file = NULL;
+   char * base; 
+   int fp=-1; 
+   char default_input_file_path[1024], optional_output_path[1024], optional_output_dir[1024];
+   
+   if (exp == NULL || datestamp==NULL) {
+      raiseError("logreader: exp and datestamp must be defined to use logreader\n");
+   }
+
+   if ( inputFilePath ) { 
+      fp = open(optarg, O_RDONLY, 0 );
+   } else { 
+      sprintf(default_input_file_path, "%s/logs/%s_nodelog" , exp,datestamp);  
+      fp = open(default_input_file_path, O_RDONLY, 0 );
+   }
+
+   if ( outputFilePath ) { 
+       output_file = fopen(outputFilePath, "w+");
+	    if (output_file == NULL) {
+	       fprintf(stderr, "Cannot open output file %s", outputFilePath );
+	    }
+   }
+
+   rootStatsNode = NULL;
+   
+   if (type != NULL) {
+      if(strcmp(type, "log") == 0) {
+         read_type=0;
+      } else if(strcmp(type, "statuses") == 0) {
+	      SeqUtil_TRACE("logreader type: statuses\n");
+	      read_type=1;
+      } else if (strcmp(type, "stats") == 0){
+	      SeqUtil_TRACE("logreader type: stats\n"); 
+	      read_type=2;
+         if (outputFilePath == NULL){
+            sprintf(optional_output_dir, "%s/stats" , exp);
+            if( ! SeqUtil_isDirExists( optional_output_dir )) {
+               SeqUtil_TRACE ( "mkdir: creating dir %s\n", optional_output_dir );
+               if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
+                  fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
+                  exit(EXIT_FAILURE);
+               }
+            }
+            sprintf(optional_output_path, "%s/stats/%s" , exp,datestamp);  
+            if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
+               fprintf(stderr, "Cannot open output file %s", optional_output_path);
+               exit(1);
+            }
+         }
+      } else if (strcmp(type, "avg") == 0) {
+	      SeqUtil_TRACE("logreader type: compute averages\n");
+	      read_type=3;
+         if (outputFilePath == NULL){
+            sprintf(optional_output_dir, "%s/stats" , exp);
+            if( ! SeqUtil_isDirExists( optional_output_dir )) {
+               SeqUtil_TRACE ( "mkdir: creating dir %s\n", optional_output_dir );
+               if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
+                  fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
+                  exit(EXIT_FAILURE);
+               }
+            }
+            sprintf(optional_output_path, "%s/stats/%s_avg" , exp,datestamp);  
+            if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
+               fprintf(stderr, "Cannot open output file %s", optional_output_path);
+               exit(1);
+            }
+         }
+      }
+   }
+   
+   if(read_type != 3) {
+      if ( fp < 0 ) {
+         fprintf(stderr,"Cannot Open input file\n");
+         exit(1);
+      }
+   
+      if ( fstat(fp,&pt) != 0 ) {
+         fprintf(stderr,"Cannot fstat file\n");
+         exit(1);
+      }
+   
+      if ( ( base = mmap(NULL, pt.st_size, PROT_READ, MAP_SHARED, fp, (off_t)0) ) == (char *) MAP_FAILED ) {
+         fprintf(stderr,"Map failed \n");
+         close(fp);
+         if (output_file != NULL) fclose(output_file);
+         exit(1);
+      }
+   
+      read_file(base); 
+   
+      /* unmap */
+      munmap(base, pt.st_size);  
+      
+      /*parse avg file*/
+      getAverage(exp, datestamp);
+      
+      /*print nodes*/
+      print_LListe ( MyListListNodes, output_file );
+   } else {
+      computeAverage(exp, datestamp, statWindow);
+   }
+   
+   if (output_file != NULL) fclose(output_file);
+
+}
+
+
+
+

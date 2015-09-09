@@ -19,7 +19,7 @@ EXECUTABLES=nodelogger maestro nodeinfo tictac expcatchup getdef logreader mserv
 #
 
 all: prep 
-	eval $(COMPILER_SSM_CMD); $(MAKE) -f $(MAKEFILE) prep $(EXECUTABLES) wrapper
+	$(MAKE) -f $(MAKEFILE) prep $(EXECUTABLES) wrapper
 
 wrapper: 
 	rm -rf $(BINDIR)/wrappers
@@ -134,8 +134,8 @@ logreader:	logreader.o SeqUtil.o SeqDatesUtil.o l2d2_commun.o logreader_main.c
 	$(CC) -g logreader.o SeqUtil.o SeqDatesUtil.o l2d2_commun.o logreader_main.c $(LIB) -o logreader
 	cp logreader $(BINDIR)
 
-maestro:	maestro.o nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o runcontrollib.o ocmjinfo.o expcatchup.o maestro_main.c
-	$(CC) -g maestro.o nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o runcontrollib.o ocmjinfo.o expcatchup.o maestro_main.c -L $(XML_LIB_DIR) -lxml2 $(LIB) -o maestro; \
+maestro:	maestro.o logreader.o nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o runcontrollib.o ocmjinfo.o expcatchup.o maestro_main.c
+	$(CC) -g maestro.o logreader.o nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o runcontrollib.o ocmjinfo.o expcatchup.o maestro_main.c -L $(XML_LIB_DIR) -lxml2 $(LIB) -o maestro; \
 	cp maestro $(BINDIR);
 
 expcatchup:	expcatchup.o SeqUtil.o expcatchup_main.c XmlUtils.o l2d2_commun.o

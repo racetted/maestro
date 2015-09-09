@@ -12,6 +12,7 @@ ssm:	profile.sh  ../bin/$(BASE_ARCH)
 	fi;
 	cp -r $(SWDEST)/* $(SSMPACKAGE); 
 	cp ../Makefile $(SSMPACKAGE); 
+	cp ../LICENSE.txt $(SSMPACKAGE); 
 	cp -r ../config $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/ssm;

@@ -1,3 +1,24 @@
+/* Part of the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #ifndef LOGREADER_H
 #define LOGREADER_H
 
@@ -76,20 +97,16 @@ extern struct _StatsNode *rootStatsNode;
 /* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=averages*/
 extern int read_type;
 
-extern int stats_days;
-extern char *datestamp;
-extern char *exp;
-
 extern struct stat pt;
 extern FILE *stats;
 
 extern void read_file  ( char *base);
 extern void insert_node( char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime, char *itime , char *wtime, char *dtime, char * exectime, char * submitdelay); 
-extern void print_LListe ( struct _ListListNodes MyListListNodes, FILE *stats);
+extern void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile);
 
 extern void getAverage(char *exp, char *datestamp);
 extern char *getNodeAverageLine(char *node, char *member);
-extern void computeAverage(char *exp, char *datestamp);
+extern void computeAverage(char *exp, char *datestamp, int stats_days);
 extern int getStats(FILE *_stats);
 extern int parseStatsLine(char line[1024], char *node, char *member, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart);
 extern int addStatsNode(char *node, char *member, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart);
@@ -101,4 +118,7 @@ extern void reset_node (char *node, char *ext);
 extern char * previousDay(char today[9]);
 extern char * sconcat(char *ptr1,char *ptr2);
 extern void delete_node(struct _ListNodes *node, struct _ListListNodes *list);
+
+void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow ); 
+
 #endif
