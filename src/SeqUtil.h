@@ -67,4 +67,5 @@ char* SeqUtil_relativePathEvaluation( char* depName, SeqNodeDataPtr _nodeDataPtr
 void  SeqUtil_printOrWrite( const char * filename, char * text, ...); 
 int   SeqUtil_basicTruncatedAverage(int *unsorted_int_array, int elements, int removal_quantity); 
 int   SeqUtil_compareInt (const void * a, const void * b);
+char* SeqUtil_normpath(char *out, const char *in); 
 #endif

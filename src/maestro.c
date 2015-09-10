@@ -2517,7 +2517,7 @@ Inputs:
 */
 
 int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char* _extraArgs, char *_datestamp ) {
-   char tmpdir[256], workdir[SEQ_MAXFIELD], normPathCommand[SEQ_MAXFIELD];
+   char tmpdir[256], workdir[SEQ_MAXFIELD];
    char *seq_soumet = NULL, *tmp = NULL, *seq_exp_home = NULL, *logMech=NULL, *defFile=NULL, *windowAverage = NULL, *runStats = NULL ;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL, *tmpFullOrigin=NULL, *tmpLoopExt=NULL, *tmpJobID=NULL, *tmpNodeOrigin=NULL, *tmpHost=NULL;
    SeqNodeDataPtr nodeDataPtr = NULL;
@@ -2558,26 +2558,10 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
 
    memset(workdir,'\0',sizeof workdir);
    memset(SEQ_EXP_HOME,'\0',sizeof SEQ_EXP_HOME);
-   memset(normPathCommand,'\0',sizeof normPathCommand);
    seq_exp_home = getenv("SEQ_EXP_HOME");
    if ( seq_exp_home != NULL ) {
-    /*  returnstring=realpath(getenv("SEQ_EXP_HOME"),SEQ_EXP_HOME);*/
-     /* Open the command for reading. */
-       if (getenv("SEQ_UTILS_BIN") == NULL){
-         raiseError("SEQ_UTILS_BIN undefined, please check your maestro package is loaded properly\n");
-       }
-       sprintf(normPathCommand,"%s/normpath.py -p %s",getenv("SEQ_UTILS_BIN"),seq_exp_home); 
-       file = popen(normPathCommand, "r");
-       if (file == NULL) {
-         raiseError("Failed to run command %s\n",normPathCommand);
-       }
-       /* Read the output*/
-       if ((fgets(SEQ_EXP_HOME, sizeof(SEQ_EXP_HOME)-1, file)) == NULL) {
-         raiseError("Empty return of command %s\n",normPathCommand);
-       }
-
-       /* close */
-       pclose(file);
+       SeqUtil_normpath(SEQ_EXP_HOME,seq_exp_home);
+       sprintf(SEQ_EXP_HOME,"%s", SeqUtil_fixPath(SEQ_EXP_HOME)); 
 
        if ((dirp = opendir(SEQ_EXP_HOME)) == NULL) { 
           raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n",SEQ_EXP_HOME );
