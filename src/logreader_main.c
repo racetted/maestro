@@ -46,7 +46,6 @@ static void printUsage()
 main ( int argc, char * argv[] )
 {
    char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL; 
-   
    int stats_days=7, c; 
 
    if ( argc == 1 || argc == 2) {
@@ -69,10 +68,10 @@ main ( int argc, char * argv[] )
 	    outputFile = strdup(optarg);
 	    break;
 	 case 'd':
-	    datestamp = strdup( optarg ); 
+	    datestamp = strdup(optarg); 
 	    break;
 	 case 'e':
-	    exp = strdup ( optarg );
+	    exp = strdup(optarg);
 	    break;
 	 case 'v':
 	    SeqUtil_setTraceLevel(1);
@@ -81,15 +80,19 @@ main ( int argc, char * argv[] )
    }
 
    if (datestamp == NULL) { 
-     if ((datestamp=getenv("SEQ_DATE")) == NULL){
-       raiseError("-d or SEQ_DATE must be defined.\n");
-     }
+      if (getenv("SEQ_DATE") == NULL) {
+         raiseError("-d or SEQ_DATE must be defined.\n");
+      } else {
+         datestamp=strdup(getenv("SEQ_DATE")); 
+      }
    }
 
    if (exp == NULL) {
-     if ((exp=getenv("SEQ_EXP_HOME")) == NULL){
-       raiseError("-e or SEQ_EXP_HOME must be defined.\n");
-     }
+      if (getenv("SEQ_EXP_HOME") == NULL) {
+         raiseError("-e or SEQ_EXP_HOME must be defined.\n");
+      } else {
+         exp=strdup(getenv("SEQ_EXP_HOME"));
+      }
    }
    
    logreader(inputFile,outputFile,exp,datestamp,type,stats_days);
