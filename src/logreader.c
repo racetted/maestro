@@ -477,7 +477,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 	          fprintf(stdout, "/%s\\", ptr_NLHtrotte->Node);
 	       }
 	       if(read_type == 0 || read_type == 1) {
-	          fprintf(stdout, "display_infos {} statuses {");
+	          fprintf(stdout, "statuses {");
 	       }
                for ( ptr_LXHtrotte = ptr_NLHtrotte->ptr_LoopExt; ptr_LXHtrotte != NULL ; ptr_LXHtrotte = ptr_LXHtrotte->next) {
 		  if ( ptr_LXHtrotte->ignoreNode == 0 ) {
