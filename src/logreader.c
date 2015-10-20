@@ -48,12 +48,14 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
       struct _ListNodes     *ptr_lhead,  *ptr_Ltrotte, *ptr_Lpreced;
       struct _ListListNodes *ptr_llhead, *ptr_LLtrotte, *ptr_LLpreced;
       int found_len=0 , found_node=0, len=0; 
-      
+       
       /*if init state clean statuses of the branch*/
       if (S == 'i') {
 	 reset_node(node, loop);
 	 return;
       }
+      SeqUtil_TRACE("logreader inserting node %s loop %s state %c\n", node, loop, S);
+
       
       /* must easier to work like this */
       snprintf(ComposedNode,sizeof(ComposedNode),"%s%s",node,loop);
@@ -96,6 +98,9 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 			         strcpy(ptr_lhead->PNode.wtime,wtime);
 				 break;
 			case 'd':
+			         strcpy(ptr_lhead->PNode.dtime,dtime);
+				 break;
+			case 'c':
 			         strcpy(ptr_lhead->PNode.dtime,dtime);
 				 break;
 		      }
@@ -146,6 +151,9 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 				       case 'd':
 						strcpy(ptr_Ltrotte->PNode.dtime,dtime);
 						break;
+				       case 'c':
+						strcpy(ptr_Ltrotte->PNode.dtime,dtime);
+						break;
 				    }
 		                    ptr_Ltrotte->PNode.LastAction = S;
 				    ptr_Ltrotte->PNode.ignoreNode = 0;
@@ -188,6 +196,9 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 			          strcpy(ptr_Lpreced->next->PNode.wtime,wtime);
 			          break;
 			 case 'd':
+			          strcpy(ptr_Lpreced->next->PNode.dtime,dtime);
+			          break;
+			 case 'c':
 			          strcpy(ptr_Lpreced->next->PNode.dtime,dtime);
 			          break;
 		      }
@@ -239,6 +250,9 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 			          strcpy(ptr_Ltrotte->PNode.wtime,wtime);
 			          break;
 			 case 'd':
+			          strcpy(ptr_Ltrotte->PNode.dtime,dtime);
+			          break;
+			 case 'c':
 			          strcpy(ptr_Ltrotte->PNode.dtime,dtime);
 			          break;
 		       }
@@ -310,6 +324,9 @@ void read_file (char *base)
          case 'd': /* [d]iscret */
             insert_node('d', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", ""); 
             break;
+         case 'c': /* [c]atchup */
+            insert_node('c', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", ""); 
+            break;
 
       }
 
@@ -341,8 +358,12 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
               shortestLength=ptr_LLtrotte->Nodelength;
           } 
       }
-      n=sscanf(ptr_shortest_LLNode->Ptr_LNode->PNode.stime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
-      TopNodeSubmitTime=mktime(&ti);
+      if ( ptr_shortest_LLNode->Ptr_LNode != NULL  ) {
+         n=sscanf(ptr_shortest_LLNode->Ptr_LNode->PNode.stime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
+         TopNodeSubmitTime=mktime(&ti);
+      } else {
+         time(&TopNodeSubmitTime);
+      }
 
       for ( ptr_LLtrotte = &MyListListNodes; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next)
       {
@@ -512,6 +533,9 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 			      break;
 			   case 'd':
 			      fprintf(stdout,"%s {discret %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
+			      break;
+			   case 'c':
+			      fprintf(stdout,"%s {catchup %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
 			      break;
 			}
 		     }
@@ -1034,11 +1058,14 @@ void delete_node(struct _ListNodes *node, struct _ListListNodes *list) {
 *
 *  inputFilePath -- reading target, default is $exp/logs/$datestamp_nodelog
 *  outputFilePath -- writing target, default is $exp/stats/$datestamp[,_avg]
-*  exp -- target experimentreading target, default is $exp/logs/$datestamp_nodelog
-*  inputFilePath -- reading target, default is $exp/logs/$datestamp_nodelog
+*  exp -- target experiment, default is $SEQ_EXP_HOME
+*  datestamp -- target datestamp, default is $SEQ_DATE
+*  statWindow -- size of the average window, in days. 
+*  type -- what kind of statistics are being generated (avg, stats, statuses)
+*  clobberFile -- is there a filecheck before writing to the output. 0 = don't clobber 
 *
 */ 
-void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow ) {
+void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow, int clobberFile ) {
 
    FILE *output_file = NULL;
    char * base; 
@@ -1048,9 +1075,11 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
    if (exp == NULL || datestamp==NULL) {
       raiseError("logreader: exp and datestamp must be defined to use logreader\n");
    }
+   
+   if (strlen(datestamp) > 14) raiseError("logreader: datestamp format error. Should be YYYYMMDDHHmmss, is %s\n",datestamp);
 
    if ( inputFilePath ) { 
-      fp = open(optarg, O_RDONLY, 0 );
+      fp = open(inputFilePath, O_RDONLY, 0 );
    } else { 
       sprintf(default_input_file_path, "%s/logs/%s_nodelog" , exp,datestamp);  
       fp = open(default_input_file_path, O_RDONLY, 0 );
@@ -1084,6 +1113,11 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
                }
             }
             sprintf(optional_output_path, "%s/stats/%s" , exp,datestamp);  
+            if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
+               SeqUtil_TRACE("logreader: no clobber output flag set and file exists, writing to /dev/null\n");
+               sprintf(optional_output_path, "/dev/null");  
+            }
+               
             if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
                fprintf(stderr, "Cannot open output file %s", optional_output_path);
                exit(1);
@@ -1102,6 +1136,11 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
                }
             }
             sprintf(optional_output_path, "%s/stats/%s_avg" , exp,datestamp);  
+            if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
+               SeqUtil_TRACE("logreader: no clobber output flag set and file exists, writing to /dev/null\n");
+               sprintf(optional_output_path, "/dev/null");  
+            }
+
             if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
                fprintf(stderr, "Cannot open output file %s", optional_output_path);
                exit(1);
@@ -1112,7 +1151,7 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
    
    if(read_type != 3) {
       if ( fp < 0 ) {
-         fprintf(stderr,"Cannot Open input file\n");
+         fprintf(stderr,"Cannot open input file\n");
          exit(1);
       }
    

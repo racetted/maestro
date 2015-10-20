@@ -119,6 +119,6 @@ extern char * previousDay(char today[9]);
 extern char * sconcat(char *ptr1,char *ptr2);
 extern void delete_node(struct _ListNodes *node, struct _ListListNodes *list);
 
-void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow ); 
+void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow, int clobberFile); 
 
 #endif

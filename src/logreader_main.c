@@ -30,53 +30,60 @@
 static void printUsage()
 {
    printf("Logreader usage:\n");
-   printf("     logreader ([-i inputfile] [-t type] [-o outputfile] | -t avg [-n days]) [-e exp] [-d datestamp] [-v]\n");
+   printf("     logreader ([-i inputfile] [-t type] [-o outputfile] | -t avg [-n days]) [-e exp] [-d datestamp] [-v] [-c] \n");
    printf("         where:\n");
-   printf("         inputfile        is the logfile to read (default ${SEQ_EXP_HOME}/logs/${datestamp}_nodelog)\n");
-   printf("         type             is the output filter. log (statuses & stats, used for xflow), statuses, stats or avg (default is log)\n");
-   printf("         statsoutputfile  is the file where the stats are logged (if defined)\n");
-   printf("         exp              is the experiment path (default is SEQ_EXP_HOME env. variable)\n");
-   printf("         datestamp        is the initial date for averages computation, or simply the target datestamp\n");
-   printf("         days             is used with -t avg to define the number of days for the averages since \"datestamp\" (default is 7). This is a 10%% truncated average to account for extremes.\n");
-   printf("\nStandard usage: logreader -d $datestamp             will read that experiment's log, output the statuses and stats to stdout \n"); 
-   printf("                logreader -d $datestamp -t stats    will read that experiment's log, create a statistics file (default ${SEQ_EXP_HOME}/stats/${datestamp}\n"); 
-   printf("                logreader -d $datestamp -t avg      will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
+   printf("            -i inputfile     the logfile to read (default ${SEQ_EXP_HOME}/logs/${datestamp}_nodelog)\n");
+   printf("            -t type          the output filter. log (statuses & stats, used for xflow), statuses, stats or avg (default is log)\n");
+   printf("            -o outputfile    the file where the stats are logged (if defined)\n");
+   printf("            -e exp           the experiment path (default is SEQ_EXP_HOME env. variable)\n");
+   printf("            -d datestamp     the initial date for averages computation, or simply the target datestamp\n");
+   printf("            -n days          used with -t avg to define the number of days for the averages since \"datestamp\" (default is 7). This is a 10%% truncated average to account for extremes.\n");
+   printf("            -v               verbose mode\n");
+   printf("            -c               check if output file is present before trying to write. Will not write if file is present.\n");
+   printf("\nStandard usage:\n"); 
+   printf("            logreader -d $datestamp             will read that experiment's log, output the statuses and stats to stdout \n"); 
+   printf("            logreader -d $datestamp -t stats    will read that experiment's log, create a statistics file (default ${SEQ_EXP_HOME}/stats/${datestamp}\n"); 
+   printf("            logreader -d $datestamp -t avg      will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
 }
 
 main ( int argc, char * argv[] )
 {
    char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL; 
-   int stats_days=7, c; 
+   int stats_days=7, c, clobberFile=1; 
 
    if ( argc == 1 || argc == 2) {
       printUsage();
       exit(1);
    }
    
-   while ((c = getopt(argc, (char* const*) argv, "i:t:n:o:d:e:v")) != -1) {
+   while ((c = getopt(argc, (char* const*) argv, "i:t:n:o:d:e:vc")) != -1) {
       switch(c) {
-	 case 'i':
-       inputFile=strdup( optarg );
-	    break;
-	 case 't':
-	    type = strdup(optarg);
-	    break;
-	 case 'n':
-	    stats_days = atoi(optarg);
-	    break;
-	 case 'o':
-	    outputFile = strdup(optarg);
-	    break;
-	 case 'd':
-	    datestamp = strdup(optarg); 
-	    break;
-	 case 'e':
-	    exp = strdup(optarg);
-	    break;
-	 case 'v':
-	    SeqUtil_setTraceLevel(1);
-	    break;
-      }
+	   case 'i':
+         inputFile=strdup( optarg );
+         break;
+	   case 't':
+	      type = strdup(optarg);
+	      break;
+	   case 'n':
+	      stats_days = atoi(optarg);
+	      break;
+	   case 'o':
+	      outputFile = strdup(optarg);
+	      break;
+	   case 'd':
+	      datestamp = strdup(optarg); 
+	      break;
+	   case 'e':
+	      exp = strdup(optarg);
+	      break;
+	   case 'v':
+	      SeqUtil_setTraceLevel(1);
+	      break;
+      case 'c':
+         clobberFile=0;
+	      break;
+    }
+
    }
 
    if (datestamp == NULL) { 
@@ -95,7 +102,7 @@ main ( int argc, char * argv[] )
       }
    }
    
-   logreader(inputFile,outputFile,exp,datestamp,type,stats_days);
+   logreader(inputFile,outputFile,exp,datestamp,type,stats_days,clobberFile);
 
    if ( type != NULL) free(type); 
    if ( exp != NULL) free(exp); 

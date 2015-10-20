@@ -294,6 +294,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             depValidHour = (char *) xmlGetProp( nodePtr, "valid_hour" );
             depValidDOW = (char *) xmlGetProp( nodePtr, "valid_dow" );
             depStatus = (char *) xmlGetProp( nodePtr, "status" );
+            if (depStatus == NULL) depStatus=strdup("end"); 
+
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depName: %s\n", depName );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep parsedDepName: %s\n", parsedDepName );
             SeqUtil_TRACE( "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );

@@ -2695,10 +2695,10 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
          }     
          if ( (runStats=SeqUtil_getdef( defFile, "SEQ_RUN_STATS_ON" )) != NULL ) {
             SeqUtil_TRACE( "maestro() running job statictics.\n");
-            logreader(NULL,NULL,seq_exp_home,nodeDataPtr->datestamp, "stats", 0); 
+            logreader(NULL,NULL,seq_exp_home,nodeDataPtr->datestamp, "stats", 0,0); 
             if ( (windowAverage=SeqUtil_getdef( defFile, "SEQ_AVERAGE_WINDOW" )) != NULL ) {
                SeqUtil_TRACE( "maestro() running averaging.\n");
-               logreader(NULL,NULL,seq_exp_home,nodeDataPtr->datestamp, "avg", atoi(windowAverage)); 
+               logreader(NULL,NULL,seq_exp_home,nodeDataPtr->datestamp, "avg", atoi(windowAverage),0); 
             } 
          }
          free(defFile);
