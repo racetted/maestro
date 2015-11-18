@@ -539,7 +539,9 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 			      break;
 			}
 		     }
-		  }
+		  } else {
+            SeqUtil_TRACE("logreader ignoring node %s %s\n",ptr_NLHtrotte->Node , ptr_LXHtrotte->Lext);
+        } 
 		  
 		  if (outputFile != NULL) {
 		     fprintf(outputFile, "SEQNODE=/%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
@@ -553,7 +555,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 	       tmp_output=strdup(avg_output);
 	       avg_output=sconcat(tmp_output, output_buffer);
 	       if (read_type == 0 || read_type == 1) {
-	          fprintf(stdout, "} current latest\\");
+	          fprintf(stdout, "} \\");
 	       }
 	       if (read_type == 0 || read_type == 2) {
 		  fprintf(stdout, "%s %s stats_info {}\\", stats_output, avg_output);  
@@ -1010,15 +1012,17 @@ void reset_node (char *node, char *ext) {
    struct _ListListNodes  *ptr_LLtrotte;
    struct _ListNodes      *tmp_prev_list;
    
+   
    for ( ptr_LLtrotte = &MyListListNodes; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next) {
       ptr_Ltrotte = ptr_LLtrotte->Ptr_LNode;
       while (ptr_Ltrotte != NULL){
          tmp_prev_list=ptr_Ltrotte;
          ptr_Ltrotte = ptr_Ltrotte->next;
          
-         if (strncmp(node, tmp_prev_list->PNode.TNode, strlen(node)) == 0 && strncmp(ext, tmp_prev_list->PNode.loop, strlen(ext)) == 0) {
+         if (strcmp(node, tmp_prev_list->PNode.TNode) == 0 && strncmp(ext, tmp_prev_list->PNode.loop, strlen(ext)) == 0) {
             /*delete_node(tmp_prev_list, ptr_LLtrotte);*/
             tmp_prev_list->PNode.ignoreNode=1;
+            SeqUtil_TRACE("logreader reset node done on node: %s ext: %s \n",node,ext);
          }
       }
    }
@@ -1161,12 +1165,18 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
       }
    
       if ( ( base = mmap(NULL, pt.st_size, PROT_READ, MAP_SHARED, fp, (off_t)0) ) == (char *) MAP_FAILED ) {
-         fprintf(stderr,"Map failed \n");
-         close(fp);
-         if (output_file != NULL) fclose(output_file);
-         exit(1);
+         if (errno == EINVAL) {
+            fprintf (stdout,"\n");
+            close(fp);
+            if (output_file != NULL) fclose(output_file);
+            exit(0);
+         } else { 
+            fprintf(stderr,"Map failed \n");
+            close(fp);
+            if (output_file != NULL) fclose(output_file);
+            exit(1);
+         }
       }
-   
       read_file(base); 
    
       /* unmap */
