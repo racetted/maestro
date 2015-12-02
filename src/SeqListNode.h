@@ -40,7 +40,7 @@ typedef TOKENNODE *TOKENNODEPTR;
 
 /****************************************************************
 *insertItem: Insert an item 's' into the list 'list'. The memory
-*necessary to store the string 's' will be allocated by insertIem.
+*necessary to store the string 's' will be allocated by insertItem.
 *****************************************************************/
 void SeqListNode_insertItem(LISTNODEPTR *list, char *s);
 void SeqListNode_insertTokenItem(TOKENNODEPTR *list, char *token, char *data);

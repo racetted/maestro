@@ -66,7 +66,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
            case SVR_IS_FILE_EXISTS:
                             sprintf(buffer,"F %s",buf);
 	                    break;
-           case SVR_GLOBPATERN:
+           case SVR_GLOB_PATTERN_COUNT:
                             sprintf(buffer,"G %s",buf);
 	                    break;
            case SVR_MKDIR:
@@ -165,8 +165,8 @@ int revert_nfs (  const char * buf , ServerActions action , const char *buf2 )
 		                fprintf(stderr,"Nfs Routine: SVR_IS_FILE_EXISTS cmd=%s\n",buf); 
 			        ret=isFileExists_nfs(buf,"from Querey_server" ) ;
 	                        break;
-                      case SVR_GLOBPATERN:
-		                fprintf(stderr,"Nfs Routine: SVR_GLOBPATERN cmd=%s\n",buf); 
+                      case SVR_GLOB_PATTERN_COUNT:
+		                fprintf(stderr,"Nfs Routine: SVR_GLOB_PATTERN_COUNT cmd=%s\n",buf); 
 			        ret=globPath_nfs (buf, GLOB_NOSORT, 0);
 	                        break;
                       case SVR_MKDIR:

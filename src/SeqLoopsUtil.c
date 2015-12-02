@@ -289,7 +289,7 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
 
 
 
-/* return the loop container extension values that the current node is in.
+/* return the loop container extension values that the current node is in. (ex: +3+1 -> +3+2 -> +3+3) 
  * Current node must be a loop node.
    To be used to check if a loop parent node is done,
    assuming that extension is set in  _nodeDataPtr->extension */

@@ -118,7 +118,7 @@ int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *ep
 {
    int status;
   
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_GLOBPATERN ,pattern ,"" ); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_GLOB_PATTERN_COUNT ,pattern ,"" ); 
 
    SeqUtil_TRACE("maestro.globPath_svr():%s \n",pattern);
    return (status);

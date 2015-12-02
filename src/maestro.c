@@ -1129,7 +1129,6 @@ Inputs
 static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
    char statePattern[SEQ_MAXFIELD];
    char filename[SEQ_MAXFIELD];
-   glob_t glob_last, glob_begin, glob_submit, glob_abort;
    int undoneIteration = 0;
    SeqNameValuesPtr containerLoopArgsList = NULL;
    char *extension=NULL;
@@ -1192,7 +1191,6 @@ Inputs
 
 static int isNpassAborted ( const SeqNodeDataPtr _nodeDataPtr ) {
    char statePattern[SEQ_MAXFIELD];
-   glob_t glob_abort;
    int abortedIteration = 0;
    SeqNameValuesPtr containerLoopArgsList = NULL;
    char *extension=NULL;
@@ -1232,14 +1230,16 @@ static SeqNameValuesPtr processForEachTarget(const SeqNodeDataPtr _nodeDataPtr){
    SeqNameValuesPtr iterationListToReturn = NULL; 
    SeqNodeDataPtr targetNodeDataPtr = NULL; 
    char* target_datestamp=NULL;
+   char statePattern[SEQ_MAXFIELD];
 
    /* Check type of target, LOOP or Switch vs NPT or FE */ 
    target_datestamp=SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, 0, atoi(_nodeDataPtr->forEachTarget->hour), 0, 0);
    targetNodeDataPtr = nodeinfo(_nodeDataPtr->forEachTarget->node , "all", NULL,_nodeDataPtr->forEachTarget->exp, NULL, target_datestamp );
    
    /* Check status of target node's iterations */
-   
-
+   /* search for end states. */
+   memset( statePattern, '\0', sizeof statePattern );
+   sprintf(statePattern,"%s/%s/%s.%s+*.end",targetNodeDataPtr->workdir, targetNodeDataPtr->datestamp, targetNodeDataPtr->name, _nodeDataPtr->extension );
 
    /* Build list to submit */ 
 
@@ -1252,10 +1252,6 @@ static SeqNameValuesPtr processForEachTarget(const SeqNodeDataPtr _nodeDataPtr){
 
    return iterationListToReturn;
 }
-
-
-
-
 
 /* 
 processContainerEnd
