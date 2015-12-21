@@ -18,51 +18,18 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#define _REGEX_RE_COMP
-#include <stdio.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdarg.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <libgen.h>
-#include <regex.h>
 #include "runcontrollib.h"
 #include "nodelogger.h"
 #include "SeqUtil.h"
-extern char *__loc1; /* needed for regex */
-
-
-/********************************************************************************
-*CopyStrTillCarac: copy 'original' from the beginning of the string till the
-* caracter 'c' into 'result'
-********************************************************************************/
-void CopyStrTillCarac(char *result, const char *original, char c)
-{
-  while (*original) {
-     if (*original != c) {
-        *result=*original;
-     } else {
-        result++;
-        break;
-     }
-     original++;
-     result++;
-  }
-  *result = '\0' ;
-}
 
 /***************************************************************
 *nodewait: send 'wait' message to operational logging system.
 ****************************************************************/
 void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, const char *datestamp)
 {
-   /* This is needed so messages will be logged into CMCNODELOG */ 
-   putenv("CMCNODELOG=on"); 
    nodelogger(node_ptr->name,"wait",node_ptr->extension,msg,datestamp);
 }
 
@@ -78,9 +45,6 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, const char *da
 {
    char jobID[50];
    char message[300];
-
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
 
    memset(jobID, '\0', sizeof jobID);
    if (getenv("JOB_ID") != NULL){
@@ -113,13 +77,11 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
    memset(message,'\0',sizeof message);
    cpu = (char *) SeqUtil_cpuCalculate(node_ptr->npex,node_ptr->npey,node_ptr->omp,node_ptr->cpu_multiplier);
 
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
-   /* containers use TRUE_HOST for execution */
+   /* containers use TRUE_HOST for execution ... TODO check if immediate or exec or submit modes*/
    if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {
    sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method:%s soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin,  node_ptr->soumetArgs);
    } else {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" container mode",node_ptr->machine, node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
    }
 
    SeqUtil_TRACE("nodesubmit.Message=%s",message);
@@ -142,8 +104,6 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *
    char message[300];
    char jobID[50];
    
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
    
    memset(hostname, '\0', sizeof hostname);
    gethostname(hostname,sizeof hostname);
@@ -220,8 +180,6 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 
    job = _nodeDataPtr->name;
    loopExt = _nodeDataPtr->extension;
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
 
 	memset(buf,'\0',sizeof buf);
 
