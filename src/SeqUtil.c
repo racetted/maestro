@@ -239,6 +239,56 @@ int globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *ep
      return (ret);
 }
 
+/* 
+* nfs Wrapper to glob function to return list of extensions found by pattern with a * wildcard. 
+*/
+LISTNODEPTR globExtList_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno)) 
+{
+    
+    glob_t glob_p;
+    size_t ret=0, wildcardLocation=0, totalfiles=0, filecounter=0;
+    char * wildcardPtr=NULL;
+    char * tmpString=NULL;
+    LISTNODEPTR extensionList=NULL; 
+    SeqUtil_TRACE( "SeqUtil.globExtList_nfs() looking for pattern %s \n",pattern); 
+
+    wildcardPtr=strchr(pattern,'*'); 
+    if (wildcardPtr=NULL) return NULL;
+    /* location used to know where the new patterns will start in the glob return strings */
+    wildcardLocation=(int) (wildcardPtr - pattern);  
+    
+    /* The real glob */
+    ret = glob(pattern, GLOB_NOSORT,  0 , &glob_p);
+    switch (ret) {
+        case GLOB_NOSPACE:
+            SeqUtil_TRACE( "SeqUtil.globExtList_nfs() Glob running out of memory \n"); 
+            return(0);
+            break;
+        case GLOB_ABORTED:
+            SeqUtil_TRACE( "SeqUtil.globExtList_nfs() Glob read error \n" ); 
+            return(0);
+            break;
+        case GLOB_NOMATCH:
+            SeqUtil_TRACE( "SeqUtil.globExtList_nfs() Glob no found matches \n"); 
+            globfree(&glob_p);
+            return(0);
+            break;/* not reached */
+     }
+
+     totalfiles=glob_p.gl_pathc;
+     for (filecounter=0; filecounter<totalfiles; ++filecounter) {
+         /*file return format should be /path/to/files/filename.*.some_state, and * should replace a "+index" where index can be a string or a number */
+         /* TODO NPT ^last... remove from string here? */
+         tmpString=strndup(glob_p.gl_pathv[filecounter]+wildcardLocation+1, strlen(glob_p.gl_pathv[filecounter]+wildcardLocation+1) - strlen(wildcardPtr)); 
+         SeqUtil_TRACE( "SeqUtil.globExtList_nfs() iteration found. Extension: %s \n",tmpString); 
+         /* temporary removal to compile other test
+          SeqListNode_insertItem(extensionList,tmpString);
+         */         
+          free(tmpString); tmpString=NULL; 
+     }
+     globfree(&glob_p);
+     return (extensionList);
+}
 
 
 char *SeqUtil_getPathLeaf (const char *full_path) {
@@ -316,7 +366,7 @@ int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
 char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ){
   char *chreturn=NULL;
   int nMpi=1;
-  if ( ! (chreturn = malloc( strlen(npex) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
+  if ( ! (chreturn = malloc( (npex==NULL || strlen(npex)) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
     SeqUtil_TRACE( "SeqUtil_cpuCalculate malloc: Out of memory!\n");
     return(NULL);
   }

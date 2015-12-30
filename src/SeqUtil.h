@@ -43,6 +43,7 @@ int   touch_nfs(const char *filename) ;
 int   access_nfs (const char *filename , int mode ) ;
 int   isFileExists_nfs( const char* lockfile, const char *caller );
 int   globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno));
+LISTNODEPTR   globExtList_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno));
 int   SeqUtil_mkdir_nfs ( const char* dir_name, int is_recursive );
 FILE* fopen_nfs (const char *path, int sock );
 int   WriteNodeWaitedFile_nfs (const char* ,const char* ,const char* ,const char * ,const char *,const char *);

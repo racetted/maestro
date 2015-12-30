@@ -75,6 +75,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
    xmlNodePtr nodePtr = NULL;
    const xmlChar *nodeName = NULL;
    char *tmpString = NULL; 
+   char *cpuString = NULL;
 
    int i=0;
    SeqUtil_TRACE( "nodeinfo.parseBatchResources() called\n" );
@@ -88,6 +89,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
          SeqUtil_TRACE( "nodeinfo.parseBatchResources() value=%s\n", nodePtr->children->content );
 	 if ( strcmp( nodeName, "cpu" ) == 0 ) {
             SeqNode_setCpu( _nodeDataPtr, nodePtr->children->content );
+            cpuString=strdup(nodePtr->children->content);
 	 } else if ( strcmp( nodeName, "cpu_multiplier" ) == 0 ) {
 	    SeqNode_setCpuMultiplier( _nodeDataPtr, nodePtr->children->content );
          } else if ( strcmp( nodeName, "machine" ) == 0 ) {
@@ -98,6 +100,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
             SeqNode_setMemory( _nodeDataPtr, nodePtr->children->content );
          } else if ( strcmp( nodeName, "mpi" ) == 0 ) {
              _nodeDataPtr->mpi = atoi( nodePtr->children->content );
+             /* if cpu has already been set, and the mpi flag is on, it will need to be recalculated depending on the format it may change for npex / omp */
+             if (cpuString !=NULL && _nodeDataPtr->mpi ) SeqNode_setCpu( _nodeDataPtr, cpuString );
          } else if ( strcmp( nodeName, "soumet_args" ) == 0 ) {
               /* add soumet args in the following order: 1) resource file 2) args sent by command line, who will override 1*/
              SeqUtil_stringAppend( &tmpString, nodePtr->children->content);
@@ -116,7 +120,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
          }
       }
    }
-
+   free(cpuString);
 }
 
 void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep ) {
@@ -1641,6 +1645,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
 
    char *seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
+   char workdir[SEQ_MAXFIELD];
    SeqNodeDataPtr  nodeDataPtr = NULL;
 
    if( _exp_home == NULL ) {
@@ -1668,6 +1673,9 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    SeqUtil_TRACE ( "nodeinfo.nodeinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
    SeqNode_setSeqExpHome(nodeDataPtr,seq_exp_home); 
+   memset(workdir,'\0',sizeof workdir);
+   sprintf(workdir,"%s/sequencing/status", seq_exp_home);
+   SeqNode_setWorkdir( nodeDataPtr, workdir );
 
    SeqUtil_TRACE ( "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"",datestamp) );

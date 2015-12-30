@@ -138,48 +138,62 @@ void SeqNode_setContainer ( SeqNodeDataPtr node_ptr, const char* container ) {
 }
 
 void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
-   char *tmpstrtok=NULL;
-   char *tmpCpu=NULL;
+   char tmpstrtok[10];
+   char * strPtr=cpu;
+   int value1=0, value2=0,value3=0;
+   size_t x_count=0;
    if ( cpu != NULL ) {
       free( node_ptr->cpu );
       if (node_ptr->cpu = malloc( strlen(cpu) + 1 )){
           strcpy( node_ptr->cpu, cpu );
-          tmpCpu=strdup(cpu);
       } else {
           raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-      }
-  
-      /* parse NPEX */
-      tmpstrtok = (char*) strtok( tmpCpu, "x" );
-      if ( tmpstrtok != NULL ) {
-          free( node_ptr->npex );
-	  if (node_ptr->npex=malloc( strlen(tmpstrtok) +1)){ 
-              strcpy(node_ptr->npex, tmpstrtok);
-          } else {
-              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-          }
-      }
-      /* NPEY */
-      tmpstrtok = (char*) strtok( NULL, "x" );
-      if ( tmpstrtok != NULL ) {
-          free( node_ptr->npey );
-	  if (node_ptr->npey=malloc( strlen(tmpstrtok) +1)){ 
-   	     strcpy(node_ptr->npey, tmpstrtok);
-          } else {
-              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-          }
-      }
-      /* OMP */
-      tmpstrtok = (char*) strtok( NULL, "x" );
-      if ( tmpstrtok != NULL ) {
-          free( node_ptr->omp );
-	  if (node_ptr->omp=malloc( strlen(tmpstrtok) +1)){ 
-  	      strcpy(node_ptr->omp, tmpstrtok);
-          } else {
-              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-          }
-      }
-   free (tmpCpu);
+      }  
+
+      /*find count of "x" separator*/
+      for (x_count=0; strPtr[x_count]; strPtr[x_count]=='x' ? x_count++ : *(strPtr++));
+
+      SeqUtil_TRACE( "SeqNode_setCpu() cpu=%s, x-separator count=%d\n",cpu,x_count);
+
+      switch (x_count) {
+
+         case 0:
+            if (sscanf(cpu,"%d",&value1) == 1 ) {
+               /* 1 value matching, so value1 = OMP when not mpi, npex when mpi, resetting the other value in case*/ 
+               if (node_ptr->mpi == 0) { 
+                  free( node_ptr->npex);
+                  free( node_ptr->omp); 
+                  (node_ptr->omp=malloc(10)) !=NULL ? snprintf( node_ptr->omp,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+                  node_ptr->npex=strdup("1");
+               } else {
+                  free( node_ptr->npex); 
+                  free( node_ptr->omp); 
+                  (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+                  node_ptr->omp=strdup("1");
+               }
+            } else  raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+            break ; 
+         case 1: 
+            if (sscanf(cpu,"%dx%d",&value1, &value2) == 2 ) {
+               /* 2 value matching, so value1=npex; value2 = OMP */ 
+               free( node_ptr->npex); 
+               free( node_ptr->omp); 
+               (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+               (node_ptr->omp=malloc(10)) !=NULL ? snprintf( node_ptr->omp,10,"%d",value2) : raiseError("OutOfMemory Exception"); 
+            }   else  raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+            break ; 
+         case 2: 
+            if (sscanf(cpu,"%dx%dx%d",&value1, &value2, &value3) == 3) {
+               free( node_ptr->npex); 
+               free( node_ptr->npey); 
+               free( node_ptr->omp); 
+               (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+               (node_ptr->npey=malloc(10)) !=NULL ? snprintf( node_ptr->npey,10,"%d",value2) : raiseError("OutOfMemory Exception"); 
+               (node_ptr->omp=malloc(10)) !=NULL ? snprintf( node_ptr->omp,10,"%d",value3) : raiseError("OutOfMemory Exception"); 
+            } else   raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+            break ; 
+         default: raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+      } 
    }
 }
 
@@ -714,7 +728,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->memory = NULL;
    nodePtr->silent = 0;
    nodePtr->catchup = 4;
-   nodePtr->wallclock = 3;
+   nodePtr->wallclock = 5;
    nodePtr->mpi = 0;
    nodePtr->isLastArg = 0;
    nodePtr->cpu_multiplier = NULL;
@@ -745,11 +759,11 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
    SeqNode_setPathToModule( nodePtr, "" );
-   SeqNode_setCpu( nodePtr, "1" );
+   SeqNode_setCpu( nodePtr, "1x1x1" );
    SeqNode_setCpuMultiplier( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
    SeqNode_setMachine( nodePtr, "" );
-   SeqNode_setMemory( nodePtr, "200M" );
+   SeqNode_setMemory( nodePtr, "300M" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
    SeqNode_setWorkerPath( nodePtr, "");
@@ -1169,12 +1183,14 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    SeqUtil_printOrWrite( filename, "export SEQ_SHORT_DATE=%s\n", shortdate); 
 
    /* check for the presence of a "rerun" file to determine rerun status */
+   /* TODO find a way for nodeinfo to figure out whether this access is going through the server or not..., check function pointers else it will return a memfault  
    memset(lockFile,'\0',sizeof lockFile);
    sprintf(lockFile,"%s/%s/%s.abort.rerun",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName);
       if ( _access(lockFile, R_OK) == 0 ) {
-	isRerun = 1;
+	      isRerun = 1;
       }
    SeqUtil_printOrWrite( filename, "export SEQ_RERUN=%d\n", isRerun );
+   */
 
    free(tmpdir);
    free(tmpValue);
