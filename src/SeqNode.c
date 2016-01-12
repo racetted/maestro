@@ -156,7 +156,6 @@ void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
       SeqUtil_TRACE( "SeqNode_setCpu() cpu=%s, x-separator count=%d\n",cpu,x_count);
 
       switch (x_count) {
-
          case 0:
             if (sscanf(cpu,"%d",&value1) == 1 ) {
                /* 1 value matching, so value1 = OMP when not mpi, npex when mpi, resetting the other value in case*/ 

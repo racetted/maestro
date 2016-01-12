@@ -46,6 +46,10 @@ int  (*_isFileExists) ( const char* lockfile, const char *caller ) ;
 int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) );
 int (*_globPath) (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) );
 
+LISTNODEPTR globExtList_svr (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) );
+LISTNODEPTR (*_globExtList) (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) );
+
+
 int WriteNodeWaitedFile_svr (const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
                               const char* filename, const char* statusfile ); 
 

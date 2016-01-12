@@ -176,7 +176,7 @@ static void useNFSlocking()
   _CreateLockFile = CreateLockFile_nfs;
   _SeqUtil_mkdir = SeqUtil_mkdir_nfs;
   _globPath = globPath_nfs;
-  /*_globExtList = globExtList_nfs; */
+  _globExtList = globExtList_nfs; 
   _WriteNWFile = WriteNodeWaitedFile_nfs;
   _WriteInterUserDepFile =  WriteInterUserDepFile_nfs;
   _fopen = fopen_nfs;
@@ -195,6 +195,7 @@ static void useSVRlocking()
  _SeqUtil_mkdir = SeqUtil_mkdir_svr;
  _globPath = globPath_svr;
  /* _globExtList = globExtList_svr;*/
+ _globExtList = globExtList_nfs;
  _WriteNWFile = WriteNodeWaitedFile_svr;
  _WriteInterUserDepFile = WriteInterUserDepFile_nfs ;  /* for now use nfs */ 
  _fopen = fopen_svr;
@@ -453,7 +454,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
    SeqUtil_TRACE( "maestro.go_initialize() node=%s signal=%s flow=%s\n", _nodeDataPtr->name, _signal, _flow );
 
    if ((strcmp (_signal,"initbranch" ) == 0) && (_nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask)) {
-      raiseError( "maestro -s initbranch cannot be called on task nodes. Exiting. \n" );
+      raiseError( "maestro -s initbranch can only be used on container type nodes (not task type). Exiting. \n" );
    }
    setInitState( _nodeDataPtr ); 
    /* TODO this method might not work when doing a foreach container...*/
@@ -466,51 +467,28 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
    /* delete lockfiles in branches under current node */
    if (  strcmp (_signal,"initbranch" ) == 0 ) {
        memset( cmd, '\0' , sizeof cmd);
-       SeqUtil_TRACE("Following lockfiles are being deleted: \n");
        SeqUtil_TRACE( "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp ,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting begin lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.begin\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting abort lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.abort.*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting submit lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.submit\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting waiting lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.waiting*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
+       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.end\" -type f -print -delete -o -name \"*%s.begin\"  -type f -print -delete  -o -name \"*%s.abort.*\"  -type f -print -delete -o -name \"*%s.submit\" -type f -print -delete -o -name \"*%s.waiting*\" -type f -print -delete",_nodeDataPtr->workdir, _nodeDataPtr->datestamp ,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName,extName,extName,extName,extName);
+       SeqUtil_TRACE("cmd=%s\n",cmd); 
+       printf("Following status files are being deleted: \n");
        returnValue=system(cmd);
 
-     /* for npass tasks  */
-       SeqUtil_TRACE("Following lockfiles are being deleted: \n");
+    /* for npass tasks  */
+       memset( cmd, '\0' , sizeof cmd);
        SeqUtil_TRACE( "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.end\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
+       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.end\"  -type f -print -delete -o -name \"*%s+*.begin\"  -type f -print -delete -o  -name \"*%s+*.abort.*\"  -type f -print -delete -o -name \"*%s+*.submit\"  -type f -print -delete -o -name \"*%s+*.waiting*\"  -type f -print -delete",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName, extName, extName, extName, extName);
+       SeqUtil_TRACE("cmd=%s\n",cmd); 
        returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting begin lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.begin\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting abort lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.abort.*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting submit lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.submit\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
-       SeqUtil_TRACE( "maestro.go_initialize() deleting waiting lockfiles starting at node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s/%s/%s/%s -name \"*%s+*.waiting*\" -type f -print -exec rm -f {} \\;",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName, extName);
-       returnValue=system(cmd);
+
    } else if  ( strcmp (_signal,"initnode" ) == 0 ) {
+       memset( cmd, '\0' , sizeof cmd);
        SeqUtil_TRACE( "maestro.go_initialize() deleting waiting.InterUser lockfiles starting for node=%s\n", _nodeDataPtr->name); 
-       sprintf(cmd, "find %s%s%s%s -name \"*.waiting*\" -type f -print -exec rm -f {} \\;",SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->container);
+       sprintf(cmd, "find %s%s%s%s -name \"*.waiting*\" -type f -print -delete",SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->container);
+       SeqUtil_TRACE("cmd=%s\n",cmd); 
+       printf("Following status files are being deleted: \n");
        returnValue=system(cmd);
    }
 
-   /* delete every iterations if no extension specified for npasstask */
-   if ( _nodeDataPtr->type == NpassTask && strlen( _nodeDataPtr->extension ) == 0 ) {
-      sprintf(cmd, "find %s/%s/%s/ -name \"%s.*.*\" -type f -print",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->container, _nodeDataPtr->nodeName);
-      returnValue=system(cmd);
-   }
    nodelogger(_nodeDataPtr->name,"init",_nodeDataPtr->extension,"",_nodeDataPtr->datestamp);
 
    /* to temporarily fight the problem of misordering of init / begin messages */ 
@@ -1221,7 +1199,7 @@ static int isNpassAborted ( const SeqNodeDataPtr _nodeDataPtr ) {
 processForEachTarget
 
  returns a name-values list of iterations that can be launched by the foreach container. 
- returns NULL if there are no iteration that can be launched yet. It will also tag the target(s) to launch the an iteration.  
+ returns NULL if there are no iteration that can be launched yet. It will also tag the target(s) to launch iterations.  
 
 Inputs
   _nodeDataPtr - pointer to the forEach node targetted by the execution 
@@ -1232,26 +1210,43 @@ static SeqNameValuesPtr processForEachTarget(const SeqNodeDataPtr _nodeDataPtr){
    SeqNameValuesPtr iterationListToReturn = NULL; 
    SeqNodeDataPtr targetNodeDataPtr = NULL; 
    char* target_datestamp=NULL;
-   char statePattern[SEQ_MAXFIELD];
+   char statePattern[SEQ_MAXFIELD], seqPath[SEQ_MAXFIELD];
+   LISTNODEPTR returnedExtensionList = NULL, tempIterator=NULL; 
 
    /* Check type of target, LOOP or Switch vs NPT or FE */ 
    target_datestamp=SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, 0, atoi(_nodeDataPtr->forEachTarget->hour), 0, 0);
    targetNodeDataPtr = nodeinfo(_nodeDataPtr->forEachTarget->node , "all", NULL,_nodeDataPtr->forEachTarget->exp, NULL, target_datestamp );
+   SeqUtil_TRACE( "maestro.processForEachTarget() called, targetting exp=%s, name=%s, index=%s, date=%s\n", _nodeDataPtr->forEachTarget->exp, _nodeDataPtr->forEachTarget->node, _nodeDataPtr->forEachTarget->index, target_datestamp );
    
    /* Check status of target node's iterations */
    /* search for end states. */
    memset( statePattern, '\0', sizeof statePattern );
    sprintf(statePattern,"%s/%s/%s.%s+*.end",targetNodeDataPtr->workdir, targetNodeDataPtr->datestamp, targetNodeDataPtr->name, _nodeDataPtr->extension );
 
+   /* TODO add a lock on the target here? might be necessary */
+
    /* Build list to submit */ 
+   returnedExtensionList = _globExtList(statePattern, GLOB_NOSORT, 0);
+   tempIterator=returnedExtensionList;
+   while (tempIterator != NULL) {
+      SeqUtil_TRACE( "maestro.processForEachTarget() inserting loop name=%s value=%s\n", _nodeDataPtr->nodeName, tempIterator->data );
+      SeqNameValues_insertItem(&iterationListToReturn, _nodeDataPtr->nodeName,tempIterator->data);  
+      tempIterator = tempIterator->nextPtr;
+   }
 
+   /* Create the message for the target to launch iterations */
 
-
-
-
-
-
-
+   if (strcmp( _nodeDataPtr->forEachTarget->exp, "") == 0 ) {
+      /*local*/ 
+      sprintf(seqPath,"%s/sequencing/status", _nodeDataPtr->expHome);
+   } else {
+      sprintf(seqPath,"%s/sequencing/status", _nodeDataPtr->forEachTarget->exp);
+   } /* 
+   if (_access(seqPath,W_OK) == 0) {
+       
+   }
+*/
+   SeqListNode_deleteWholeList(&returnedExtensionList);
    return iterationListToReturn;
 }
 

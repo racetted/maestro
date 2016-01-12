@@ -253,9 +253,9 @@ LISTNODEPTR globExtList_nfs (const char *pattern, int flags, int (*errfunc) (con
     SeqUtil_TRACE( "SeqUtil.globExtList_nfs() looking for pattern %s \n",pattern); 
 
     wildcardPtr=strchr(pattern,'*'); 
-    if (wildcardPtr=NULL) return NULL;
+    if (wildcardPtr==NULL) return NULL;
     /* location used to know where the new patterns will start in the glob return strings */
-    wildcardLocation=(int) (wildcardPtr - pattern);  
+    wildcardLocation=wildcardPtr-pattern ;  
     
     /* The real glob */
     ret = glob(pattern, GLOB_NOSORT,  0 , &glob_p);
@@ -279,11 +279,13 @@ LISTNODEPTR globExtList_nfs (const char *pattern, int flags, int (*errfunc) (con
      for (filecounter=0; filecounter<totalfiles; ++filecounter) {
          /*file return format should be /path/to/files/filename.*.some_state, and * should replace a "+index" where index can be a string or a number */
          /* TODO NPT ^last... remove from string here? */
-         tmpString=strndup(glob_p.gl_pathv[filecounter]+wildcardLocation+1, strlen(glob_p.gl_pathv[filecounter]+wildcardLocation+1) - strlen(wildcardPtr)); 
+         SeqUtil_TRACE( "SeqUtil.globExtList_nfs() iteration found, Target: %s (length=%d); wildcardLocation=%d, wildcardPtr=%s (length %d); \n",glob_p.gl_pathv[filecounter], strlen(glob_p.gl_pathv[filecounter]), wildcardLocation, wildcardPtr, strlen(wildcardPtr)); 
+
+         tmpString=strndup(glob_p.gl_pathv[filecounter]+wildcardLocation, strlen(glob_p.gl_pathv[filecounter]) - strlen(pattern) +1); 
          SeqUtil_TRACE( "SeqUtil.globExtList_nfs() iteration found. Extension: %s \n",tmpString); 
          /* temporary removal to compile other test
-          SeqListNode_insertItem(extensionList,tmpString);
          */         
+          SeqListNode_insertItem(&extensionList,tmpString);
           free(tmpString); tmpString=NULL; 
      }
      globfree(&glob_p);
@@ -802,7 +804,7 @@ int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const 
              snprintf( tmp_line, sizeof(tmp_line), "exp=%s node=%s datestamp=%s args=%s\n",seq_xp_home, nname, datestamp, loopArgs );
              /* fprintf( waitingFile,"%s", tmp_line );  */
 	     num = fwrite(tmp_line ,sizeof(char) , strlen(tmp_line) , waitingFile);
-	     if ( num != strlen(tmp_line) )  fprintf(stderr,"writeNodeWaitFile Error: written:%zu out of:%d \n",num,strlen(tmp_line));
+	     if ( num != strlen(tmp_line) )  fprintf(stderr,"writeNodeWaitFile Error: written:%zu out of:%zd \n",num,strlen(tmp_line));
     }
 
     fclose( waitingFile );

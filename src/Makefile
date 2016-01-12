@@ -122,33 +122,33 @@ tictac.o:	tictac.c tictac.h
 
 # Targets for command line executables:
 
-tictac:	 tictac.o SeqUtil.o QueryServer.o l2d2_socket.o SeqUtilServer.o l2d2_commun.o tictac_main.c 
-	$(CC) -g tictac.o SeqUtil.o QueryServer.o l2d2_socket.o SeqUtilServer.o l2d2_commun.o tictac_main.c -L$(XML_LIB_DIR) -lxml2 $(LIB) -o tictac
+tictac:	 tictac.o SeqUtil.o QueryServer.o l2d2_socket.o SeqUtilServer.o l2d2_commun.o SeqListNode.o tictac_main.c 
+	$(CC) -g tictac.o SeqUtil.o QueryServer.o l2d2_socket.o SeqUtilServer.o l2d2_commun.o SeqListNode.o tictac_main.c -L$(XML_LIB_DIR) -lxml2 $(LIB) -o tictac
 	cp tictac $(BINDIR)
 
 nodelogger:	nodelogger.o SeqUtil.o l2d2_commun.o SeqUtilServer.o l2d2_socket.o QueryServer.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o nodelogger_main.c
 	$(CC) -g nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o nodelogger_main.c -L$(XML_LIB_DIR) -lxml2 $(LIB) -o nodelogger
 	cp nodelogger $(BINDIR)
 
-logreader:	logreader.o SeqUtil.o SeqDatesUtil.o l2d2_commun.o logreader_main.c
-	$(CC) -g logreader.o SeqUtil.o SeqDatesUtil.o l2d2_commun.o logreader_main.c $(LIB) -o logreader
+logreader:	logreader.o SeqUtil.o SeqDatesUtil.o l2d2_commun.o SeqListNode.o logreader_main.c
+	$(CC) -g logreader.o SeqUtil.o SeqDatesUtil.o l2d2_commun.o SeqListNode.o logreader_main.c $(LIB) -o logreader
 	cp logreader $(BINDIR)
 
 maestro:	maestro.o logreader.o nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o runcontrollib.o ocmjinfo.o expcatchup.o maestro_main.c
 	$(CC) -g maestro.o logreader.o nodelogger.o tictac.o nodeinfo.o SeqNode.o SeqLoopsUtil.o XmlUtils.o SeqNameValues.o SeqListNode.o SeqDatesUtil.o SeqUtil.o l2d2_commun.o SeqUtilServer.o QueryServer.o l2d2_socket.o runcontrollib.o ocmjinfo.o expcatchup.o maestro_main.c -L $(XML_LIB_DIR) -lxml2 $(LIB) -o maestro; \
 	cp maestro $(BINDIR);
 
-expcatchup:	expcatchup.o SeqUtil.o expcatchup_main.c XmlUtils.o l2d2_commun.o
-	$(CC) -g expcatchup.o SeqUtil.o expcatchup_main.c XmlUtils.o l2d2_commun.o -L $(XML_LIB_DIR) -lxml2 $(LIB) -o expcatchup; \
+expcatchup:	expcatchup.o SeqUtil.o expcatchup_main.c XmlUtils.o SeqListNode.o l2d2_commun.o
+	$(CC) -g expcatchup.o SeqUtil.o expcatchup_main.c XmlUtils.o SeqListNode.o l2d2_commun.o -L $(XML_LIB_DIR) -lxml2 $(LIB) -o expcatchup; \
 	cp expcatchup $(BINDIR);
 
 nodeinfo:	SeqUtil.o SeqNode.o XmlUtils.o SeqLoopsUtil.o l2d2_commun.o QueryServer.o l2d2_socket.o SeqListNode.o SeqDatesUtil.o SeqUtilServer.o tictac.o SeqNameValues.o nodeinfo.o nodeinfo_main.c
 	$(CC) -g SeqUtil.o SeqNode.o XmlUtils.o SeqLoopsUtil.o l2d2_commun.o QueryServer.o l2d2_socket.o SeqListNode.o SeqDatesUtil.o SeqUtilServer.o tictac.o SeqNameValues.o nodeinfo.o nodeinfo_main.c -L $(XML_LIB_DIR) -lxml2 $(LIB) -o nodeinfo 
 	cp nodeinfo $(BINDIR)
 
-getdef:	getdef_main.o SeqUtil.o l2d2_commun.o
+getdef:	getdef_main.o SeqUtil.o SeqListNode.o l2d2_commun.o
 	$(CC) -g -c getdef_main.c 
-	$(CC) -g getdef_main.o SeqUtil.o l2d2_commun.o $(LIB) -o getdef
+	$(CC) -g getdef_main.o SeqUtil.o SeqListNode.o l2d2_commun.o $(LIB) -o getdef
 	cp getdef $(BINDIR)
 
 mserver: $(L2D2SOBJECTS)
