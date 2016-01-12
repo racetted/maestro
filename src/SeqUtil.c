@@ -1,3 +1,24 @@
+/* SeqUtil.c - Basic utilities used by the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -16,7 +37,11 @@
 #include "SeqListNode.h"
 #include "l2d2_commun.h"
 
-
+/* used by normpath function */ 
+#define ispathsep(ch)   ((ch) == '/' || (ch) == '\\')
+#define iseos(ch)       ((ch) == '\0')
+#define ispathend(ch)   (ispathsep(ch) || iseos(ch)) 
+#define COMP_MAX 256 
 int SEQ_TRACE = 0;
 
 void raiseError(const char* fmt, ... );
@@ -89,55 +114,6 @@ void actions(char *signal, char* flow, char *node) {
 void actionsEnd(char *signal, char* flow, char* node) {
  SeqUtil_TRACE("\n**************** SEQ \"%s\" \"%s\" \"%s\" Action ENDS *******************\n",signal, flow, node);
 }
-
-/********************************************************************************
-*genFileList: scan a directory 'directory' and return a list of files 'filelist'
-*  using the the filter 'filters'.
-*******************************************************************************
-int genFileList(LISTNODEPTR *fileList,const char *directory,LISTNODEPTR *filterList) {
-
-LISTNODEPTR tmplist=NULL;
-LISTNODEPTR tmpfilters=NULL;
-char *filter=NULL;
-DIR *dirp=NULL;
-struct dirent *direntp=NULL;
-
- direntp=(struct dirent *) malloc(sizeof(struct dirent));
-
- tmpfilters=*filterList;
-
- filter = (char *) malloc(strlen(tmpfilters->data)+1);
- strcpy(filter,tmpfilters->data);
-
- while (filter != NULL) {
-    SeqUtil_TRACE("maestro.genFileList() opening directory=%s trying to match pattern %s\n",directory, filter);
-    dirp = opendir(directory);
-    if (dirp == NULL) {
-       fprintf(stderr,"maestro: invalid directory path %s\n",directory);
-       *fileList = NULL;
-       return(1);
-    }
-    while ( (direntp = readdir(dirp)) != NULL) {
-       if (match(direntp->d_name,filter) == 1) {
-          SeqUtil_TRACE("maestro.genFileList() found file matching=%s\n",direntp->d_name );
-          SeqListNode_insertItem(&tmplist,direntp->d_name);
-       }
-    }
-    closedir(dirp);
-    free(filter);
-    tmpfilters=tmpfilters->nextPtr;
-    if (tmpfilters != NULL) {
-       filter = (char *) malloc(strlen(tmpfilters->data)+1);
-       strcpy(filter,tmpfilters->data);
-    } else {
-       filter=NULL;
-    }
- }
- free(direntp);
- *fileList = tmplist;
- return(0);
-}
-*/
 
 /********************************************************************************
 *removeFile_nfs: Removes the named file 'filename'; it returns zero if succeeds 
@@ -263,6 +239,58 @@ int globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *ep
      return (ret);
 }
 
+/* 
+* nfs Wrapper to glob function to return list of extensions found by pattern with a * wildcard. 
+*/
+LISTNODEPTR globExtList_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno)) 
+{
+    
+    glob_t glob_p;
+    size_t ret=0, wildcardLocation=0, totalfiles=0, filecounter=0;
+    char * wildcardPtr=NULL;
+    char * tmpString=NULL;
+    LISTNODEPTR extensionList=NULL; 
+    SeqUtil_TRACE( "SeqUtil.globExtList_nfs() looking for pattern %s \n",pattern); 
+
+    wildcardPtr=strchr(pattern,'*'); 
+    if (wildcardPtr==NULL) return NULL;
+    /* location used to know where the new patterns will start in the glob return strings */
+    wildcardLocation=wildcardPtr-pattern ;  
+    
+    /* The real glob */
+    ret = glob(pattern, GLOB_NOSORT,  0 , &glob_p);
+    switch (ret) {
+        case GLOB_NOSPACE:
+            SeqUtil_TRACE( "SeqUtil.globExtList_nfs() Glob running out of memory \n"); 
+            return(0);
+            break;
+        case GLOB_ABORTED:
+            SeqUtil_TRACE( "SeqUtil.globExtList_nfs() Glob read error \n" ); 
+            return(0);
+            break;
+        case GLOB_NOMATCH:
+            SeqUtil_TRACE( "SeqUtil.globExtList_nfs() Glob no found matches \n"); 
+            globfree(&glob_p);
+            return(0);
+            break;/* not reached */
+     }
+
+     totalfiles=glob_p.gl_pathc;
+     for (filecounter=0; filecounter<totalfiles; ++filecounter) {
+         /*file return format should be /path/to/files/filename.*.some_state, and * should replace a "+index" where index can be a string or a number */
+         /* TODO NPT ^last... remove from string here? */
+         SeqUtil_TRACE( "SeqUtil.globExtList_nfs() iteration found, Target: %s (length=%d); wildcardLocation=%d, wildcardPtr=%s (length %d); \n",glob_p.gl_pathv[filecounter], strlen(glob_p.gl_pathv[filecounter]), wildcardLocation, wildcardPtr, strlen(wildcardPtr)); 
+
+         tmpString=strndup(glob_p.gl_pathv[filecounter]+wildcardLocation, strlen(glob_p.gl_pathv[filecounter]) - strlen(pattern) +1); 
+         SeqUtil_TRACE( "SeqUtil.globExtList_nfs() iteration found. Extension: %s \n",tmpString); 
+         /* temporary removal to compile other test
+         */         
+          SeqListNode_insertItem(&extensionList,tmpString);
+          free(tmpString); tmpString=NULL; 
+     }
+     globfree(&glob_p);
+     return (extensionList);
+}
 
 
 char *SeqUtil_getPathLeaf (const char *full_path) {
@@ -340,7 +368,7 @@ int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
 char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ){
   char *chreturn=NULL;
   int nMpi=1;
-  if ( ! (chreturn = malloc( strlen(npex) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
+  if ( ! (chreturn = malloc( (npex==NULL || strlen(npex)) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
     SeqUtil_TRACE( "SeqUtil_cpuCalculate malloc: Out of memory!\n");
     return(NULL);
   }
@@ -477,7 +505,7 @@ void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
 } 
 
 char* SeqUtil_getdef( const char* filename, const char* key ) {
-  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def";
+  char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def", *defpath=NULL, *defext="/.suites/default_resources.def";
   char *seq_exp_home=NULL;
   struct passwd *passwdEnt;
   struct stat fileStat;
@@ -492,11 +520,16 @@ char* SeqUtil_getdef( const char* filename, const char* key ) {
   passwdEnt = getpwuid(fileStat.st_uid);
   home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
+  defpath = (char *) malloc( strlen(home) + strlen(defext) + 1 );
   sprintf( ovpath, "%s%s", home, ovext );
+  sprintf( defpath, "%s%s", home, defext );
   SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
   if ( (retval = SeqUtil_parsedef(ovpath,key)) == NULL ){
     SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,filename);
-    retval = SeqUtil_parsedef(filename,key); 
+    if ( (retval = SeqUtil_parsedef(filename,key)) == NULL ){
+       SeqUtil_TRACE("SeqUtil_getdef(): looking for definition of %s in %s\n",key,defpath);
+       retval = SeqUtil_parsedef(defpath,key);
+    }
   } 
   free(ovpath);
   return retval;
@@ -771,7 +804,7 @@ int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const 
              snprintf( tmp_line, sizeof(tmp_line), "exp=%s node=%s datestamp=%s args=%s\n",seq_xp_home, nname, datestamp, loopArgs );
              /* fprintf( waitingFile,"%s", tmp_line );  */
 	     num = fwrite(tmp_line ,sizeof(char) , strlen(tmp_line) , waitingFile);
-	     if ( num != strlen(tmp_line) )  fprintf(stderr,"writeNodeWaitFile Error: written:%zu out of:%d \n",num,strlen(tmp_line));
+	     if ( num != strlen(tmp_line) )  fprintf(stderr,"writeNodeWaitFile Error: written:%zu out of:%zd \n",num,strlen(tmp_line));
     }
 
     fclose( waitingFile );
@@ -934,4 +967,76 @@ int unlock_nfs ( const char * filename , const char * datestamp )
      return(ret);
 
 }
+
+/* Returns the average of the input array, but sorting it, and removing the removal_quantity of extreme values from each side. */
+
+int SeqUtil_basicTruncatedMean(int *unsorted_int_array, int elements, int removal_quantity) {
+   int total=0; 
+   int i;
+   if (elements <= 2*removal_quantity) return 0; 
+   qsort (unsorted_int_array, elements, sizeof(int), SeqUtil_compareInt);
+   for(i=removal_quantity; i < elements-removal_quantity; ++i) { 
+       total+=unsorted_int_array[i];
+   } 
+   return (total/(elements-2*removal_quantity)); 
+}
+
+/* Returns the integer differences, used for sorting algorithm qsort. */
+
+
+int SeqUtil_compareInt (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
+}
+
+/* taken from https://gist.github.com/starwing/2761647 . Will not remove trailing slashes (so can be used in conjunction with SeqUtil_fixPath) */
+/* will return a normalized path, removing relative notations and additional slashes */
+char * SeqUtil_normpath(char *out, const char *in) {
+    char *pos[COMP_MAX], **top = pos, *head = out;
+    int isabs = ispathsep(*in);
+
+    if (isabs) *out++ = '/';
+    *top++ = out;
+
+    while (!iseos(*in)) {
+        while (ispathsep(*in)) ++in;
+
+        if (iseos(*in))
+            break;
+
+        if (memcmp(in, ".", 1) == 0 && ispathend(in[1])) {
+            ++in;
+            continue;
+        }
+
+        if (memcmp(in, "..", 2) == 0 && ispathend(in[2])) {
+            in += 2;
+            if (top != pos + 1)
+                out = *--top;
+            else if (isabs)
+                out = top[-1];
+            else {
+                strcpy(out, "../");
+                out += 3;
+            }
+            continue;
+        }
+
+        if (top - pos >= COMP_MAX)
+            return NULL; /* path too long */
+
+        *top++ = out;
+        while (!ispathend(*in))
+            *out++ = *in++;
+        if (ispathsep(*in))
+            *out++ = '/';
+    }
+    *out = '\0';
+    if (*head == '\0')
+        strcpy(head, "./");
+    return head;
+}
+
+
+
 

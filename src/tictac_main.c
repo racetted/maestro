@@ -1,3 +1,23 @@
+/* tictac_main.c - Command-line API for datestamp utility tictac, part of the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -34,7 +54,6 @@ printf("                         %%D = day\n");
 printf("                         %%H = hour\n");
 printf("                         %%Min = minute\n");
 printf("                         %%S = second\n");
-printf("                         %%CMC = 9 digit CMC format datestamp\n");
 printf("      EXPHOME=%s\n\n",seq_exp_home);
 printf("Example: tictac -s 2009053000\n");
 printf("             will set the experiment's datefile to that date\n");
@@ -42,12 +61,7 @@ printf("Example: tictac -f %%Y%%M%%S\n");
 printf("             will return to stdout the value of the date in a %%Y%%M%%S format\n");
 }
 
-#ifdef Mop_linux
-main_tictac (int argc, char * argv [])
-#else
 main (int argc, char * argv [])
-#endif
-
 {
    extern char *optarg;
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
@@ -73,11 +87,11 @@ main (int argc, char * argv [])
                expHome = getenv("SEQ_EXP_HOME");
                format = malloc( strlen( optarg ) + 1 );
                strcpy(format,optarg);
-	       returnDate=1;
+               returnDate=1;
                break;
-	    case 'v':
-	       SeqUtil_setTraceLevel(1);
-	       break; 
+	         case 'v':
+	            SeqUtil_setTraceLevel(1);
+	            break; 
             case 'h':
                printUsage();
                exit(0); 

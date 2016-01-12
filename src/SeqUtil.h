@@ -1,3 +1,24 @@
+/* Part of the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #ifndef _SEQ_UTIL
 #define _SEQ_UTIL
 
@@ -22,6 +43,7 @@ int   touch_nfs(const char *filename) ;
 int   access_nfs (const char *filename , int mode ) ;
 int   isFileExists_nfs( const char* lockfile, const char *caller );
 int   globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno));
+LISTNODEPTR   globExtList_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno));
 int   SeqUtil_mkdir_nfs ( const char* dir_name, int is_recursive );
 FILE* fopen_nfs (const char *path, int sock );
 int   WriteNodeWaitedFile_nfs (const char* ,const char* ,const char* ,const char * ,const char *,const char *);
@@ -44,5 +66,7 @@ char* SeqUtil_striplast( const char* str ) ;
 void  SeqUtil_stripSubstring(char ** string, char * substring);
 char* SeqUtil_relativePathEvaluation( char* depName, SeqNodeDataPtr _nodeDataPtr); 
 void  SeqUtil_printOrWrite( const char * filename, char * text, ...); 
-
+int   SeqUtil_basicTruncatedAverage(int *unsorted_int_array, int elements, int removal_quantity); 
+int   SeqUtil_compareInt (const void * a, const void * b);
+char* SeqUtil_normpath(char *out, const char *in); 
 #endif

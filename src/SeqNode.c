@@ -1,3 +1,24 @@
+/* SeqNode.c - Node construct definitions and utility functions used by the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,10 +35,9 @@ static char* FamilyTypeString = "Family";
 static char* TaskTypeString = "Task";
 static char* NpassTaskTypeString = "NpassTask";
 static char* LoopTypeString = "Loop";
-static char* CaseTypeString = "Case";
-static char* CaseItemTypeString = "CaseItem";
 static char* ModuleTypeString = "Module";
 static char* SwitchTypeString = "Switch"; 
+static char* ForEachTypeString = "ForEach";
 
 /* this function is just a simple enabling of printf calls when
 the user passes -d option */
@@ -39,11 +59,8 @@ char* SeqNode_getTypeString( SeqNodeType _node_type ) {
       case Loop:
          typePtr = LoopTypeString;
          break;
-      case Case:
-         typePtr = CaseTypeString;
-         break;
-      case CaseItem:
-         typePtr = CaseItemTypeString;
+      case ForEach:
+         typePtr = ForEachTypeString;
          break;
       case Switch:
          typePtr = SwitchTypeString;
@@ -121,48 +138,61 @@ void SeqNode_setContainer ( SeqNodeDataPtr node_ptr, const char* container ) {
 }
 
 void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
-   char *tmpstrtok=NULL;
-   char *tmpCpu=NULL;
+   char tmpstrtok[10];
+   char * strPtr=cpu;
+   int value1=0, value2=0,value3=0;
+   size_t x_count=0;
    if ( cpu != NULL ) {
       free( node_ptr->cpu );
       if (node_ptr->cpu = malloc( strlen(cpu) + 1 )){
           strcpy( node_ptr->cpu, cpu );
-          tmpCpu=strdup(cpu);
       } else {
           raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-      }
-  
-      /* parse NPEX */
-      tmpstrtok = (char*) strtok( tmpCpu, "x" );
-      if ( tmpstrtok != NULL ) {
-          free( node_ptr->npex );
-	  if (node_ptr->npex=malloc( strlen(tmpstrtok) +1)){ 
-              strcpy(node_ptr->npex, tmpstrtok);
-          } else {
-              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-          }
-      }
-      /* NPEY */
-      tmpstrtok = (char*) strtok( NULL, "x" );
-      if ( tmpstrtok != NULL ) {
-          free( node_ptr->npey );
-	  if (node_ptr->npey=malloc( strlen(tmpstrtok) +1)){ 
-   	     strcpy(node_ptr->npey, tmpstrtok);
-          } else {
-              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-          }
-      }
-      /* OMP */
-      tmpstrtok = (char*) strtok( NULL, "x" );
-      if ( tmpstrtok != NULL ) {
-          free( node_ptr->omp );
-	  if (node_ptr->omp=malloc( strlen(tmpstrtok) +1)){ 
-  	      strcpy(node_ptr->omp, tmpstrtok);
-          } else {
-              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
-          }
-      }
-   free (tmpCpu);
+      }  
+
+      /*find count of "x" separator*/
+      for (x_count=0; strPtr[x_count]; strPtr[x_count]=='x' ? x_count++ : *(strPtr++));
+
+      SeqUtil_TRACE( "SeqNode_setCpu() cpu=%s, x-separator count=%d\n",cpu,x_count);
+
+      switch (x_count) {
+         case 0:
+            if (sscanf(cpu,"%d",&value1) == 1 ) {
+               /* 1 value matching, so value1 = OMP when not mpi, npex when mpi, resetting the other value in case*/ 
+               if (node_ptr->mpi == 0) { 
+                  free( node_ptr->npex);
+                  free( node_ptr->omp); 
+                  (node_ptr->omp=malloc(10)) !=NULL ? snprintf( node_ptr->omp,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+                  node_ptr->npex=strdup("1");
+               } else {
+                  free( node_ptr->npex); 
+                  free( node_ptr->omp); 
+                  (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+                  node_ptr->omp=strdup("1");
+               }
+            } else  raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+            break ; 
+         case 1: 
+            if (sscanf(cpu,"%dx%d",&value1, &value2) == 2 ) {
+               /* 2 value matching, so value1=npex; value2 = OMP */ 
+               free( node_ptr->npex); 
+               free( node_ptr->omp); 
+               (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+               (node_ptr->omp=malloc(10)) !=NULL ? snprintf( node_ptr->omp,10,"%d",value2) : raiseError("OutOfMemory Exception"); 
+            }   else  raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+            break ; 
+         case 2: 
+            if (sscanf(cpu,"%dx%dx%d",&value1, &value2, &value3) == 3) {
+               free( node_ptr->npex); 
+               free( node_ptr->npey); 
+               free( node_ptr->omp); 
+               (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
+               (node_ptr->npey=malloc(10)) !=NULL ? snprintf( node_ptr->npey,10,"%d",value2) : raiseError("OutOfMemory Exception"); 
+               (node_ptr->omp=malloc(10)) !=NULL ? snprintf( node_ptr->omp,10,"%d",value3) : raiseError("OutOfMemory Exception"); 
+            } else   raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+            break ; 
+         default: raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
+      } 
    }
 }
 
@@ -196,6 +226,17 @@ void SeqNode_setMachine ( SeqNodeDataPtr node_ptr, const char* machine ) {
           strcpy( node_ptr->machine, machine );
       } else {
           raiseError("OutOfMemory exception in SeqNode_setMachine()\n");
+      }
+   }
+}
+
+void SeqNode_setShell ( SeqNodeDataPtr node_ptr, const char* shell ) {
+   if ( shell != NULL ) {
+      free( node_ptr->shell );
+      if (node_ptr->shell = malloc( strlen(shell) + 1 )){
+         strcpy( node_ptr->shell, shell );
+      } else {
+         raiseError("OutOfMemory exception in SeqNode_setShell()\n");
       }
    }
 }
@@ -544,42 +585,44 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
    char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end, *tmpExpression = expression;
    char *defFile = NULL, *value = NULL;
    
+   SeqUtil_TRACE( "SeqNode_addNumLoop() input loop_name=%s, start=%s, step=%s, set=%s, end=%s, expression=%s, \n",loop_name, start, step, set, end, expression );
+
    defFile = malloc ( strlen ( node_ptr->expHome ) + strlen("/resources/resources.def") + 1 );
    sprintf( defFile, "%s/resources/resources.def", node_ptr->expHome );
    
    if (strcmp(tmpExpression, "") == 0) {
       if (strstr(start, "${") != NULL) {
-	 if ( (value = SeqUtil_keysub( start, defFile, NULL)) != NULL ){
-	    tmpStart = value;
-	 }
+         if ( (value = SeqUtil_keysub( start, defFile, NULL)) != NULL ){
+            strcpy(tmpStart,value);
+         }
       }
       if (strstr(step, "${") != NULL) {
-	 if ( (value = SeqUtil_keysub( step, defFile, NULL)) != NULL ){
-	    tmpStep = value;
-	 }
+         if ( (value = SeqUtil_keysub( step, defFile, NULL)) != NULL ){
+            strcpy(tmpStep,value);
+         }
       }
       if (strstr(set, "${") != NULL) {
-	 if ( (value = SeqUtil_keysub( set, defFile, NULL)) != NULL ){
-	    tmpSet = value;
-	 }
+         if ( (value = SeqUtil_keysub( set, defFile, NULL)) != NULL ){
+            strcpy(tmpSet,value);
+         }
       }
       if (strstr(end, "${") != NULL) {
-	 if ( (value = SeqUtil_keysub( end, defFile, NULL)) != NULL ){
-	    tmpEnd = value;
-	 }
+         if ( (value = SeqUtil_keysub( end, defFile, NULL)) != NULL ){
+            strcpy(tmpEnd,value);
+         }
       }
    } else {
       if (strstr(expression, "${") != NULL) {
-	 if ( (value = SeqUtil_keysub( expression, defFile, NULL)) != NULL ){
-	    tmpExpression = value;
-	 }
+         if ( (value = SeqUtil_keysub( expression, defFile, NULL)) != NULL ){
+            strcpy(tmpExpression,value);
+         }
       }
    }
    
    if (strcmp(tmpExpression, "") == 0) {
-      SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, start, step, set, tmpEnd );
+      SeqUtil_TRACE( "SeqNode_addNumLoop() resulting loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, tmpStart, tmpStep, tmpSet, tmpEnd );
    } else {
-      SeqUtil_TRACE( "SeqNode_addNumLoop() loop_name=%s, expression:%s, \n",loop_name, expression );
+      SeqUtil_TRACE( "SeqNode_addNumLoop() resulting loop_name=%s, expression:%s, \n",loop_name, expression );
    }
 
    loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
@@ -630,6 +673,44 @@ void SeqNode_setError ( SeqNodeDataPtr node_ptr, const char* message ) {
    }
 }
 
+void SeqNode_initForEachTarget( SeqForEachTargetPtr target ) {
+   target->index = NULL;
+   target->exp = NULL;
+   target->hour = NULL;
+   target->node = NULL;
+}
+
+void SeqNode_freeForEachTarget( SeqForEachTargetPtr target) {
+   if (target != NULL) {
+      free(target->index); 
+      free(target->exp); 
+      free(target->hour); 
+      free(target->node); 
+      free(target); 
+   }
+} 
+
+void SeqNode_setForEachTarget(SeqNodeDataPtr nodePtr, const char * t_node,  const char * t_index,  const char * t_exp,  const char * t_hour) {
+
+   SeqForEachTargetPtr forEachTargetPtr = NULL; 
+   if (nodePtr->forEachTarget != NULL) {
+      SeqNode_freeForEachTarget(nodePtr->forEachTarget);
+   }
+
+   if (forEachTargetPtr = malloc( sizeof( SeqForEachTarget ) )){
+      nodePtr->forEachTarget = forEachTargetPtr;
+      SeqNode_initForEachTarget ( nodePtr->forEachTarget );
+   }  else {
+      raiseError("OutOfMemory exception in SeqNode_setForEachTarget()\n");
+   }
+
+   if (t_node != NULL) nodePtr->forEachTarget->node=strdup(t_node); 
+   if (t_index != NULL) nodePtr->forEachTarget->index=strdup(t_index); 
+   if (t_exp != NULL) nodePtr->forEachTarget->exp=strdup(t_exp); 
+   if (t_hour != NULL) nodePtr->forEachTarget->hour=strdup(t_hour); 
+
+} 
+
 void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->type = Task;
    nodePtr->name = NULL;
@@ -646,9 +727,9 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->memory = NULL;
    nodePtr->silent = 0;
    nodePtr->catchup = 4;
-   nodePtr->wallclock = 3;
+   nodePtr->wallclock = 5;
    nodePtr->mpi = 0;
-   nodePtr->isLastNPTArg = 0;
+   nodePtr->isLastArg = 0;
    nodePtr->cpu_multiplier = NULL;
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
@@ -668,18 +749,20 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->datestamp = NULL;
    nodePtr->submitOrigin = NULL;
    nodePtr->switchAnswers = NULL;
+   nodePtr->forEachTarget = NULL;
    nodePtr->workdir = NULL;
    nodePtr->workerPath= NULL;
+   nodePtr->shell= NULL;
    SeqNode_setName( nodePtr, "" );
    SeqNode_setContainer( nodePtr, "" );
    SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
    SeqNode_setPathToModule( nodePtr, "" );
-   SeqNode_setCpu( nodePtr, "1" );
+   SeqNode_setCpu( nodePtr, "1x1x1" );
    SeqNode_setCpuMultiplier( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
    SeqNode_setMachine( nodePtr, "" );
-   SeqNode_setMemory( nodePtr, "200M" );
+   SeqNode_setMemory( nodePtr, "300M" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
    SeqNode_setWorkerPath( nodePtr, "");
@@ -689,6 +772,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setExtension( nodePtr, "" );
    SeqNode_setDatestamp( nodePtr, "" );
    SeqNode_setWorkdir( nodePtr, "" );
+   SeqNode_setShell( nodePtr, "" );
    nodePtr->error = 0;
    nodePtr->errormsg = NULL;
 }
@@ -836,8 +920,14 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
          SeqUtil_printOrWrite(filename,"node.sibling=%s\n", siblingsPtr->data);
          siblingsPtr = siblingsPtr->nextPtr;
       }
-   }
 
+      if( node_ptr->type == ForEach ) {
+         if (node_ptr->forEachTarget->node != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.node=%s\n", node_ptr->forEachTarget->node );
+         if (node_ptr->forEachTarget->index != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.index=%s\n", node_ptr->forEachTarget->index );
+         if (node_ptr->forEachTarget->exp != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.exp=%s\n", node_ptr->forEachTarget->exp );
+         if (node_ptr->forEachTarget->hour != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.hour=%s\n", node_ptr->forEachTarget->hour );
+      }
+   }
    if (showDependencies) SeqNode_printDependencies(node_ptr, filename, 1);
 
    if (showVar) {
@@ -962,6 +1052,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->switchAnswers)) ;
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->data ));
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->loop_args ));
+      SeqNode_freeForEachTarget(seqNodeDataPtr->forEachTarget);
       free( seqNodeDataPtr );
    }
 }
@@ -1047,10 +1138,10 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    } 
 
    loopArgsPtr = _nodeDataPtr->loop_args;
-   /* Check for :last NPT arg */
-   if (_nodeDataPtr->isLastNPTArg){
+   /* Check for ^last arg */
+   if (_nodeDataPtr->isLastArg){
       tmpValue=SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName); 
-      /*remove the :last, raise flag that node has a :last*/
+      /*remove the ^last, raise flag that node has a ^last*/
       stringLength=strlen(tmpValue)-5;
       if (tmp2Value=malloc(stringLength+1)) {
           memset(tmp2Value,'\0', stringLength+1);
@@ -1091,12 +1182,14 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    SeqUtil_printOrWrite( filename, "export SEQ_SHORT_DATE=%s\n", shortdate); 
 
    /* check for the presence of a "rerun" file to determine rerun status */
+   /* TODO find a way for nodeinfo to figure out whether this access is going through the server or not..., check function pointers else it will return a memfault  
    memset(lockFile,'\0',sizeof lockFile);
    sprintf(lockFile,"%s/%s/%s.abort.rerun",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, extName);
       if ( _access(lockFile, R_OK) == 0 ) {
-	isRerun = 1;
+	      isRerun = 1;
       }
    SeqUtil_printOrWrite( filename, "export SEQ_RERUN=%d\n", isRerun );
+   */
 
    free(tmpdir);
    free(tmpValue);

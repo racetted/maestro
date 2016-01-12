@@ -1,3 +1,23 @@
+/* QueryServer.c - Basic server code the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/param.h>
@@ -46,7 +66,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
            case SVR_IS_FILE_EXISTS:
                             sprintf(buffer,"F %s",buf);
 	                    break;
-           case SVR_GLOBPATERN:
+           case SVR_GLOB_PATTERN_COUNT:
                             sprintf(buffer,"G %s",buf);
 	                    break;
            case SVR_MKDIR:
@@ -145,8 +165,8 @@ int revert_nfs (  const char * buf , ServerActions action , const char *buf2 )
 		                fprintf(stderr,"Nfs Routine: SVR_IS_FILE_EXISTS cmd=%s\n",buf); 
 			        ret=isFileExists_nfs(buf,"from Querey_server" ) ;
 	                        break;
-                      case SVR_GLOBPATERN:
-		                fprintf(stderr,"Nfs Routine: SVR_GLOBPATERN cmd=%s\n",buf); 
+                      case SVR_GLOB_PATTERN_COUNT:
+		                fprintf(stderr,"Nfs Routine: SVR_GLOB_PATTERN_COUNT cmd=%s\n",buf); 
 			        ret=globPath_nfs (buf, GLOB_NOSORT, 0);
 	                        break;
                       case SVR_MKDIR:

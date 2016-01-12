@@ -1,112 +1,113 @@
-#include <stdlib.h>
+/* logreader_main.c - Command-line API for the logreader and statistics tool used in the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
+#include <time.h>
+#include <fcntl.h>
 #include "logreader.h"
+#include <errno.h>
 
 static void printUsage()
 {
    printf("Logreader usage:\n");
-   printf("     log reader -i inputfile [-o outputfile -n node -l loopargs -s signal -a start_offset -z end_offset -v]\n");
+   printf("     logreader ([-i inputfile] [-t type] [-o outputfile] | -t avg [-n days]) [-e exp] [-d datestamp] [-v] [-c] \n");
    printf("         where:\n");
-   printf("         inputfile    is the logfile to read (mandatory)\n");
-   printf("         outputfile   is the file where the output is written to (optional)\n");
-   printf("         node         is full path of task or family node (optional)\n");
-   printf("         -v           verbosity level\n");
-   printf("         loopargs     is a comma separated list of loop arguments (optional)\n");
-   printf("         signal       is one of:\n");
-   printf("            submit begin end abort initbranch initnode\n");
-   printf("         start_offset is the offset value where to start reading (optional)\n");
-   printf("         end_offset   is theoffset value where to stop reading (optional)\n");
-   exit(1);
+   printf("            -i inputfile     the logfile to read (default ${SEQ_EXP_HOME}/logs/${datestamp}_nodelog)\n");
+   printf("            -t type          the output filter. log (statuses & stats, used for xflow), statuses, stats or avg (default is log)\n");
+   printf("            -o outputfile    the file where the stats are logged (if defined)\n");
+   printf("            -e exp           the experiment path (default is SEQ_EXP_HOME env. variable)\n");
+   printf("            -d datestamp     the initial date for averages computation, or simply the target datestamp\n");
+   printf("            -n days          used with -t avg to define the number of days for the averages since \"datestamp\" (default is 7). This is a 10%% truncated average to account for extremes.\n");
+   printf("            -v               verbose mode\n");
+   printf("            -c               check if output file is present before trying to write. Will not write if file is present.\n");
+   printf("\nStandard usage:\n"); 
+   printf("            logreader -d $datestamp             will read that experiment's log, output the statuses and stats to stdout \n"); 
+   printf("            logreader -d $datestamp -t stats    will read that experiment's log, create a statistics file (default ${SEQ_EXP_HOME}/stats/${datestamp}\n"); 
+   printf("            logreader -d $datestamp -t avg      will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
 }
 
-#ifdef Mop_linux
-main_logreader ( int argc, char * argv[] )
-#else
 main ( int argc, char * argv[] )
-#endif
 {
-   extern char *optarg;
-   char *loops=NULL, *inputfile=NULL, *outputfile=NULL, *signal=NULL, *node=NULL;
-   char *a_buffer=NULL, *z_buffer=NULL;
-   int start_offset=0, end_offset=0; 
-   SeqNameValuesPtr loopsArgs = NULL;
-   int gotSignal = 0, gotLoops = 0, nodeFound = 0, c;
-   int result;
-   
+   char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL; 
+   int stats_days=7, c, clobberFile=1; 
+
    if ( argc == 1 || argc == 2) {
       printUsage();
+      exit(1);
    }
    
-   while ((c = getopt(argc, (char* const*) argv, "i:o:n:l:s:a:z:v")) != -1) {
-         switch(c) {
-         case 'n':
-            node = malloc( strlen( optarg ) + 1 );
-            strcpy(node,optarg);
-            nodeFound = 1;
-            break;
-         case 'i':
-            inputfile = malloc( strlen( optarg ) + 1 );
-            strcpy(inputfile,optarg);
-            break;
-         case 'o':
-            outputfile = malloc( strlen( optarg ) + 1 );
-            strcpy(outputfile,optarg);
-            break;
-         case 'v':
-            SeqUtil_setTraceLevel(1);
-            break;
-         case 's':
-            signal = malloc( strlen( optarg ) + 1 );
-            strcpy(signal,optarg);
-            gotSignal = 1;
-            break;
-         case 'a':
-            a_buffer = malloc( strlen( optarg ) + 1 );
-	    strcpy(a_buffer,optarg);
-            start_offset=atoi(a_buffer);
-            break;
-         case 'z':
-            z_buffer = malloc( strlen( optarg ) + 1 );
-	    strcpy(z_buffer,optarg);
-            end_offset=atoi(z_buffer);
-            break;
-         case 'l':
-            /* loops argument */
-            gotLoops=1;
-            loops = malloc( strlen( optarg ) + 1 );
-            strcpy(loops,optarg);
-            if( SeqLoops_parseArgs( &loopsArgs, loops ) == -1 ) {
-               fprintf( stderr, "ERROR: Invalid loop arguments: %s\n", loops );
-               exit(1);
-            }
-            break;
-         case '?':
-            printUsage();
-         }
+   while ((c = getopt(argc, (char* const*) argv, "i:t:n:o:d:e:vc")) != -1) {
+      switch(c) {
+	   case 'i':
+         inputFile=strdup( optarg );
+         break;
+	   case 't':
+	      type = strdup(optarg);
+	      break;
+	   case 'n':
+	      stats_days = atoi(optarg);
+	      break;
+	   case 'o':
+	      outputFile = strdup(optarg);
+	      break;
+	   case 'd':
+	      datestamp = strdup(optarg); 
+	      break;
+	   case 'e':
+	      exp = strdup(optarg);
+	      break;
+	   case 'v':
+	      SeqUtil_setTraceLevel(1);
+	      break;
+      case 'c':
+         clobberFile=0;
+	      break;
+    }
+
    }
 
-   if ( inputfile == NULL ) {
-      printUsage();
+   if (datestamp == NULL) { 
+      if (getenv("SEQ_DATE") == NULL) {
+         raiseError("-d or SEQ_DATE must be defined.\n");
+      } else {
+         datestamp=strdup(getenv("SEQ_DATE")); 
+      }
+   }
+
+   if (exp == NULL) {
+      if (getenv("SEQ_EXP_HOME") == NULL) {
+         raiseError("-e or SEQ_EXP_HOME must be defined.\n");
+      } else {
+         exp=strdup(getenv("SEQ_EXP_HOME"));
+      }
    }
    
-   if ( gotLoops ) {
-      loops = SeqLoops_getExtFromLoopArgs(loopsArgs);
-      SeqUtil_TRACE("logreader: loop arguments detected, extension: %s\n", loops);
-   }
-   
-   result = logreader( inputfile, outputfile, node, loops, signal, start_offset, end_offset );
-   if (result != 0) {
-      SeqUtil_TRACE("logreader: ERROR while reading input file %s, formatted output might not be complete\n", inputfile);
-   }
-   
-   free(node);
-   free(inputfile);
-   free(outputfile);
-   free(signal);
-   free(loops);
-   free(a_buffer);
-   free(z_buffer);
-   
-   return 0;
+   logreader(inputFile,outputFile,exp,datestamp,type,stats_days,clobberFile);
+
+   if ( type != NULL) free(type); 
+   if ( exp != NULL) free(exp); 
+   if ( datestamp != NULL) free(datestamp); 
+   if ( inputFile != NULL ) free(inputFile);
+   if ( outputFile != NULL ) free(outputFile);
+
 }

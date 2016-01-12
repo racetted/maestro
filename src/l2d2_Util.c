@@ -1,3 +1,24 @@
+/* l2d2_Util.c - Utility functions for server code of the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -584,7 +605,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 		      }
                }
                fprintf(stderr,"Setting Defaults for web directory:%s\n",pl2d2->web);
-	       sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web,pl2d2->mversion);
+	       sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
 	       sprintf(pl2d2->emailTO,"%s@ec.gc.ca",pl2d2->user);
 	       sprintf(pl2d2->emailCC,"");
 	       pl2d2->maxNumOfProcess=4;

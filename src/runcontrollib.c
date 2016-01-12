@@ -1,50 +1,35 @@
-#define _REGEX_RE_COMP
-#include <stdio.h>
-#include <ctype.h>
+/* runcontrollib.c - Utility functions for logging, for the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdarg.h>
-#include <rpnmacros.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <libgen.h>
-#include <regex.h>
 #include "runcontrollib.h"
 #include "nodelogger.h"
 #include "SeqUtil.h"
-extern char *__loc1; /* needed for regex */
-
-
-/********************************************************************************
-*CopyStrTillCarac: copy 'original' from the beginning of the string till the
-* caracter 'c' into 'result'
-********************************************************************************/
-void CopyStrTillCarac(char *result, const char *original, char c)
-{
-  while (*original) {
-     if (*original != c) {
-        *result=*original;
-     } else {
-        result++;
-        break;
-     }
-     original++;
-     result++;
-  }
-  *result = '\0' ;
-}
 
 /***************************************************************
 *nodewait: send 'wait' message to operational logging system.
 ****************************************************************/
-// void nodewait(char *job,char *jobw)
 void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, const char *datestamp)
 {
-   /* This is needed so messages will be logged into CMCNODELOG */ 
-   putenv("CMCNODELOG=on"); 
    nodelogger(node_ptr->name,"wait",node_ptr->extension,msg,datestamp);
 }
 
@@ -60,9 +45,6 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, const char *da
 {
    char jobID[50];
    char message[300];
-
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
 
    memset(jobID, '\0', sizeof jobID);
    if (getenv("JOB_ID") != NULL){
@@ -95,13 +77,11 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
    memset(message,'\0',sizeof message);
    cpu = (char *) SeqUtil_cpuCalculate(node_ptr->npex,node_ptr->npey,node_ptr->omp,node_ptr->cpu_multiplier);
 
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
-   /* containers use TRUE_HOST for execution */
+   /* containers use TRUE_HOST for execution ... TODO check if immediate or exec or submit modes*/
    if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {
    sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method:%s soumetArgs=\"%s\"",node_ptr->machine, node_ptr->queue, node_ptr->cpu, node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin,  node_ptr->soumetArgs);
    } else {
-   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" in IMMEDIATE mode",getenv("TRUE_HOST"), node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
+   sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" container mode",node_ptr->machine, node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
    }
 
    SeqUtil_TRACE("nodesubmit.Message=%s",message);
@@ -124,8 +104,6 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *
    char message[300];
    char jobID[50];
    
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
    
    memset(hostname, '\0', sizeof hostname);
    gethostname(hostname,sizeof hostname);
@@ -139,9 +117,7 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *
    }
    
    memset(message,'\0',sizeof message);
-   //sprintf(message,"BEGINS host=%s",hostname);
    sprintf(message,"host=%s job_ID=%s",hostname,jobID);
-   //nodelogger(job,'X',message);
    /* nodelogger(job,"begin",message); */
    nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp);
 }
@@ -204,8 +180,6 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 
    job = _nodeDataPtr->name;
    loopExt = _nodeDataPtr->extension;
-   /* This is needed so messages will be logged into CMCNODELOG */
-   putenv("CMCNODELOG=on");
 
 	memset(buf,'\0',sizeof buf);
 
@@ -237,47 +211,4 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
    free(thisAbortType);
 }
 
-
-
-/********************************************************************************
-*match:Match 'string' against the extended regular expression in 'pattern',
-* treating errors as no match.
-* Return 1 for match, 0 for no match.
-********************************************************************************/
-int match(const char *string, char *pattern)
-{
-
-#if defined(Mop_linux)
-
- char *ptr = NULL;
- int re;
-
- ptr = (char *) re_comp(pattern);
- if ( ptr != NULL) {
-    return(0); /* report error */
- }
-
- re = re_exec(string);
- return(re);
-
-#else
-
- char *ptr = NULL;
- char *re = NULL;
-
- ptr = (char *) regcmp(pattern,(char *) 0);
- if ( ptr == NULL) {
-    return(0); /* report error */
- }
-
- re = regex(ptr,string);
- free(ptr);
- if ( re == NULL) {
-    return(0); /* report error */
- }
-  
- return(1);  
-#endif
-
-}
 

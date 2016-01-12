@@ -1,3 +1,24 @@
+/* SeqLoopsUtil.c - Utility functions for loops in the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -52,6 +73,7 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
       if ( strlen( loopName ) == 0 || strlen( loopValue ) == 0 ) {
          isError = -1;
       } else {
+         SeqUtil_TRACE("SeqLoops_parseArgs inserted %s = %s\n", loopName, loopValue ); 
          SeqNameValues_insertItem( nameValuesPtr, loopName, loopValue );
       }
       tmpstrtok = (char*) strtok(NULL,",");
@@ -73,7 +95,7 @@ char* SeqLoops_getExtensionBase ( SeqNodeDataPtr _nodeDataPtr ) {
    int containerCount = 0;
    SeqLoopsPtr loopsContainerPtr = _nodeDataPtr->loops;
    work_string = strdup(_nodeDataPtr->extension);
-   if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ||  _nodeDataPtr->type == Switch  ) {
+   if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ||  _nodeDataPtr->type == Switch || _nodeDataPtr->type == ForEach ) {
       while( loopsContainerPtr != NULL ) {
          containerCount++;
          loopsContainerPtr = loopsContainerPtr->nextPtr;
@@ -267,7 +289,7 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
 
 
 
-/* return the loop container extension values that the current node is in.
+/* return the loop container extension values that the current node is in. (ex: +3+1 -> +3+2 -> +3+3) 
  * Current node must be a loop node.
    To be used to check if a loop parent node is done,
    assuming that extension is set in  _nodeDataPtr->extension */
@@ -764,31 +786,31 @@ SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
       
       tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
       if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-	 _i=0;
-	 tmpArrayValue = strtok (tmpExpression,":,");
-	 while (tmpArrayValue != NULL) {
-	    expressionArray[_i] = atoi(tmpArrayValue);
-	    /*End is the biggest number of the expression*/
-	    if (expressionArray[_i]>detectedEnd)
-	       detectedEnd=expressionArray[_i];
-	    _i++;
-	    tmpArrayValue = strtok (NULL,":,");
-	 }
-	 detectedStart=detectedEnd;
-	 for (_j=0; _j<_i; _j=_j+4) {
-	    if(expressionArray[_j]<detectedStart){
-	       detectedStart=expressionArray[_j];
-	    }
-	 }
-	 loopStart = (char *) detectedStart;
-	 fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
-	 SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
-	 
+         _i=0;
+         tmpArrayValue = strtok (tmpExpression,":,");
+         while (tmpArrayValue != NULL) {
+            expressionArray[_i] = atoi(tmpArrayValue);
+            /*End is the biggest number of the expression*/
+            if (expressionArray[_i]>detectedEnd)
+               detectedEnd=expressionArray[_i];
+            _i++;
+            tmpArrayValue = strtok (NULL,":,");
+         }
+         detectedStart=detectedEnd;
+         for (_j=0; _j<_i; _j=_j+4) {
+            if(expressionArray[_j]<detectedStart){
+               detectedStart=expressionArray[_j];
+            }
+         }
+         loopStart = (char *) detectedStart;
+         fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
+         SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
+ 
       } else {
       
-	 loopStart = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" );
-	 fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
-	 SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
+         loopStart = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" );
+         fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
+         SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
       }
    }
    free( loopStart );
@@ -967,14 +989,14 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
    char *loopExtension = NULL;
    char *tmpValue=NULL; 
 
-   /* Check for :last NPT arg */
+   /* Check for :last NPT or ForEach arg */
    tmpValue=SeqNameValues_getValue(_loop_args, _nodeDataPtr->nodeName); 
-   if  (_nodeDataPtr->type == NpassTask && tmpValue != NULL){
-         /*raise flag that node has a ^last*/
-         if ( strstr (tmpValue, "^last" ) !=NULL) {
-            _nodeDataPtr->isLastNPTArg=1; 
-         }
-    }
+   if  ( (_nodeDataPtr->type == NpassTask || _nodeDataPtr->type == ForEach ) && tmpValue != NULL){
+      /*raise flag that node has a ^last*/
+      if ( strstr (tmpValue, "^last" ) !=NULL) {
+         _nodeDataPtr->isLastArg=1; 
+      }
+   }
 
    /* validate loop containers */
    if( loopsPtr != NULL ) {
@@ -994,7 +1016,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
    }
 
    /* build extension for current node if loop */
-   if( _nodeDataPtr->type == Loop ||  _nodeDataPtr->type == NpassTask  ||  _nodeDataPtr->type == Switch ) {
+   if( _nodeDataPtr->type == Loop ||  _nodeDataPtr->type == NpassTask  ||  _nodeDataPtr->type == Switch || _nodeDataPtr->type == ForEach ) {
       loopArgsTmpPtr = _loop_args;
       while( loopArgsTmpPtr != NULL ) {
          if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {

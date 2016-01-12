@@ -1,3 +1,23 @@
+/* nodelogger.c - Log writing functions of the Maestro sequencer software package.
+ * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+ *                          Environment Canada
+ *
+ * Maestro is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation,
+ * version 2.1 of the License.
+ *
+ * Maestro is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,7 +184,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        sa.sa_flags = 0; /* was SA_RESTART  */
        sigemptyset(&sa.sa_mask);
        /* register signals */
-       if ( sigaction(SIGALRM,&sa,NULL) == -1 ) fprintf(stderr,"Nodelooger::error in registring SIGALRM\n");
+       if ( sigaction(SIGALRM,&sa,NULL) == -1 ) fprintf(stderr,"Nodelogger::error in registring SIGALRM\n");
     } else {
        SeqUtil_TRACE( "\n================= NODELOGGER: TRYING TO USE CONNECTION FROM MAESTRO PROCESS IF SERVER IS UP signal:%s================== \n",type);
        if ( MLLServerConnectionFid > 0 ) {
@@ -451,6 +471,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
        if ( (dp=opendir(lpath)) == NULL ) {
           fprintf(stderr,"Nodelogger::Cannot open dir:%s\n",lpath);
           loop=loop+1;
+          usleep(100);
           continue; 
        }
        while ( d=readdir(dp)) {
