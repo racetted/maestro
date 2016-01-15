@@ -26,6 +26,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
 #include <pwd.h>
@@ -45,6 +47,19 @@
 int SEQ_TRACE = 0;
 
 void raiseError(const char* fmt, ... );
+
+#define SEQ_MAXFILES 100
+
+
+struct mappedFile{
+  char* filename;  
+  char* filestart; /* First char of file */
+  char* fileend;   /* One byte past the end of file (so that end - start = size)*/
+};
+
+/* Maybe have def files and cfg files to speedup the lookup process */
+static struct mappedFile mappedFiles[SEQ_MAXFILES];
+static int nbMappedFiles = 0;
 
 
 /********************************************************************************
@@ -535,44 +550,162 @@ char* SeqUtil_getdef( const char* filename, const char* key ) {
   return retval;
 }
 
-/* parser for .def simple text definition files (free return pointer in caller)*/
-char* SeqUtil_parsedef( const char* filename, const char* key ) {
-  FILE* deffile;
-  char *retval=NULL;
-  int iterator=0;
-  char line[SEQ_MAXFIELD],defkey[SEQ_MAXFIELD],defval[SEQ_MAXFIELD];
+/********************************************************************************
+ * Function that manages memory mapped files.  We verify if the file is already 
+ * in memory.  
+ * If it is not, the file is opened and mapped into memory.
+ * In either case, a pointer is returned to where the file resides in memory.
+ * NOTE: The variable may need to be changed from static to global 
+ * to allow another function to do cleanup.  That or have an extra parameter so
+ * that will tell the function to do unmap on all the files.
+********************************************************************************/
+int SeqUtil_getmappedfile(const char *filename, char ** filestart , char** fileend){
+  extern struct mappedFile mappedFiles[SEQ_MAXFILES];
+  extern nbMappedFiles;
+  int status = 0;
 
-  if ( (deffile = fopen( filename, "r" )) != NULL ){
-    memset(defkey,'\0',sizeof defkey);
-    memset(defval,'\0',sizeof defval);
-    while ( fgets( line, sizeof(line), deffile ) != NULL ) {
-      if ( strstr( line, "#" ) != NULL ) {
-  	      continue;
-      }
-      if ( sscanf( line, " %[^= ] = %[^\n]", defkey, defval ) == 2 ){
-	       if ( strcmp( key, defkey ) == 0 ) {
-    	       fclose(deffile);
-             iterator = strlen(defval);
-             /* remove trailing whitespace */
-             while ((defval[iterator] == ' ')||(defval[iterator] == '\0')) {
-                 defval[iterator]='\0';
-                 --iterator;
-             }
-  	          if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
-	              raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
-  	          }
-	          strcpy(retval,defval);
-	          SeqUtil_TRACE("SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
-	          return retval;
-	       }
-      }
-      defkey[0] = '\0';
-      defval[0] = '\0';
+  /* Find the file if it is mapped */
+  int i;
+  for(i = 0; i < nbMappedFiles; ++i) {
+    /* If the file is found, return pointer to where it is mapped and filesize */
+    if(strcmp(mappedFiles[i].filename, filename) == 0) {
+      SeqUtil_TRACE("getmappedfile(): File %s was found in mmapped files\n",filename);
+      *filestart = mappedFiles[i].filestart;
+      *fileend = mappedFiles[i].fileend;
+      return 0;
     }
-    fclose(deffile);
-  } else {
-    SeqUtil_TRACE("SeqUtil_parsedef(): unable to open definition file %s\n",filename);
   }
+
+  /* if it is not found, open it, map it, close it,add it to the list and return
+   * the pointers. */
+
+  /* Open the file  */
+  int fd = open(filename,O_RDONLY|O_NONBLOCK);
+  if(fd == -1){
+    SeqUtil_TRACE("SeqUtil_getmappedfile(): Could not open file %s for definition lookup \n", filename);
+    return 1;
+  }
+
+  /* Get the size of the file */
+  struct stat fileStat;
+  if(fstat(fd,&fileStat) == -1){
+    SeqUtil_TRACE("SeqUtil_getmappedfile(): Error getting stats for file %s \n", filename);
+    return 1;
+  }
+
+  /* Map the file and close it */
+  char* addr = mmap(NULL, fileStat.st_size, PROT_READ, MAP_SHARED, fd, 0); 
+  close(fd);
+  if(addr == MAP_FAILED){
+    SeqUtil_TRACE("SeqUtil_getmappedfile(): Error mapping file %s into memory \n", filename);
+    return 1;
+  }
+  SeqUtil_TRACE("getmappedfile(): Mapped file %s into memory using file descriptor %d \n", filename, fd);
+
+  /* Add it to the list */
+  /* Filename */
+  mappedFiles[nbMappedFiles].filename = (char*)malloc(strlen(filename) + 1);
+  strcpy(mappedFiles[nbMappedFiles].filename, filename);
+  /* Address */
+  *filestart = mappedFiles[nbMappedFiles].filestart = addr; 
+  /* Filesize */
+  *fileend = mappedFiles[nbMappedFiles].fileend = addr + fileStat.st_size;
+  ++nbMappedFiles;
+
+  return 0 ;
+}
+
+/********************************************************************************
+ * Function for cleanup on program end: Unmaps all the files that were mapped
+ * into memory. 
+********************************************************************************/
+SeqUtil_unmapfiles()
+{
+  extern struct mappedFile mappedFiles[SEQ_MAXFILES];
+  extern int nbMappedFiles;
+  int filesize;
+
+  while(nbMappedFiles-- > 0)
+  {
+    filesize = mappedFiles[nbMappedFiles].fileend - mappedFiles[nbMappedFiles].filestart;
+    munmap(mappedFiles[nbMappedFiles].filestart, filesize);
+  }
+}
+
+/********************************************************************************
+ * Reads one line from a source into line of length size
+ * Returns -1 if the line to copy is too big for the destination 
+********************************************************************************/
+int readline(char *line, int size, char* source)
+{
+  unsigned long int i = 0;
+  register char c;
+  while((c = source[i]) != '\n'&& c != '\0') {
+    line[i++] = c;
+    if(i >= size) {
+      raiseError("readline(): Buffer is too small to receive line from source\n");
+      return -1;
+    }
+  }
+  line[i] = '\0';
+  return i;
+}
+
+/********************************************************************************
+ * parser for .def simple text definition files (free return pointer in caller)
+ * Returns NULL if definition was not found 
+********************************************************************************/
+char* SeqUtil_parsedef( const char* filename, const char* key ) {
+  char *retval=NULL;
+  unsigned long int iterator=0;
+  char line[SEQ_MAXFIELD],defkey[SEQ_MAXFIELD],defval[SEQ_MAXFIELD];
+  char *filestart;
+  char *fileend;
+  
+  int status = SeqUtil_getmappedfile(filename, &filestart, &fileend);
+  if(status == 1){
+    SeqUtil_TRACE("SeqUtil_parsdef failed to open/map file %s \n", filename);
+    return NULL;
+  }
+
+  char *current = filestart;
+  /* long int to help the compiler because we will be adding it to a 64 bit pointer */
+  long int readsize = 0;
+
+  do{
+    /* Read a line in memory starting at current */
+    readsize = readline(line, SEQ_MAXFIELD, current);
+    if(readsize < 0)
+      return NULL; /* ( RaiseError will have been called in readline() ) */
+    current += readsize + 1;
+    /* If the string is a comment skip to next */
+    if ( strstr( line, "#" ) != NULL ) {
+      continue;
+    }
+
+    /* Parse the string: put left of "=" into defkey and right into defval */
+    if ( sscanf( line, " %[^= ] = %[^\n]", defkey, defval ) == 2 ){
+      if ( strcmp( key, defkey ) == 0 ) {
+        /* remove trailing whitespace from defval*/
+        iterator = strlen(defval);
+        while ((defval[iterator] == ' ')||(defval[iterator] == '\0')) {
+          defval[iterator]='\0';
+          --iterator;
+        }
+        /* Copy the string into retval for the caller and return it. */
+        if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
+          raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
+        }
+        strcpy(retval,defval);
+        SeqUtil_TRACE("SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
+        return retval;
+      }
+    }
+    defkey[0] = '\0';
+    defval[0] = '\0';
+  }while(current < fileend);
+
+  /* Return NULL if nothing was found as an error code for the caller */
   return NULL;
 }
 
@@ -1036,7 +1169,6 @@ char * SeqUtil_normpath(char *out, const char *in) {
         strcpy(head, "./");
     return head;
 }
-
 
 
 
