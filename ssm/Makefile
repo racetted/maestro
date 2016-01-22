@@ -41,11 +41,16 @@ clean:
 
 install: ssm
 	if [ ! $(domain) ] ; then \
-	  echo "Define installation path with 'domain='" ; \
-	  exit 1 ; \
+		echo "Define installation path with 'domain='" ; \
+		exit 1 ; \
 	fi ; \
 	if [ ! -d $(domain) ] ; then \
 	  ssm created -d $(domain) ; \
+	else \
+		if [ ! -d $(domain)/etc/ssm.d ] ; then \
+			echo "domain: $(domain) must be an ssm domain or a non-existing directory" ; \
+			exit 1 ; \
+		fi ;\
 	fi ; \
 	if [ -d $(domain)/$(SSMPACKAGE) ] ; then \
 	  $(MAKE) uninstall ; \
