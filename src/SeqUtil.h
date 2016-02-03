@@ -30,8 +30,22 @@
 
 #define SEQ_MAXFIELD 2048
 
+/* Multiples of 10 to be able to add levels in between in the future */
+#define TRACE_LEVEL		1
+#define TL_MINIMAL 		10
+#define TL_MEDIUM 		15
+#define TL_ERROR			20
+#define TL_CRITICAL 		30
+
+#define TF_TIMESTAMP 	0x0f01
+
+#define TF_ON	1
+#define TF_OFF 0
+
+
+
 void  raiseError(const char* fmt, ... );
-void  SeqUtil_TRACE (char * fmt, ...) ;
+void  SeqUtil_TRACE( int level,const char * fmt, ...);
 void  SeqUtil_setTraceLevel (int _trace) ;
 int   SeqUtil_getTraceLevel () ;
 void  SeqUtil_checkExpHome (char * _expHome) ;

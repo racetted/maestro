@@ -104,7 +104,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    if ( loop_ext == NULL ) { loop_ext=strdup(""); }
    if ( message  == NULL ) { message=strdup(""); }
     
-   SeqUtil_TRACE( "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
+   SeqUtil_TRACE(TL_MINIMAL, "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
 
    memset(LOG_PATH,'\0',sizeof LOG_PATH);
    memset(TMP_LOG_PATH,'\0',sizeof TMP_LOG_PATH);
@@ -165,7 +165,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     /* if called inside maestro, a connection is already open  */
     tmpfrommaestro = getenv("FROM_MAESTRO");
     if ( tmpfrommaestro == NULL ) {
-       SeqUtil_TRACE( "\n================= NODELOGGER: NOT_FROM_MAESTRO signal:%s================== \n",type);
+       SeqUtil_TRACE(TL_MEDIUM, "\n================= NODELOGGER: NOT_FROM_MAESTRO signal:%s================== \n",type);
        FromWhere = FROM_NODELOGGER;
        if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
           gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
@@ -186,16 +186,16 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        /* register signals */
        if ( sigaction(SIGALRM,&sa,NULL) == -1 ) fprintf(stderr,"Nodelogger::error in registring SIGALRM\n");
     } else {
-       SeqUtil_TRACE( "\n================= NODELOGGER: TRYING TO USE CONNECTION FROM MAESTRO PROCESS IF SERVER IS UP signal:%s================== \n",type);
+       SeqUtil_TRACE(TL_MEDIUM, "\n================= NODELOGGER: TRYING TO USE CONNECTION FROM MAESTRO PROCESS IF SERVER IS UP signal:%s================== \n",type);
        if ( MLLServerConnectionFid > 0 ) {
           FromWhere = FROM_MAESTRO;
           sock = MLLServerConnectionFid;
-          SeqUtil_TRACE( "\n================= NODELOGGER: OK,HAVE A CONNECTION FROM MAESTRO PROCESS ================== \n");
+          SeqUtil_TRACE(TL_MEDIUM, "\n================= NODELOGGER: OK,HAVE A CONNECTION FROM MAESTRO PROCESS ================== \n");
        } else {
         /* it could be that we dont have the env. variable set to use Server */
            FromWhere = FROM_MAESTRO_NO_SVR;
 	   if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
-               SeqUtil_TRACE( "\n================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
+               SeqUtil_TRACE(TL_MEDIUM, "\n================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
                gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
                if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
                  logtocreate = "both";
@@ -205,7 +205,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
                ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
                return;
             } else {
-               SeqUtil_TRACE( "\n================= ACQUIRED A NEW CONNECTION FROM NODELOGGER PROCESS ================== \n");
+               SeqUtil_TRACE(TL_MEDIUM, "\n================= ACQUIRED A NEW CONNECTION FROM NODELOGGER PROCESS ================== \n");
             }
        }
     }
@@ -241,7 +241,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        case FROM_MAESTRO_NO_SVR:
 	   ret=write(sock,"S \0",3);
            close(sock);
-           SeqUtil_TRACE( "\n================= ClOSING CONNECTION FROM NODELOGGER PROCESS ================== \n");
+           SeqUtil_TRACE(TL_MEDIUM, "\n================= ClOSING CONNECTION FROM NODELOGGER PROCESS ================== \n");
 	   break;
        default:
            break;
@@ -336,7 +336,7 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     memset(nodelogger_buf_short, '\0', NODELOG_BUFSIZE );
     memset(nodelogger_buf_notify, '\0', NODELOG_BUFSIZE );
     memset(nodelogger_buf_notify_short, '\0', NODELOG_BUFSIZE );
-    SeqUtil_TRACE ( "\nNODELOGGER node:%s type:%s message:%s\n", node, type, message );
+    SeqUtil_TRACE(TL_MINIMAL, "\nNODELOGGER node:%s type:%s message:%s\n", node, type, message );
 
     if ( loop_ext != NULL ) {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
@@ -452,7 +452,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     Tokendate = atof(Stime);
     snprintf (flock,sizeof(flock),"%s/%s_%s_%u",lpath,Stime,host,pid);
      
-    SeqUtil_TRACE( "\nToken date=%s host=%s pid=%u flock=%s\n",Stime,host,pid,flock);
+    SeqUtil_TRACE(TL_MINIMAL, "\nToken date=%s host=%s pid=%u flock=%s\n",Stime,host,pid,flock);
 
     sprintf (TokenHostPid,"%s_%u",host,pid);
     

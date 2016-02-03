@@ -29,7 +29,7 @@
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
 #include "XmlUtils.h"
-
+#include "SeqUtil.h"
 
 
 
@@ -61,14 +61,14 @@ int catchup_get( char* _expHome) {
    catchupXmlFile = malloc( strlen( _expHome ) + strlen( CATCHUP_XML_FILE ) + 1 );
    sprintf( catchupXmlFile, "%s%s", _expHome, CATCHUP_XML_FILE );
    if ( access(catchupXmlFile, R_OK) == 0 ) {
-      SeqUtil_TRACE ("catchup_get(): loading xml file:%s\n", catchupXmlFile );
+      SeqUtil_TRACE(TL_MINIMAL, "catchup_get(): loading xml file:%s\n", catchupXmlFile );
       docPtr = (xmlDocPtr)XmlUtils_getdoc( catchupXmlFile );
        /* parse the xml file */
       if ((docPtr = XmlUtils_getdoc(catchupXmlFile)) == NULL) {
          raiseError("Unable to parse file: %s\n", catchupXmlFile);
       }
       context = xmlXPathNewContext(docPtr);
-      SeqUtil_TRACE( "catchup_get(): xml query:%s\n", CATCHUP_QUERY ); 
+      SeqUtil_TRACE(TL_MINIMAL, "catchup_get(): xml query:%s\n", CATCHUP_QUERY ); 
       if( (result = (xmlXPathObjectPtr) XmlUtils_getnodeset (CATCHUP_QUERY, context)) == NULL ) {
          raiseError("CATCHUP value not found in XML master file!\n");
       }
@@ -76,7 +76,7 @@ int catchup_get( char* _expHome) {
       nodeset = result->nodesetval;
       nodePtr = nodeset->nodeTab[0];
       nodeName = nodePtr->name;
-      SeqUtil_TRACE( "catchup_get(): xml nodeName=%s\n", nodeName ); 
+      SeqUtil_TRACE(TL_MINIMAL, "catchup_get(): xml nodeName=%s\n", nodeName ); 
       if ( nodePtr->children != NULL ) {
          catchupValue = atoi( nodePtr->children->content );
          if ( catchupValue == 0 && strcmp( nodePtr->children->content, "0" ) != 0 ) {
@@ -88,7 +88,7 @@ int catchup_get( char* _expHome) {
       xmlXPathFreeObject (result);
       xmlFreeDoc(docPtr);
    } else {
-      SeqUtil_TRACE ("catchup_get(): xml file not found:%s\n", catchupXmlFile );
+      SeqUtil_TRACE(TL_ERROR, "catchup_get(): xml file not found:%s\n", catchupXmlFile );
    }
    free( catchupXmlFile );  
    
@@ -104,7 +104,7 @@ void catchup_set( char* _expHome, int _catchupValue ) {
    xmlTextWriterPtr writer;
    int rc;  
    
-   SeqUtil_TRACE( "catchup_set(): experiment catchup set to %d\n", _catchupValue );
+   SeqUtil_TRACE(TL_MINIMAL, "catchup_set(): experiment catchup set to %d\n", _catchupValue );
    if ( _catchupValue > CatchupMax ) {
       fprintf(stderr, "ERROR: invalid catchup value=%d, must be between [0-%d]\n", _catchupValue, CatchupMax );
       exit(1);
@@ -113,7 +113,7 @@ void catchup_set( char* _expHome, int _catchupValue ) {
    catchupXmlFile = malloc( strlen( _expHome ) + strlen( CATCHUP_XML_FILE ) + 1 );
    sprintf( catchupXmlFile, "%s%s", _expHome, CATCHUP_XML_FILE );
 
-   SeqUtil_TRACE( "catchup_set(): catchupXmlFile=%s\n", catchupXmlFile );
+   SeqUtil_TRACE(TL_MINIMAL, "catchup_set(): catchupXmlFile=%s\n", catchupXmlFile );
    if( access( catchupXmlFile, F_OK ) == 1 && access( catchupXmlFile, W_OK ) == -1 ) {
       fprintf( stderr, "ERROR: writing xml file: %s.\n", catchupXmlFile );
       exit(1);

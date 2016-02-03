@@ -51,7 +51,7 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
    char *loopName=NULL, *loopValue=NULL;
    int isError = 0;
    
-   SeqUtil_TRACE( "SeqLoops_parseArgs cmd_args:%s\n", cmd_args );
+   SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_parseArgs cmd_args:%s\n", cmd_args );
    /*
    memset(loopName,'\0',sizeof loopName);
    memset(loopValue,'\0',sizeof loopValue);
@@ -73,14 +73,14 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
       if ( strlen( loopName ) == 0 || strlen( loopValue ) == 0 ) {
          isError = -1;
       } else {
-         SeqUtil_TRACE("SeqLoops_parseArgs inserted %s = %s\n", loopName, loopValue ); 
+         SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_parseArgs inserted %s = %s\n", loopName, loopValue ); 
          SeqNameValues_insertItem( nameValuesPtr, loopName, loopValue );
       }
       tmpstrtok = (char*) strtok(NULL,",");
       free(loopName);
       free(loopValue);
    }
-   SeqUtil_TRACE("SeqLoops_parseArgsdone exit status: %d\n", isError ); 
+   SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_parseArgsdone exit status: %d\n", isError ); 
    free( tmp_args );
    return(isError);
 }
@@ -164,7 +164,7 @@ void SeqLoops_setLoopAttribute( SeqNameValuesPtr* loop_attr_ptr, char* attr_name
    SeqNameValuesPtr loopAttrPtr = *loop_attr_ptr;
 
    while ( loopAttrPtr != NULL ) {
-      SeqUtil_TRACE( "SeqLoops_setLoopAttribute looking for:%s found:%s \n", attr_name, loopAttrPtr->name );
+      SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_setLoopAttribute looking for:%s found:%s \n", attr_name, loopAttrPtr->name );
       if( strcmp( loopAttrPtr->name, attr_name ) == 0 ) {
          found = 1;
          free(loopAttrPtr->value);
@@ -195,15 +195,15 @@ char* SeqLoops_ContainerExtension( SeqLoopsPtr loops_ptr, SeqNameValuesPtr loop_
       /* inside the SeqLoopsPtr, the loop_name value is stored with the full path node 
          of the loop while the loop_name function argument is only the leaf part */
       loopLeafName = (char*) SeqUtil_getPathLeaf( loopContainerName );
-      SeqUtil_TRACE("SeqLoops_ContainerExtension loopLeafName=%s\n", loopLeafName ); 
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_ContainerExtension loopLeafName=%s\n", loopLeafName ); 
       thisLoopArgPtr = loop_args_ptr;
       while( thisLoopArgPtr != NULL && isError == 0 ) {
-         SeqUtil_TRACE("SeqLoops_ContainerExtension loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); 
+         SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_ContainerExtension loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); 
          if( strcmp( thisLoopArgPtr->name, loopLeafName ) == 0 ) {
             foundLoopArg = 1;
             SeqUtil_stringAppend( &extension, EXT_TOKEN );
             SeqUtil_stringAppend( &extension, thisLoopArgPtr->value );
-            SeqUtil_TRACE("SeqLoops_ContainerExtension found loop argument loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); 
+            SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_ContainerExtension found loop argument loop_name=%s loop_value=%s\n", thisLoopArgPtr->name, thisLoopArgPtr->value ); 
             break;
          }
          thisLoopArgPtr = thisLoopArgPtr->nextPtr;
@@ -264,7 +264,7 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
    
    tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
    if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-      SeqUtil_TRACE("SeqLoops_childExtensionsInReverse expression: %s\n", tmpExpression);
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensionsInReverse expression: %s\n", tmpExpression);
       tmpLoopExtensions = (LISTNODEPTR) SeqLoops_childExtensions(_nodeDataPtr);
       SeqListNode_reverseList ( &tmpLoopExtensions );
       loopExtensions = tmpLoopExtensions;
@@ -275,7 +275,7 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
 	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
       }
       loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-      SeqUtil_TRACE("SeqLoops_childExtensionsInReverse extension:%s baseExtension:%s START:%d END:%d\n",_nodeDataPtr->extension, baseExtension, loopEnd, loopStart );
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensionsInReverse extension:%s baseExtension:%s START:%d END:%d\n",_nodeDataPtr->extension, baseExtension, loopEnd, loopStart );
       loopCount = loopEnd;
       while( loopCount >= loopStart ) {
 	 sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
@@ -314,7 +314,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
    }
    
    if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-      SeqUtil_TRACE("SeqLoops_childExtensions expression: %s\n", tmpExpression);
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensions expression: %s\n", tmpExpression);
       
       i=0;
       tmpArrayValue = strtok (tmpExpression,":,");
@@ -359,7 +359,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
       
    } else {
       
-      SeqUtil_TRACE("SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
       loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
       if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
 	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
@@ -380,16 +380,16 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
 int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
    int value = 0;
    SeqLoopsPtr loopsPtr =  _nodeDataPtr->loops;
-   SeqUtil_TRACE( "SeqLoops_isParentLoopContainer.isParentLoopContainer() container = %s\n", _nodeDataPtr->container );
+   SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_isParentLoopContainer.isParentLoopContainer() container = %s\n", _nodeDataPtr->container );
    while( loopsPtr != NULL ) {
-      SeqUtil_TRACE( "SeqLoops_isParentLoopContainer.isParentLoopContainer() container loop_name = %s\n", loopsPtr->loop_name );
+      SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_isParentLoopContainer.isParentLoopContainer() container loop_name = %s\n", loopsPtr->loop_name );
       if( strcmp( loopsPtr->loop_name, _nodeDataPtr->container ) == 0 ) {
          value = 1;
          break;
       }
       loopsPtr  = loopsPtr->nextPtr;
    }
-   SeqUtil_TRACE( "SeqLoops_isParentLoopContainer.isParentLoopContainer() return value = %d\n", value );
+   SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_isParentLoopContainer.isParentLoopContainer() return value = %d\n", value );
    return value;
 }
 
@@ -414,26 +414,26 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
    SeqLoops_parseArgs( &depArgs, depIndex);
 
    memset( tmp, '\0', sizeof tmp );
-   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse depIndex: %s\n", depIndex);  
+   SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse depIndex: %s\n", depIndex);  
    
    /* looping over each depedency index argument */
    while (depArgs != NULL){
-        SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse dealing with argument %s=%s\n", depArgs->name, depArgs->value);  
+        SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse dealing with argument %s=%s\n", depArgs->name, depArgs->value);  
 	if( strstr( depArgs->value, "*" ) != NULL ) {
 	/* wildcard found */
-            SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse getting loop information from node %s\n", _nodeDataPtr -> name );  
+            SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse getting loop information from node %s\n", _nodeDataPtr -> name );  
             loopsPtr = _nodeDataPtr->loops; 
   	    while (loopsPtr != NULL && !foundIt ) {
                  loopsDataPtr =  loopsPtr->values;
                  if (loopsDataPtr != NULL ) {
-		     SeqUtil_TRACE("%s\n", loopsPtr->loop_name);
+		     SeqUtil_TRACE(TL_MINIMAL,"%s\n", loopsPtr->loop_name);
 		     /* find the right loop arg to match*/
                      if (strcmp(SeqUtil_getPathLeaf(loopsPtr->loop_name),depArgs->name)==0) {
 			loopsDataPtr = loopsDataPtr->nextPtr;
 			tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
 			/*if loop is defined by an expression, return SeqLoops_getLoopContainerExtensions in reverse*/
 			if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse expression: %s\n", tmpExpression);
+			   SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse expression: %s\n", tmpExpression);
 			   tmpLoopExts = SeqLoops_getLoopContainerExtensions(_nodeDataPtr, depIndex);
 			   SeqListNode_reverseList( &tmpLoopExts );
 			   /*SeqListNode_printList( tmpLoopExts );*/
@@ -447,7 +447,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 			}
 			loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
 			loopCount = loopEnd;
-			SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
+			SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
 			
 			foundIt=1;
 		     } else {
@@ -459,14 +459,14 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
             /* if targetting a loop node as a dependency, _nodeDataPtr->data will have the loop attributes */
             loopsDataPtr=_nodeDataPtr->data; 
 	    if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse targetting a loop node\n");  
+               SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse targetting a loop node\n");  
 	       loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
 	       if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
 		  loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
 	       }
 	       loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
 	       loopCount = loopEnd;
-	       SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
+	       SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
 	    }
 
 	    /*reset for next loop to find*/
@@ -476,7 +476,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 	/* only one value*/
                loopCount = atoi(depArgs->value);
 	       loopStart=loopCount;
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensionsInReverse Found single value for loop: loop name = %s ; loop value = %d \n", depArgs->name, loopCount );
+               SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse Found single value for loop: loop name = %s ; loop value = %d \n", depArgs->name, loopCount );
 	}
 
         /* add values to the list of extensions */ 
@@ -489,7 +489,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 	           sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
 	        }
 	        /* build the tmp list of extensions */
-	        SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensionsInReverse new extension added:%s\n", tmp );
+	        SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopContainerExtensionsInReverse new extension added:%s\n", tmp );
                 SeqListNode_insertItem( &tmpLoopExts, tmp );
                 loopCount = loopCount - loopStep;
             }
@@ -543,14 +543,14 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
    SeqLoops_parseArgs( &depArgs, depIndex);
 
    memset( tmp, '\0', sizeof tmp );
-   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions depIndex: %s\n", depIndex);  
+   SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions depIndex: %s\n", depIndex);  
 
    /* looping over each depedency index argument */
    while (depArgs != NULL){
-        SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions dealing with argument %s=%s\n", depArgs->name, depArgs->value);  
+        SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions dealing with argument %s=%s\n", depArgs->name, depArgs->value);  
 	if( strstr( depArgs->value, "*" ) != NULL ) {
 	/* wildcard found */
-            SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions getting loop information from node %s\n", _nodeDataPtr -> name );  
+            SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions getting loop information from node %s\n", _nodeDataPtr -> name );  
             loopsPtr = _nodeDataPtr->loops; 
   	    while (loopsPtr != NULL && !foundIt ) {
                  loopsDataPtr =  loopsPtr->values;
@@ -561,7 +561,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 			 
 			 tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
 			 if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions expression: %s\n", tmpExpression);
+			   SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions expression: %s\n", tmpExpression);
 			 } else {
 			   loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
 			   if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
@@ -569,7 +569,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 			   }
 			   loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
 			   loopCount = loopStart;
-			   SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+			   SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
 			 }
 			 foundIt=1;
 		     } else {
@@ -581,10 +581,10 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
             /* if targetting a loop node as a dependency, _nodeDataPtr->data will have the loop attributes */
             loopsDataPtr=_nodeDataPtr->data; 
 	    if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions targetting a loop node\n");
+               SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions targetting a loop node\n");
 	       tmpExpression = SeqLoops_getLoopAttribute( loopsDataPtr, "EXPRESSION" );
 	       if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-		  SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions expression: %s\n", tmpExpression);
+		  SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions expression: %s\n", tmpExpression);
 	       } else {
 		  loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
 		  if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
@@ -592,7 +592,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 		  }
 		  loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
 		  loopCount = loopStart;
-		  SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
+		  SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions loopStart:%d loopStep:%d loopEnd=%d \n", loopStart, loopStep, loopEnd );
 	       }
 	    }
 	    
@@ -626,7 +626,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 	/* only one value*/
                loopCount = atoi(depArgs->value);
 	       loopEnd=loopCount;
-               SeqUtil_TRACE("SeqLoops_getLoopContainerExtensions Found single value for loop: loop name = %s ; loop value = %d \n", depArgs->name, loopCount );
+               SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensions Found single value for loop: loop name = %s ; loop value = %d \n", depArgs->name, loopCount );
 	}
 
         /* add values to the list of extensions */ 
@@ -654,7 +654,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 			} else {
 			   sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
 			}
-			/*SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added based on expression:%s\n", tmp );*/
+			/*SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopContainerExtensions new extension added based on expression:%s\n", tmp );*/
 			SeqListNode_insertItem( &tmpLoopExts, tmp );
 		     }
 		  }
@@ -674,7 +674,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 		     sprintf( tmp, "%s%d", EXT_TOKEN, loopCount );
 		  }
 		  /* build the tmp list of extensions */
-		  SeqUtil_TRACE( "SeqLoops_getLoopContainerExtensions new extension added:%s\n", tmp );
+		  SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopContainerExtensions new extension added:%s\n", tmp );
 		  SeqListNode_insertItem( &tmpLoopExts, tmp );
 		  loopCount = loopCount + loopStep;
 	       }
@@ -731,7 +731,7 @@ char* SeqLoops_getExtPattern ( char* extension ) {
       i++;
    }
    tmp[j] = '\0';
-   SeqUtil_TRACE( "SeqLoops_getExtPattern() return value = %s\n", tmp );   
+   SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getExtPattern() return value = %s\n", tmp );   
    return strdup(tmp);
 }
 
@@ -754,7 +754,7 @@ char* SeqLoops_getLoopArgs( SeqNameValuesPtr _loop_args ) {
 
 void SeqLoops_printLoopArgs( SeqNameValuesPtr _loop_args, const char* _caller ) {
    char* value = SeqLoops_getLoopArgs( _loop_args );
-   SeqUtil_TRACE ( "%s loop arguments: %s\n", _caller, value );
+   SeqUtil_TRACE(TL_MINIMAL, "%s loop arguments: %s\n", _caller, value );
    free( value );
 }
 
@@ -950,7 +950,7 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 	    while( loopCount <= expressionArray[startIndex+1] && loopSetCount < expressionArray[startIndex+3] ) {
 	       sprintf( tmp, "%d", loopCount );
 	       SeqNameValues_insertItem( &newLoopsArgsPtr,  "newdef", tmp);
-	       SeqUtil_TRACE("newdef=%s", tmp);
+	       SeqUtil_TRACE(TL_MINIMAL,"newdef=%s", tmp);
 	       loopCount=loopCount+expressionArray[startIndex+2];
 	       loopSetCount++;
 	    }
@@ -1000,7 +1000,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
 
    /* validate loop containers */
    if( loopsPtr != NULL ) {
-      SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop pointer found\n" );
+      SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_validateLoopArgs() loop pointer found\n" );
       /* check if the user has given us argument for looping */
       if( _loop_args == NULL ) {
          raiseError( "SeqLoops_validateLoopArgs(): No loop arguments found for container loop!\n" );
@@ -1010,9 +1010,9 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
       if( (loopExtension = (char*) SeqLoops_ContainerExtension( loopsPtr, _loop_args )) == NULL ) {
          raiseError( "SeqLoops_validateLoopArgs(): Missing loop arguments for container loop!\n" );
       }
-      SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop extension:%s\n", loopExtension );
+      SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_validateLoopArgs() loop extension:%s\n", loopExtension );
    } else {
-      SeqUtil_TRACE( "SeqLoops_validateLoopArgs() loop pointer not found\n" );
+      SeqUtil_TRACE(TL_ERROR, "SeqLoops_validateLoopArgs() loop pointer not found\n" );
    }
 
    /* build extension for current node if loop */
@@ -1040,7 +1040,7 @@ char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args ) {
       SeqUtil_stringAppend( &loopExtension, _loop_args->value );
       _loop_args  = _loop_args->nextPtr;
    }
-   SeqUtil_TRACE( "SeqLoops_getExtFromLoopArgs: %s\n", loopExtension );
+   SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getExtFromLoopArgs: %s\n", loopExtension );
    return loopExtension;
 }
 
@@ -1059,7 +1059,7 @@ SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, S
       if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
          break;
       }
-      SeqUtil_TRACE( "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
+      SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
 
       SeqNameValues_insertItem( &newLoopsArgsPtr,  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
       loopArgsTmpPtr  = loopArgsTmpPtr->nextPtr;

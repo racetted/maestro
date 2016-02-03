@@ -23,6 +23,7 @@
 #include <string.h>
 #include "maestro.h"
 #include "SeqListNode.h"
+#include "SeqUtil.h"
 #include "SeqNameValues.h"
 /***********************************************************************************
 * name: maestro
@@ -103,7 +104,8 @@ main (int argc, char * argv [])
             gotLoops = 1;
             break;
          case 'v':
-            SeqUtil_setTraceLevel(1);
+				SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+				SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
             break;
 	 case 'i':
 	    ignoreAllDeps=1;

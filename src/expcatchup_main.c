@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include "SeqUtil.h"
 #include "expcatchup.h"
 
 static void printUsage()
@@ -87,7 +88,10 @@ main (int argc, char * argv [])
          fprintf (stderr, "ERROR:Argument s and g are mutually exclusive!\n");
          exit(1);
       }
-      if ( isDebugArg ) SeqUtil_setTraceLevel(1);
+      if ( isDebugArg ) {
+			SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+			SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
+		}
       if ( isSetArg ) catchup_set( expHome,catchupValue);
       if ( isGetArg ) {
          catchupValue = catchup_get( expHome );

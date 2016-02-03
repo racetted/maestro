@@ -54,7 +54,7 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 	 reset_node(node, loop);
 	 return;
       }
-      SeqUtil_TRACE("logreader inserting node %s loop %s state %c\n", node, loop, S);
+      SeqUtil_TRACE(TL_MINIMAL,"logreader inserting node %s loop %s state %c\n", node, loop, S);
 
       
       /* must easier to work like this */
@@ -540,7 +540,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 			}
 		     }
 		  } else {
-            SeqUtil_TRACE("logreader ignoring node %s %s\n",ptr_NLHtrotte->Node , ptr_LXHtrotte->Lext);
+            SeqUtil_TRACE(TL_MINIMAL,"logreader ignoring node %s %s\n",ptr_NLHtrotte->Node , ptr_LXHtrotte->Lext);
         } 
 		  
 		  if (outputFile != NULL) {
@@ -578,22 +578,22 @@ void getAverage(char *exp, char *datestamp){
    strcpy(prev, char_datestamp);
    snprintf(char_datestamp, 15, "%s", SeqDatesUtil_getPrintableDate(prev,-1,0,0,0));
    
-   SeqUtil_TRACE("logreader parsing averages on exp: %s for datestamp: %s\n", exp, datestamp);
+   SeqUtil_TRACE(TL_MINIMAL,"logreader parsing averages on exp: %s for datestamp: %s\n", exp, datestamp);
    
    tmp_file_path=sconcat("/stats/", char_datestamp);
    avg_file_path=sconcat(tmp_file_path, "_avg");
    full_path=sconcat(exp, avg_file_path);
    
-   SeqUtil_TRACE("logreader collecting averages in file %s\n", full_path);
+   SeqUtil_TRACE(TL_MINIMAL,"logreader collecting averages in file %s\n", full_path);
    
    f = fopen(full_path, "r");
    if(f != NULL) {
       if(getStats(f) != 0){
-         SeqUtil_TRACE("logreader error while parsing the following avg file:\n");
-         SeqUtil_TRACE("%s\n", full_path);
+         SeqUtil_TRACE(TL_ERROR,"logreader error while parsing the following avg file:\n");
+         SeqUtil_TRACE(TL_ERROR,"%s\n", full_path);
       }
    } else {
-      SeqUtil_TRACE("logreader cannot access file %s\n", full_path);
+      SeqUtil_TRACE(TL_ERROR,"logreader cannot access file %s\n", full_path);
    }
 }
 
@@ -637,19 +637,19 @@ void computeAverage(char *exp, char *datestamp, int stats_days){
    char_datestamp[14] = '\0';
    snprintf(char_datestamp, 15, "%s", datestamp);
    
-   SeqUtil_TRACE("logreader computing averages on exp: %s for datestamp: %s since last %d days\n", exp, datestamp, stats_days);
+   SeqUtil_TRACE(TL_MINIMAL,"logreader computing averages on exp: %s for datestamp: %s since last %d days\n", exp, datestamp, stats_days);
    
    for (i=0; i < stats_days; i++){
       stats_file_path = sconcat("/stats/", char_datestamp);
       full_path = sconcat(exp, stats_file_path);
       
-      SeqUtil_TRACE("logreader collecting stats for datestamp %s in file %s\n", char_datestamp, full_path);
+      SeqUtil_TRACE(TL_MINIMAL,"logreader collecting stats for datestamp %s in file %s\n", char_datestamp, full_path);
       
       f = fopen(full_path, "r");
       if (f != NULL) {
          if(getStats(f) != 0){
-            SeqUtil_TRACE("logreader error while parsing the following stats file:\n");
-            SeqUtil_TRACE("%s\n", full_path);
+            SeqUtil_TRACE(TL_ERROR,"logreader error while parsing the following stats file:\n");
+            SeqUtil_TRACE(TL_ERROR,"%s\n", full_path);
          }
          ++count;
          fclose(f);
@@ -681,8 +681,8 @@ int getStats(FILE *_stats){
       if(parseStatsLine(tmpline, tmp_node, tmp_member, tmp_btime, tmp_etime, 
           tmp_exectime, tmp_submitdelay, tmp_deltafromstart) != 0) {
 
-         SeqUtil_TRACE("logreader parsing error at the following stats line:\n");
-         SeqUtil_TRACE("%s\n", tmpline);
+         SeqUtil_TRACE(TL_ERROR,"logreader parsing error at the following stats line:\n");
+         SeqUtil_TRACE(TL_ERROR,"%s\n", tmpline);
       
       }
    }
@@ -814,7 +814,7 @@ int addStatsNode(char *node, char *member, char *btime, char *etime, char *exect
       }
    }
    
-   SeqUtil_TRACE("logreader addStatsNode node:%s member:%s\n", node, member);
+   SeqUtil_TRACE(TL_MINIMAL,"logreader addStatsNode node:%s member:%s\n", node, member);
    
    return 0;
 }
@@ -1022,7 +1022,7 @@ void reset_node (char *node, char *ext) {
          if (strcmp(node, tmp_prev_list->PNode.TNode) == 0 && strncmp(ext, tmp_prev_list->PNode.loop, strlen(ext)) == 0) {
             /*delete_node(tmp_prev_list, ptr_LLtrotte);*/
             tmp_prev_list->PNode.ignoreNode=1;
-            SeqUtil_TRACE("logreader reset node done on node: %s ext: %s \n",node,ext);
+            SeqUtil_TRACE(TL_MINIMAL,"logreader reset node done on node: %s ext: %s \n",node,ext);
          }
       }
    }
@@ -1102,15 +1102,15 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
       if(strcmp(type, "log") == 0) {
          read_type=0;
       } else if(strcmp(type, "statuses") == 0) {
-	      SeqUtil_TRACE("logreader type: statuses\n");
+	      SeqUtil_TRACE(TL_MINIMAL,"logreader type: statuses\n");
 	      read_type=1;
       } else if (strcmp(type, "stats") == 0){
-	      SeqUtil_TRACE("logreader type: stats\n"); 
+	      SeqUtil_TRACE(TL_MINIMAL,"logreader type: stats\n"); 
 	      read_type=2;
          if (outputFilePath == NULL){
             sprintf(optional_output_dir, "%s/stats" , exp);
             if( ! SeqUtil_isDirExists( optional_output_dir )) {
-               SeqUtil_TRACE ( "mkdir: creating dir %s\n", optional_output_dir );
+               SeqUtil_TRACE(TL_MINIMAL, "mkdir: creating dir %s\n", optional_output_dir );
                if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
                   fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
                   exit(EXIT_FAILURE);
@@ -1118,7 +1118,7 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
             }
             sprintf(optional_output_path, "%s/stats/%s" , exp,datestamp);  
             if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
-               SeqUtil_TRACE("logreader: no clobber output flag set and file exists, writing to /dev/null\n");
+               SeqUtil_TRACE(TL_MINIMAL,"logreader: no clobber output flag set and file exists, writing to /dev/null\n");
                sprintf(optional_output_path, "/dev/null");  
             }
                
@@ -1128,12 +1128,12 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
             }
          }
       } else if (strcmp(type, "avg") == 0) {
-	      SeqUtil_TRACE("logreader type: compute averages\n");
+	      SeqUtil_TRACE(TL_MINIMAL,"logreader type: compute averages\n");
 	      read_type=3;
          if (outputFilePath == NULL){
             sprintf(optional_output_dir, "%s/stats" , exp);
             if( ! SeqUtil_isDirExists( optional_output_dir )) {
-               SeqUtil_TRACE ( "mkdir: creating dir %s\n", optional_output_dir );
+               SeqUtil_TRACE(TL_MINIMAL, "mkdir: creating dir %s\n", optional_output_dir );
                if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
                   fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
                   exit(EXIT_FAILURE);
@@ -1141,7 +1141,7 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
             }
             sprintf(optional_output_path, "%s/stats/%s_avg" , exp,datestamp);  
             if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
-               SeqUtil_TRACE("logreader: no clobber output flag set and file exists, writing to /dev/null\n");
+               SeqUtil_TRACE(TL_MINIMAL,"logreader: no clobber output flag set and file exists, writing to /dev/null\n");
                sprintf(optional_output_path, "/dev/null");  
             }
 

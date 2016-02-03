@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "SeqUtil.h"
 #include "nodeinfo.h"
 #include "SeqLoopsUtil.h"
 #include "SeqNameValues.h"
@@ -84,7 +85,8 @@ main ( int argc, char * argv[] )
             strcpy(filters,optarg);
             break;
          case 'v':
-            SeqUtil_setTraceLevel(1);
+				SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+				SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
             break;
 	 case 'o':
 	    tmpFile=malloc( strlen( optarg ) + 1 );

@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "SeqNameValues.h"
-
+#include "SeqUtil.h"
 /********************************************************************************
 * SeqListNode_insertItem: Inserts an Item into the list
 ********************************************************************************/
@@ -57,7 +57,7 @@ void SeqNameValues_insertItem(SeqNameValuesPtr *listPtrPtr, char *name, char* va
          newPtr->nextPtr=currentPtr;
       }
    } else {
-         SeqUtil_TRACE("SeqNameValues_insertItem() No memory available.\n");
+         SeqUtil_TRACE(TL_CRITICAL,"SeqNameValues_insertItem() No memory available.\n");
    }
 }
 
@@ -97,10 +97,10 @@ void SeqNameValues_deleteItem(SeqNameValuesPtr *listPtrPtr, char *name)
 void SeqNameValues_printList( SeqNameValuesPtr listPtr ){
    SeqNameValuesPtr myPtr=listPtr;
    if ( myPtr == NULL ) {
-      SeqUtil_TRACE( "List is empty.\n" );
+      SeqUtil_TRACE(TL_MINIMAL, "List is empty.\n" );
    } else {
       while ( myPtr != NULL ) {
-         SeqUtil_TRACE("name=%s value=%s\n", myPtr->name, myPtr->value );
+         SeqUtil_TRACE(TL_MINIMAL,"name=%s value=%s\n", myPtr->name, myPtr->value );
          myPtr = myPtr->nextPtr;
       }
    }

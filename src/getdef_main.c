@@ -49,7 +49,9 @@ main ( int argc, char * argv[] )
    while ((c = getopt(argc, (char* const*) argv, "d")) != -1) {
      switch(c) {
      case 'd':
-       SeqUtil_setTraceLevel(1);
+     case 'v':
+		 SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+		 SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
        break;
      case '?':
          printUsage(); 

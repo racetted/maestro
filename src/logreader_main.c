@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include "logreader.h"
 #include <errno.h>
+#include "SeqUtil.h"
 
 static void printUsage()
 {
@@ -77,7 +78,8 @@ main ( int argc, char * argv[] )
 	      exp = strdup(optarg);
 	      break;
 	   case 'v':
-	      SeqUtil_setTraceLevel(1);
+			SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+			SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
 	      break;
       case 'c':
          clobberFile=0;

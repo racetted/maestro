@@ -46,7 +46,7 @@ int removeFile_svr (const char *filename ) {
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_REMOVE, filename ,"" ); 
 
-   SeqUtil_TRACE("maestro.removeFile_svr() removing %s return:%d\n", filename,status );
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.removeFile_svr() removing %s return:%d\n", filename,status );
    return (status);
 }
 
@@ -58,7 +58,7 @@ int touch_svr (const char *filename ) {
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_TOUCH, filename ,"" ); 
 
-   SeqUtil_TRACE("maestro.touch_svr(): %s return:%d\n",filename,status);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.touch_svr(): %s return:%d\n",filename,status);
 
    return (status);
 }
@@ -73,7 +73,7 @@ int isFileExists_svr ( const char* lockfile, const char *caller ) {
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_IS_FILE_EXISTS, lockfile ,"" ); 
 
-   SeqUtil_TRACE("maestro.isFileExists_svr()from %s filename:%s return:%d\n",caller,lockfile,status);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.isFileExists_svr()from %s filename:%s return:%d\n",caller,lockfile,status);
    return (status);
 }
 
@@ -90,7 +90,7 @@ int access_svr ( const char* filename , int mode ) {
    sprintf(string,"%d",mode);
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename , string); 
 
-   SeqUtil_TRACE("maestro.access_svr(): %s return:%d\n",filename,status);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.access_svr(): %s return:%d\n",filename,status);
    return (status);
 }
 
@@ -104,7 +104,7 @@ int SeqUtil_mkdir_svr ( const char* dirname, int notUsed ) {
 
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_MKDIR ,dirname, "" ); 
 
-   SeqUtil_TRACE("maestro.SeqUtil_mkdir_svr(): %s return:%d\n",dirname,status);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.SeqUtil_mkdir_svr(): %s return:%d\n",dirname,status);
    return (status);
 
 }
@@ -120,7 +120,7 @@ int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *ep
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_GLOB_PATTERN_COUNT ,pattern ,"" ); 
 
-   SeqUtil_TRACE("maestro.globPath_svr():%s \n",pattern);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.globPath_svr():%s \n",pattern);
    return (status);
 
 }
@@ -146,7 +146,7 @@ int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const 
     char buffer[1024];
     int status;
    
-    SeqUtil_TRACE("maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_svr routine\n");
+    SeqUtil_TRACE(TL_MINIMAL,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_svr routine\n");
 
     memset(buffer,'\0',sizeof(buffer));
     
@@ -154,7 +154,7 @@ int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const 
     
     status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_WNF, buffer , "" );
     
-    SeqUtil_TRACE("maestro.WriteNodeWaitedFile_svr():buffer=%s return=%d\n",buffer,status);
+    SeqUtil_TRACE(TL_MINIMAL,"maestro.WriteNodeWaitedFile_svr():buffer=%s return=%d\n",buffer,status);
 
     return(status);
 
@@ -230,13 +230,13 @@ FILE * fopen_svr ( const char * filename , int sock )
           snprintf(wfilename,sizeof(wfilename),"/tmp/waitfile.%d",pid);
   } 
 
-  SeqUtil_TRACE("fopen_svr(): wait file:%s===== \n",filename);
+  SeqUtil_TRACE(TL_MINIMAL,"fopen_svr(): wait file:%s===== \n",filename);
 
   /* build command */
   snprintf(tmp,sizeof(tmp),"Z %s",filename);
   if ( (bytes_sent=send_socket(sock , tmp , sizeof(tmp) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
-	    SeqUtil_TRACE("fopen_svr(): socket closed at send\n");
-            SeqUtil_TRACE("fopen_svr(): Reverting to nfs Routines\n");
+	    SeqUtil_TRACE(TL_MEDIUM,"fopen_svr(): socket closed at send\n");
+            SeqUtil_TRACE(TL_MEDIUM,"fopen_svr(): Reverting to nfs Routines\n");
 	    fp=fopen_nfs(filename , sock);
             return (fp);
   }
@@ -244,17 +244,17 @@ FILE * fopen_svr ( const char * filename , int sock )
   /* read (get) size of file */
   if ( (bytes_read=recv_socket(sock, csize, sizeof(csize), SOCK_TIMEOUT_CLIENT)) <= 0 ) {
              /* should revert to nfs routine */
-             SeqUtil_TRACE("fopen_svr(): Could not receive size of waited file ... Reverting to nfs Routines\n");
+             SeqUtil_TRACE(TL_MEDIUM,"fopen_svr(): Could not receive size of waited file ... Reverting to nfs Routines\n");
              fp=fopen_nfs(filename , sock);
              return (fp);
   } else {
              size=atoi(csize);
-             SeqUtil_TRACE("Received size of waited file=%d\n",size);
+             SeqUtil_TRACE(TL_MINIMAL,"Received size of waited file=%d\n",size);
   }
 
   /* if size is 0 , server did not find the wait file, try nfs */
   if ( size == 0 ) {
-             SeqUtil_TRACE("fopen_svr(): received 0 size of waited file ... Reverting to nfs Routines\n");
+             SeqUtil_TRACE(TL_MEDIUM,"fopen_svr(): received 0 size of waited file ... Reverting to nfs Routines\n");
              fp=fopen_nfs(filename , sock);
              return (fp);
   }
@@ -271,7 +271,7 @@ FILE * fopen_svr ( const char * filename , int sock )
   if (  recv_full(sock,buffer,size) == 0 ) {
        if (  (fp=fopen(wfilename,"w+")) == NULL) {
 	     free(buffer);
-             SeqUtil_TRACE("fopen_svr(): Could not open local (on host) waited_end file ... Reverting to nfs Routines\n");
+             SeqUtil_TRACE(TL_MEDIUM,"fopen_svr(): Could not open local (on host) waited_end file ... Reverting to nfs Routines\n");
 	     fp=fopen_nfs(filename , sock);
              return (fp);
        }
@@ -279,11 +279,11 @@ FILE * fopen_svr ( const char * filename , int sock )
        fwrite(buffer, sizeof(char) , size , fp);
        fflush(fp);
        fsync(fileno(fp));  /* fsync work with file descriptor */
-       SeqUtil_TRACE( "\nReceived Buffer length=%d:%s\n",strlen(buffer),buffer);
+       SeqUtil_TRACE(TL_MINIMAL, "\nReceived Buffer length=%d:%s\n",strlen(buffer),buffer);
        free(buffer); 
        fclose(fp); /* rewind at beg. of file */
   } else {
-         SeqUtil_TRACE( "fopen_svr(): Could not download waited file:%s to host tmpdir ... Reverting to nfs Routines\n",filename);
+         SeqUtil_TRACE(TL_MEDIUM, "fopen_svr(): Could not download waited file:%s to host tmpdir ... Reverting to nfs Routines\n",filename);
 	 free(buffer);
 	 fp=fopen_nfs(filename , sock);
          return (fp);
@@ -291,7 +291,7 @@ FILE * fopen_svr ( const char * filename , int sock )
 
   /* now the waited_end file is local (TMPDIR) , open it a give the handle to routine ... */
   if ( (fp=fopen(wfilename,"r")) == NULL) { 
-             SeqUtil_TRACE("fopen_svr():Crap, Could not open local waited_end file:%s ... Reverting to nfs Routines\n",wfilename);
+             SeqUtil_TRACE(TL_MEDIUM,"fopen_svr():Crap, Could not open local waited_end file:%s ... Reverting to nfs Routines\n",wfilename);
 	     fp=fopen_nfs(filename , sock);
              return (fp);
   }
@@ -310,7 +310,7 @@ int lock_svr (  const char* filename , const char * datestamp ) {
    
    md5sum = (char *) str2md5(filename,strlen(filename));
 
-   SeqUtil_TRACE("\nLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
+   SeqUtil_TRACE(TL_MINIMAL,"\nLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
 
    /* try to acquire the link for 5*0.5 = 2.5 sec */
    for ( i=0 ; i < 5 ; i++ ) {
@@ -319,7 +319,7 @@ int lock_svr (  const char* filename , const char * datestamp ) {
        usleep(500000);
    }
 
-   SeqUtil_TRACE("maestro.lock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.lock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
 
    return (status);
 
@@ -335,11 +335,11 @@ int unlock_svr ( const char* filename , const char * datestamp ) {
 
    md5sum = (char *) str2md5(filename,strlen(filename));
 
-   SeqUtil_TRACE("\nUNLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
+   SeqUtil_TRACE(TL_MINIMAL,"\nUNLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
 
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_UNLOCK, md5sum , datestamp );
 
-   SeqUtil_TRACE("maestro.unlock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.unlock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
    
    return (status);
 }
