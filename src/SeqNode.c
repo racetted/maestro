@@ -1086,7 +1086,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    SeqUtil_printOrWrite( filename, "export SEQ_MAESTRO_SHORTCUT=\"%s\" \n", getenv("SEQ_MAESTRO_SHORTCUT"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
    SeqUtil_printOrWrite( filename, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
-   SeqUtil_printOrWrite( filename, "export SEQ_TRACE_LEVEL=%d\n", SeqUtil_getTraceLevel());
+   SeqUtil_printOrWrite( filename, "export SEQ_TRACE_LEVEL=%s\n", getenv("SEQ_TRACE_LEVEL"));
    SeqUtil_printOrWrite( filename, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
    SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
    SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_MODULE=%s\n", _nodeDataPtr->module);
