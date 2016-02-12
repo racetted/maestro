@@ -168,7 +168,7 @@ void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
                   free( node_ptr->npex); 
                   free( node_ptr->omp); 
                   (node_ptr->npex=malloc(10)) !=NULL ? snprintf( node_ptr->npex,10,"%d",value1) : raiseError("OutOfMemory Exception"); 
-                  node_ptr->omp=strdup("1");
+                  node_ptr->omp=strdup("1"); 
                }
             } else  raiseError("Format error in cpu %s. Should be 1x1x1, 1x1 or 1.\n",cpu);
             break ; 
@@ -582,6 +582,7 @@ void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data ) {
 
 void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end, char* expression ) {
    SeqLoopsPtr loopsPtr = NULL;
+   char newExpression[128];
    char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end, *tmpExpression = expression;
    char *defFile = NULL, *value = NULL;
    
@@ -611,20 +612,21 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
             strcpy(tmpEnd,value);
          }
       }
+      SeqUtil_TRACE( "SeqNode_addNumLoop() resulting loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, tmpStart, tmpStep, tmpSet, tmpEnd );
+      /* change to expression format for validation -> start:end:step:set */ 
+      memset(newExpression,'\0', strlen(newExpression)+1);
+      sprintf(newExpression,"%s:%s:%s:%s",tmpStart,tmpEnd,tmpStep,tmpSet); 
+      SeqLoops_validateNumLoopExpression(newExpression);
    } else {
       if (strstr(expression, "${") != NULL) {
          if ( (value = SeqUtil_keysub( expression, defFile, NULL)) != NULL ){
             strcpy(tmpExpression,value);
          }
       }
+      SeqUtil_TRACE( "SeqNode_addNumLoop() resulting loop_name=%s, expression:%s, \n",loop_name, tmpExpression );
+      SeqLoops_validateNumLoopExpression(tmpExpression);
    }
    
-   if (strcmp(tmpExpression, "") == 0) {
-      SeqUtil_TRACE( "SeqNode_addNumLoop() resulting loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, tmpStart, tmpStep, tmpSet, tmpEnd );
-   } else {
-      SeqUtil_TRACE( "SeqNode_addNumLoop() resulting loop_name=%s, expression:%s, \n",loop_name, expression );
-   }
-
    loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
    loopsPtr->type = Numerical;
    loopsPtr->loop_name = strdup( loop_name );
@@ -758,7 +760,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setIntramoduleContainer( nodePtr, "" );
    SeqNode_setModule( nodePtr, "" );
    SeqNode_setPathToModule( nodePtr, "" );
-   SeqNode_setCpu( nodePtr, "1x1x1" );
+   SeqNode_setCpu( nodePtr, "1" );
    SeqNode_setCpuMultiplier( nodePtr, "1" );
    SeqNode_setQueue( nodePtr, "null" );
    SeqNode_setMachine( nodePtr, "" );
