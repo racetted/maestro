@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "SeqUtil.h"
 static void printUsage()
 {
@@ -30,14 +31,9 @@ static void printUsage()
    printf("         file     is full path of of the definition file (or shortcut: 'resources')\n");
    printf("         key      is name of the key to search for\n");
    printf("Example: getdef ${SEQ_EXP_HOME}/resources/resources.def loop_max\n");
-   exit(1);
 }
 
-#ifdef Mop_linux
-main_getdef ( int argc, char * argv[] )
-#else
-main ( int argc, char * argv[] )
-#endif
+int main ( int argc, char * argv[] )
 {
    char *value,*deffile=NULL,*seq_exp_home=NULL;
    int file,key,c;
@@ -53,6 +49,7 @@ main ( int argc, char * argv[] )
        break;
      case '?':
          printUsage(); 
+         exit(1);
          break;
      }
    }
@@ -74,5 +71,5 @@ main ( int argc, char * argv[] )
    }
    free(value);
    free(deffile);
-   free(0);
+   exit(0);
 }

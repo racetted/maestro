@@ -60,7 +60,7 @@ void SeqUtil_TRACE (char * fmt, ...) {
    va_list ap;
    if ( SEQ_TRACE != 0 ) {
       va_start (ap, fmt);
-      vfprintf (stdout, fmt, ap);
+      vfprintf (stderr, fmt, ap);
       va_end (ap);
    }
 }
@@ -161,7 +161,6 @@ int touch_nfs(const char *filename) {
          return(1);
       }
       fclose(actionfile);
-      chmod(filename,00664);
    }
    return(0); 
 }
@@ -938,18 +937,13 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
 }
 
 
-void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
+void SeqUtil_printOrWrite( FILE * tmpFile, char * text, ...) {
 
    va_list ap;
-   FILE* tmpFile;
-
    va_start(ap, text); 
-   if (filename != NULL) {
-      if ((tmpFile = fopen(filename,"a+")) == NULL) {
-         raiseError( "maestro cannot write to file:%s\n",filename );
-      }
+
+   if (tmpFile != NULL) {
       vfprintf(tmpFile, text, ap);
-      fclose(tmpFile);
    } else {
       vfprintf(stdout, text, ap);
    }

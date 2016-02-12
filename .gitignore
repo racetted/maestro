@@ -4,6 +4,7 @@
 *.so
 *.ssm
 *.swp
+*.swo
 bin
 ssm/*.ssm
 ssm/maestro_* 

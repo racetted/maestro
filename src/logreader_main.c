@@ -46,7 +46,7 @@ static void printUsage()
    printf("            logreader -d $datestamp -t avg      will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
 }
 
-main ( int argc, char * argv[] )
+int main ( int argc, char * argv[] )
 {
    char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL; 
    int stats_days=7, c, clobberFile=1; 
@@ -82,6 +82,10 @@ main ( int argc, char * argv[] )
       case 'c':
          clobberFile=0;
 	      break;
+      case '?':
+         printUsage();
+         exit(1);
+         break;
     }
 
    }
@@ -110,4 +114,5 @@ main ( int argc, char * argv[] )
    if ( inputFile != NULL ) free(inputFile);
    if ( outputFile != NULL ) free(outputFile);
 
+   exit (0);
 }

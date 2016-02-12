@@ -69,7 +69,7 @@ static void printUsage()
    printf("Example: nodelogger -n regional/assimilation/00/task_0 -s abort -m \"invalid hour number\"\n");
 }
 
-main (int argc, char * argv[])
+int main (int argc, char * argv[])
 
 {
    extern char *optarg;

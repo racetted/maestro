@@ -784,6 +784,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    char *tmpstrtok = NULL, *tmpFilters ;
    int showAll = 0, showCfgPath = 0, showTaskPath = 0, showRessource = 0; 
    int showType = 0, showNode = 0, showRootOnly = 0, showResPath = 0, showVar=0, showDependencies=0;
+   FILE * tmpFile = NULL ;
    SeqNameValuesPtr nameValuesPtr = NULL ;
    SeqDependenciesPtr depsPtr = NULL;
    LISTNODEPTR submitsPtr = NULL, siblingsPtr = NULL, abortsPtr = NULL;
@@ -792,6 +793,9 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
 
    if( filename != NULL ) {
       removeFile_nfs(filename);
+      if ((tmpFile = fopen(filename,"a+")) == NULL) {
+         raiseError( "Unable to write to file:%s\n",filename );
+      }
    }
    if( filters == NULL ) {
       showAll = 1;
@@ -821,97 +825,93 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
 
    /*printf("************ Seq Node Information \n"); */
    if( showAll ) {
-      SeqUtil_printOrWrite(filename,"node.name=%s\n", node_ptr->name );
-      SeqUtil_printOrWrite(filename,"node.extension=%s\n",  node_ptr->extension);
-      SeqUtil_printOrWrite(filename,"node.leaf=%s\n", node_ptr->nodeName );
-      SeqUtil_printOrWrite(filename,"node.module=%s\n", node_ptr->module );
-      SeqUtil_printOrWrite(filename,"node.container=%s\n", node_ptr->container );
-      SeqUtil_printOrWrite(filename,"node.intramodule_container=%s\n", node_ptr->intramodule_container );
-      /*
-      SeqUtil_printOrWrite(filename,"alias=%s\n", node_ptr->alias );
-      SeqUtil_printOrWrite(filename,"args=%s\n", node_ptr->args );
-      */
+      SeqUtil_printOrWrite(tmpFile,"node.name=%s\n", node_ptr->name );
+      SeqUtil_printOrWrite(tmpFile,"node.extension=%s\n",  node_ptr->extension);
+      SeqUtil_printOrWrite(tmpFile,"node.leaf=%s\n", node_ptr->nodeName );
+      SeqUtil_printOrWrite(tmpFile,"node.module=%s\n", node_ptr->module );
+      SeqUtil_printOrWrite(tmpFile,"node.container=%s\n", node_ptr->container );
+      SeqUtil_printOrWrite(tmpFile,"node.intramodule_container=%s\n", node_ptr->intramodule_container );
    }
    if (showRootOnly) {
-      SeqUtil_printOrWrite(filename,"node.rootnode=%s\n",node_ptr->name);
+      SeqUtil_printOrWrite(tmpFile,"node.rootnode=%s\n",node_ptr->name);
    }
 
    if (showNode) {
-      (node_ptr->extension == NULL || strlen(node_ptr->extension) == 0) ? SeqUtil_printOrWrite(filename,"node.fullnode=%s\n",node_ptr->name) : SeqUtil_printOrWrite(filename,"node.fullnode=%s.%s\n",node_ptr->name,node_ptr->extension);
+      (node_ptr->extension == NULL || strlen(node_ptr->extension) == 0) ? SeqUtil_printOrWrite(tmpFile,"node.fullnode=%s\n",node_ptr->name) : SeqUtil_printOrWrite(tmpFile,"node.fullnode=%s.%s\n",node_ptr->name,node_ptr->extension);
    }
 
    if ( showAll || showType ) {
-        SeqUtil_printOrWrite(filename,"node.type=%s\n", SeqNode_getTypeString( node_ptr->type ) );
+        SeqUtil_printOrWrite(tmpFile,"node.type=%s\n", SeqNode_getTypeString( node_ptr->type ) );
    } 
 
    if( showAll || showRessource ) {
-      SeqUtil_printOrWrite(filename,"node.catchup=%d\n", node_ptr->catchup );
-      SeqUtil_printOrWrite(filename,"node.mpi=%d\n", node_ptr->mpi);
-      SeqUtil_printOrWrite(filename,"node.wallclock=%d\n", node_ptr->wallclock );
-      SeqUtil_printOrWrite(filename,"node.cpu=%s\n", node_ptr->cpu );
-      SeqUtil_printOrWrite(filename,"node.cpu_multiplier=%s\n", node_ptr->cpu_multiplier );
-      SeqUtil_printOrWrite(filename,"node.machine=%s\n", node_ptr->machine );
-      SeqUtil_printOrWrite(filename,"node.queue=%s\n", node_ptr->queue );
-      SeqUtil_printOrWrite(filename,"node.memory=%s\n", node_ptr->memory );
-      SeqUtil_printOrWrite(filename,"node.workerPath=%s\n", node_ptr->workerPath );
-      SeqUtil_printOrWrite(filename,"node.soumetArgs=%s\n", node_ptr->soumetArgs );
+      SeqUtil_printOrWrite(tmpFile,"node.catchup=%d\n", node_ptr->catchup );
+      SeqUtil_printOrWrite(tmpFile,"node.mpi=%d\n", node_ptr->mpi);
+      SeqUtil_printOrWrite(tmpFile,"node.wallclock=%d\n", node_ptr->wallclock );
+      SeqUtil_printOrWrite(tmpFile,"node.cpu=%s\n", node_ptr->cpu );
+      SeqUtil_printOrWrite(tmpFile,"node.cpu_multiplier=%s\n", node_ptr->cpu_multiplier );
+      SeqUtil_printOrWrite(tmpFile,"node.machine=%s\n", node_ptr->machine );
+      SeqUtil_printOrWrite(tmpFile,"node.queue=%s\n", node_ptr->queue );
+      SeqUtil_printOrWrite(tmpFile,"node.memory=%s\n", node_ptr->memory );
+      SeqUtil_printOrWrite(tmpFile,"node.workerPath=%s\n", node_ptr->workerPath );
+      SeqUtil_printOrWrite(tmpFile,"node.soumetArgs=%s\n", node_ptr->soumetArgs );
    }
    if( showAll || showCfgPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-         SeqUtil_printOrWrite(filename,"node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
+         SeqUtil_printOrWrite(tmpFile,"node.configpath=${SEQ_EXP_HOME}/modules%s.cfg\n", node_ptr->taskPath );
       } else {
-         SeqUtil_printOrWrite(filename,"node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
+         SeqUtil_printOrWrite(tmpFile,"node.configpath=${SEQ_EXP_HOME}/modules%s/%s/container.cfg\n", node_ptr->intramodule_container, node_ptr->nodeName );
       }
    }
 
    if( (showAll || showTaskPath) && (node_ptr->type == Task || node_ptr->type == NpassTask) ) {
       if ( strcmp( node_ptr->taskPath, "" ) == 0 )
-         SeqUtil_printOrWrite(filename,"node.taskpath=\n");
+         SeqUtil_printOrWrite(tmpFile,"node.taskpath=\n");
       else
-         SeqUtil_printOrWrite(filename,"node.taskpath=${SEQ_EXP_HOME}/modules%s.tsk\n", node_ptr->taskPath );
+         SeqUtil_printOrWrite(tmpFile,"node.taskpath=${SEQ_EXP_HOME}/modules%s.tsk\n", node_ptr->taskPath );
    }
    if ( showAll || showResPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
-         SeqUtil_printOrWrite(filename,"node.resourcepath=${SEQ_EXP_HOME}/resources%s.xml\n", node_ptr->name);
+         SeqUtil_printOrWrite(tmpFile,"node.resourcepath=${SEQ_EXP_HOME}/resources%s.xml\n", node_ptr->name);
       } else {
-         SeqUtil_printOrWrite(filename,"node.resourcepath=${SEQ_EXP_HOME}/resources%s/container.xml\n", node_ptr->name );
+         SeqUtil_printOrWrite(tmpFile,"node.resourcepath=${SEQ_EXP_HOME}/resources%s/container.xml\n", node_ptr->name );
       }
    }
 
    if( showAll ) {
 
-      SeqUtil_printOrWrite(filename, "node.flow=${SEQ_EXP_HOME}/modules/%s/flow.xml\n", node_ptr->module );
+      SeqUtil_printOrWrite(tmpFile, "node.flow=${SEQ_EXP_HOME}/modules/%s/flow.xml\n", node_ptr->module );
       /*SeqUtil_printOrWrite(filename,"************ Node Specific Data \n"); */
       nameValuesPtr = node_ptr->data;
       while (nameValuesPtr != NULL ) {
-         SeqUtil_printOrWrite(filename,"node.specific.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
+         SeqUtil_printOrWrite(tmpFile,"node.specific.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
          nameValuesPtr = nameValuesPtr->nextPtr;
       }
 
       /* Dependencies */
-      SeqNode_printDependencies(node_ptr, filename, 0);
+      SeqNode_printDependencies(node_ptr, tmpFile, 0);
    
       /*SeqUtil_printOrWrite(filename,"************ Node Submits \n"); */
       submitsPtr = node_ptr->submits;
       while (submitsPtr != NULL) {
-         SeqUtil_printOrWrite(filename,"node.submit=%s\n", submitsPtr->data);
+         SeqUtil_printOrWrite(tmpFile,"node.submit=%s\n", submitsPtr->data);
          submitsPtr = submitsPtr->nextPtr;
       }
    
       /*SeqUtil_printOrWrite(filename,"************ Node Abort Actions \n"); */
       abortsPtr = node_ptr->abort_actions;
       while (abortsPtr != NULL) {
-         SeqUtil_printOrWrite(filename,"node.abortaction=%s\n", abortsPtr->data);
+         SeqUtil_printOrWrite(tmpFile,"node.abortaction=%s\n", abortsPtr->data);
          abortsPtr = abortsPtr->nextPtr;
       }
       /*SeqUtil_printOrWrite(filename,"************ Containing Loops \n"); */
       loopsPtr = node_ptr->loops;
       while (loopsPtr != NULL) {
          /*SeqUtil_printOrWrite(filename,"************ Loop \n"); */
-         SeqUtil_printOrWrite(filename,"node.loop_parent.name=%s\n", loopsPtr->loop_name);  
+         SeqUtil_printOrWrite(tmpFile,"node.loop_parent.name=%s\n", loopsPtr->loop_name);  
          nameValuesPtr = loopsPtr->values;
          while (nameValuesPtr != NULL ) {
-            SeqUtil_printOrWrite(filename,"node.loop_parent.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
+            SeqUtil_printOrWrite(tmpFile,"node.loop_parent.%s=%s\n", nameValuesPtr->name, nameValuesPtr->value );
             nameValuesPtr = nameValuesPtr->nextPtr;
          }
          loopsPtr = loopsPtr->nextPtr;
@@ -919,28 +919,32 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
       /*SeqUtil_printOrWrite(filename,"************ Node Siblings \n"); */
       siblingsPtr = node_ptr->siblings;
       while (siblingsPtr != NULL) {
-         SeqUtil_printOrWrite(filename,"node.sibling=%s\n", siblingsPtr->data);
+         SeqUtil_printOrWrite(tmpFile,"node.sibling=%s\n", siblingsPtr->data);
          siblingsPtr = siblingsPtr->nextPtr;
       }
 
       if( node_ptr->type == ForEach ) {
-         if (node_ptr->forEachTarget->node != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.node=%s\n", node_ptr->forEachTarget->node );
-         if (node_ptr->forEachTarget->index != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.index=%s\n", node_ptr->forEachTarget->index );
-         if (node_ptr->forEachTarget->exp != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.exp=%s\n", node_ptr->forEachTarget->exp );
-         if (node_ptr->forEachTarget->hour != NULL)  SeqUtil_printOrWrite(filename,"node.ForEachTarget.hour=%s\n", node_ptr->forEachTarget->hour );
+         if (node_ptr->forEachTarget->node != NULL)  SeqUtil_printOrWrite(tmpFile,"node.ForEachTarget.node=%s\n", node_ptr->forEachTarget->node );
+         if (node_ptr->forEachTarget->index != NULL)  SeqUtil_printOrWrite(tmpFile,"node.ForEachTarget.index=%s\n", node_ptr->forEachTarget->index );
+         if (node_ptr->forEachTarget->exp != NULL)  SeqUtil_printOrWrite(tmpFile,"node.ForEachTarget.exp=%s\n", node_ptr->forEachTarget->exp );
+         if (node_ptr->forEachTarget->hour != NULL)  SeqUtil_printOrWrite(tmpFile,"node.ForEachTarget.hour=%s\n", node_ptr->forEachTarget->hour );
       }
    }
-   if (showDependencies) SeqNode_printDependencies(node_ptr, filename, 1);
+   if (showDependencies) SeqNode_printDependencies(node_ptr, tmpFile, 1);
+
+   if (tmpFile != NULL) fclose(tmpFile);
 
    if (showVar) {
+      /* function opens the file and writes in it */ 
        SeqNode_generateConfig( node_ptr,"continue", filename );
    }
 
    free( tmpFilters );
+
    SeqUtil_TRACE( "SeqNode.SeqNode_printNode() done\n" );
 }
 
-void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filename, int isPrettyPrint ){
+void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int isPrettyPrint ){
 
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
@@ -957,14 +961,14 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, const char * filena
 
    while( depsPtr != NULL ) {
       nameValuesPtr =  depsPtr->dependencyItem;
-      if (isPrettyPrint) SeqUtil_printOrWrite(filename,"Dependency #%d\n", count);
+      if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"Dependency #%d\n", count);
       while (nameValuesPtr != NULL ) {
          if( strlen( nameValuesPtr->value ) > 0 ) 
-            SeqUtil_printOrWrite(filename,"%s%s=%s\n", extraString ,nameValuesPtr->name, nameValuesPtr->value );
+            SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,nameValuesPtr->name, nameValuesPtr->value );
          nameValuesPtr = nameValuesPtr->nextPtr;
       }
       ++count; 
-      if (isPrettyPrint) SeqUtil_printOrWrite(filename,"\n", count);
+      if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"\n", count);
 
       depsPtr  = depsPtr->nextPtr;
    }
@@ -1078,46 +1082,54 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    char pidbuf[100];
    char shortdate[11];
    char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
+   FILE * tmpFile = NULL; 
    SeqNameValuesPtr loopArgsPtr=NULL , containerLoopArgsList = NULL;
    SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, _nodeDataPtr->extension );
    }
-   SeqUtil_printOrWrite( filename, "%s \n", getenv("SEQ_MAESTRO_SHORTCUT"));
-   SeqUtil_printOrWrite( filename, "export SEQ_MAESTRO_SHORTCUT=\"%s\" \n", getenv("SEQ_MAESTRO_SHORTCUT"));
-   SeqUtil_printOrWrite( filename, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
-   SeqUtil_printOrWrite( filename, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
-   SeqUtil_printOrWrite( filename, "export SEQ_TRACE_LEVEL=%d\n", SeqUtil_getTraceLevel());
-   SeqUtil_printOrWrite( filename, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
-   SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
-   SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_MODULE=%s\n", _nodeDataPtr->module);
+
+   if ( filename !=NULL ) {
+      if ((tmpFile = fopen(filename,"a+")) == NULL) {
+         raiseError( "Unable to write to file:%s\n",filename );
+      }
+   }
+
+   SeqUtil_printOrWrite( tmpFile, "%s \n", getenv("SEQ_MAESTRO_SHORTCUT"));
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_MAESTRO_SHORTCUT=\"%s\" \n", getenv("SEQ_MAESTRO_SHORTCUT"));
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_EXP_HOME=%s\n",  getenv("SEQ_EXP_HOME"));
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_EXP_NAME=%s\n", _nodeDataPtr->suiteName); 
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_TRACE_LEVEL=%d\n", SeqUtil_getTraceLevel());
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_MODULE=%s\n", _nodeDataPtr->module);
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_CONTAINER=%s\n", _nodeDataPtr->container); 
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_CURRENT_MODULE=%s\n", _nodeDataPtr->module);
    if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask ) {
-       SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_CONTAINER=%s\n", _nodeDataPtr->container); 
+       SeqUtil_printOrWrite( tmpFile, "export SEQ_CURRENT_CONTAINER=%s\n", _nodeDataPtr->container); 
    } else {
-       SeqUtil_printOrWrite( filename, "export SEQ_CURRENT_CONTAINER=%s\n", _nodeDataPtr->name); 
+       SeqUtil_printOrWrite( tmpFile, "export SEQ_CURRENT_CONTAINER=%s\n", _nodeDataPtr->name); 
    }
    if ( _nodeDataPtr-> npex != NULL ) {
-   SeqUtil_printOrWrite( filename, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_NPEX=%s\n", _nodeDataPtr->npex);
    } 
    if ( _nodeDataPtr-> npey != NULL ) {
-   SeqUtil_printOrWrite( filename, "export SEQ_NPEY=%s\n", _nodeDataPtr->npey);
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_NPEY=%s\n", _nodeDataPtr->npey);
    }
    if ( _nodeDataPtr-> omp != NULL ) {
-   SeqUtil_printOrWrite( filename, "export SEQ_OMP=%s\n", _nodeDataPtr->omp);
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_OMP=%s\n", _nodeDataPtr->omp);
    }
-   SeqUtil_printOrWrite( filename, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
-   SeqUtil_printOrWrite( filename, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_NODE=%s\n", _nodeDataPtr->name );
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_NAME=%s\n", _nodeDataPtr->nodeName );
    loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
    if( strlen( loopArgs ) > 0 ) {
-      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_ARGS=\"-l %s\"\n", loopArgs );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_LOOP_ARGS=\"-l %s\"\n", loopArgs );
    } else {
-      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_ARGS=\"\"\n" );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_LOOP_ARGS=\"\"\n" );
    }
    if( strlen( _nodeDataPtr->extension ) > 0 ) {
-      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"%s\"\n", _nodeDataPtr->extension );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_LOOP_EXT=\"%s\"\n", _nodeDataPtr->extension );
    } else {
-      SeqUtil_printOrWrite( filename, "export SEQ_LOOP_EXT=\"\"\n" );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_LOOP_EXT=\"\"\n" );
    }
 
    /*container arguments, used in npass tasks mostly*/
@@ -1127,16 +1139,16 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       containerLoopExt =  (char*) SeqLoops_getExtFromLoopArgs(containerLoopArgsList);
    }
    if ( containerLoopArgs != NULL ) {
-      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_ARGS=\"-l %s\"\n", containerLoopArgs );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_CONTAINER_LOOP_ARGS=\"-l %s\"\n", containerLoopArgs );
       free(containerLoopArgs);
    } else {
-      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_ARGS=\"\"\n" );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_CONTAINER_LOOP_ARGS=\"\"\n" );
    }
    if ( containerLoopExt != NULL ) {
-      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_EXT=\"%s\"\n", containerLoopExt);
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_CONTAINER_LOOP_EXT=\"%s\"\n", containerLoopExt);
       free(containerLoopExt);
    } else {
-      SeqUtil_printOrWrite( filename, "export SEQ_CONTAINER_LOOP_EXT=\"\"\n" );
+      SeqUtil_printOrWrite( tmpFile, "export SEQ_CONTAINER_LOOP_EXT=\"\"\n" );
    } 
 
    loopArgsPtr = _nodeDataPtr->loop_args;
@@ -1159,21 +1171,21 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
 
    /* Loop args exported as env variables */
    while (loopArgsPtr != NULL) {
-      SeqUtil_printOrWrite( filename, "export %s=%s \n", loopArgsPtr->name, loopArgsPtr->value );
+      SeqUtil_printOrWrite( tmpFile, "export %s=%s \n", loopArgsPtr->name, loopArgsPtr->value );
       loopArgsPtr=loopArgsPtr->nextPtr;
    }
    
    if (flow != NULL ) {
-       SeqUtil_printOrWrite( filename, "export SEQ_XFER=%s\n", flow );
+       SeqUtil_printOrWrite( tmpFile, "export SEQ_XFER=%s\n", flow );
    } else {
-       SeqUtil_printOrWrite( filename, "export SEQ_XFER=continue\n");
+       SeqUtil_printOrWrite( tmpFile, "export SEQ_XFER=continue\n");
    }
        
-   SeqUtil_printOrWrite( filename, "export SEQ_WORKER_PATH=%s\n", _nodeDataPtr->workerPath );
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_WORKER_PATH=%s\n", _nodeDataPtr->workerPath );
    if (filename != NULL) {
-       SeqUtil_printOrWrite( filename, "export SEQ_TMP_CFG=%s\n", filename);
+       SeqUtil_printOrWrite( tmpFile, "export SEQ_TMP_CFG=%s\n", filename);
    }
-   SeqUtil_printOrWrite( filename, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_DATE=%s\n", _nodeDataPtr->datestamp); 
    memset(shortdate,'\0', strlen(shortdate)+1);
    if (strlen(_nodeDataPtr->datestamp) > 10) {
       strncpy(shortdate,_nodeDataPtr->datestamp,10);
@@ -1181,7 +1193,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    } else {
       strcpy(shortdate,_nodeDataPtr->datestamp);
    }
-   SeqUtil_printOrWrite( filename, "export SEQ_SHORT_DATE=%s\n", shortdate); 
+   SeqUtil_printOrWrite( tmpFile, "export SEQ_SHORT_DATE=%s\n", shortdate); 
 
    /* check for the presence of a "rerun" file to determine rerun status */
    /* TODO find a way for nodeinfo to figure out whether this access is going through the server or not..., check function pointers else it will return a memfault  
@@ -1193,6 +1205,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    SeqUtil_printOrWrite( filename, "export SEQ_RERUN=%d\n", isRerun );
    */
 
+   if (tmpFile != NULL) fclose(tmpFile);
    free(tmpdir);
    free(tmpValue);
    free(tmp2Value);
