@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> 
 #include "maestro.h"
 #include "SeqListNode.h"
 #include "SeqNameValues.h"
@@ -54,15 +55,9 @@ static void printSeqUsage()
 
    printf("      SEQ_EXP_HOME=%s\n",seq_exp_home);
    printf("Example: maestro -s submit -n regional/assimilation/00/task_0 -f continue\n");
-   exit(1);
 }
 
-
-#ifdef Mop_linux
-main_maestro (int argc, char * argv[])
-#else
-main (int argc, char * argv [])
-#endif
+int main (int argc, char * argv [])
 
 {
    extern char *optarg;
@@ -105,19 +100,21 @@ main (int argc, char * argv [])
          case 'v':
             SeqUtil_setTraceLevel(1);
             break;
-	 case 'i':
-	    ignoreAllDeps=1;
-	    break;
-	 case 'o':
+	      case 'i':
+	         ignoreAllDeps=1;
+	         break;
+	      case 'o':
             extraArgs = malloc( strlen( optarg ) + 1 );
             strcpy(extraArgs,optarg);
-	    break;
+	         break;
          case '?':
             printSeqUsage();
+            exit(1);
       }
    }
    if ( gotNode == 0 || gotSignal == 0 ) {
       printSeqUsage();
+      exit(1);
    }
    if ( gotLoops ) {
 		/*

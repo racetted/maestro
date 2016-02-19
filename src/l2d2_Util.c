@@ -124,7 +124,6 @@ int touch (char *filename) {
       }
       
       fclose(actionfile);
-      chmod(filename,00664);
    }
 
    return(0); 

@@ -354,6 +354,7 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
          SeqUtil_TRACE( "nodeinfo.parseLoopAttributes() nodeName=%s, value:%s\n", nodeName, nodePtr->children->content);
          if ( nodePtr->children != NULL ) {
             if( strcmp( nodeName, "start" ) == 0 ) {
+               free(loopStart);
                loopStart = strdup( nodePtr->children->content );
             } else if( strcmp( nodeName, "step" ) == 0 ) {
                free( loopStep );
@@ -362,8 +363,10 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
                free( loopSet );
                loopSet = strdup( nodePtr->children->content );
             } else if( strcmp( nodeName, "end" ) == 0 ) {
+               free( loopEnd );
                loopEnd = strdup( nodePtr->children->content );
             } else if( strcmp( nodeName, "expression" ) == 0 ) {
+               free(loopExpression);
                loopExpression = strdup( nodePtr->children->content );
                break;
             }
@@ -374,11 +377,11 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
             loopStart, loopStep, loopSet, loopEnd, loopExpression );
       }
    }
-   if (loopStart != NULL) free( loopStart );
+   free( loopStart );
    free( loopStep );
    free( loopSet );
-   if (loopEnd != NULL) free( loopEnd );
-   if (loopExpression != NULL) free( loopExpression );
+   free( loopEnd );
+   free( loopExpression );
    
 }
 
@@ -759,6 +762,11 @@ void parseForEachTarget(xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
            t_hour = strdup(nodePtr->children->content); 
          }
       }
+   if (t_exp == NULL) t_exp = strdup(_nodeDataPtr->expHome);
+   if (t_hour == NULL) t_hour = strdup("0"); 
+   if ((t_node == NULL) || (t_index == NULL)) {
+      raiseError("Node's xml resource file does not contain mandatory node and/or index attributes.\n");
+   }  
    SeqNode_setForEachTarget(_nodeDataPtr, t_node, t_index, t_exp, t_hour);
    free(t_node);
    free(t_exp);
