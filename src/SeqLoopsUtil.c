@@ -845,91 +845,99 @@ int lastDefIter( int start, int end, int step){
    return start + step * ((end-start)/step);
 }
 
-/* returns 1 if we have reach the last iteration of the loop,
-   returns 0 otherwise
-*/
+/********************************************************************************
+ * returns 1 if we have reach the last iteration of the loop,
+ * returns 0 otherwise
+********************************************************************************/
 int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
-   SeqNameValuesPtr nodeSpecPtr = NULL;
-   char tmp[20];
-   char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL, *loopSetStr = NULL;
-   char *loopStart = NULL, *tmpExpression = NULL, *tmpArrayValue = NULL;
-   int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0, _i, expressionArray[256], detectedEnd=0;
-   int isLast = 0, endIndex=1;
+	SeqNameValuesPtr nodeSpecPtr = NULL;
+	char tmp[20];
+	char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL, *loopSetStr = NULL;
+	char *loopStart = NULL, *tmpExpression = NULL, *tmpArrayValue = NULL;
+	int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0, _i, expressionArray[256], detectedEnd=0;
+	int isLast = 0, endIndex=1;
 	int* lastDef;
-   memset( tmp, '\0', sizeof(tmp) );
-   /* get the first loop iteration */
-   nodeSpecPtr = _nodeDataPtr->data;
+	memset( tmp, '\0', sizeof(tmp) );
+	/* get the first loop iteration */
+	nodeSpecPtr = _nodeDataPtr->data;
 
-   /* for now, we only support numerical data */
-   /* get the current iteration from the loop arguments */
-   if( (loopCurrentStr = SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) ) != NULL )
-      loopCurrent = atoi(loopCurrentStr);
-   
-   tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
-   if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+	/* for now, we only support numerical data */
+	/* get the current iteration from the loop arguments */
+	if( (loopCurrentStr = SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) ) != NULL )
+		loopCurrent = atoi(loopCurrentStr);
+
+	tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+	if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
 
 		/* Parse the expression into an array */
-      _i=0;
-      tmpArrayValue = strtok (tmpExpression,":,");
-      while (tmpArrayValue != NULL) {
+		_i=0;
+		tmpArrayValue = strtok (tmpExpression,":,");
+		while (tmpArrayValue != NULL) {
 			expressionArray[_i++] = atoi(tmpArrayValue);
 			tmpArrayValue = strtok (NULL,":,");
-      }
+		}
+
 		/* LastDef is the last four integers of the expression */
-     	lastDef = &expressionArray[_i - 4]; 
+		lastDef = &expressionArray[_i - 4]; 
 
 		/* If current is the last iteration of the last definition, then it is the
 		 * last iteration of the whole expression */
 		if ( loopCurrent == lastDefIter( lastDef[DEF_START], lastDef[DEF_END], lastDef[DEF_STEP]) ){
-			 isLast = 1;
+			isLast = 1;
 		}
-      
-   } else {
-      /* get the iteration step */
-      if( ( loopStepStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) ) != NULL )
-	 loopStep = atoi(loopStepStr);
-      /* if the set has a value, the next iteration is (current iteration + set value)*/
-      if( ( loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) ) != NULL )
-	 loopSet = atoi(loopSetStr);
-      /* get the iteration end */
-      if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
-	 loopTotal = atoi(loopEndStr);
 
-      fprintf(stdout,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
+	} else {
+		/* get the iteration step */
+		if( ( loopStepStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) ) != NULL )
+			loopStep = atoi(loopStepStr);
+		/* if the set has a value, the next iteration is (current iteration + set value)*/
+		if( ( loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) ) != NULL )
+			loopSet = atoi(loopSetStr);
+		/* get the iteration end */
+		if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
+			loopTotal = atoi(loopEndStr);
 
-      if( (loopCurrent + loopStep) > loopTotal ) {
-	 isLast = 1;
-      }
-   }
-   
-   return isLast;
+		fprintf(stdout,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
+
+		if( (loopCurrent + loopStep) > loopTotal ) {
+			isLast = 1;
+		}
+	}
+
+	return isLast;
 }
 
-/* returns the next loop iteration of the current loop node as a
-   name-value argument list so that it can be used in an maestro call.
-   returns NULL if we have reached the end
-   */
-SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args, int* _newDef ) {
-	
-   SeqNameValuesPtr nextLoopArgsPtr = NULL; /* Return value */
-   SeqNameValuesPtr nodeSpecPtr = _nodeDataPtr->data;
-   const int loopCurrent = atoi( SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) );
+/********************************************************************************
+ * SeqLoops_nextLoopArgs(): Works with maestro.go_end().  For loops without
+ * expressions, either returns loop arguments for the next iteration or returns
+ * NULL if there are none.
+ *
+ * For loops with expressions, the function will return the next iteration of
+ * the current definition if there is one.  Otherwise, if the current iteration
+ * is the last one of it's definition, the function will return NULL but will
+ * inform the caller that there is a new definition to start by specifying the
+ * number of the next definition in the parameter _newDefNumber.  If the current
+ * iteration is the last of it's definition, and the current definition is the
+ * last one, NULL will be returned and 0 will be put in *_newDefNumber
+ * indicating to the caller that there is no next iteration so submit and no
+ * next definition to start.
+********************************************************************************/
+SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args, int* _newDefNumber ) {
 
+	SeqNameValuesPtr nextLoopArgsPtr = NULL; /* Return value */
+	SeqNameValuesPtr nodeSpecPtr = _nodeDataPtr->data;
+	const int loopCurrent = atoi( SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) );
 	char *expression, *token; 
 	char nextIterStr[200]; 
-	int expressionArray[256], index = 0, startIndex = 0, nextIter,loopStart,  loopCount,  loopSetCount;
+	int expressionArray[256], index = 0, startIndex = 0, nextIter,loopStart,  loopCount,  loopSetCount, loopSet = 1, loopStep = 1, loopEnd;
 	int *currentDef, *nextDef;
 	int currentDefIsLast; /* Boolean value */ 
-
-	int loopSet = 1, loopStep = 1, loopEnd;
-
 	memset( nextIterStr, '\0', sizeof(nextIterStr));
 
 	/* Determine if loopArgs are defined by an expression */
 	expression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
-
 	if( expression != NULL && strcmp(expression , "")){
-		
+
 		/* Parse expression into array */
 		token = strtok(expression,":,");
 		index = 0;
@@ -940,8 +948,9 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 
 		/* Find the definition that we are currently in */
 		startIndex = 0;
-		while ( ((startIndex + 4) < index) && !isInDefinition(loopCurrent, expressionArray[startIndex + DEF_START], expressionArray[startIndex + DEF_END] , expressionArray[startIndex + DEF_STEP])  )
+		while ( ((startIndex + 4) < index) && !isInDefinition(loopCurrent, expressionArray[startIndex + DEF_START], expressionArray[startIndex + DEF_END] , expressionArray[startIndex + DEF_STEP])  ){
 			startIndex += 4;
+		}
 		currentDefIsLast = ( startIndex + 4 == index ? 1 : 0 );
 		currentDef = &(expressionArray[startIndex]);
 
@@ -951,64 +960,39 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 			/* Start a new iteration within the current definition */
 			sprintf( nextIterStr, "%d", nextIter );
 			nextLoopArgsPtr = SeqNameValues_clone( _loop_args );
-         SeqLoops_setLoopAttribute( &nextLoopArgsPtr, _nodeDataPtr->nodeName, nextIterStr );
+			SeqLoops_setLoopAttribute( &nextLoopArgsPtr, _nodeDataPtr->nodeName, nextIterStr );
 		} else if( loopCurrent == lastDefIter(currentDef[DEF_START], currentDef[DEF_END], currentDef[DEF_STEP]) ) {
 			if(!currentDefIsLast){
 				/* Inform caller that we will return args for new definition */
-				*_newDef = (startIndex/4) + 1;
-				SeqUtil_TRACE(TL_MEDIUM, "Informing caller of newdefinition, and also returning newdefinition number = %d within expressionArray.\n",*_newDef);
-
-				/* Advance to next definition */
-				nextDef = currentDef + 4;
-				nextIter = nextDef[DEF_START];
-
-				/* Deal with overlapping definitions */
-				/* This will not be necessary with disjoint definitions.*/
-				if ( nextIter == loopCurrent )
-					nextIter += nextDef[DEF_STEP];
-
-				/* Create next set of iterations */
-				loopSetCount = 0;
-				nextLoopArgsPtr = SeqNameValues_clone( _loop_args );
-				while ( nextIter <= nextDef[DEF_END] && loopSetCount < nextDef[DEF_SET] ){
-					sprintf ( nextIterStr , "%d" , nextIter );
-					SeqNameValues_insertItem( &nextLoopArgsPtr , "newdef" , nextIterStr );
-					nextIter += nextDef[DEF_STEP];
-					loopSetCount++;
-				}
+				*_newDefNumber = (startIndex/4) + 1;
+				SeqUtil_TRACE(TL_MEDIUM, "SeqLoops_nextLoopArgs():Informing caller of newdefinition, and also returning newdefinition number = %d within expressionArray.\n",*_newDefNumber);
 			}
 		}  /* else nextLoopArgsPtr == NULL indicating loop is finished */
 	} /* end if ( loop uses expression ) */
 	else
 	{
 		SeqUtil_TRACE(TL_MINIMAL , "SeqLoops_nextLoopArgs(): Running non-expression code \n");
-      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) {
-         loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
-		}
-      
-      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) {
-         loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+		if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) {
+			loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
 		}
 
-      loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+		if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) {
+			loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+		}
+
+		loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
 		loopStart = atoi ( SeqLoops_getLoopAttribute ( nodeSpecPtr, "START" ) );
 
+		/* calculate next iteration */
 		nextIter = loopCurrent + loopStep*loopSet;
+		if( isInDefinition(nextIter, loopStart, loopEnd, loopStep) ) {
+			sprintf( nextIterStr, "%d", loopCurrent + (loopSet * loopStep) );
+			nextLoopArgsPtr = SeqNameValues_clone( _loop_args );
+			SeqLoops_setLoopAttribute( &nextLoopArgsPtr, _nodeDataPtr->nodeName, nextIterStr );
+		} /* else nextLoopArgsPtr == NULL indicating loop is finished */
+	}
 
-      /* calculate next iteration */
-      if( isInDefinition(nextIter, loopStart, loopEnd, loopStep) ) {
-			SeqUtil_TRACE(TL_MINIMAL, "Putting loopCurrent + loopSet * loopStep = %d  in nextIterStr\n", loopCurrent + (loopSet*loopStep));
-         sprintf( nextIterStr, "%d", loopCurrent + (loopSet * loopStep) );
-
-			SeqUtil_TRACE(TL_MINIMAL, "Cloning _loop_args\n");
-         nextLoopArgsPtr = SeqNameValues_clone( _loop_args );
-
-			SeqUtil_TRACE(TL_MINIMAL, "Adding nextIterstr to nextLoopArgs under attribute _nodeDataPtr->nodeName \n");
-         SeqLoops_setLoopAttribute( &nextLoopArgsPtr, _nodeDataPtr->nodeName, nextIterStr );
-      } /* else nextLoopArgsPtr == NULL indicating loop is finished */
-   }
-
-   return nextLoopArgsPtr;
+	return nextLoopArgsPtr;
 }
 
 /* function that validates loop arguments and builds the extension
@@ -1100,105 +1084,100 @@ SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, S
    return newLoopsArgsPtr;
 }
 
-/* returns the loop arguments for the first set iterations for a loop set
- * however, if the _loop_args already contains a value for the current loop,
- * it means the set is already started, we will only submit the (current + set) iteration
- * Example Set loop 3, start value=1, the returned NameValue list is something like:
- *            NAME: outer_loop VALUE=1
- *            NAME: outer_loop VALUE=2
- *            NAME: outer_loop VALUE=3
- */
+/********************************************************************************
+ * SeqLoops_getLoopSetArgs()
+ * Returns the intial set of iterations for a given definition in an expression
+ * specified by defNumber, or the initial set of iterations for a loop defined
+ * without the use of an expression.
+ * REMARK: If this function is used to return the initial set of iterations for
+ * a definition that is not the first one, then NULL should be passed as the
+ * second argument (see maestro.c: go_end()).
+********************************************************************************/
 SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args , int defNumber) {
-   SeqNameValuesPtr newLoopsArgsPtr = NULL;
-   SeqNameValuesPtr nodeSpecPtr = NULL;
-   SeqNameValuesPtr loopArgsTmpPtr = _loop_args;
+	SeqNameValuesPtr newLoopsArgsPtr = NULL;
+	SeqNameValuesPtr nodeSpecPtr = NULL;
+	SeqNameValuesPtr loopArgsTmpPtr = _loop_args;
 
-   char tmp[20];
-   int loopStart = 0, loopEnd= 0, loopSet = 1, loopStep = 1,
-       loopCount = 0, loopSetCount = 0;
-   char *tmpExpression=NULL, *tmpArrayValue=NULL;
-   int _i, _j, expressionArray[256], detectedEnd=0, endIndex=1, startIndex=0, detectedStart;
-   memset( tmp, '\0', sizeof(tmp) );
-   int foundExt = 0;
-	SeqUtil_TRACE(TL_MEDIUM, "SeqLoops_getLoopSetArgs(): Called with defNumber = %d\n",defNumber);
-   /* see if the user has provied an ext for this loop */
-   while( loopArgsTmpPtr != NULL ) {
-      if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
-         /* ok the user has provided an extension for the current loop*/
-         foundExt = 1;
-         break;
-      }
-      loopArgsTmpPtr  = loopArgsTmpPtr->nextPtr;
-   }
+	char tmp[20];
+	int loopStart = 0, loopEnd= 0, loopSet = 1, loopStep = 1, loopCount = 0, loopSetCount = 0;
+	char *tmpExpression=NULL, *tmpArrayValue=NULL;
+	int _i, expressionArray[256], detectedEnd=0, endIndex=1, startIndex=0, detectedStart;
+	memset( tmp, '\0', sizeof(tmp) );
+	int foundExt = 0;
+	int* currentDef = NULL;
+	SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopSetArgs(): Called with defNumber = %d\n",defNumber);
 
-   if( ! foundExt ) {
-      /* we need to submit the full set */
-      nodeSpecPtr = _nodeDataPtr->data;
-      
-      tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
-      if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
-	 fprintf(stdout,"SeqLoops_getLoopSetArgs() loop expression:%s\n", tmpExpression);
-	 _i=0;
-	 tmpArrayValue = strtok (tmpExpression,":,");
-	 while (tmpArrayValue != NULL) {
-	    expressionArray[_i] = atoi(tmpArrayValue);
-	    /*End is the biggest number of the expression*/
-	    if (expressionArray[_i]>detectedEnd) {
-	       detectedEnd=expressionArray[_i];
-	       endIndex = _i;
-	    }
-	    _i++;
-	    tmpArrayValue = strtok (NULL,":,");
-	 }
-	 detectedStart=detectedEnd;
-	 for (_j=0; _j<_i; _j=_j+4) {
-	    if(expressionArray[_j]<detectedStart){
-	       detectedStart=expressionArray[_j];
-	       startIndex=_j;
-	    }
-	 }
-    startIndex = defNumber*4;
-	 SeqUtil_TRACE(TL_MEDIUM, "SeqLoops_getLoopSetArgs():Definition for which to submit initial set is \n \t Start = %d, end = %d, step = %d, set = %d \n", 
-			expressionArray[startIndex + DEF_START],
-			expressionArray[startIndex + DEF_END],
-			expressionArray[startIndex + DEF_STEP],
-			expressionArray[startIndex + DEF_SET]);
-	 loopCount=expressionArray[startIndex];
-	 if( defNumber > 0 && expressionArray[startIndex + DEF_START] == expressionArray[startIndex - 4 + DEF_END])
-		 loopCount = loopCount + expressionArray[startIndex + DEF_STEP];
-	 /* calculate next iteration */
-	 while (loopCount <= expressionArray[startIndex+1] && loopSetCount < expressionArray[startIndex+3]) {
-	    sprintf( tmp, "%d", loopCount );
-	    SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
-	    loopCount=loopCount+expressionArray[startIndex+2];
-	    loopSetCount++;
-	 }
-	SeqUtil_TRACE(TL_MEDIUM, "SeqLoops_getLoopSetArgs():Returning newLoopsArgsPtr with contents: \n");
-	 SeqNameValues_printList( newLoopsArgsPtr );
-      } else {
-	 loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-	 if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-	    loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
-	 }
-	 if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
-	    loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
-	 }
-	 loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
-	 fprintf(stdout,"SeqLoops_getLoopSetArgs() loopstart:%d loopSet:%d loopStep:%d loopEnd:%d\n", loopStart, loopSet, loopStep, loopEnd);
+	/* see if the user has provied an ext for this loop */
+	while( loopArgsTmpPtr != NULL ) {
+		if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
+			/* ok the user has provided an extension for the current loop*/
+			foundExt = 1;
+			break;
+		}
+		loopArgsTmpPtr  = loopArgsTmpPtr->nextPtr;
+	}
 
-	 loopCount = loopStart;
-	 /* calculate next iteration */
-	 while( loopCount <= loopEnd && loopSetCount < loopSet ) {
-	    sprintf( tmp, "%d", loopCount );
-	    SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
-	    loopCount=loopCount+loopStep;
-	    loopSetCount++;
-	 }
-      }
-   } else {
-      /* we need to submit only one iteration */
-      newLoopsArgsPtr = SeqNameValues_clone( loopArgsTmpPtr );
-   }
-   /* SeqNameValues_printList( newLoopsArgsPtr); */
-   return newLoopsArgsPtr;
+	if( ! foundExt ) {
+		/* we need to submit the full set */
+		nodeSpecPtr = _nodeDataPtr->data;
+
+		/* If loop is defined by an expression */
+		tmpExpression = SeqLoops_getLoopAttribute( nodeSpecPtr, "EXPRESSION" );
+		if (tmpExpression != NULL && strcmp(tmpExpression, "") != 0) {
+			SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopSetArgs() loop expression:%s\n", tmpExpression);
+
+			/* Parse expression into array */
+			_i=0;
+			tmpArrayValue = strtok (tmpExpression,":,");
+			while (tmpArrayValue != NULL) {
+				expressionArray[_i++] = atoi(tmpArrayValue);
+				tmpArrayValue = strtok (NULL,":,");
+			}
+
+			/* Current definition starts at position defNumber*4 of expressionArray */
+			currentDef = expressionArray + defNumber*4;
+			SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopSetArgs():Definition for which to submit initial set is \n");
+			SeqUtil_TRACE(TL_MINIMAL, "\t Start = %d, end = %d, step = %d, set = %d \n", currentDef[DEF_START], currentDef[DEF_END], currentDef[DEF_STEP], currentDef[DEF_SET]);
+			loopCount=currentDef[DEF_START];
+			/* Deal with the possibility of current definition's start being equal to end of previous definition */
+			if( defNumber > 0 && currentDef[DEF_START] == currentDef[DEF_END - 4])
+				loopCount = loopCount + currentDef[DEF_STEP];
+
+			/* calculate next set of iterations */
+			while (loopCount <= currentDef[DEF_END] && loopSetCount < currentDef[DEF_SET]) {
+				sprintf( tmp, "%d", loopCount );
+				SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
+				loopCount = loopCount + currentDef[DEF_STEP];
+				loopSetCount++;
+			}
+			SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopSetArgs():Returning newLoopsArgsPtr with contents: \n");
+			SeqNameValues_printList( newLoopsArgsPtr );
+		} else {
+			/* Loop is defined without expression */
+			if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
+				loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+			}
+			if( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) != NULL ) { 
+				loopSet = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) );
+			}
+			loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
+			loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+
+			SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopSetArgs() loopstart:%d loopSet:%d loopStep:%d loopEnd:%d\n", loopStart, loopSet, loopStep, loopEnd);
+
+			loopCount = loopStart;
+			/* calculate initial set of iterations */
+			while( loopCount <= loopEnd && loopSetCount < loopSet ) {
+				sprintf( tmp, "%d", loopCount );
+				SeqNameValues_insertItem( &newLoopsArgsPtr,  _nodeDataPtr->nodeName, tmp);
+				loopCount=loopCount+loopStep;
+				loopSetCount++;
+			}
+		}
+	} else {
+		/* we need to submit only one iteration */
+		newLoopsArgsPtr = SeqNameValues_clone( loopArgsTmpPtr );
+	}
+	/* SeqNameValues_printList( newLoopsArgsPtr); */
+	return newLoopsArgsPtr;
 }

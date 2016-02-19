@@ -39,7 +39,7 @@ char* SeqLoops_getLoopArgs( SeqNameValuesPtr _loop_args );
 void SeqLoops_printLoopArgs( SeqNameValuesPtr _loop_args, const char* _caller );
 SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
-SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args , int* newDef);
+SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args , int* newDefNumber);
 int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args );
 char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args );
 SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args, int defNumber );

@@ -780,6 +780,7 @@ go_end
 
 This function is used to cause the node to enter the end state. Tasks submit their implicit dependencies in this state.
 The function also deals with the parent containers' end state if conditions are met.
+See header documentation of SeqLoops_nextLoopArgs() for explanation of how loops are handled.
 
 Inputs:
   signal - pointer to the value of the signal given to the binary (-s option)
@@ -789,43 +790,28 @@ Inputs:
 */
 
 static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr) {
-   SeqNodeDataPtr newNodeDataPtr = NULL;
-   char filename[SEQ_MAXFIELD];
-   SeqNameValuesPtr newArgs = NULL, loopSetArgs = NULL, containerArgs = NULL;
-   int isEndCnt=1;
-	int newDef = 0;
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.go_end() node=%s signal=%s\n", _nodeDataPtr->name, _signal );
-   
-   actions( _signal, _flow, _nodeDataPtr->name );
-   isEndCnt=setEndState( _signal, _nodeDataPtr );
+	SeqNodeDataPtr newNodeDataPtr = NULL;
+	char filename[SEQ_MAXFIELD];
+	SeqNameValuesPtr newArgs = NULL, loopSetArgs = NULL, containerArgs = NULL;
+	int isEndCnt=1;
+	int newDefNumber = 0;
+	SeqUtil_TRACE(TL_MINIMAL, "maestro.go_end() node=%s signal=%s\n", _nodeDataPtr->name, _signal );
 
-   if ( (_nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask) && (strcmp(_flow, "continue") == 0)) {
-        submitNodeList(_nodeDataPtr);
-   } else if (_nodeDataPtr->type == Loop ) {
+	actions( _signal, _flow, _nodeDataPtr->name );
+	isEndCnt=setEndState( _signal, _nodeDataPtr );
+
+	if ( (_nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask) && (strcmp(_flow, "continue") == 0)) {
+		submitNodeList(_nodeDataPtr);
+	} else if (_nodeDataPtr->type == Loop ) {
 		/*is the current loop argument in loop args list and it's not the last one ? */
 		if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL && !SeqLoops_isLastIteration( _nodeDataPtr, _nodeDataPtr->loop_args ) ) {
-			newArgs = (SeqNameValuesPtr) SeqLoops_nextLoopArgs( _nodeDataPtr, _nodeDataPtr->loop_args, &newDef );
+			newArgs = (SeqNameValuesPtr) SeqLoops_nextLoopArgs( _nodeDataPtr, _nodeDataPtr->loop_args, &newDefNumber );
 			if(  (strcmp(_flow, "continue") == 0) ) { 
-				if( newDef ){
-					SeqUtil_TRACE(TL_MEDIUM, "go_end() partie -newdef- avec newdef = %d\n",newDef );
-          loopSetArgs = (SeqNameValuesPtr) SeqLoops_getLoopSetArgs( _nodeDataPtr, NULL , newDef);
-          containerArgs = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
-			 SeqUtil_TRACE(TL_MEDIUM, "===== Printing list newargs: ===== \n");
-			 SeqNameValues_printList( newArgs );
-			 SeqUtil_TRACE(TL_MEDIUM, "===== Printing list containerArgs: ===== \n");
-			 SeqNameValues_printList( containerArgs );
-			 SeqUtil_TRACE(TL_MEDIUM, "===== Printing list loopSetArgs: ===== \n");
-			 SeqNameValues_printList( loopSetArgs );
-			 submitLoopSetNodeList(_nodeDataPtr, containerArgs, loopSetArgs );
-          /* 
-           *
-          newNodeDataPtr = nodeinfo( _nodeDataPtr->name, "all", newArgs, NULL, NULL, _nodeDataPtr->datestamp);
-          submitNodeList(newNodeDataPtr);
-			  * Ancien code ( submitNodeList() se fie sur la présence d'attributs
-			  * nommés "newdef" dans newArgs).
-          */
-			
-			 
+				if( newDefNumber != 0 ){
+					SeqUtil_TRACE(TL_MEDIUM, "go_end() submitting new definition. newDefNumber = %d\n",newDefNumber );
+					loopSetArgs = (SeqNameValuesPtr) SeqLoops_getLoopSetArgs( _nodeDataPtr, NULL , newDefNumber);
+					containerArgs = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
+					submitLoopSetNodeList(_nodeDataPtr, containerArgs, loopSetArgs );
 				} else if (newArgs != NULL) {
 					if  ( isEndCnt != 0 ) {
 						maestro (_nodeDataPtr->name, "submit", _flow, newArgs, 0, NULL, _nodeDataPtr->datestamp );
@@ -835,26 +821,26 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
 				}
 			}
 		}
-   }
-   
-   /* check if the container has been completed by the end of this */
-   if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
-         if ( isEndCnt != 0 ) {
-	       processContainerEnd( _nodeDataPtr, _flow );
-	 } else {  
-          fprintf(stderr, "maestro.go_end() Skipping end execution, already @ end state. No dependencies will be submitted, nor containers will be processed. Clear out end lockfile to be able to run end command.\n");
-	       return (0);
-         }
-   }
+	}
 
-   /* submit nodes waiting for this one to end */
-   if  (strcmp(_flow, "continue") == 0) {
-      submitDependencies( _nodeDataPtr, "end" );
-   }
+	/* check if the container has been completed by the end of this */
+	if ( strcmp( _nodeDataPtr->container, "" ) != 0) {
+		if ( isEndCnt != 0 ) {
+			processContainerEnd( _nodeDataPtr, _flow );
+		} else {  
+			fprintf(stderr, "maestro.go_end() Skipping end execution, already @ end state. No dependencies will be submitted, nor containers will be processed. Clear out end lockfile to be able to run end command.\n");
+			return (0);
+		}
+	}
 
-   SeqNameValues_deleteWholeList( &newArgs );
-   actionsEnd( _signal, _flow, _nodeDataPtr->name );
-   return (0);
+	/* submit nodes waiting for this one to end */
+	if  (strcmp(_flow, "continue") == 0) {
+		submitDependencies( _nodeDataPtr, "end" );
+	}
+
+	SeqNameValues_deleteWholeList( &newArgs );
+	actionsEnd( _signal, _flow, _nodeDataPtr->name );
+	return (0);
 }
 
 /* 
