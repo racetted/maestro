@@ -49,8 +49,10 @@ int (*_globPath) (const char *pattern, int flags, int (*errfunc) (const char *ep
 LISTNODEPTR globExtList_svr (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) );
 LISTNODEPTR (*_globExtList) (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) );
 
-
 int WriteNodeWaitedFile_svr (const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
+                              const char* filename, const char* statusfile ); 
+
+int WriteForEachFile_svr (const char* seq_xp_home, const char* nname, const char* datestamp,  const char* loopArgs,
                               const char* filename, const char* statusfile ); 
 
 /*nt WriteInterUserDepFile_svr (const char *filename, const char *DepBuf, const char *ppwdir, const char *maestro_version,

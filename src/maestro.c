@@ -44,8 +44,6 @@
 #include "ocmjinfo.h"
 #include "logreader.h" 
 
-#define TRUE 1
-#define FALSE 0
 #define CONTAINER_FLOOD_LIMIT 10
 #define CONTAINER_FLOOD_TIMER 15
 #define LOCAL_DEPENDS_DIR "/sequencing/status/depends/"
@@ -95,6 +93,7 @@ int   isNodeXState (const char* node, const char* loopargs, const char * datesta
 
 /* submission utilities */
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* signal );
+static void submitForEach ( const SeqNodeDataPtr _nodeDataPtr, const char* signal );
 static void submitNodeList ( const SeqNodeDataPtr _nodeDataPtr ); 
 static void submitLoopSetNodeList ( const SeqNodeDataPtr _nodeDataPtr, 
                                 SeqNameValuesPtr container_args_ptr, SeqNameValuesPtr set_args_ptr); 
@@ -106,6 +105,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
 
 char* formatWaitingMsg( SeqDependsScope _dep_scope, const char* _dep_exp, 
                        const char *_dep_node, const char *_dep_index, const char *_dep_datestamp );
+ int prepFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state, char * _target_datestamp); 
 
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope  _dep_scope, const char* _dep_name, const char* _dep_index,
                       const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char* _depProt, const char *_flow );
@@ -124,6 +124,8 @@ static int  (*_WriteNWFile) (const char* seq_xp_home, const char* nname, const c
                               const char *filename, const char * StatusFile );
 static int  (*_WriteInterUserDepFile) (const char *filename , const char * depBuf , const char *ppwdir, const char* maestro_version,
                                         const char *datestamp, const char *md5sum );
+static int (*_WriteFEFile) ( const char* _exp, const char* _node, const char* _datestamp, const char * _target_index, const char* _loopArgs,
+                              const char* _filename) ;
  
 int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char* _dep_name, const char* _dep_index, char *depIndexPtr, const char *_dep_datestamp, 
                                    const char *_dep_status, const char* _dep_exp , const char* _dep_prot , const char* statusFile, const char * _flow);
@@ -179,6 +181,8 @@ static void useNFSlocking()
   _globExtList = globExtList_nfs; 
   _WriteNWFile = WriteNodeWaitedFile_nfs;
   _WriteInterUserDepFile =  WriteInterUserDepFile_nfs;
+  _WriteFEFile = WriteForEachFile_nfs;
+/*  _WriteInterUserFEFile = WriteInterUserForEachFile_nfs ; */
   _fopen = fopen_nfs;
   _lock  = lock_nfs;
   _unlock  = unlock_nfs;
@@ -198,6 +202,10 @@ static void useSVRlocking()
  _globExtList = globExtList_nfs;
  _WriteNWFile = WriteNodeWaitedFile_svr;
  _WriteInterUserDepFile = WriteInterUserDepFile_nfs ;  /* for now use nfs */ 
+ /* _WriteFEFile = WriteForEachFile_svr; */
+ _WriteFEFile = WriteForEachFile_nfs; 
+ /* _WriteInterUserFEFile = WriteForEachFile_svr ; */
+/* _WriteInterUserFEFile = WriteInterUserForEachFile_nfs ; */
  _fopen = fopen_svr;
  _lock  = lock_svr;
  _unlock  = unlock_svr;
@@ -833,10 +841,15 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
 		}
 	}
 
-	/* submit nodes waiting for this one to end */
-	if  (strcmp(_flow, "continue") == 0) {
-		submitDependencies( _nodeDataPtr, "end" );
-	}
+   /* submit nodes waiting for this one to end */
+   if  (strcmp(_flow, "continue") == 0) {
+      submitDependencies( _nodeDataPtr, "end" );
+      /*
+      if ( _nodeDataPtr -> loop_args != NULL ) {
+         submitForEach( _nodeDataPtr, "end" );
+      }
+      */
+   }
 
 	SeqNameValues_deleteWholeList( &newArgs );
 	actionsEnd( _signal, _flow, _nodeDataPtr->name );
@@ -1216,6 +1229,7 @@ static SeqNameValuesPtr processForEachTarget(const SeqNodeDataPtr _nodeDataPtr){
    char* target_datestamp=NULL;
    char statePattern[SEQ_MAXFIELD], seqPath[SEQ_MAXFIELD];
    LISTNODEPTR returnedExtensionList = NULL, tempIterator=NULL; 
+   int status=0;
 
    /* Check type of target, LOOP or Switch vs NPT or FE */ 
    target_datestamp=SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, 0, atoi(_nodeDataPtr->forEachTarget->hour), 0, 0);
@@ -1240,19 +1254,191 @@ static SeqNameValuesPtr processForEachTarget(const SeqNodeDataPtr _nodeDataPtr){
 
    /* Create the message for the target to launch iterations */
 
-   if (strcmp( _nodeDataPtr->forEachTarget->exp, "") == 0 ) {
-      /*local*/ 
-      sprintf(seqPath,"%s/sequencing/status", _nodeDataPtr->expHome);
-   } else {
-      sprintf(seqPath,"%s/sequencing/status", _nodeDataPtr->forEachTarget->exp);
-   } /* 
+   sprintf(seqPath,"%s/sequencing/status", _nodeDataPtr->forEachTarget->exp);
+
    if (_access(seqPath,W_OK) == 0) {
-       
+      status = prepFEFile(_nodeDataPtr,"end", target_datestamp);
+   } else {
+      status = prepInterUserFEFile(_nodeDataPtr,"end", target_datestamp);  
    }
+/*
+ // typical code from creating dependency function, use as model
+ if( _dep_exp != NULL ) { 
+               sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _dep_exp, _dep_datestamp,  _dep_name, depExtension, _dep_status );
+           } else {
+           }
+           ret=_lock( statusFile ,_nodeDataPtr->datestamp ); 
+           if ( (undoneIteration=! _isFileExists( statusFile, "maestro.processDepStatus()")) ) {
+              if( _dep_scope == InterUser ) {
+                   isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
+              } else {
+                   isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depExtension, _dep_datestamp, _dep_scope, statusFile);
+              }
+           }
+           ret=_unlock( statusFile , _nodeDataPtr->datestamp ); 
+
+
+
+
+
 */
    SeqListNode_deleteWholeList(&returnedExtensionList);
    return iterationListToReturn;
 }
+
+
+int prepFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state, char * _target_datestamp) {
+
+   char filename[SEQ_MAXFIELD];
+   char *loopArgs = NULL, *depBase = NULL;
+   int status = 0 , ret;
+   loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
+
+   memset(filename,'\0',sizeof filename);
+
+   SeqUtil_TRACE(TL_MINIMAL,"maestro.prepFEFile() target exp=%s, target node=%s, target index=%s target datestamp=%s self.index=%s\n",
+                 _nodeDataPtr->forEachTarget->exp,_nodeDataPtr->forEachTarget->node,_nodeDataPtr->forEachTarget->index,_target_datestamp , loopArgs);
+
+   /* create dirs if not there */
+   
+   depBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->forEachTarget->node );
+   /* write in sequencing/status/depends/$datestamp */
+   sprintf(filename,"%s/%s/%s/%s", _nodeDataPtr->forEachTarget->exp, LOCAL_DEPENDS_DIR, _target_datestamp, depBase );
+   _SeqUtil_mkdir( filename, 1 );
+   if( _nodeDataPtr->extension != NULL && strlen(_nodeDataPtr->extension) > 0) { 
+      /* add extra dot for extension */
+      sprintf(filename,"%s%s%s/%s.%s.FE_%s", _nodeDataPtr->forEachTarget->exp, LOCAL_DEPENDS_DIR, _target_datestamp, _nodeDataPtr->forEachTarget->node , _nodeDataPtr->extension, _target_state);
+   } else {
+      sprintf(filename,"%s%s%s/%s.FE_%s", _nodeDataPtr->forEachTarget->exp, LOCAL_DEPENDS_DIR, _target_datestamp, _nodeDataPtr->forEachTarget->node , _target_state);
+   }
+   
+   status = _WriteFEFile ( _nodeDataPtr->expHome, _nodeDataPtr->name , _nodeDataPtr->datestamp, _nodeDataPtr->forEachTarget->index, loopArgs, filename );
+ 
+   switch (status)
+   {
+       case 0:
+           status=1;
+           break;
+       case 1:
+           raiseError( "maestro had problems writing to the following file: %s (prepFEFile)\n", filename );
+           break; /* not reached */
+       case 9:
+           status=0;
+           ret=_removeFile(filename);
+           break;
+       default: 
+           raiseError( "Unknown switch case value in prepFEFile:%d (prepFEFile)\n", status);
+   } 
+   free( loopArgs );
+   free( depBase );
+   return(status);
+
+}
+ 
+
+int prepInterUserFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state, char * _target_datestamp) {
+   char filename[SEQ_MAXFIELD];
+
+
+   struct passwd *current_passwd = NULL;
+   char registration_time[40];
+   char depParam[2048],depFile[1024],depBuf[2048];
+   char *loopArgs = NULL, *depBase = NULL,  *md5sum = NULL;
+   char *maestro_version=NULL , *maestro_shortcut=NULL;
+   struct timeval tv;
+   struct tm* ptm;
+   time_t current_time;
+   int ret;
+   loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
+
+   current_passwd = getpwuid(getuid());  
+
+   /* Build file name to be put in polling directory: This has to be unique!
+   * depFile is a combination of datestamp source exp. source node and status
+   * this will be a link to the actual file containing dependency parameters.
+   * A node is Unique in one Exp. for a specific datestamp !
+   */
+    
+   if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
+      snprintf(depFile,sizeof(depFile),"%s_%s%s_%s.%s",_nodeDataPtr->datestamp, SEQ_EXP_HOME, _nodeDataPtr->name, loopArgs, _target_state);
+   } else {
+      snprintf(depFile,sizeof(depFile),"%s_%s%s.%s",_nodeDataPtr->datestamp, SEQ_EXP_HOME, _nodeDataPtr->name, _target_state);
+   }
+
+   /* compute md5sum for the string representating the depfile */
+   md5sum = (char *) str2md5(depFile,strlen(depFile));
+             
+   /* Format the date and time, down to a single second.*/
+   gettimeofday (&tv, NULL); 
+   current_time = time(NULL);
+
+   ptm = localtime (&tv.tv_sec); 
+   strftime (registration_time, sizeof (registration_time), "%Y%m%d-%H:%M:%S", ptm); 
+   
+   /* get maestro version & shortcut : what to do when cannot have it ???? */
+   if ( (maestro_version=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
+      raiseError("Could not get maestro version from SEQ_MAESTRO_VERSION env variable.\n");
+   }
+
+   if ( (maestro_shortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
+      raiseError("Could not get maestro shortcut from SEQ_MAESTRO_SHORTCUT env variable.\n");
+   }
+
+   /* 
+    * create directory where to put the *waiting.interUser* file 
+    * we will be able to erase it when doing init[branche] actions 
+    * Also when submiting with no depend.
+   */
+
+   depBase = (char*) SeqUtil_getPathBase( (const char*) _nodeDataPtr->name );
+
+   /* write in local xperiment: sequencing/status/inter_depends/$datestamp */
+   sprintf(filename,"%s/%s/%s/%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, depBase );
+
+   /* create dir if not there  (local Xp) */
+   if ( _access(filename,R_OK) != 0 ) _SeqUtil_mkdir( filename, 1 );
+  
+   /* name and path of *waiting.interUser* file */ 
+   if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
+            sprintf(filename,"%s%s%s%s_%s.waiting.interUser.%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, loopArgs, _target_state);
+   } else {
+            sprintf(filename,"%s%s%s%s.waiting.interUser.%s", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, _target_state);
+   }
+/*
+   snprintf(depParam,sizeof(depParam)," <type>ForEach</type>\n <xp>%s</xp>\n <node>%s</node>\n <indx>%s</indx>\n <xdate>%s</xdate>\n <status>%s</status>\n <largs>%s</largs>\n <lindex>%s</lindex>\
+<sxp>%s</sxp>\n <snode>%s</snode>\n <sxdate>%s</sxdate>\n <slargs>%s</slargs>\n <lock>%s</lock>\n <container>%s</container>\n \
+<mdomain>%s</mdomain>\n <mversion>%s</mversion>\n <regtime date=\"%s\" epoch=\"%ld\" />\n <flow>%s</flow>\n<key>%s</key>\n", _nodeDataPtr->forEachTarget->exp,_nodeDataPtr->forEachTarget->node,loopArgs,_target_datestamp,_target_state,_dep_index,SEQ_EXP_HOME,_nodeDataPtr->name,_nodeDataPtr->datestamp,loopArgs,statusFile,_nodeDataPtr->container,maestro_shortcut,maestro_version,registration_time,current_time,_flow,md5sum);
+*/
+
+   /* get the protocole : polling(P), .... others to be determined  */
+/*
+   if ( strncmp(_dep_prot,"pol",3) == 0 || strncmp(_dep_prot,"ocm",3) == 0 ) {      
+             snprintf(depBuf,2048,"<dep type=\"pol\">\n%s</dep> ",depParam);
+   } else  {
+             raiseError("Invalid string for specifying polling dependency type:%s\n",_dep_prot);
+   }
+*/
+   /* TODO -> if ret is not 0 dont write to nodelogger the wait line */
+   ret = ! _WriteInterUserDepFile(filename, depBuf, current_passwd->pw_dir, maestro_version,_nodeDataPtr->datestamp, md5sum);
+   
+   /* check if server is active, if not, send warning that dep will not launch until server is active */
+   if ( MLLServerConnectionFid < 0 ) {
+      nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, "ForEach node registered to mserver but mserver inactive. Run mserver to be able to launch future iterations.",_nodeDataPtr->datestamp);
+   }
+
+   free(md5sum);
+   md5sum=NULL;
+   free(loopArgs);
+   free(depBase);
+
+   return(ret);
+
+
+}
+
+
+
+
 
 /* 
 processContainerEnd
@@ -1429,7 +1615,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       if ( _access(tmpCfgFile, R_OK) == 0) ret=_removeFile(tmpCfgFile); 
 
       SeqNode_generateConfig( _nodeDataPtr, _flow, tmpCfgFile );
-      cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier );
+      cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier, _nodeDataPtr->mpi  );
 
       /* get short name w/ extension i.e. job+3 */
       SeqUtil_stringAppend( &extName, _nodeDataPtr->nodeName );
@@ -1696,9 +1882,9 @@ Inputs:
 static void submitNodeList (const SeqNodeDataPtr _nodeDataPtr) {
 	LISTNODEPTR listIteratorPtr = _nodeDataPtr->submits;
 	int counter = 0;
-	SeqUtil_TRACE( "maestro.submitNodeList() called on %s \n", _nodeDataPtr->name );
+	SeqUtil_TRACE(TL_MINIMAL, "maestro.submitNodeList() called on %s \n", _nodeDataPtr->name );
 	while (listIteratorPtr != NULL) {
-		SeqUtil_TRACE( "maestro.submitNodeList() submits node %s\n", listIteratorPtr->data );
+		SeqUtil_TRACE(TL_MINIMAL, "maestro.submitNodeList() submits node %s\n", listIteratorPtr->data );
 		maestro ( listIteratorPtr->data, "submit", "continue" ,  _nodeDataPtr->loop_args, 0, NULL, _nodeDataPtr->datestamp  );
 		/*flood control, wait CONTAINER_FLOOD_TIMER seconds between sets of submits*/ 
 		if (counter >= CONTAINER_FLOOD_LIMIT){
@@ -1908,6 +2094,129 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    free(tmpValue);
 }
 
+
+
+/*
+submitForEach 
+
+ Checks if node has a ForEach node waiting on this, and read the message file to submit the right dependency if the submission hasn't been done yet. 
+
+Inputs:
+  _nodeDataPtr - pointer to the node targetted by the execution
+  _signal - pointer to the signal being checked
+
+*/
+static void submitForEach ( const SeqNodeDataPtr _nodeDataPtr, const char* _signal ) {
+   char line[512];
+   FILE* FEFile = NULL;
+   SeqNameValuesPtr loopArgsPtr = NULL, newArgs=NULL, poppedArgs=NULL;
+   char depExp[256], depNode[256],depIndex[128], depArgs[SEQ_MAXFIELD], depDatestamp[15], poppedValue[128];
+   char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD], extendedArgs[256];
+   char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL;
+   int submitCode = 0, line_count=0, ret, isLastIter=0;
+
+   SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() executing for %s\n", _nodeDataPtr->nodeName );
+
+   LISTNODEPTR cmdList = NULL;
+
+   newArgs=SeqNameValues_clone(_nodeDataPtr->loop_args);
+   SeqNameValues_popValue(&newArgs, poppedValue,sizeof(poppedValue));
+   tmpExt = (char*) SeqLoops_getExtFromLoopArgs(newArgs);
+   SeqUtil_stringAppend( &extName, _nodeDataPtr->name );
+   if(  (tmpExt = (char*) SeqLoops_getExtFromLoopArgs(newArgs)) != NULL ) {
+      SeqUtil_stringAppend( &extName, "." );
+      SeqUtil_stringAppend( &extName, tmpExt );
+   }
+   ret=SeqLoops_parseArgs( &poppedArgs, poppedValue ); 
+
+   /* not needed  
+   if (_nodeDataPtr->isLastArg){
+      tmpValue = SeqUtil_striplast( SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName) );
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_submitDependencies Found ^last argument, replacing %s for %s for node %s \n", 
+		    SeqNameValues_getValue(loopArgsPtr, _nodeDataPtr->nodeName), tmpValue, _nodeDataPtr->nodeName); 
+      SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmpValue);
+   }
+   */
+
+   /* same user foreach dependencies */
+   memset(filename,'\0',sizeof filename);
+   sprintf(filename,"%s%s%s/%s.FE_%s", SEQ_EXP_HOME, LOCAL_DEPENDS_DIR, _nodeDataPtr->datestamp, extName, _signal );
+   SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() looking for FE file=%s\n", filename );
+
+   if ( _access(filename, R_OK) == 0 ) {
+      memset(submitCmd,'\0',sizeof submitCmd);
+      /*isLastIter=SeqLoops_isLastIteration(_nodeDataPtr) */
+
+      SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() found FE file=%s\n", filename );
+         /* build a node list for all entries found in the waited file */
+         if ((FEFile = _fopen(filename, MLLServerConnectionFid)) != NULL ) { 
+            while ( fgets( line, sizeof(line), FEFile ) != NULL ) {
+               memset(depExp,'\0',sizeof depExp);
+               memset(depNode,'\0',sizeof depNode);
+               memset(depDatestamp,'\0',sizeof depDatestamp);
+               memset(depIndex,'\0',sizeof depIndex);
+               memset(depArgs,'\0',sizeof depArgs);
+               memset(extendedArgs,'\0',sizeof extendedArgs);
+               line_count++;
+               SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() from waited file line: %s\n", line );
+               ret=sscanf( line, "exp=%s node=%s datestamp=%s index_to_add=%s args=%s", depExp, depNode, depDatestamp, depIndex, depArgs );
+               if (ret != 5) {
+                  ret=sscanf( line, "exp=%s node=%s datestamp=%s index_to_add=%s args=", depExp, depNode, depDatestamp, depIndex );
+                  if (ret != 4) {
+                     fprintf(stderr,"Format error in scanning current line: %s . Skipping. \n", line); 
+                     continue;
+                  }
+               }
+               SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() file line parsed depExp:%s depNode:%s depDatestamp:%s depIndex:%s depArgs:%s\n", 
+                              depExp, depNode, depDatestamp,depIndex, depArgs );
+
+               /* build loop args based on depArgs and adding the index to add */ 
+               
+               if ((depArgs != NULL) && (strlen(depArgs) > 0)) {
+                  sprintf(extendedArgs,"-l %s,%s=%s", depArgs, SeqUtil_getPathLeaf(depNode),SeqNameValues_getValue(_nodeDataPtr->loop_args,depIndex));
+               } else {
+                  sprintf(extendedArgs,"-l %s=%s", SeqUtil_getPathLeaf(depNode),SeqNameValues_getValue(_nodeDataPtr->loop_args,depIndex));
+               } 
+               SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() extendedArgs:%s\n",extendedArgs); 
+                  
+               sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;maestro -d %s -s submit -f continue -n %s %s)", 
+ 		                      depExp, depDatestamp, depNode, extendedArgs );
+ 	            /* add nodes to be submitted if not already there */
+ 	            if ( SeqListNode_isItemExists( cmdList, submitCmd ) == 0 ) {
+ 	                SeqListNode_insertItem( &cmdList, submitCmd );
+	            }
+	       
+            } /* end while loop */
+            fclose(FEFile);
+ 
+ 	    /* warn if file empty ... */
+ 	    if ( line_count == 0 ) raiseError( "FE file:%s (submitForEach) EMPTY !!!! \n",filename );
+
+            /* TODO if full set is finished, delete the FE file */
+             /*ret=_removeFile(filename); */
+       } else {
+          raiseError( "maestro cannot read file: %s (submitForEach) \n", filename );
+       }
+   }
+   /*  go and submit the nodes from the cmd list */
+   while ( cmdList != NULL ) {
+      SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() calling submit cmd: %s\n", cmdList->data );
+      submitCode = system( cmdList->data );
+      SeqUtil_TRACE(TL_MINIMAL, "maestro.submitForEach() submitCode: %d\n", submitCode);
+      if( submitCode != 0 ) {
+         raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
+      }
+      cmdList = cmdList->nextPtr;
+   }
+   SeqListNode_deleteWholeList( &cmdList );
+   free(extName);
+   free(tmpExt);
+   free(tmpValue);
+}
+
+
+
+
 /*
 isNodeXState 
 
@@ -1974,7 +2283,6 @@ Inputs:
 static int writeNodeWaitedFile( const SeqNodeDataPtr _nodeDataPtr, const char* _dep_exp_path,
                                 const char* _dep_node, const char* _dep_status,
                                 const char* _dep_index, const char* _dep_datestamp, SeqDependsScope _dep_scope, const char *statusfile ) {
-   FILE *waitingFile = NULL;
    char filename[SEQ_MAXFIELD];
    char *loopArgs = NULL, *depBase = NULL;
    int status = 1, ret ;
@@ -2021,7 +2329,6 @@ static int writeNodeWaitedFile( const SeqNodeDataPtr _nodeDataPtr, const char* _
            break;
        case 1:
            raiseError( "maestro cannot write Node Waited file: %s (writeNodeWaitedFile)\n", filename );
-	   fprintf(stderr,"HAHA\n");
            break; /* not reached */
        case 9:
            status=0;
@@ -2199,7 +2506,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
                       const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char * _dep_prot, const char * _flow ) {
    char statusFile[SEQ_MAXFIELD];
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
-   char *waitingMsg = NULL, *depIndexPtr = NULL, *extString = NULL;
+   char *waitingMsg = NULL, *depExtension = NULL, *extString = NULL;
    char msg[1024];
    /* ocm related */
    char dhour[3];
@@ -2230,10 +2537,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
        _dep_name, extString, _dep_datestamp, _dep_status, _dep_exp, _dep_scope , _dep_prot ); 
 
    if( _dep_index == NULL || strlen( _dep_index ) == 0 ) {
-      SeqUtil_stringAppend( &depIndexPtr, "" );
+      SeqUtil_stringAppend( &depExtension, "" );
    } else {
-      SeqUtil_stringAppend( &depIndexPtr, "." );
-      SeqUtil_stringAppend( &depIndexPtr, strdup( extString ) ); 
+      SeqUtil_stringAppend( &depExtension, "." );
+      SeqUtil_stringAppend( &depExtension, strdup( extString ) ); 
    }
 
    memset( statusFile, '\0', sizeof statusFile);
@@ -2256,16 +2563,16 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
        if( ! depWildcard ) {
            /* no wilcard, we check only one iteration */
            if( _dep_exp != NULL ) { 
-               sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _dep_exp, _dep_datestamp,  _dep_name, depIndexPtr, _dep_status );
+               sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _dep_exp, _dep_datestamp,  _dep_name, depExtension, _dep_status );
            } else {
-               sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _nodeDataPtr->workdir, _dep_datestamp, _dep_name, depIndexPtr, _dep_status );
+               sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _nodeDataPtr->workdir, _dep_datestamp, _dep_name, depExtension, _dep_status );
            }
            ret=_lock( statusFile ,_nodeDataPtr->datestamp ); 
            if ( (undoneIteration=! _isFileExists( statusFile, "maestro.processDepStatus()")) ) {
               if( _dep_scope == InterUser ) {
-                   isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
+                   isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
               } else {
-                   isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depIndexPtr, _dep_datestamp, _dep_scope, statusFile);
+                   isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depExtension, _dep_datestamp, _dep_scope, statusFile);
               }
            }
            ret=_unlock( statusFile , _nodeDataPtr->datestamp ); 
@@ -2286,11 +2593,11 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
               if( ! (undoneIteration = ! _isFileExists( statusFile, "maestro.processDepStatus()"))) {
                  extensions = extensions->nextPtr; /* the iteration status file exists, go to next */
               } else {
-                 depIndexPtr = extensions->data;
+                 depExtension = extensions->data;
                  if( _dep_scope == InterUser ) {
-                    isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
+                    isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
                  } else {
-                    isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depIndexPtr, _dep_datestamp, _dep_scope, statusFile);
+                    isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depExtension, _dep_datestamp, _dep_scope, statusFile);
                  }
               }
               ret=_unlock( statusFile , _nodeDataPtr->datestamp ); 
@@ -2342,10 +2649,10 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
             while ( loop_trotte <= loop_total ) {
                sprintf(statusFile,"%s/ocm/workingdir_tmp/%s_%s_%d.%s.%s", _dep_exp, Ldpname, dhour, loop_trotte, ocm_datestamp, _dep_status );
                if ( (undoneIteration= ! _isFileExists(statusFile,"maestro.processDepStatus()")) ) {
-                  snprintf(c,sizeof(c),"%c%c%d",depIndexPtr[0],depIndexPtr[1],loop_trotte);
- 		            free(depIndexPtr);
- 		            depIndexPtr=&c;
- 	               isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
+                  snprintf(c,sizeof(c),"%c%c%d",depExtension[0],depExtension[1],loop_trotte);
+ 		            free(depExtension);
+ 		            depExtension=&c;
+ 	               isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
  	               break; 
                }
                loop_trotte++;
@@ -2355,7 +2662,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
              if ( ! (undoneIteration= ! _isFileExists(statusFile,"maestro.processDepStatus()"))) { 
  	        return(0); 
  	     } else {
- 	        isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile,_flow);
+ 	        isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile,_flow);
  	     }
  	 }
       } else {
@@ -2363,20 +2670,21 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
           if ( ! (undoneIteration = ! _isFileExists(statusFile,"maestro.processDepStatus()"))) { 
              return(0);
  	  } else {
- 	     isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile,_flow);
+ 	     isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile,_flow);
  	  }
       }
    }
 
    if( undoneIteration ) {
       isWaiting = 1;
-      waitingMsg = formatWaitingMsg(  _dep_scope, _dep_exp, _dep_name, depIndexPtr, _dep_datestamp ); 
+      waitingMsg = formatWaitingMsg(  _dep_scope, _dep_exp, _dep_name, depExtension, _dep_datestamp ); 
       setWaitingState( _nodeDataPtr, waitingMsg, _dep_status );
    }
 
    SeqListNode_deleteWholeList(&extensions);
    free( waitingMsg );
    free( extString );
+   free( depExtension);
 
    return isWaiting;
 }

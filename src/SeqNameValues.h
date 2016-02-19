@@ -36,7 +36,7 @@ char* SeqNameValues_getValue( SeqNameValuesPtr ptr, char* attr_name );
 void SeqNameValues_setValue( SeqNameValuesPtr* ptr, char* attr_name, char* attr_value );
 SeqNameValuesPtr SeqNameValues_clone(SeqNameValuesPtr listPtr);
 void SeqNameValues_deleteWholeList(SeqNameValuesPtr *listPtrPtr);
-
+void SeqNameValues_popValue( SeqNameValuesPtr *ptr, char * returnBuffer, int sizeOfBuffer );
 /*
 
 int SeqNameValues_isListEmpty(SeqNameValuesPtr listPtr);

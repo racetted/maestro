@@ -27,18 +27,11 @@
 #include "SeqNode.h"
 #include "SeqUtil.h"
 #include <string.h>
-/*
-#include <dirent.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <sys/stat.h>
-*/
 
 #define DEF_START 0
 #define DEF_END 1
 #define DEF_STEP 2
 #define DEF_SET 3
-
 
 static char* EXT_TOKEN = "+";
 
@@ -96,23 +89,26 @@ extension=_1_2_3_4 will return _1_2_3
 extension=_1 will return ""
 */
 char* SeqLoops_getExtensionBase ( SeqNodeDataPtr _nodeDataPtr ) {
-   char *split = NULL , *tmpExtension = NULL, *work_string = NULL ,*chreturn =NULL;
-   int containerCount = 0;
+   char *split = NULL , *work_string = NULL ,*chreturn =NULL;
+   int foundLastSeparator = 0;
    SeqLoopsPtr loopsContainerPtr = _nodeDataPtr->loops;
    work_string = strdup(_nodeDataPtr->extension);
    if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == NpassTask ||  _nodeDataPtr->type == Switch || _nodeDataPtr->type == ForEach ) {
       while( loopsContainerPtr != NULL ) {
-         containerCount++;
          loopsContainerPtr = loopsContainerPtr->nextPtr;
       }
-      split  = strrchr (work_string,EXT_TOKEN[0]);
+      split = strrchr (work_string,EXT_TOKEN[0]);
       if (split != NULL) {
-         *split = '\0';
+         foundLastSeparator=1;
       }
    }
-   chreturn = strdup(work_string);
-   free( tmpExtension );
+   if (foundLastSeparator == 1){ 
+      chreturn = strndup(work_string,split-work_string); 
+   } else {
+      chreturn = strdup(work_string); 
+   }
    free( work_string );
+
    return chreturn;
 }
 
@@ -260,8 +256,8 @@ char* SeqLoops_NodeExtension( const char* node_name, SeqNameValuesPtr loop_args_
 LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
-   int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
-   char *tmpExpression = NULL;
+   int loopStart = 0, loopStep = 1, loopEnd = 1, loopCount = 0;
+   char *tmpExpression = NULL, *tmpAttributeValue=NULL;
    LISTNODEPTR loopExtensions = NULL, tmpLoopExtensions = NULL;
    memset( tmp, '\0', sizeof tmp );
    baseExtension = SeqLoops_getExtensionBase( _nodeDataPtr );
@@ -275,17 +271,21 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
       loopExtensions = tmpLoopExtensions;
    } else {
 
-      loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+      if (( tmpAttributeValue = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )) != NULL ) { 
+         loopStart = atoi(tmpAttributeValue);
+      } 
+      if(( tmpAttributeValue = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" )) != NULL ) { 
+	      loopStep = atoi(tmpAttributeValue);
       }
-      loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+      if(( tmpAttributeValue =  SeqLoops_getLoopAttribute( nodeSpecPtr, "END" )) != NULL ) {
+         loopEnd = atoi(tmpAttributeValue);
+      }
       SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensionsInReverse extension:%s baseExtension:%s START:%d END:%d\n",_nodeDataPtr->extension, baseExtension, loopEnd, loopStart );
       loopCount = loopEnd;
       while( loopCount >= loopStart ) {
-	 sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
-	 SeqListNode_insertItem( &loopExtensions, tmp );
-	 loopCount = loopCount - loopStep;
+	      sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
+	      SeqListNode_insertItem( &loopExtensions, tmp );
+	      loopCount = loopCount - loopStep;
       }
    }
 
@@ -302,7 +302,7 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
    int expressionArray[256], i, startIndex=0, endIndex=1, stepIndex=2, setIndex=3, detectedEnd=0;
-   char *tmpExpression = NULL, *tmpArrayValue = NULL;
+   char *tmpExpression = NULL, *tmpArrayValue = NULL, *tmpAttributeValue = NULL;
    int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0, breakFlag, firstFlag=1;
    LISTNODEPTR loopExtensions = NULL;
    memset( tmp, '\0', sizeof tmp );
@@ -361,20 +361,23 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
 	    break;
 	 }
       }
-      
    } else {
-      
-      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensions extension:%s baseExtension:%s START=%s\n",_nodeDataPtr->extension, baseExtension, SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )  );
-      loopStart = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "START" ) );
-      if( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) != NULL ) { 
-	 loopStep = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) );
+      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_childExtensions extension:%s baseExtension:%s\n",_nodeDataPtr->extension, baseExtension);
+      if ( (tmpAttributeValue = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" )) != NULL ) { 
+         loopStart = atoi(tmpAttributeValue);
+      } 
+      if( (tmpAttributeValue = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" )) != NULL ) { 
+	      loopStep = atoi(tmpAttributeValue);
       }
-      loopEnd = atoi( SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) );
+      if( (tmpAttributeValue =  SeqLoops_getLoopAttribute( nodeSpecPtr, "END" )) != NULL ) {
+         loopEnd = atoi(tmpAttributeValue);
+      }
+
       loopCount = loopStart;
       while( loopCount <= loopEnd ) {
-	 sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
-	 SeqListNode_insertItem( &loopExtensions, tmp );
-	 loopCount = loopCount + loopStep;
+	      sprintf( tmp, "%s%s%d", baseExtension, EXT_TOKEN, loopCount );
+	      SeqListNode_insertItem( &loopExtensions, tmp );
+	      loopCount = loopCount + loopStep;
       }
    }
 
@@ -409,7 +412,7 @@ int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
 LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[100], *baseExtension = NULL;
-   char *tmpExpression = NULL;
+   char *tmpExpression = NULL, *tmpAttributeValue=NULL;
    int foundIt = 0, loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
    LISTNODEPTR loopExtensions = NULL, tmpLoopExts = NULL;
    SeqNameValuesPtr loopsDataPtr = NULL;
@@ -446,11 +449,16 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 			   return loopExtensions;
 			}
 			
-			loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
-			if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
-			   loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
-			}
-			loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+         if (( tmpAttributeValue = SeqLoops_getLoopAttribute( loopsDataPtr, "START" )) != NULL ) { 
+            loopStart = atoi(tmpAttributeValue);
+         } 
+         if(( tmpAttributeValue = SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" )) != NULL ) { 
+	         loopStep = atoi(tmpAttributeValue);
+         }
+         if(( tmpAttributeValue =  SeqLoops_getLoopAttribute( loopsDataPtr, "END" )) != NULL ) {
+            loopEnd = atoi(tmpAttributeValue);
+         }
+
 			loopCount = loopEnd;
 			SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
 			
@@ -463,13 +471,16 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 
             /* if targetting a loop node as a dependency, _nodeDataPtr->data will have the loop attributes */
             loopsDataPtr=_nodeDataPtr->data; 
-	    if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
-               SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse targetting a loop node\n");  
-	       loopStart = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "START" ) );
-	       if( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) != NULL ) { 
-		  loopStep = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" ) );
-	       }
-	       loopEnd = atoi( SeqLoops_getLoopAttribute( loopsDataPtr, "END" ) );
+            if ((strcmp(_nodeDataPtr->nodeName,depArgs->name)==0) && (loopsDataPtr != NULL)) {
+               if (( tmpAttributeValue = SeqLoops_getLoopAttribute( loopsDataPtr, "START" )) != NULL ) { 
+                  loopStart = atoi(tmpAttributeValue);
+               } 
+               if(( tmpAttributeValue = SeqLoops_getLoopAttribute( loopsDataPtr, "STEP" )) != NULL ) { 
+	               loopStep = atoi(tmpAttributeValue);
+               }
+               if(( tmpAttributeValue =  SeqLoops_getLoopAttribute( loopsDataPtr, "END" )) != NULL ) {
+                  loopEnd = atoi(tmpAttributeValue);
+               }
 	       loopCount = loopEnd;
 	       SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_getLoopContainerExtensionsInReverse loopStart:%d loopStep:%d loopEnd:%d \n", loopStart, loopStep, loopEnd );
 	    }
@@ -885,7 +896,6 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
 		if ( loopCurrent == lastDefIter( lastDef[DEF_START], lastDef[DEF_END], lastDef[DEF_STEP]) ){
 			isLast = 1;
 		}
-
 	} else {
 		/* get the iteration step */
 		if( ( loopStepStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) ) != NULL )
@@ -1133,7 +1143,7 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 				expressionArray[_i++] = atoi(tmpArrayValue);
 				tmpArrayValue = strtok (NULL,":,");
 			}
-
+         
 			/* Current definition starts at position defNumber*4 of expressionArray */
 			currentDef = expressionArray + defNumber*4;
 			SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_getLoopSetArgs():Definition for which to submit initial set is \n");
@@ -1181,3 +1191,50 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 	/* SeqNameValues_printList( newLoopsArgsPtr); */
 	return newLoopsArgsPtr;
 }
+
+
+/* checks if values are valid for a numerical loop in an expression format, so step !=0, set !=0, loop start <= loop end when step is positive, and loop start >= loop end when step is negative */ 
+ 
+void SeqLoops_validateNumLoopExpression( char * _expression){
+   char *tmpExpression = _expression, *expressionEnd = NULL; 
+   char expressionBuffer[1024]; 
+   int tmpStart =0, tmpEnd=0, tmpStep =0, tmpSet=0, done=0; 
+   size_t expressionSize=0;
+
+   while ((tmpExpression != NULL) && (done == 0)) { 
+         SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_validateNumLoopExpression working expression %s \n", tmpExpression);
+         if ((expressionEnd=strstr(tmpExpression,",")) == NULL) {
+            expressionSize=strlen(tmpExpression)+1; 
+            done=1;
+         } else {
+            expressionSize=expressionEnd - tmpExpression +1; 
+         } 
+         memset(expressionBuffer,'\0',sizeof(expressionBuffer));
+         snprintf(expressionBuffer,expressionSize,"%s",tmpExpression); 
+         SeqUtil_TRACE(TL_MINIMAL, "SeqLoops_validateNumLoopExpression checking sub-expression %s \n", expressionBuffer);
+         if ( sscanf(expressionBuffer,"%d:%d:%d:%d",&tmpStart,&tmpEnd,&tmpStep,&tmpSet) != 4) { 
+            raiseError("SeqLoops_validateNumLoopExpression format error in expression.Is %s; Accepted format is comma-separated list of start:end:step:set.\n", expressionBuffer);
+         }
+         if (tmpStep == 0) {
+            raiseError("SeqLoops_validateNumLoopExpression value error. loop step (%d) cannot be 0. Readjust value.\n",tmpStep);
+         }
+         if (tmpSet <= 0) {
+            raiseError("SeqLoops_validateNumLoopExpression value error. loop set (%d) must be greater than 0. Readjust value.\n",tmpSet);
+         }
+
+         if ((tmpStart > tmpEnd) && (tmpStep > 0 )) {
+            raiseError("SeqLoops_validateNumLoopExpression value error. loop start (%d) > loop end (%d)  with loop step > 0 (%d) . Readjust values.\n",tmpStart,  tmpEnd , tmpStep);
+         } 
+         if ((tmpStart < tmpEnd) && (tmpStep < 0)) {
+            raiseError("SeqLoops_validateNumLoopExpression value error. loop start (%d) < loop end (%d)  with loop step < 0 (%d) . Readjust values.\n",tmpStart , tmpEnd ,tmpStep);
+         }
+         tmpExpression+=expressionSize; 
+   }
+}
+
+
+
+
+
+
+

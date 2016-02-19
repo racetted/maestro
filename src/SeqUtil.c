@@ -279,7 +279,6 @@ int touch_nfs(const char *filename) {
          return(1);
       }
       fclose(actionfile);
-      chmod(filename,00664);
    }
    return(0); 
 }
@@ -483,17 +482,26 @@ int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
    return(0);
 }
 
-char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ){
+char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier, int mpi  ){
   char *chreturn=NULL;
-  int nMpi=1;
-  if ( ! (chreturn = malloc( (npex==NULL || strlen(npex)) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
+  int nMpi=1, totalsize=0;
+
+  if (npex!=NULL) totalsize+=strlen(npex); 
+  if (npey!=NULL) totalsize+=strlen(npey); 
+  if (omp!=NULL)  totalsize+=strlen(omp); 
+  if (cpu_multiplier!=NULL) totalsize+=strlen(omp); 
+ 
+  /*if ( ! (chreturn = malloc( (npex==NULL || strlen(npex)) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){ */
+  if ( ! (chreturn = malloc( totalsize + 1 ) )){
     SeqUtil_TRACE(TL_CRITICAL, "SeqUtil_cpuCalculate(): malloc: Out of memory!\n");
     return(NULL);
   }
   nMpi = atoi(npex) * atoi(cpu_multiplier);
   if ( npey != NULL){ nMpi = nMpi * atoi(npey); }
   sprintf(chreturn,"%d",nMpi);
-  if ( omp != NULL){ sprintf(chreturn,"%sx%s",chreturn,omp); }
+  /* if ( omp != NULL && mpi !=0 ){ sprintf(chreturn,"%sx%s",chreturn,omp); } */
+  if ( omp != NULL && atoi(omp) != 1 ) { sprintf(chreturn,"%sx%s",chreturn,omp); }
+   
   return(chreturn);
 }
 
@@ -1085,18 +1093,93 @@ int  WriteInterUserDepFile_nfs (const char *filename , const char * DepBuf , con
      return(0);
 }
 
-void SeqUtil_printOrWrite( const char * filename, char * text, ...) {
+/*
+ * WriteForEachFile_nfs
+ * Writes (nfs) the for each lockfile in the directory of the node that this current node is waiting for.
+ * 
+ * Inputs:
+ *    _exp            - the SEQ_EXP_HOME of the forEach node
+ *    _node           - the path of the ForEach node including the container
+ *    _datestamp         - the datestamp of the FE node
+ *    _target_index       - the loop index name expected to be filled up by FE target 
+ *    _loopArgs          - the name=value,name=value string of loop arguments belonging to the forEach node.
+ *    _filename          - filename where info will be located
+ * Output:
+ *    int status 
+ *    file created in target area
+ */ 
+
+int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _datestamp, const char * _target_index, const char* _loopArgs,
+                              const char* _filename) {
+ 
+    FILE *waitingFile = NULL;
+    char tmp_line[SEQ_MAXFIELD];
+    char line[SEQ_MAXFIELD];
+    char Lexp[256],Lnode[256],Ldatestamp[25],LloopArgs[128], Lindex[128];
+    int inode,Linode,n,found=0;
+    size_t num;
+ 
+    SeqUtil_TRACE(TL_MINIMAL,"WriteNodeWaitedFile(): Using WriteForEachFileFile_nfs routine\n");
+    memset(tmp_line,'\0',sizeof(tmp_line));
+    memset(line,'\0',sizeof(line));
+    memset(Lexp,'\0',sizeof(Lexp));
+    memset(Lnode,'\0',sizeof(Lnode));
+    memset(Ldatestamp,'\0',sizeof(Ldatestamp));
+    memset(LloopArgs,'\0',sizeof(LloopArgs));
+    memset(Lindex,'\0',sizeof(Lindex));
+
+    /* if cannot get inode of xp, skip this dependency */
+    if   ( (inode=get_Inode(_exp)) < 0 ) {
+             fprintf(stderr,"writeForEachFile_nfs: Cannot get Inode of xp=%s\n",_exp);
+             return (1);
+    }
+
+    /* be carfull here, argument a will position both read and write pointer at the end, 
+       while a+ will position read at beginning and write at the end.
+       NOTE: the file is open through NFS from different machines, we dont know the exact 
+             behaviour of the append command */
+    if ((waitingFile = fopen(_filename,"a+")) == NULL) {
+            raiseError( "WriteForEachFile_nfs cannot write to file:%s\n",_filename );
+    }
+
+    SeqUtil_TRACE(TL_MINIMAL, "writeForEachFile_nfs updating %s\n", _filename);
+
+    /* sua   : need to add more logic for duplication and handle more than one entry in the waited file 
+       Rochdi: we added comparaison of xp inode:  /.suites vs /maestro_suites (ie real case) */
+    while( fgets(line, SEQ_MAXFIELD, waitingFile) != NULL ) {
+           n=sscanf(line,"exp=%s node=%s datestamp=%s index_to_add=%s args=%s",Lexp,Lnode,Ldatestamp,Lindex, LloopArgs);
+           if ( (Linode=get_Inode(Lexp)) < 0 ) {
+                   fprintf(stderr,"writeNodeWaitedFile_nfs: Cannot get Inode of registred xp=%s\n",Lexp);
+                   continue;
+           }
+           SeqUtil_TRACE(TL_MINIMAL, "writeForEachFile_nfs checking inodes: %d vs %d, %s vs %s, %s vs %s, %s vs %s, %s vs %s\n", Linode, inode, Lnode, _node, Ldatestamp, _datestamp, LloopArgs, _loopArgs, Lindex, _target_index);
+           if ( Linode == inode && strcmp(Lnode,_node) == 0 && strcmp(Ldatestamp,_datestamp) == 0 && strcmp(LloopArgs,_loopArgs) == 0 && strcmp(Lindex,_target_index) == 0 ) {
+                  found = 1;
+                  break;
+           }
+    }
+    if ( !found ) {
+         snprintf( tmp_line, sizeof(tmp_line), "exp=%s node=%s datestamp=%s index_to_add=%s args=%s\n",_exp, _node, _datestamp, _target_index,_loopArgs );
+	      num = fwrite(tmp_line ,sizeof(char) , strlen(tmp_line) , waitingFile);
+	      if ( num != strlen(tmp_line) )  {
+            fprintf(stderr,"writeForEachFile Error: written:%zu out of:%zd \n",num,strlen(tmp_line));
+            fclose( waitingFile ); 
+            return(1); 
+         }
+    }
+
+    fclose( waitingFile );
+    return(0);
+}
+
+
+void SeqUtil_printOrWrite( FILE * tmpFile, char * text, ...) {
 
    va_list ap;
-   FILE* tmpFile;
-
    va_start(ap, text); 
-   if (filename != NULL) {
-      if ((tmpFile = fopen(filename,"a+")) == NULL) {
-         raiseError( "maestro cannot write to file:%s\n",filename );
-      }
+
+   if (tmpFile != NULL) {
       vfprintf(tmpFile, text, ap);
-      fclose(tmpFile);
    } else {
       vfprintf(stdout, text, ap);
    }

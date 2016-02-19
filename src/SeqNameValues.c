@@ -163,3 +163,21 @@ void SeqNameValues_deleteWholeList(SeqNameValuesPtr *sPtr)
  }
 
 }
+
+/* pop the last value added and returns it in the returnBuffer */
+void SeqNameValues_popValue( SeqNameValuesPtr *ptr, char * returnBuffer, int sizeOfBuffer ) {
+   char localBuf[128]; 
+   if (!returnBuffer || sizeOfBuffer<1) return; 
+   if (ptr == NULL ){ 
+      *returnBuffer='\0';
+   } 
+   SeqNameValuesPtr currentPtr = *ptr;
+   while ( currentPtr->nextPtr != NULL ) {
+      currentPtr = currentPtr->nextPtr;
+   }
+   sprintf(localBuf,"%s=%s",currentPtr->name,currentPtr->value);
+   strncpy(returnBuffer,localBuf,sizeOfBuffer-1); 
+   SeqNameValues_deleteItem(ptr , currentPtr->name);
+}
+
+

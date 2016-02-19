@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h> 
 #include "SeqUtil.h"
 #include "expcatchup.h"
 
@@ -47,7 +48,7 @@ static void printUsage()
 
 }
 
-main (int argc, char * argv [])
+int main (int argc, char * argv [])
 {
    extern char *optarg;
    int catchupValue = 8;

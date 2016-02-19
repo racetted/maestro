@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h> 
 #include "tictac.h"
 #include "SeqUtil.h"
 
