@@ -168,8 +168,39 @@ void SeqUtil_setTraceFlag(int flag, int value)
 	}
 }
 
+/********************************************************************************
+ * Returns the value of the traceFlags importance attribute. 
+ *******************************************************************************/
 int SeqUtil_getTraceLevel () {
    return traceFlags.importance;
+}
+
+/********************************************************************************
+ * Returns the string to use as SET_TRACE_LEVEL environment variable.  This is
+ * equivalent to getting the environment variable itself if it is set, but if it
+ * is not set, this will give the SEQ_TRACE_LEVEL that sets the default values
+ * as they are when struct TraceFlags traceFlags is initialized.
+ *******************************************************************************/
+char *SeqUtil_getTraceLevelString(){
+   static traceString[100];
+   switch(traceFlags.importance){
+      case TL_MINIMAL:
+         strcpy(traceString, "TL_MINIMAL");
+         break;
+      case TL_MEDIUM:
+         strcpy(traceString, "TL_MEDIUM");
+         break;
+      case TL_ERROR:
+         strcpy(traceString, "TL_ERROR");
+         break;
+      case TL_CRITICAL:
+         strcpy(traceString, "TL_CRITICAL");
+         break;
+   }
+   if( traceFlags.timeStamp == TF_ON )
+      strcat(traceString, ":TF_TIMESTAMP");
+
+   return traceString;
 }
 
 void SeqUtil_showTraceInfo(){
