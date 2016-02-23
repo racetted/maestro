@@ -2506,7 +2506,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
                       const char *_dep_datestamp, const char *_dep_status, const char* _dep_exp, const char * _dep_prot, const char * _flow ) {
    char statusFile[SEQ_MAXFIELD];
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
-   char *waitingMsg = NULL, *depExtension = NULL, *extString = NULL;
+   char *waitingMsg = NULL, *depExtension = NULL, *extString = NULL, *currentIndexPtr = NULL;
    char msg[1024];
    /* ocm related */
    char dhour[3];
@@ -2593,11 +2593,11 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
               if( ! (undoneIteration = ! _isFileExists( statusFile, "maestro.processDepStatus()"))) {
                  extensions = extensions->nextPtr; /* the iteration status file exists, go to next */
               } else {
-                 depExtension = extensions->data;
+                 currentIndexPtr = extensions->data;
                  if( _dep_scope == InterUser ) {
-                    isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, depExtension, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
+                    isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, _dep_name, _dep_index, currentIndexPtr, _dep_datestamp, _dep_status, _dep_exp, _dep_prot, statusFile, _flow);
                  } else {
-                    isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depExtension, _dep_datestamp, _dep_scope, statusFile);
+                    isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, currentIndexPtr, _dep_datestamp, _dep_scope, statusFile);
                  }
               }
               ret=_unlock( statusFile , _nodeDataPtr->datestamp ); 
@@ -2677,7 +2677,11 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
 
    if( undoneIteration ) {
       isWaiting = 1;
-      waitingMsg = formatWaitingMsg(  _dep_scope, _dep_exp, _dep_name, depExtension, _dep_datestamp ); 
+      if ( depWildcard ) {
+         waitingMsg = formatWaitingMsg(  _dep_scope, _dep_exp, _dep_name, currentIndexPtr, _dep_datestamp ); 
+      } else {
+         waitingMsg = formatWaitingMsg(  _dep_scope, _dep_exp, _dep_name, depExtension, _dep_datestamp ); 
+      }
       setWaitingState( _nodeDataPtr, waitingMsg, _dep_status );
    }
 
