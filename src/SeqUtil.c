@@ -119,7 +119,7 @@ void SeqUtil_setTraceEnv(){
 	char seq_trace_level[SEQ_MAXFIELD];
 	strcpy(seq_trace_level, getenv("SEQ_TRACE_LEVEL"));
 	if( seq_trace_level == NULL ){
-		SeqUtil_TRACE( TL_MINIMAL, "SeqUtil_setTraceEnv(): Unable to find SEQ_TRACE_LEVEL environment variable \n" );
+		SeqUtil_TRACE( TL_FULL_TRACE, "SeqUtil_setTraceEnv(): Unable to find SEQ_TRACE_LEVEL environment variable \n" );
 		return;
 	}
 
@@ -130,11 +130,11 @@ void SeqUtil_setTraceEnv(){
 	{
 		/* Treat token */
 		if(strcmp(token,"FULL") == 0 ){
-			traceFlags.importance = TL_MINIMAL;
+			traceFlags.importance = TL_FULL_TRACE;
 			traceFlags.timeStamp = TF_ON;
 			return;
-		} else if ( strcmp(token, "TL_MINIMAL") == 0 ){
-			traceFlags.importance = TL_MINIMAL;
+		} else if ( strcmp(token, "TL_FULL_TRACE") == 0 ){
+			traceFlags.importance = TL_FULL_TRACE;
 		} else if ( strcmp(token, "TL_MEDIUM" ) == 0 ){
 			traceFlags.importance = TL_MEDIUM;
 		} else if ( strcmp(token, "TL_ERROR" ) == 0 ){
@@ -144,7 +144,7 @@ void SeqUtil_setTraceEnv(){
 		} else if ( strcmp(token, "TF_TIMESTAMP") == 0 ){
 			traceFlags.timeStamp = TF_ON;
 		} else {
-			SeqUtil_TRACE(TL_MINIMAL, "Invalid flag %s in SEQ_TRACE_LEVEL \n", token);
+			SeqUtil_TRACE(TL_FULL_TRACE, "Invalid flag %s in SEQ_TRACE_LEVEL \n", token);
 		} 
 		/* Advance token */
 		token = strtok(NULL, separator);
@@ -164,7 +164,7 @@ void SeqUtil_setTraceFlag(int flag, int value)
 			traceFlags.importance = value;
 			break;
 		default:
-			SeqUtil_TRACE(TL_MINIMAL, "SeqUtil_setTraceFlat(): Invalid Flag \n");
+			SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_setTraceFlat(): Invalid Flag \n");
 	}
 }
 
@@ -184,8 +184,8 @@ int SeqUtil_getTraceLevel () {
 char *SeqUtil_getTraceLevelString(){
    static traceString[100];
    switch(traceFlags.importance){
-      case TL_MINIMAL:
-         strcpy(traceString, "TL_MINIMAL");
+      case TL_FULL_TRACE:
+         strcpy(traceString, "TL_FULL_TRACE");
          break;
       case TL_MEDIUM:
          strcpy(traceString, "TL_MEDIUM");
@@ -206,8 +206,8 @@ char *SeqUtil_getTraceLevelString(){
 void SeqUtil_showTraceInfo(){
 	fprintf(stderr , "Setting trace level to ");
 	switch(traceFlags.importance){
-		case TL_MINIMAL:
-			fprintf(stderr , "TL_MINIMAL \n");
+		case TL_FULL_TRACE:
+			fprintf(stderr , "TL_FULL_TRACE \n");
 			break;
 		case TL_MEDIUM:
 			fprintf(stderr , "TL_MEDIUM \n");
@@ -254,14 +254,14 @@ void SeqUtil_checkExpHome (char * _expHome) {
 *actions: print action message
 ********************************************************************************/
 void actions(char *signal, char* flow, char *node) {
- SeqUtil_TRACE(TL_MINIMAL,"\n**************** SEQ \"%s\" \"%s\" \"%s\" Action Summary *******************\n",signal, flow, node);
+ SeqUtil_TRACE(TL_FULL_TRACE,"\n**************** SEQ \"%s\" \"%s\" \"%s\" Action Summary *******************\n",signal, flow, node);
 }
 
 /********************************************************************************
 *actions: print action message
 ********************************************************************************/
 void actionsEnd(char *signal, char* flow, char* node) {
- SeqUtil_TRACE(TL_MINIMAL,"\n**************** SEQ \"%s\" \"%s\" \"%s\" Action ENDS *******************\n",signal, flow, node);
+ SeqUtil_TRACE(TL_FULL_TRACE,"\n**************** SEQ \"%s\" \"%s\" \"%s\" Action ENDS *******************\n",signal, flow, node);
 }
 
 /********************************************************************************
@@ -271,7 +271,7 @@ void actionsEnd(char *signal, char* flow, char* node) {
 int removeFile_nfs(const char *filename) {
    int status=0;
 
-   SeqUtil_TRACE(TL_MINIMAL, "SeqUtil.removeFile_nfs() removing %s\n", filename );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.removeFile_nfs() removing %s\n", filename );
    status = remove(filename);
    return(status);
 }
@@ -284,7 +284,7 @@ int removeFile_nfs(const char *filename) {
 int access_nfs (const char *filename , int stat ) {
    int status=0;
 
-   SeqUtil_TRACE(TL_MINIMAL,"SeqUtil.access_nfs() accessing %s\n", filename);
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil.access_nfs() accessing %s\n", filename);
    status = access(filename, stat);
    return (status);
 }
@@ -299,7 +299,7 @@ int access_nfs (const char *filename , int stat ) {
 int touch_nfs(const char *filename) {
    FILE *actionfile;
    
-   SeqUtil_TRACE(TL_MINIMAL,"SeqUtil.touch_nfs(): filename=%s\n",filename);
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil.touch_nfs(): filename=%s\n",filename);
 
    if ((actionfile = fopen(filename,"r")) != NULL ) {
       fclose(actionfile);
@@ -319,7 +319,7 @@ int touch_nfs(const char *filename) {
 */
 int isFileExists_nfs( const char* lockfile, const char *caller ) {
     if ( access(lockfile, R_OK) == 0 ) {
-       SeqUtil_TRACE(TL_MINIMAL, "SeqUtil.isFileExists_nfs() caller:%s found lock file=%s\n", caller, lockfile ); 
+       SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.isFileExists_nfs() caller:%s found lock file=%s\n", caller, lockfile ); 
        return 1;
     }
     SeqUtil_TRACE(TL_MEDIUM, "SeqUtil.isFileExists_nfs() caller:%s missing lock file=%s\n", caller, lockfile ); 
@@ -398,7 +398,7 @@ LISTNODEPTR globExtList_nfs (const char *pattern, int flags, int (*errfunc) (con
     char * wildcardPtr=NULL;
     char * tmpString=NULL;
     LISTNODEPTR extensionList=NULL; 
-    SeqUtil_TRACE(TL_MINIMAL, "SeqUtil.globExtList_nfs() looking for pattern %s \n",pattern); 
+    SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.globExtList_nfs() looking for pattern %s \n",pattern); 
 
     wildcardPtr=strchr(pattern,'*'); 
     if (wildcardPtr==NULL) return NULL;
@@ -427,10 +427,10 @@ LISTNODEPTR globExtList_nfs (const char *pattern, int flags, int (*errfunc) (con
      for (filecounter=0; filecounter<totalfiles; ++filecounter) {
          /*file return format should be /path/to/files/filename.*.some_state, and * should replace a "+index" where index can be a string or a number */
          /* TODO NPT ^last... remove from string here? */
-         SeqUtil_TRACE(TL_MINIMAL, "SeqUtil.globExtList_nfs() iteration found, Target: %s (length=%d); wildcardLocation=%d, wildcardPtr=%s (length %d); \n",glob_p.gl_pathv[filecounter], strlen(glob_p.gl_pathv[filecounter]), wildcardLocation, wildcardPtr, strlen(wildcardPtr)); 
+         SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.globExtList_nfs() iteration found, Target: %s (length=%d); wildcardLocation=%d, wildcardPtr=%s (length %d); \n",glob_p.gl_pathv[filecounter], strlen(glob_p.gl_pathv[filecounter]), wildcardLocation, wildcardPtr, strlen(wildcardPtr)); 
 
          tmpString=strndup(glob_p.gl_pathv[filecounter]+wildcardLocation, strlen(glob_p.gl_pathv[filecounter]) - strlen(pattern) +1); 
-         SeqUtil_TRACE(TL_MINIMAL, "SeqUtil.globExtList_nfs() iteration found. Extension: %s \n",tmpString); 
+         SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.globExtList_nfs() iteration found. Extension: %s \n",tmpString); 
          /* temporary removal to compile other test
          */         
           SeqListNode_insertItem(&extensionList,tmpString);
@@ -477,7 +477,7 @@ char *SeqUtil_getPathBase (const char *full_path) {
 int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
    char tmp[1000];
    char *split = NULL, *work_string = NULL; 
-   SeqUtil_TRACE(TL_MINIMAL, "SeqUtil_mkdir: dir_name %s recursive? %d \n", dir_name, is_recursive );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_mkdir: dir_name %s recursive? %d \n", dir_name, is_recursive );
    if ( is_recursive == 1) {
       work_string = strdup( dir_name );
       strcpy( tmp, "/" );
@@ -488,7 +488,7 @@ int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
       while ( split != NULL ) {
          strcat( tmp, "/" );
          if( ! SeqUtil_isDirExists( tmp ) ) {
-            SeqUtil_TRACE(TL_MINIMAL, "SeqUtil_mkdir: creating dir %s\n", tmp );
+            SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_mkdir: creating dir %s\n", tmp );
             if ( mkdir( tmp, 0755 ) == -1 ) {
                fprintf ( stderr, "ERROR: %s\n", strerror(errno) );
                return(EXIT_FAILURE);
@@ -503,7 +503,7 @@ int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
    } else {
       if( ! SeqUtil_isDirExists( dir_name ) ) {
          if ( mkdir( dir_name, 0755 ) == -1 ) {
-            SeqUtil_TRACE(TL_MINIMAL, "SeqUtil_mkdir: creating dir %s\n", dir_name );
+            SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_mkdir: creating dir %s\n", dir_name );
             fprintf ( stderr, "ERROR: %s\n", strerror(errno) );
             return(EXIT_FAILURE);
          }
@@ -636,7 +636,7 @@ char* SeqUtil_fixPath ( const char* source ) {
    }
    SeqUtil_stringAppend( &new, working );
    free( working );
-   SeqUtil_TRACE(TL_MINIMAL, "SeqUtil_fixPath source:%s new:%s\n", source, new );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_fixPath source:%s new:%s\n", source, new );
    return new;
 }
 
@@ -680,11 +680,11 @@ char* SeqUtil_getdef( const char* filename, const char* key ) {
   defpath = (char *) malloc( strlen(home) + strlen(defext) + 1 );
   sprintf( ovpath, "%s%s", home, ovext );
   sprintf( defpath, "%s%s", home, defext );
-  SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
+  SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_getdef(): looking for definition of %s in %s\n",key,ovpath);
   if ( (retval = SeqUtil_parsedef(ovpath,key)) == NULL ){
-    SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_getdef(): looking for definition of %s in %s\n",key,filename);
+    SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_getdef(): looking for definition of %s in %s\n",key,filename);
     if ( (retval = SeqUtil_parsedef(filename,key)) == NULL ){
-       SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_getdef(): looking for definition of %s in %s\n",key,defpath);
+       SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_getdef(): looking for definition of %s in %s\n",key,defpath);
        retval = SeqUtil_parsedef(defpath,key);
     }
   } 
@@ -711,7 +711,7 @@ int SeqUtil_getmappedfile(const char *filename, char ** filestart , char** filee
   for(i = 0; i < nbMappedFiles; ++i) {
     /* If the file is found, return pointer to where it is mapped and filesize */
     if(strcmp(mappedFiles[i].filename, filename) == 0) {
-      SeqUtil_TRACE( TL_MINIMAL, "getmappedfile(): File %s was found in mmapped files\n",filename);
+      SeqUtil_TRACE( TL_FULL_TRACE, "getmappedfile(): File %s was found in mmapped files\n",filename);
       *filestart = mappedFiles[i].filestart;
       *fileend = mappedFiles[i].fileend;
       return 0;
@@ -724,7 +724,7 @@ int SeqUtil_getmappedfile(const char *filename, char ** filestart , char** filee
   /* Open the file  */
   int fd = open(filename,O_RDONLY|O_NONBLOCK);
   if(fd == -1){
-    SeqUtil_TRACE( TL_MINIMAL, "SeqUtil_getmappedfile(): Could not open file %s for definition lookup \n", filename);
+    SeqUtil_TRACE( TL_FULL_TRACE, "SeqUtil_getmappedfile(): Could not open file %s for definition lookup \n", filename);
     return 1;
   }
 
@@ -742,7 +742,7 @@ int SeqUtil_getmappedfile(const char *filename, char ** filestart , char** filee
     SeqUtil_TRACE(TL_ERROR,"SeqUtil_getmappedfile(): Error mapping file %s into memory \n", filename);
     return 1;
   }
-  SeqUtil_TRACE( TL_MINIMAL,"getmappedfile(): Mapped file %s into memory using file descriptor %d \n", filename, fd);
+  SeqUtil_TRACE( TL_FULL_TRACE,"getmappedfile(): Mapped file %s into memory using file descriptor %d \n", filename, fd);
 
   /* Add it to the list */
   /* Filename */
@@ -806,7 +806,7 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
   
   int status = SeqUtil_getmappedfile(filename, &filestart, &fileend);
   if(status == 1){
-    SeqUtil_TRACE( TL_MINIMAL, "SeqUtil_parsdef failed to open/map file %s \n", filename);
+    SeqUtil_TRACE( TL_FULL_TRACE, "SeqUtil_parsdef failed to open/map file %s \n", filename);
     return NULL;
   }
 
@@ -839,7 +839,7 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
           raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
         }
         strcpy(retval,defval);
-        SeqUtil_TRACE( TL_MINIMAL, "SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
+        SeqUtil_TRACE( TL_FULL_TRACE, "SeqUtil_parsedef(): found definition %s=%s in %s\n",defkey,retval,filename);
         return retval;
       }
     }
@@ -866,7 +866,7 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
   else{
     SeqUtil_stringAppend( &source, "definition" );
   }
-  SeqUtil_TRACE(TL_MINIMAL,"XmlUtils_resolve(): performing %s replacements in string \"%s\"\n",source, _str);
+  SeqUtil_TRACE(TL_FULL_TRACE,"XmlUtils_resolve(): performing %s replacements in string \"%s\"\n",source, _str);
 
   strtmp = (char *) malloc( strlen(_str) + 1 ) ;
   strcpy(strtmp,_str);
@@ -890,7 +890,7 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
       }
     }
     else {
-      SeqUtil_TRACE(TL_MINIMAL,"XmlUtils_resolve(): replacing %s with %s value \"%s\"\n",var,source,env);
+      SeqUtil_TRACE(TL_FULL_TRACE,"XmlUtils_resolve(): replacing %s with %s value \"%s\"\n",var,source,env);
       strncpy(newstr+start,env,strlen(env));
       start += strlen(env);
     }
@@ -946,7 +946,7 @@ void SeqUtil_stripSubstring( char ** string, char * substring) {
          *string = tmpString; 
       }
   }
-  SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_stripSubstring(): resulting string %s \n",string);
+  SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_stripSubstring(): resulting string %s \n",string);
 } 
 
 
@@ -969,7 +969,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
 	    }
 	         strcpy(returnString,_nodeDataPtr->pathToModule);
             strcat(returnString,path+3);
-            SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_relativePathEvaluation(): module keyword replacement: replacing %s with %s\n",path,returnString);
+            SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_relativePathEvaluation(): module keyword replacement: replacing %s with %s\n",path,returnString);
 	         if (strstr(returnString,"...") != NULL) {
                raiseError("SeqUtil_relativePathEvaluation(): \"...\" keyword should only occur once. Not permitted to go beyond a single module level. Check your dep_name = %s", path);
 	    }
@@ -987,7 +987,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
                 tmpstrtok = (char*) strtok( NULL, ".." );
 	         }
             SeqUtil_stringAppend(&returnString,prevPtr);
-            SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_relativePathEvaluation(): parent keyword replacement: replacing %s with %s\n",path,returnString);
+            SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_relativePathEvaluation(): parent keyword replacement: replacing %s with %s\n",path,returnString);
             free(tmpString);
        } else if ((tmpString=strstr(path, "./")) !=NULL) {
 
@@ -996,7 +996,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
 	    }
 	    strcpy(returnString,_nodeDataPtr->container);
             strcat(returnString,path+1); 
-            SeqUtil_TRACE(TL_MINIMAL,"SeqUtil_relativePathEvaluation(): container replacement: replacing %s with %s\n",path,returnString);
+            SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil_relativePathEvaluation(): container replacement: replacing %s with %s\n",path,returnString);
 
 	    if (strstr(returnString,"./") != NULL) {
                raiseError("SeqUtil_relativePathEvaluation(): \"./\" keyword should only occur once. Check your dep_name = %s", path );
@@ -1058,7 +1058,7 @@ int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const 
             raiseError( "maestro.WriteNodeWaitedFile_nfs cannot write to file:%s\n",filename );
     }
 
-    SeqUtil_TRACE(TL_MINIMAL, "maestro.writeNodeWaitedFile_nfs updating %s\n", filename);
+    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.writeNodeWaitedFile_nfs updating %s\n", filename);
 
     /* sua   : need to add more logic for duplication and handle more than one entry in the waited file 
        Rochdi: we added comparaison of xp inode:  /.suites vs /maestro_suites (ie real case) */
@@ -1150,7 +1150,7 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
     int inode,Linode,n,found=0;
     size_t num;
  
-    SeqUtil_TRACE(TL_MINIMAL,"WriteNodeWaitedFile(): Using WriteForEachFileFile_nfs routine\n");
+    SeqUtil_TRACE(TL_FULL_TRACE,"WriteNodeWaitedFile(): Using WriteForEachFileFile_nfs routine\n");
     memset(tmp_line,'\0',sizeof(tmp_line));
     memset(line,'\0',sizeof(line));
     memset(Lexp,'\0',sizeof(Lexp));
@@ -1173,7 +1173,7 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
             raiseError( "WriteForEachFile_nfs cannot write to file:%s\n",_filename );
     }
 
-    SeqUtil_TRACE(TL_MINIMAL, "writeForEachFile_nfs updating %s\n", _filename);
+    SeqUtil_TRACE(TL_FULL_TRACE, "writeForEachFile_nfs updating %s\n", _filename);
 
     /* sua   : need to add more logic for duplication and handle more than one entry in the waited file 
        Rochdi: we added comparaison of xp inode:  /.suites vs /maestro_suites (ie real case) */
@@ -1183,7 +1183,7 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
                    fprintf(stderr,"writeNodeWaitedFile_nfs: Cannot get Inode of registred xp=%s\n",Lexp);
                    continue;
            }
-           SeqUtil_TRACE(TL_MINIMAL, "writeForEachFile_nfs checking inodes: %d vs %d, %s vs %s, %s vs %s, %s vs %s, %s vs %s\n", Linode, inode, Lnode, _node, Ldatestamp, _datestamp, LloopArgs, _loopArgs, Lindex, _target_index);
+           SeqUtil_TRACE(TL_FULL_TRACE, "writeForEachFile_nfs checking inodes: %d vs %d, %s vs %s, %s vs %s, %s vs %s, %s vs %s\n", Linode, inode, Lnode, _node, Ldatestamp, _datestamp, LloopArgs, _loopArgs, Lindex, _target_index);
            if ( Linode == inode && strcmp(Lnode,_node) == 0 && strcmp(Ldatestamp,_datestamp) == 0 && strcmp(LloopArgs,_loopArgs) == 0 && strcmp(Lindex,_target_index) == 0 ) {
                   found = 1;
                   break;

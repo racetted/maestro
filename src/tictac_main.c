@@ -92,7 +92,7 @@ main (int argc, char * argv [])
                returnDate=1;
                break;
 	         case 'v':
-					SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+					SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
 					SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
 	            break; 
             case 'h':
@@ -117,7 +117,7 @@ main (int argc, char * argv [])
         r = sigaction (SIGALRM, &act, NULL);
         if (r < 0) perror (__func__);
       
-        SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac() setting date to=%s\n", dateValue); 
+        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac() setting date to=%s\n", dateValue); 
         tictac_setDate( expHome,dateValue);
         /* remove installed SIGALRM handler */
         act.sa_handler = SIG_DFL;

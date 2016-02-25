@@ -53,7 +53,7 @@ char* SeqDatesUtil_getPrintableDate( char* printable_date, int day, int hour, in
    sprintf(fulldate,"%s",printable_date); 
    increment=FromDaysToSeconds(day,hour,minute,second); 
  
-   SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil_getPrintableDate() input date: %s, increment: %d d %d h %d m %d s = %lli increment (seconds)\n",fulldate, day, hour, minute, second, increment);
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil_getPrintableDate() input date: %s, increment: %d d %d h %d m %d s = %lli increment (seconds)\n",fulldate, day, hour, minute, second, increment);
 
    strncpy(four_char_date,fulldate,4);   
    four_char_date[4]='\0';   
@@ -78,7 +78,7 @@ char* SeqDatesUtil_getPrintableDate( char* printable_date, int day, int hour, in
    stamp = stamp + increment;
    DateFromJulian(stamp,&yyyymmdd,&hhmmss);
    sprintf( buffer,"%8.8d%6.6d",yyyymmdd,hhmmss);
-   SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil_getPrintableDate() result: yyyymmdd %d hhmmss %d -> buffer=%s \n",yyyymmdd,hhmmss, buffer);
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil_getPrintableDate() result: yyyymmdd %d hhmmss %d -> buffer=%s \n",yyyymmdd,hhmmss, buffer);
    return strdup( buffer );
 }
 
@@ -91,7 +91,7 @@ int SeqDatesUtil_dow(int y, int m, int d)
 }
 
 int SeqDatesUtil_isDepHourValid( char* date, char* hourToCheck){
-  SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil.isDepHourValid() checking hour %s for date %s \n", hourToCheck, date);
+  SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil.isDepHourValid() checking hour %s for date %s \n", hourToCheck, date);
 
   if ((hourToCheck == NULL) || (date == NULL))  {
      SeqUtil_TRACE(TL_ERROR, "SeqDatesUtil.isDepHourValid() input null, return 0\n");
@@ -100,10 +100,10 @@ int SeqDatesUtil_isDepHourValid( char* date, char* hourToCheck){
  
   if (strlen(date) >= 10) {
      if (strncmp(date+8,hourToCheck,2)==0) {
-        SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil.isDepHourValid() comparison done, returning 1 \n");
+        SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil.isDepHourValid() comparison done, returning 1 \n");
         return 1;
      } else {
-        SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil.isDepHourValid() comparison done, returning 0 \n");
+        SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil.isDepHourValid() comparison done, returning 0 \n");
         return 0;
      }
   } else {
@@ -117,7 +117,7 @@ int SeqDatesUtil_isDepDOWValid( char* date, char* dowToCheck){
   int dow = 0, dowToCheckInInt=0; 
   char year[5], month[3], day[3];
 
-  SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil.isDepDOWValid() checking day of week %s for date %s \n", dowToCheck, date);
+  SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil.isDepDOWValid() checking day of week %s for date %s \n", dowToCheck, date);
 
   if ((dowToCheck == NULL) || (date == NULL))  {
       SeqUtil_TRACE(TL_ERROR, "SeqDatesUtil.isDepDOWValid() input null, return 0\n");
@@ -131,7 +131,7 @@ int SeqDatesUtil_isDepDOWValid( char* date, char* dowToCheck){
   strncpy(day, date+6,2); 
   day[2] = '\0';
   dow = SeqDatesUtil_dow(atoi(year), atoi(month), atoi(day));
-  SeqUtil_TRACE(TL_MINIMAL, "SeqDatesUtil.isDepDOWValid() returning result of comparing %d and %d \n", dowToCheckInInt, dow);
+  SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil.isDepDOWValid() returning result of comparing %d and %d \n", dowToCheckInInt, dow);
   return (dow == atoi(dowToCheck));
 }
 

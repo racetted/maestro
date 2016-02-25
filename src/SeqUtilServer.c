@@ -46,7 +46,7 @@ int removeFile_svr (const char *filename ) {
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_REMOVE, filename ,"" ); 
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.removeFile_svr() removing %s return:%d\n", filename,status );
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.removeFile_svr() removing %s return:%d\n", filename,status );
    return (status);
 }
 
@@ -58,7 +58,7 @@ int touch_svr (const char *filename ) {
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_TOUCH, filename ,"" ); 
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.touch_svr(): %s return:%d\n",filename,status);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.touch_svr(): %s return:%d\n",filename,status);
 
    return (status);
 }
@@ -73,7 +73,7 @@ int isFileExists_svr ( const char* lockfile, const char *caller ) {
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_IS_FILE_EXISTS, lockfile ,"" ); 
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.isFileExists_svr()from %s filename:%s return:%d\n",caller,lockfile,status);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.isFileExists_svr()from %s filename:%s return:%d\n",caller,lockfile,status);
    return (status);
 }
 
@@ -90,7 +90,7 @@ int access_svr ( const char* filename , int mode ) {
    sprintf(string,"%d",mode);
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename , string); 
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.access_svr(): %s return:%d\n",filename,status);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.access_svr(): %s return:%d\n",filename,status);
    return (status);
 }
 
@@ -104,7 +104,7 @@ int SeqUtil_mkdir_svr ( const char* dirname, int notUsed ) {
 
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_MKDIR ,dirname, "" ); 
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.SeqUtil_mkdir_svr(): %s return:%d\n",dirname,status);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.SeqUtil_mkdir_svr(): %s return:%d\n",dirname,status);
    return (status);
 
 }
@@ -120,7 +120,7 @@ int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *ep
   
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_GLOB_PATTERN_COUNT ,pattern ,"" ); 
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.globPath_svr():%s \n",pattern);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.globPath_svr():%s \n",pattern);
    return (status);
 
 }
@@ -146,7 +146,7 @@ int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const 
     char buffer[1024];
     int status;
    
-    SeqUtil_TRACE(TL_MINIMAL,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_svr routine\n");
+    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_svr routine\n");
 
     memset(buffer,'\0',sizeof(buffer));
     
@@ -154,7 +154,7 @@ int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const 
     
     status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_WNF, buffer , "" );
     
-    SeqUtil_TRACE(TL_MINIMAL,"maestro.WriteNodeWaitedFile_svr():buffer=%s return=%d\n",buffer,status);
+    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.WriteNodeWaitedFile_svr():buffer=%s return=%d\n",buffer,status);
 
     return(status);
 
@@ -230,7 +230,7 @@ FILE * fopen_svr ( const char * filename , int sock )
           snprintf(wfilename,sizeof(wfilename),"/tmp/waitfile.%d",pid);
   } 
 
-  SeqUtil_TRACE(TL_MINIMAL,"fopen_svr(): wait file:%s===== \n",filename);
+  SeqUtil_TRACE(TL_FULL_TRACE,"fopen_svr(): wait file:%s===== \n",filename);
 
   /* build command */
   snprintf(tmp,sizeof(tmp),"Z %s",filename);
@@ -249,7 +249,7 @@ FILE * fopen_svr ( const char * filename , int sock )
              return (fp);
   } else {
              size=atoi(csize);
-             SeqUtil_TRACE(TL_MINIMAL,"Received size of waited file=%d\n",size);
+             SeqUtil_TRACE(TL_FULL_TRACE,"Received size of waited file=%d\n",size);
   }
 
   /* if size is 0 , server did not find the wait file, try nfs */
@@ -279,7 +279,7 @@ FILE * fopen_svr ( const char * filename , int sock )
        fwrite(buffer, sizeof(char) , size , fp);
        fflush(fp);
        fsync(fileno(fp));  /* fsync work with file descriptor */
-       SeqUtil_TRACE(TL_MINIMAL, "\nReceived Buffer length=%d:%s\n",strlen(buffer),buffer);
+       SeqUtil_TRACE(TL_FULL_TRACE, "\nReceived Buffer length=%d:%s\n",strlen(buffer),buffer);
        free(buffer); 
        fclose(fp); /* rewind at beg. of file */
   } else {
@@ -310,7 +310,7 @@ int lock_svr (  const char* filename , const char * datestamp ) {
    
    md5sum = (char *) str2md5(filename,strlen(filename));
 
-   SeqUtil_TRACE(TL_MINIMAL,"\nLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
+   SeqUtil_TRACE(TL_FULL_TRACE,"\nLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
 
    /* try to acquire the link for 5*0.5 = 2.5 sec */
    for ( i=0 ; i < 5 ; i++ ) {
@@ -319,7 +319,7 @@ int lock_svr (  const char* filename , const char * datestamp ) {
        usleep(500000);
    }
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.lock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.lock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
 
    return (status);
 
@@ -335,11 +335,11 @@ int unlock_svr ( const char* filename , const char * datestamp ) {
 
    md5sum = (char *) str2md5(filename,strlen(filename));
 
-   SeqUtil_TRACE(TL_MINIMAL,"\nUNLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
+   SeqUtil_TRACE(TL_FULL_TRACE,"\nUNLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
 
    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_UNLOCK, md5sum , datestamp );
 
-   SeqUtil_TRACE(TL_MINIMAL,"maestro.unlock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.unlock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
    
    return (status);
 }

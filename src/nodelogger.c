@@ -104,7 +104,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    if ( loop_ext == NULL ) { loop_ext=strdup(""); }
    if ( message  == NULL ) { message=strdup(""); }
     
-   SeqUtil_TRACE(TL_MINIMAL, "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
 
    memset(LOG_PATH,'\0',sizeof LOG_PATH);
    memset(TMP_LOG_PATH,'\0',sizeof TMP_LOG_PATH);
@@ -336,7 +336,7 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     memset(nodelogger_buf_short, '\0', NODELOG_BUFSIZE );
     memset(nodelogger_buf_notify, '\0', NODELOG_BUFSIZE );
     memset(nodelogger_buf_notify_short, '\0', NODELOG_BUFSIZE );
-    SeqUtil_TRACE(TL_MINIMAL, "\nNODELOGGER node:%s type:%s message:%s\n", node, type, message );
+    SeqUtil_TRACE(TL_FULL_TRACE, "\nNODELOGGER node:%s type:%s message:%s\n", node, type, message );
 
     if ( loop_ext != NULL ) {
         snprintf(nodelogger_buf,sizeof(nodelogger_buf),"L %-7s:%s:TIMESTAMP=%.4d%.2d%.2d.%.2d:%.2d:%.2d:SEQNODE=%s:MSGTYPE=%s:SEQLOOP=%s:SEQMSG=%s\n",username,LOG_PATH,c_year,c_month,c_day,c_hour,c_min,c_sec,node,type,loop_ext,message);
@@ -452,7 +452,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     Tokendate = atof(Stime);
     snprintf (flock,sizeof(flock),"%s/%s_%s_%u",lpath,Stime,host,pid);
      
-    SeqUtil_TRACE(TL_MINIMAL, "\nToken date=%s host=%s pid=%u flock=%s\n",Stime,host,pid,flock);
+    SeqUtil_TRACE(TL_FULL_TRACE, "\nToken date=%s host=%s pid=%u flock=%s\n",Stime,host,pid,flock);
 
     sprintf (TokenHostPid,"%s_%u",host,pid);
     

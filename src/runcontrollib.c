@@ -84,7 +84,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
    sprintf(message,"Machine=%s Queue=%s CPU=%s (x%s CPU Multiplier as %s MPIxOMP) Memory=%s Wallclock Limit=%d mpi=%d Submit method=%s soumetArgs=\"%s\" container mode",node_ptr->machine, node_ptr->queue, node_ptr->cpu ,node_ptr->cpu_multiplier, cpu, node_ptr->memory, node_ptr->wallclock, node_ptr->mpi, node_ptr->submitOrigin, node_ptr->soumetArgs);
    }
 
-   SeqUtil_TRACE(TL_MINIMAL,"nodesubmit.Message=%s",message);
+   SeqUtil_TRACE(TL_FULL_TRACE,"nodesubmit.Message=%s",message);
    free(cpu);
 
    nodelogger(node_ptr->name,"submit",node_ptr->extension,message,datestamp);

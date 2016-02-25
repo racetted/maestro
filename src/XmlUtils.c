@@ -39,11 +39,11 @@ xmlXPathObjectPtr
 XmlUtils_getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
    
    xmlXPathObjectPtr result;
-   SeqUtil_TRACE( TL_MINIMAL,"XmlUtils_getnodeset(): xpath query: %s\n", _xpathQuery );
+   SeqUtil_TRACE( TL_FULL_TRACE,"XmlUtils_getnodeset(): xpath query: %s\n", _xpathQuery );
    result = xmlXPathEvalExpression(_xpathQuery, _context);
 
    if(xmlXPathNodeSetIsEmpty(result->nodesetval)) {
-      SeqUtil_TRACE(TL_MINIMAL, "XmlUtils_getnodeset(): No result\n");
+      SeqUtil_TRACE(TL_FULL_TRACE, "XmlUtils_getnodeset(): No result\n");
       return NULL;
    }
    return result;

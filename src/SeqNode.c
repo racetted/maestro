@@ -153,7 +153,7 @@ void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
       /*find count of "x" separator*/
       for (x_count=0; strPtr[x_count]; strPtr[x_count]=='x' ? x_count++ : *(strPtr++));
 
-      SeqUtil_TRACE(TL_MINIMAL, "SeqNode_setCpu() cpu=%s, x-separator count=%d\n",cpu,x_count);
+      SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_setCpu() cpu=%s, x-separator count=%d\n",cpu,x_count);
 
       switch (x_count) {
          case 0:
@@ -396,7 +396,7 @@ void SeqNode_setExtension ( SeqNodeDataPtr node_ptr, const char* extension ) {
  to store a new name value link list */
 SeqLoopsPtr SeqNode_allocateLoopsEntry ( SeqNodeDataPtr node_ptr ) {
    SeqLoopsPtr loopsPtr = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_allocateLoopsEntry()\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateLoopsEntry()\n" );
    if ( node_ptr->loops == NULL ) {
       if (node_ptr->loops = malloc( sizeof (SeqLoops) )){
           loopsPtr = node_ptr->loops;
@@ -421,7 +421,7 @@ SeqLoopsPtr SeqNode_allocateLoopsEntry ( SeqNodeDataPtr node_ptr ) {
    loopsPtr->nextPtr = NULL;
    loopsPtr->values = NULL;
    loopsPtr->loop_name = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_allocateLoopsEntry() done\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateLoopsEntry() done\n" );
    return loopsPtr;
 }
 
@@ -429,7 +429,7 @@ SeqLoopsPtr SeqNode_allocateLoopsEntry ( SeqNodeDataPtr node_ptr ) {
    to store a new name value link list */
 SeqDependenciesPtr SeqNode_allocateDepsEntry ( SeqNodeDataPtr node_ptr ) {
    SeqDependenciesPtr deps_ptr = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_allocateDepsEntry()\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsEntry()\n" );
    if ( node_ptr->depends == NULL ) {
       if (node_ptr->depends = malloc( sizeof (SeqDependencies) )){
           deps_ptr = node_ptr->depends;
@@ -453,7 +453,7 @@ SeqDependenciesPtr SeqNode_allocateDepsEntry ( SeqNodeDataPtr node_ptr ) {
    }
    deps_ptr->nextPtr = NULL;
    deps_ptr->dependencyItem = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_allocateDepsEntry() done\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsEntry() done\n" );
    return deps_ptr;
 }
 
@@ -462,7 +462,7 @@ SeqDependenciesPtr SeqNode_allocateDepsEntry ( SeqNodeDataPtr node_ptr ) {
 SeqNameValuesPtr SeqNode_allocateDepsNameValue ( SeqDependenciesPtr deps_ptr ) {
    SeqNameValuesPtr nameValuesPtr = NULL;
 
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_allocateDepsNameValue()\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsNameValue()\n" );
    assert( deps_ptr != NULL );
    if ( deps_ptr->dependencyItem == NULL ) {
       deps_ptr->dependencyItem = malloc( sizeof (SeqNameValues) );
@@ -486,7 +486,7 @@ SeqNameValuesPtr SeqNode_allocateDepsNameValue ( SeqDependenciesPtr deps_ptr ) {
    nameValuesPtr->nextPtr = NULL;
    nameValuesPtr->name = NULL;
    nameValuesPtr->value = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_allocateDepsNameValue() done\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsNameValue() done\n" );
    return nameValuesPtr;
 }
 
@@ -519,7 +519,7 @@ void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, c
                          char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char* dep_Prot, char* dep_ValidHour, char* dep_ValidDOW) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s, dep_Prot=%s,dep_ValidHour=%s, dep_ValidDOW=%s \n",
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s, dep_Prot=%s,dep_ValidHour=%s, dep_ValidDOW=%s \n",
       dep_node_name, dep_node_path, dep_exp, dep_status, dep_index, local_index, dep_Prot, dep_ValidHour, dep_ValidDOW);
    deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
    deps_ptr->type = type;
@@ -586,7 +586,7 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
    char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end, *tmpExpression = expression;
    char *defFile = NULL, *value = NULL;
    
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_addNumLoop() input loop_name=%s, start=%s, step=%s, set=%s, end=%s, expression=%s, \n",loop_name, start, step, set, end, expression );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNumLoop() input loop_name=%s, start=%s, step=%s, set=%s, end=%s, expression=%s, \n",loop_name, start, step, set, end, expression );
 
    defFile = malloc ( strlen ( node_ptr->expHome ) + strlen("/resources/resources.def") + 1 );
    sprintf( defFile, "%s/resources/resources.def", node_ptr->expHome );
@@ -612,7 +612,7 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
             strcpy(tmpEnd,value);
          }
       }
-      SeqUtil_TRACE(TL_MINIMAL, "SeqNode_addNumLoop() resulting loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, tmpStart, tmpStep, tmpSet, tmpEnd );
+      SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNumLoop() resulting loop_name=%s, start=%s, step=%s, set=%s, end=%s, \n",loop_name, tmpStart, tmpStep, tmpSet, tmpEnd );
       /* change to expression format for validation -> start:end:step:set */ 
       memset(newExpression,'\0', strlen(newExpression)+1);
       sprintf(newExpression,"%s:%s:%s:%s",tmpStart,tmpEnd,tmpStep,tmpSet); 
@@ -623,7 +623,7 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
             strcpy(tmpExpression,value);
          }
       }
-      SeqUtil_TRACE(TL_MINIMAL, "SeqNode_addNumLoop() resulting loop_name=%s, expression:%s, \n",loop_name, tmpExpression );
+      SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNumLoop() resulting loop_name=%s, expression:%s, \n",loop_name, tmpExpression );
       SeqLoops_validateNumLoopExpression(tmpExpression);
    }
 
@@ -641,7 +641,7 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
 
 void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, char* switchName, char* switchType, char* returnValue) {
    SeqLoopsPtr loopsPtr = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode_addSwitch() switchName=%s switchType=%s returnValue=%s\n", switchName, switchType, returnValue);
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addSwitch() switchName=%s switchType=%s returnValue=%s\n", switchName, switchType, returnValue);
    loopsPtr = SeqNode_allocateLoopsEntry( _nodeDataPtr );
    loopsPtr->type = SwitchType;
    loopsPtr->loop_name = strdup( switchName );
@@ -661,7 +661,7 @@ void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, char* name, char* value 
       count++;
    }
    tmp[count] = '\0';
-   /* SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_addSpecificData() called name:%s value:%s\n", tmp, value ); */
+   /* SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_addSpecificData() called name:%s value:%s\n", tmp, value ); */
    SeqNameValues_insertItem( &(node_ptr->data), tmp, value );
    free( tmp );
 }
@@ -789,7 +789,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    SeqDependenciesPtr depsPtr = NULL;
    LISTNODEPTR submitsPtr = NULL, siblingsPtr = NULL, abortsPtr = NULL;
    SeqLoopsPtr loopsPtr = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_printNode() called\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printNode() called\n" );
 
    if( filename != NULL ) {
       removeFile_nfs(filename);
@@ -941,7 +941,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
 
    free( tmpFilters );
 
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_printNode() done\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printNode() done\n" );
 }
 
 void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int isPrettyPrint ){
@@ -951,7 +951,7 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int
    char *extraString=NULL;
    int count=1;
 
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_printDependencies() started\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printDependencies() started\n" );
    depsPtr = _nodeDataPtr->depends;
    if (isPrettyPrint) {
        SeqUtil_stringAppend( &extraString, "");
@@ -972,13 +972,13 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int
 
       depsPtr  = depsPtr->nextPtr;
    }
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_printDependencies() ended\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printDependencies() ended\n" );
    free(extraString);
 } 
 
 SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    SeqNodeDataPtr nodeDataPtr = NULL;
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_createNode() started\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_createNode() started\n" );
    if (nodeDataPtr = malloc( sizeof( SeqNodeData ) )){
        SeqNode_init ( nodeDataPtr );
    } else {
@@ -987,7 +987,7 @@ SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    SeqNode_setName( nodeDataPtr, name );
    SeqNode_setNodeName ( nodeDataPtr, (char*) SeqUtil_getPathLeaf(name));
    SeqNode_setContainer ( nodeDataPtr, (char*) SeqUtil_getPathBase(name));
-   SeqUtil_TRACE(TL_MINIMAL, "SeqNode.SeqNode_createNode() done\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_createNode() done\n" );
    return nodeDataPtr;
 }
 
@@ -995,7 +995,7 @@ void SeqNode_freeNameValues ( SeqNameValuesPtr _nameValuesPtr ) {
    SeqNameValuesPtr nameValuesNextPtr = NULL;
    /* free a link-list of name-value pairs */
    while (_nameValuesPtr != NULL ) {
-      /*SeqUtil_TRACE(TL_MINIMAL,"   SeqNode_freeNameValues %s=%s\n", _nameValuesPtr->name, _nameValuesPtr->value ); */
+      /*SeqUtil_TRACE(TL_FULL_TRACE,"   SeqNode_freeNameValues %s=%s\n", _nameValuesPtr->name, _nameValuesPtr->value ); */
 
       /* load a copy of the next to be freed */
       nameValuesNextPtr = _nameValuesPtr->nextPtr;
@@ -1165,7 +1165,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
       }
       strncpy(tmp2Value, tmpValue, stringLength); 
       SeqUtil_stringAppend( &tmp2Value, "" );
-      SeqUtil_TRACE(TL_MINIMAL,"SeqLoops_GenerateConfig Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
+      SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_GenerateConfig Found ^last argument, replacing %s for %s for node %s \n", tmpValue, tmp2Value, _nodeDataPtr->nodeName); 
       SeqNameValues_setValue( &loopArgsPtr, _nodeDataPtr->nodeName, tmp2Value);
       SeqLoops_printLoopArgs(_nodeDataPtr->loop_args,"test"); 
    }

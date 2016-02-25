@@ -32,7 +32,7 @@
 
 /* Multiples of 10 to be able to add levels in between in the future */
 #define TRACE_LEVEL		1
-#define TL_MINIMAL 		10
+#define TL_FULL_TRACE 		10
 #define TL_MEDIUM 		15
 #define TL_ERROR			20
 #define TL_CRITICAL 		30

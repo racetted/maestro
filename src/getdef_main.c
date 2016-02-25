@@ -46,7 +46,7 @@ int main ( int argc, char * argv[] )
      switch(c) {
      case 'd':
      case 'v':
-		 SeqUtil_setTraceFlag( TRACE_LEVEL , TL_MINIMAL );
+		 SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
 		 SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
        break;
      case '?':

@@ -59,18 +59,18 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
    if  ( tmpfromaestro == NULL ) {
       if ( (MLLServerConnectionFid=OpenConnectionToMLLServer( _expHome , job )) < 0 ) {
          _touch = touch_nfs;
-         SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() (NFS) setting date to=%s\n", datestamp); 
+         SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() (NFS) setting date to=%s\n", datestamp); 
       } else {
          _touch = touch_svr;
-         SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() (server) setting date to=%s\n", datestamp); 
+         SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() (server) setting date to=%s\n", datestamp); 
       }
    } 
 
    SeqUtil_checkExpHome(_expHome);
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
 
    checkValidDatestamp(datestamp); 
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    fprintf(stderr,"Warning: use of tictac -s $datestamp is deprecated. Please use SEQ_DATE environment variable or a -d $datestamp argument to maestro or expbegin calls.\n"); 
    SeqUtil_stringAppend( &dateFileName, _expHome );
    SeqUtil_stringAppend( &dateFileName, "/logs/" );
@@ -201,7 +201,7 @@ extern void checkValidDatestamp(char *datestamp){
    if ( dateLength < 8 || dateLength > 14 ) 
       raiseError("ERROR: Datestamp must contain between 8 and 14 characters (YYYYMMDD[HHMMSS]).\n"); 
 
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    if (tmpDateString= (char*) malloc(5)) {
       sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
       validationInt = atoi(tmpDateString);
@@ -211,7 +211,7 @@ extern void checkValidDatestamp(char *datestamp){
    if (validationInt < 0  || validationInt > 9999)
      raiseError("ERROR: Year %d outside set bounds of [0,9999].\n", validationInt); 
 
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
    if (tmpDateString= (char*) malloc(3)) {
@@ -223,7 +223,7 @@ extern void checkValidDatestamp(char *datestamp){
    if (validationInt < 0  || validationInt > 12)
       raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
 
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
    if (tmpDateString= (char*) malloc(3)) {
@@ -235,7 +235,7 @@ extern void checkValidDatestamp(char *datestamp){
 
    if (validationInt < 0  || validationInt > 31)
       raiseError("ERROR: Day %d outside set bounds of [0,31].\n", validationInt); 
-   SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
 
    free(tmpDateString);
 
@@ -250,7 +250,7 @@ extern void checkValidDatestamp(char *datestamp){
       if (validationInt < 0  || validationInt > 23)
         raiseError("ERROR: Hour %d outside set bounds of [0,23].\n", validationInt); 
 
-      SeqUtil_TRACE(TL_MINIMAL, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
       free(tmpDateString);
    }
 

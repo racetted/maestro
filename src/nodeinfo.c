@@ -48,7 +48,7 @@ const char* NODE_RES_XML_ROOT = "/NODE_RESOURCES";
 
 SeqNodeType getNodeType ( const xmlChar *_node_name ) {
    SeqNodeType nodeType = Task;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getNodeType() node name: %s\n", _node_name);
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getNodeType() node name: %s\n", _node_name);
    if ( strcmp( (char *) _node_name, "FAMILY" ) == 0 ) {
       nodeType = Family;
    } else if ( strcmp( (char *) _node_name, "MODULE" ) == 0 ) {
@@ -66,7 +66,7 @@ SeqNodeType getNodeType ( const xmlChar *_node_name ) {
    } else {
       raiseError("ERROR: nodeinfo.getNodeType()  unprocessed xml node name:%s\n", _node_name);
    }
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getNodeType() type=%d\n", nodeType );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getNodeType() type=%d\n", nodeType );
    return nodeType;
 }
 
@@ -78,15 +78,15 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
    char *cpuString = NULL;
 
    int i=0;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseBatchResources() called\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseBatchResources() called\n" );
    if (_result) {
       nodeset = _result->nodesetval;
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseBatchResources() nodeset->nodeNr=%d\n", nodeset->nodeNr);
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseBatchResources() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseBatchResources() nodePtr->name=%s\n", nodePtr->name);
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseBatchResources() value=%s\n", nodePtr->children->content );
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseBatchResources() nodePtr->name=%s\n", nodePtr->name);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseBatchResources() value=%s\n", nodePtr->children->content );
 	 if ( strcmp( nodeName, "cpu" ) == 0 ) {
             SeqNode_setCpu( _nodeDataPtr, nodePtr->children->content );
             cpuString=strdup(nodePtr->children->content);
@@ -152,7 +152,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
           sprintf( resourceFile, "%s/resources%s/container.xml", _seq_exp_home, _nodeDataPtr->name );
       }
       
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
          /* reset variables to null after being freed at the end of the loop for reuse*/
 
@@ -164,9 +164,9 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
          indexToken = NULL;
          tmpCompare = 0;
          alreadySet = 0;
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
          depType = (char *) xmlGetProp( nodePtr, "type" );
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
          if ( depType == NULL ) depType=strdup("node");
 
          if ( strcmp( depType, "node" ) == 0 ) {
@@ -178,7 +178,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             /* default interuser protocol if not defined */
             if (depProt == NULL) depProt=strdup("polling"); 
             depIndex = (char *) xmlGetProp( nodePtr, "index" );
-            SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() depLocalIndex = %s\n", xmlGetProp( nodePtr, "local_index" ) );
+            SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() depLocalIndex = %s\n", xmlGetProp( nodePtr, "local_index" ) );
            
             depLocalIndex = (char *) xmlGetProp( nodePtr, "local_index" );
             /* look for keywords in index fields */
@@ -189,7 +189,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
                  if( strstr(  _nodeDataPtr->pathToModule ,loopsPtr->loop_name ) != NULL ) {
                  /* add loop arg to full dep index */
                     tmpLoopName=(char*) SeqUtil_getPathLeaf( (const char*) loopsPtr->loop_name );
-                    SeqUtil_TRACE(TL_MINIMAL, "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
+                    SeqUtil_TRACE(TL_FULL_TRACE, "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
                     if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName) != NULL) {
                         SeqNameValues_insertItem( &depArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
                         SeqNameValues_insertItem( &localArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
@@ -202,22 +202,22 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    
             if( access( resourceFile, F_OK ) != -1 ) {
                /* parse node resource file to find associative index token, first find the line where the token is ...*/
-               SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() node resource file : %s\n", resourceFile);
+               SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() node resource file : %s\n", resourceFile);
                if((fp = fopen(resourceFile, "r")) == NULL) {
-                  SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() cannot open resource xml file %s for index token parsing\n", resourceFile );
+                  SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() cannot open resource xml file %s for index token parsing\n", resourceFile );
                } else {
                  memset(tokenLine,'\0',sizeof tokenLine);
                  while(fgets(temp, 512, fp) != NULL) {
                     if (find_index_token == 0) {
                         if((strstr(temp, "$((")) != NULL) {
-                           SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() found associative index token, checking dependency\n");
+                           SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() found associative index token, checking dependency\n");
                            strcpy(tokenLine, temp);
                            find_index_token = 1;
                         }
                     }  
                  }
                  if(find_index_token == 0) {
-                    SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() did not find any associative index token\n");
+                    SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() did not find any associative index token\n");
                  }
                  if(fp) {
                     fclose(fp);
@@ -235,7 +235,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
                     if (indexToken != NULL) {
                         strcpy(tmpIndexToken, indexToken);
                         sprintf(indexToken, "$((%s))", tmpIndexToken);
-                        SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
+                        SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() found associative index token: %s\n", indexToken);
                     }
                  }
               }
@@ -248,7 +248,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 
                   tmpIterator = localArgs; 
                   while (tmpIterator != NULL) {
-                     SeqUtil_TRACE(TL_MINIMAL,"Nodeinfo_parseDepends() tmpIterator->value=%s \n", tmpIterator->value);
+                     SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() tmpIterator->value=%s \n", tmpIterator->value);
                  /*checks for current index keyword*/
                      if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0) {
                         if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name) != NULL) {
@@ -300,20 +300,20 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             depStatus = (char *) xmlGetProp( nodePtr, "status" );
             if (depStatus == NULL) depStatus=strdup("end"); 
 
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depName: %s\n", depName );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep parsedDepName: %s\n", parsedDepName );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() fullDepIndex: %s \n", fullDepIndex);
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() fullDepLocalIndex: %s\n", fullDepLocalIndex );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depPath: %s\n", depPath );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depValidHour: %s\n", depValidHour );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() dep depValidDOW: %s\n", depValidDOW );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() depProt: %s\n", depProt ); /* added by Rochdi */
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depName: %s\n", depName );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep parsedDepName: %s\n", parsedDepName );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() fullDepIndex: %s \n", fullDepIndex);
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() fullDepLocalIndex: %s\n", fullDepLocalIndex );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depPath: %s\n", depPath );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depValidHour: %s\n", depValidHour );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depValidDOW: %s\n", depValidDOW );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() depProt: %s\n", depProt ); /* added by Rochdi */
             SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depProt, depValidHour, depValidDOW );
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() done\n" );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() done\n" );
             free( depName );
             free( depIndex );
             free( depPath );
@@ -330,7 +330,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             SeqNameValues_deleteWholeList( &localArgs );
             SeqNameValues_deleteWholeList( &depArgs );
          } else {
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseDepends() no dependency found.\n" );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() no dependency found.\n" );
          }
       }
       free(resourceFile);
@@ -346,12 +346,12 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
    
    if (_result) {
       nodeset = _result->nodesetval;
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseLoopAttributes()   *** loop info***\n");
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseLoopAttributes()   *** loop info***\n");
       
       for (i=0; i < nodeset->nodeNr; i++) {
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseLoopAttributes() nodeName=%s, value:%s\n", nodeName, nodePtr->children->content);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseLoopAttributes() nodeName=%s, value:%s\n", nodeName, nodePtr->children->content);
          if ( nodePtr->children != NULL ) {
             if( strcmp( nodeName, "start" ) == 0 ) {
                free(loopStart);
@@ -392,7 +392,7 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    xmlAttrPtr propertiesPtr;
    int i=0, isSubmit=1;
    char* tmpstring;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseSubmits() called\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseSubmits() called\n" );
    if (_result) {
       nodeset = _result->nodesetval;
       for (i=0; i < nodeset->nodeNr; i++) {
@@ -402,8 +402,8 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
          isSubmit = 0;
          while (propertiesPtr != NULL) {
             propertyName = propertiesPtr->name;
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseSubmits() submits:%s\n", propertiesPtr->children->content);
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseSubmits() property:%s\n",propertyName);
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseSubmits() submits:%s\n", propertiesPtr->children->content);
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseSubmits() property:%s\n",propertyName);
             if ( strcmp( propertyName, "sub_name" ) == 0 ) {
                isSubmit = 1;
                if (_nodeDataPtr->type == Task ) {
@@ -418,7 +418,7 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
                }
             } else if ( strcmp( propertyName, "type" ) == 0 && strcmp( propertiesPtr->children->content, "user" ) == 0  ) {
                isSubmit = 0;
-               SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseSubmits() got user submit node\n" );
+               SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseSubmits() got user submit node\n" );
             }
 
             propertiesPtr = propertiesPtr->next;
@@ -459,14 +459,14 @@ void parseWorkerPath (char * pathToNode, const char * _seq_exp_home, SeqNodeData
 
   /* get the batch system resources */
    sprintf ( query, "(%s/WORKER/@*)", NODE_RES_XML_ROOT );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseWorkerPath query: %s\n", query );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseWorkerPath query: %s\n", query );
    if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          nodeset = result->nodesetval;
          for (i=0; i < nodeset->nodeNr; i++) {
             nodePtr = nodeset->nodeTab[i];
             nodeName = nodePtr->name;
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseWorkerPath() nodePtr->name=%s\n", nodePtr->name);
-            SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseWorkerPath() value=%s\n", nodePtr->children->content );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseWorkerPath() nodePtr->name=%s\n", nodePtr->name);
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseWorkerPath() value=%s\n", nodePtr->children->content );
             if ( strcmp( nodeName, "path" ) == 0 ) {
                SeqNode_setWorkerPath( _nodeDataPtr, nodePtr->children->content );
                foundPath=1;
@@ -491,15 +491,15 @@ void parseAbortActions (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
    const xmlChar *nodeName = NULL;
 
    int i=0;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseAbortActions() called\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseAbortActions() called\n" );
    if (_result) {
       nodeset = _result->nodesetval;
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseAbortActions() nodeset->nodeNr=%d\n", nodeset->nodeNr);
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseAbortActions() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseAbortActions() nodePtr->name=%s\n", nodePtr->name);
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseAbortActions() value=%s\n", nodePtr->children->content );
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseAbortActions() nodePtr->name=%s\n", nodePtr->name);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseAbortActions() value=%s\n", nodePtr->children->content );
          if ( strcmp( nodeName, "name" ) == 0 ) {
             SeqNode_addAbortAction( _nodeDataPtr, nodePtr->children->content );
          }
@@ -514,16 +514,16 @@ void parseNodeSpecifics (SeqNodeType _nodeType, xmlXPathObjectPtr _result, SeqNo
    xmlNodePtr nodePtr = NULL;
    const xmlChar *nodeName = NULL;
    int i=0;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseNodeSpecifics() called node_type=%s\n", SeqNode_getTypeString( _nodeType ) );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseNodeSpecifics() called node_type=%s\n", SeqNode_getTypeString( _nodeType ) );
    nodeset = _result->nodesetval;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseNodeSpecifics() nodeset cardinal=%d\n", nodeset->nodeNr );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseNodeSpecifics() nodeset cardinal=%d\n", nodeset->nodeNr );
    for (i=0; i < nodeset->nodeNr; i++) {
       nodePtr = nodeset->nodeTab[i];
       nodeName = nodePtr->name;
 
       /* name attribute is not node specific */
       if ( nodePtr->children != NULL && strcmp((char*)nodeName,"name") != 0 ) {
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseNodeSpecifics() %s=%s\n", nodeName, nodePtr->children->content );
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseNodeSpecifics() %s=%s\n", nodeName, nodePtr->children->content );
          SeqNode_addSpecificData ( _nodeDataPtr, nodeName, nodePtr->children->content );
       }
    }
@@ -541,7 +541,7 @@ void parseNodeSiblings (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
    xmlAttrPtr propertiesPtr = NULL;
 
    int i=0;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseNodeSiblings() called\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseNodeSiblings() called\n" );
    if (_result) {
       nodeset = _result->nodesetval;
       for (i=0; i < nodeset->nodeNr; i++) {
@@ -553,7 +553,7 @@ void parseNodeSiblings (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
 
             if ( strcmp( (char*) propertyName, "name" ) == 0 ) {
                SeqNode_addSibling( _nodeDataPtr, propertiesPtr->children->content );
-               SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseNodeSiblings() sibling:%s\n", propertiesPtr->children->content);
+               SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseNodeSiblings() sibling:%s\n", propertiesPtr->children->content);
             }
             propertiesPtr = propertiesPtr->next;
          }
@@ -595,9 +595,9 @@ void getRootNode( SeqNodeDataPtr _nodeDataPtr, const char *_seq_exp_home ) {
    nodeset = result->nodesetval;
    nodePtr = nodeset->nodeTab[0];
    nodeName = nodePtr->name;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getRootNode() nodeName=%s\n", nodeName );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getRootNode() nodeName=%s\n", nodeName );
    if ( nodePtr->children != NULL ) {
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getRootNode() %s=%s\n", nodeName, nodePtr->children->content );
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getRootNode() %s=%s\n", nodeName, nodePtr->children->content );
       SeqNode_setName( _nodeDataPtr, SeqUtil_fixPath( nodePtr->children->content ) );
 
    }
@@ -629,7 +629,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
    extraSpace = strlen( "/resources//container.xml" );
    xmlFile = malloc( strlen( _seq_exp_home ) + strlen( fixedNodePath ) + extraSpace + 1 );
    sprintf( xmlFile, "%s/resources/%s/container.xml", _seq_exp_home, fixedNodePath );
-   SeqUtil_TRACE(TL_MINIMAL, "getNodeLoopContainersAttr xmlFile:%s\n", xmlFile );
+   SeqUtil_TRACE(TL_FULL_TRACE, "getNodeLoopContainersAttr xmlFile:%s\n", xmlFile );
 
    /* loop xml file must exist */
    if ( access(xmlFile, R_OK) != 0 ) {
@@ -643,7 +643,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
 
    /* validate xmlFile (container.xml) parsing */
    if (doc == NULL) {
-	  SeqUtil_TRACE(TL_MINIMAL, "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
+	  SeqUtil_TRACE(TL_FULL_TRACE, "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
 	  pxml = fopen (xmlFile, "a+");
 	  if(!pxml)
 	     raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
@@ -652,7 +652,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
 	  xmlSize = ftell (pxml);
 	
 	  if ( xmlSize==0 ) {
-	    SeqUtil_TRACE(TL_MINIMAL, "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
+	    SeqUtil_TRACE(TL_FULL_TRACE, "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
 	    if (  _nodeDataPtr->type == Loop) {
 	      if(fprintf(pxml, "<NODE_RESOURCES>\n\t<LOOP start=\"0\" set=\"1\" end=\"1\" step=\"1\"/>\n</NODE_RESOURCES>"));
 	      else
@@ -676,7 +676,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
 
    /* validate NODE_RESOURCES node */
    sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
-   SeqUtil_TRACE(TL_MINIMAL, "getNodeLoopContainersAttr query: %s\n", query );
+   SeqUtil_TRACE(TL_FULL_TRACE, "getNodeLoopContainersAttr query: %s\n", query );
    if ( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
       xmlXPathFreeObject (result);
       raiseError("NODE_RESOURCES element not found in XML master file! (getNodeLoopContainersAttr)\n");
@@ -685,7 +685,7 @@ void getNodeLoopContainersAttr (  SeqNodeDataPtr _nodeDataPtr, const char *_loop
  
    /* build and run loop query */
    sprintf ( query, "(%s/LOOP/@*)", NODE_RES_XML_ROOT );
-   SeqUtil_TRACE(TL_MINIMAL, "getNodeLoopContainersAttr query: %s\n", query );
+   SeqUtil_TRACE(TL_FULL_TRACE, "getNodeLoopContainersAttr query: %s\n", query );
    if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
       parseLoopAttributes( result, fixedNodePath, _nodeDataPtr );
    }
@@ -707,7 +707,7 @@ char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
     memset(returnValue,'\0', sizeof(returnValue));
     if (strcmp(switchType, "datestamp_hour") == 0) {
 	strncpy(returnValue, _nodeDataPtr->datestamp+8,2);   
-        SeqUtil_TRACE(TL_MINIMAL, "switchReturn datestamp parser on datestamp = %s\n",  _nodeDataPtr->datestamp );
+        SeqUtil_TRACE(TL_FULL_TRACE, "switchReturn datestamp parser on datestamp = %s\n",  _nodeDataPtr->datestamp );
     }
     if (strcmp(switchType, "day_of_week") == 0) {
         strncpy(year, _nodeDataPtr->datestamp,4); 
@@ -716,10 +716,10 @@ char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType ) {
         month[2]='\0';
         strncpy(day, _nodeDataPtr->datestamp+6,2); 
         day[2]='\0';
-        SeqUtil_TRACE(TL_MINIMAL, "switchReturn datestamp parser on day of the week for date: %s%s%s \n",year,month,day);
+        SeqUtil_TRACE(TL_FULL_TRACE, "switchReturn datestamp parser on day of the week for date: %s%s%s \n",year,month,day);
 	sprintf(returnValue,"%d",SeqDatesUtil_dow(atoi(year), atoi(month), atoi(day)));   
     }
-    SeqUtil_TRACE(TL_MINIMAL, "switchReturn returnValue = %s\n", returnValue );
+    SeqUtil_TRACE(TL_FULL_TRACE, "switchReturn returnValue = %s\n", returnValue );
     return strdup(returnValue); 
 }
 
@@ -740,15 +740,15 @@ void parseForEachTarget(xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
    const xmlChar *nodeName = NULL;
    char * t_index = NULL, * t_exp = NULL, *t_hour = NULL, *t_node = NULL; 
    int i=0;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseForEachTarget() called\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseForEachTarget() called\n" );
    if (_result) {
       nodeset = _result->nodesetval;
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseForEachTarget() nodeset->nodeNr=%d\n", nodeset->nodeNr);
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseForEachTarget() nodeset->nodeNr=%d\n", nodeset->nodeNr);
       for (i=0; i < nodeset->nodeNr; i++) {
          nodePtr = nodeset->nodeTab[i];
          nodeName = nodePtr->name;
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseForEachTarget() nodePtr->name=%s\n", nodePtr->name);
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseForEachTarget() value=%s\n", nodePtr->children->content );
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseForEachTarget() nodePtr->name=%s\n", nodePtr->name);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseForEachTarget() value=%s\n", nodePtr->children->content );
          if ( strcmp( nodeName, "node" ) == 0 ) {
            t_node = strdup(nodePtr->children->content); 
          }
@@ -796,7 +796,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    xmlXPathObjectPtr result = NULL;
    xmlXPathContextPtr context = NULL;
 
-   SeqUtil_TRACE(TL_MINIMAL, "getNodeResources _nodePath=%s type=%d\n", _nodePath, _nodeDataPtr->type );
+   SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources _nodePath=%s type=%d\n", _nodePath, _nodeDataPtr->type );
 
    /* build the xmlfile path */
    if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask )  {
@@ -818,7 +818,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    defFile = malloc ( strlen ( _seq_exp_home ) + strlen("/resources/resources.def") + 1 );
    sprintf( defFile, "%s/resources/resources.def", _seq_exp_home );
 
-   SeqUtil_TRACE(TL_MINIMAL, "getNodeResources looking for xml file %s\n", xmlFile );
+   SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources looking for xml file %s\n", xmlFile );
 
    /* verify xml exist, else get out of here */
    if (  access(xmlFile, R_OK) == 0 ) {
@@ -828,14 +828,14 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       
    /* validate xmlFile (container.xml) parsing */
    if (doc == NULL) {
-      SeqUtil_TRACE(TL_MINIMAL, "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
+      SeqUtil_TRACE(TL_FULL_TRACE, "File %s/resources/%s/container.xml not parsed successfully, opening file\n", _seq_exp_home, fixedNodePath);
       pxml = fopen (xmlFile, "a+");
       if(!pxml) raiseError("Permission to write in %s/resources/%s/container.xml denied\n", _seq_exp_home, fixedNodePath);
       fseek (pxml , 0 , SEEK_END);
       xmlSize = ftell (pxml);
 
       if ( xmlSize==0 ) {
-         SeqUtil_TRACE(TL_MINIMAL, "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
+         SeqUtil_TRACE(TL_FULL_TRACE, "File %s/resources/%s/container.xml is empty, writing mandatory tags\n", _seq_exp_home, fixedNodePath);
          if (  _nodeDataPtr->type == Loop) {
             if(fprintf(pxml, "<NODE_RESOURCES>\n\t<LOOP start=\"0\" set=\"1\" end=\"1\" step=\"1\"/>\n</NODE_RESOURCES>"));
             else
@@ -860,7 +860,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
 
       /* validate NODE_RESOURCES node */
       sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
-      SeqUtil_TRACE(TL_MINIMAL, "getNodeResources query: %s\n", query );
+      SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
       if ( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
          xmlXPathFreeObject (result);
          raiseError("NODE_RESOURCES element not found in XML master file! (getNodeResources)\n");
@@ -870,7 +870,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       /* get loop attributes if node is loop type */
       if (  _nodeDataPtr->type == Loop ) {
          sprintf ( query, "(%s/LOOP/@*)", NODE_RES_XML_ROOT );
-         SeqUtil_TRACE(TL_MINIMAL, "getNodeResources query: %s\n", query );
+         SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
          if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
             parseNodeSpecifics( _nodeDataPtr->type, result, _nodeDataPtr );
          }
@@ -879,7 +879,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       /* ForEach type, get info from xml file */
       if ( _nodeDataPtr->type == ForEach ) {
          sprintf ( query, "(%s/FOR_EACH/@*)", NODE_RES_XML_ROOT );
-         SeqUtil_TRACE(TL_MINIMAL, "getNodeResources query: %s\n", query );
+         SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
          if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
             parseForEachTarget(result, _nodeDataPtr);
          }
@@ -888,7 +888,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
 
       /* get the batch system resources */
       sprintf ( query, "(%s/BATCH/@*)", NODE_RES_XML_ROOT );
-      SeqUtil_TRACE(TL_MINIMAL, "getNodeResources query: %s\n", query );
+      SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseBatchResources( result, _nodeDataPtr ); 
       }
@@ -897,7 +897,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       /* get the dependencies */
       /* there could be more than one DEPENDS_ON tag */
       sprintf ( query, "(%s/child::DEPENDS_ON)", NODE_RES_XML_ROOT );
-      SeqUtil_TRACE(TL_MINIMAL, "getNodeResources query: %s\n", query );
+      SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseDepends( result, _nodeDataPtr, 0); 
       }
@@ -905,7 +905,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
 
       /* get the abort actions */
       sprintf ( query, "(%s/ABORT_ACTION/@*)", NODE_RES_XML_ROOT );
-      SeqUtil_TRACE(TL_MINIMAL, "getNodeResources query: %s\n", query );
+      SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseAbortActions( result, _nodeDataPtr ); 
       } else if ( (abortValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_ABORT_ACTION" )) != NULL ){
@@ -921,7 +921,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    }
    /* if it is within a work unit, set resources to match supertask */
    if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
-       SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.parseBatchResources() Resetting resources to worker's values\n");
+       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseBatchResources() Resetting resources to worker's values\n");
        workerNodeDataPtr = nodeinfo(_nodeDataPtr->workerPath, "all", NULL, _seq_exp_home, NULL, NULL );
        _nodeDataPtr->mpi=workerNodeDataPtr->mpi;
        _nodeDataPtr->catchup=workerNodeDataPtr->catchup;
@@ -985,7 +985,7 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(_seq_exp_home,"",datestamp) );
 
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.doesNodeExist() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.doesNodeExist() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
    /* count is 0-based */
    /* build the xmlfile path */
@@ -1020,9 +1020,9 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
       
       /* run the normal query */
       if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-         SeqUtil_TRACE(TL_MINIMAL,"nodeinfo.doesNodeExist() Node %s not found in XML master file! \n", _nodePath);
+         SeqUtil_TRACE(TL_FULL_TRACE,"nodeinfo.doesNodeExist() Node %s not found in XML master file! \n", _nodePath);
          SeqNode_freeNode( nodeDataPtr );
-         SeqUtil_TRACE(TL_MINIMAL,"nodeinfo.doesNodeExist() return = 0 \n");
+         SeqUtil_TRACE(TL_FULL_TRACE,"nodeinfo.doesNodeExist() return = 0 \n");
          if (previousContext != NULL){
             xmlXPathFreeContext(previousContext);
          }
@@ -1153,7 +1153,7 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
 		      free(tmpAnswer); 
 		      free(xmlFile);
 		      free(currentFlowNode);
-		      SeqUtil_TRACE(TL_MINIMAL,"nodeinfo.doesNodeExist() return = 0 \n");
+		      SeqUtil_TRACE(TL_FULL_TRACE,"nodeinfo.doesNodeExist() return = 0 \n");
 		      return(0);
 		    } else {
 		      SeqUtil_TRACE(TL_MEDIUM,"nodeinfo.doesNodeExist() Query %s found default value SWITCH ITEM in XML flow file! (doesNodeExist)\n", query );
@@ -1216,7 +1216,7 @@ int doesNodeExist(const char* _nodePath, const char* _seq_exp_home, const char* 
              free(tmpAnswer); 
              free(xmlFile);
              free(currentFlowNode);
-             SeqUtil_TRACE(TL_MINIMAL,"nodeinfo.doesNodeExist() return = 0 \n");
+             SeqUtil_TRACE(TL_FULL_TRACE,"nodeinfo.doesNodeExist() return = 0 \n");
              return(0);
          }
          nodeset = result->nodesetval;
@@ -1275,11 +1275,11 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    xmlXPathObjectPtr switchItem = NULL, tmpResult = NULL;
    xmlChar *switchItemName = NULL;
    
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
    /* count is 0-based */
    totalCount = (int) SeqUtil_tokenCount( _nodePath, "/" ) -1  ;
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() tokenCount:%i \n", totalCount );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() tokenCount:%i \n", totalCount );
    /* build the xmlfile path */
    suiteName = (char*) SeqUtil_getPathLeaf( _seq_exp_home );
    xmlFile = malloc( strlen( _seq_exp_home ) + strlen( "/EntryModule/flow.xml" ) + 1 );
@@ -1435,7 +1435,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 	      free(xmlFile);
 	      xmlFile = malloc( strlen( _seq_exp_home ) + strlen( "/modules//flow.xml") + strlen( tmpstrtok ) + 1 ); 
          sprintf ( xmlFile, "%s/modules/%s/flow.xml",_seq_exp_home, tmpstrtok ); 
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo Found new XML source from module:%s/%s path:%s\n", taskPath, tmpstrtok , xmlFile);
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo Found new XML source from module:%s/%s path:%s\n", taskPath, tmpstrtok , xmlFile);
 
 	 /* keep record of previous xml file for use in siblings query*/
 
@@ -1547,12 +1547,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    sprintf(pathToModule,"%s/%s",pathToModule,module); 
    SeqNode_setPathToModule(_nodeDataPtr, pathToModule);
 
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() *********** Node Information **********\n" );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() node path:%s\n", _nodePath );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() container=%s\n", _nodeDataPtr->container );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() intramodule_container=%s\n", intramodulePath );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() pathToModule=%s\n", pathToModule );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() taskPath=%s\n", taskPath );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** Node Information **********\n" );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() node path:%s\n", _nodePath );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() container=%s\n", _nodeDataPtr->container );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() intramodule_container=%s\n", intramodulePath );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() pathToModule=%s\n", pathToModule );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() taskPath=%s\n", taskPath );
    SeqNode_setInternalPath( _nodeDataPtr, taskPath );
 
    /* at this point we're done validating the nodes */
@@ -1568,7 +1568,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
    if ( SHOW_ALL || SHOW_DEP ) {
        /* retrieve depends node */
-       SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() *********** internal depends **********\n");
+       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** internal depends **********\n");
        sprintf ( query, "(child::DEPENDS_ON)");
        if (_nodeDataPtr->type==Module){
            if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
@@ -1584,14 +1584,14 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
    if( SHOW_ALL ) {
       /* retrieve submits node */
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() *********** submits **********\n");
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** submits **********\n");
       strcpy ( query, "(child::SUBMITS)");
       result = XmlUtils_getnodeset (query, context);
       parseSubmits( result, _nodeDataPtr ); 
       xmlXPathFreeObject (result);
     
       /* retrieve node's siblings */
-      SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() *********** node siblings **********\n");
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** node siblings **********\n");
       
       if ( _nodeDataPtr->type == Switch && switchResultFound ) {
           strcpy (query, "(../preceding-sibling::*[@name])");
@@ -1604,7 +1604,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
           result =  XmlUtils_getnodeset (query, context);
       }
       if (result) {
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() *********** preceding siblings found**********\n");
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** preceding siblings found**********\n");
       }
       parseNodeSiblings( result, _nodeDataPtr); 
       xmlXPathFreeObject (result);
@@ -1620,7 +1620,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
           result =  XmlUtils_getnodeset (query, context);
       }
       if (result) {
-         SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.getFlowInfo() *********** following siblings found**********\n");
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** following siblings found**********\n");
       }
       parseNodeSiblings( result, _nodeDataPtr); 
       xmlXPathFreeObject (result);
@@ -1678,14 +1678,14 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       tmpstrtok = (char*) strtok(NULL,",");
    }
    newNode = (char*) SeqUtil_fixPath( node );
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.nodeinfo() trying to create node %s\n", newNode );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodeinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
    SeqNode_setSeqExpHome(nodeDataPtr,seq_exp_home); 
    memset(workdir,'\0',sizeof workdir);
    sprintf(workdir,"%s/sequencing/status", seq_exp_home);
    SeqNode_setWorkdir( nodeDataPtr, workdir );
 
-   SeqUtil_TRACE(TL_MINIMAL, "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
    SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"",datestamp) );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
