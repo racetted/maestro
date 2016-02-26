@@ -69,7 +69,7 @@ int   unlock_nfs ( const char *filename , const char * datestamp );
 int   SeqUtil_isDirExists( const char* path_name ) ;
 char* SeqUtil_getPathLeaf (const char *full_path) ;
 char* SeqUtil_getPathBase (const char *full_path) ;
-char* SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier, int mpi ) ;
+char* SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ) ;
 char* SeqUtil_resub (const char *regex_text, const char *repl_text, const char *str) ;
 void  SeqUtil_stringAppend( char** source, char* data );
 int   SeqUtil_tokenCount( const char* source, const char* tokenSeparator );

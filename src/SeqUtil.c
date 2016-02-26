@@ -513,7 +513,22 @@ int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
    return(0);
 }
 
-char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier, int mpi  ){
+
+char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ){
+  char *chreturn=NULL;
+  int nMpi=1;
+  if ( ! (chreturn = malloc( strlen(npex) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){
+    SeqUtil_TRACE( TL_CRITICAL,"SeqUtil_cpuCalculate malloc: Out of memory!\n");
+    return(NULL);
+  }
+  nMpi = atoi(npex) * atoi(cpu_multiplier);
+  if ( npey != NULL){ nMpi = nMpi * atoi(npey); }
+  sprintf(chreturn,"%d",nMpi);
+  if ( omp != NULL){ sprintf(chreturn,"%sx%s",chreturn,omp); }
+  return(chreturn);
+}
+
+char *SeqUtil_cpuCalculate_new( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier  ){
   char *chreturn=NULL;
   int nMpi=1, totalsize=0;
 
@@ -522,7 +537,6 @@ char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp,
   if (omp!=NULL)  totalsize+=strlen(omp); 
   if (cpu_multiplier!=NULL) totalsize+=strlen(omp); 
  
-  /*if ( ! (chreturn = malloc( (npex==NULL || strlen(npex)) + (npey==NULL || strlen(npey)) + (omp==NULL || strlen(omp)) + strlen(cpu_multiplier) + 1 ) )){ */
   if ( ! (chreturn = malloc( totalsize + 1 ) )){
     SeqUtil_TRACE(TL_CRITICAL, "SeqUtil_cpuCalculate(): malloc: Out of memory!\n");
     return(NULL);
@@ -530,7 +544,6 @@ char *SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp,
   nMpi = atoi(npex) * atoi(cpu_multiplier);
   if ( npey != NULL){ nMpi = nMpi * atoi(npey); }
   sprintf(chreturn,"%d",nMpi);
-  /* if ( omp != NULL && mpi !=0 ){ sprintf(chreturn,"%sx%s",chreturn,omp); } */
   if ( omp != NULL && atoi(omp) != 1 ) { sprintf(chreturn,"%sx%s",chreturn,omp); }
    
   return(chreturn);

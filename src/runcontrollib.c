@@ -75,7 +75,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
    char *cpu = NULL;
 
    memset(message,'\0',sizeof message);
-   cpu = (char *) SeqUtil_cpuCalculate(node_ptr->npex,node_ptr->npey,node_ptr->omp,node_ptr->cpu_multiplier,node_ptr->mpi);
+   cpu = (char *) SeqUtil_cpuCalculate(node_ptr->npex,node_ptr->npey,node_ptr->omp,node_ptr->cpu_multiplier);
 
    /* containers use TRUE_HOST for execution ... TODO check if immediate or exec or submit modes*/
    if ( node_ptr->type == Task || node_ptr->type == NpassTask ) {

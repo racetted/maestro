@@ -138,6 +138,52 @@ void SeqNode_setContainer ( SeqNodeDataPtr node_ptr, const char* container ) {
 }
 
 void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu ) {
+   char *tmpstrtok=NULL;
+   char *tmpCpu=NULL;
+   if ( cpu != NULL ) {
+      free( node_ptr->cpu );
+      if (node_ptr->cpu = malloc( strlen(cpu) + 1 )){
+          strcpy( node_ptr->cpu, cpu );
+          tmpCpu=strdup(cpu);
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+      }
+  
+      /* parse NPEX */
+      tmpstrtok = (char*) strtok( tmpCpu, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->npex );
+	  if (node_ptr->npex=malloc( strlen(tmpstrtok) +1)){ 
+              strcpy(node_ptr->npex, tmpstrtok);
+          } else {
+              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+          }
+      }
+      /* NPEY */
+      tmpstrtok = (char*) strtok( NULL, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->npey );
+	  if (node_ptr->npey=malloc( strlen(tmpstrtok) +1)){ 
+   	     strcpy(node_ptr->npey, tmpstrtok);
+          } else {
+              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+          }
+      }
+      /* OMP */
+      tmpstrtok = (char*) strtok( NULL, "x" );
+      if ( tmpstrtok != NULL ) {
+          free( node_ptr->omp );
+	  if (node_ptr->omp=malloc( strlen(tmpstrtok) +1)){ 
+  	      strcpy(node_ptr->omp, tmpstrtok);
+          } else {
+              raiseError("OutOfMemory exception in SeqNode_setCpu()\n");
+          }
+      }
+   free (tmpCpu);
+   }
+}
+
+void SeqNode_setCpu_new ( SeqNodeDataPtr node_ptr, const char* cpu ) {
    char tmpstrtok[10];
    char * strPtr=cpu;
    int value1=0, value2=0,value3=0;

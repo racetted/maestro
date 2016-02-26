@@ -1615,7 +1615,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       if ( _access(tmpCfgFile, R_OK) == 0) ret=_removeFile(tmpCfgFile); 
 
       SeqNode_generateConfig( _nodeDataPtr, _flow, tmpCfgFile );
-      cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier, _nodeDataPtr->mpi  );
+      cpu = (char *) SeqUtil_cpuCalculate( _nodeDataPtr->npex, _nodeDataPtr->npey, _nodeDataPtr->omp, _nodeDataPtr->cpu_multiplier );
 
       /* get short name w/ extension i.e. job+3 */
       SeqUtil_stringAppend( &extName, _nodeDataPtr->nodeName );
