@@ -72,7 +72,8 @@ typedef struct _NodeLoopList {
 } NodeLoopList;
 
 typedef struct _PastTimes {
-   char *start;
+   char *begin;
+   char *submit;
    char *end;
    char *submitdelay;
    char *exectime;
@@ -108,12 +109,11 @@ extern void getAverage(char *exp, char *datestamp);
 extern char *getNodeAverageLine(char *node, char *member);
 extern void computeAverage(char *exp, char *datestamp, int stats_days);
 extern int getStats(FILE *_stats);
-extern int parseStatsLine(char line[1024], char *node, char *member, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart);
-extern int addStatsNode(char *node, char *member, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart);
+extern int parseStatsLine(char line[1024]);
+extern int addStatsNode(char *node, char *member, char *stime, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart);
 extern int processStats(char *exp, char *datestamp);
 extern char *secondsToChar (int seconds);
 extern int charToSeconds (char *timestamp);
-extern char *addToAverage(char *_toAdd, char *average, int counter);
 extern void reset_node (char *node, char *ext);
 extern char * previousDay(char today[9]);
 extern char * sconcat(char *ptr1,char *ptr2);
