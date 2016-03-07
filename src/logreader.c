@@ -306,7 +306,9 @@ void read_file (char *base)
              insert_node('s', &node[9], &loop[8], dstamp, "", "", "", "", "", "", "", ""); 
              break;
          case 'b': /* [b]egin */
-             insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
+             if (signal[5] != 'x'){
+               insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
+             } 
              break;
          case 'e': /* [e]nd */
             if (signal[1] == 'n') {
@@ -502,8 +504,8 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 	       }
                for ( ptr_LXHtrotte = ptr_NLHtrotte->ptr_LoopExt; ptr_LXHtrotte != NULL ; ptr_LXHtrotte = ptr_LXHtrotte->next) {
 		  if ( ptr_LXHtrotte->ignoreNode == 0 ) {
-		     sprintf(output_buffer, "%s {exectime %s submitdelay %s begintime %s endtime %s deltafromstart %s} ",
-			   ptr_LXHtrotte->Lext, ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay,
+		     sprintf(output_buffer, "%s {exectime %s submitdelay %s submit %s begin %s end %s deltafromstart %s} ",
+			   ptr_LXHtrotte->Lext, ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->lstime,
 			   ptr_LXHtrotte->lbtime,  ptr_LXHtrotte->letime, ptr_LXHtrotte->deltafromstart);
 		     tmp_output=strdup(stats_output);
 		     stats_output=sconcat(tmp_output, output_buffer);
@@ -544,8 +546,8 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
         } 
 		  
 		  if (outputFile != NULL) {
-		     fprintf(outputFile, "SEQNODE=/%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
-			     ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext, ptr_LXHtrotte->lbtime, ptr_LXHtrotte->letime,
+		     fprintf(outputFile, "SEQNODE=/%s:MEMBER=%s:SUBMIT=%s:BEGIN=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
+			     ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext, ptr_LXHtrotte->lstime, ptr_LXHtrotte->lbtime, ptr_LXHtrotte->letime,
 			     ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->deltafromstart );
 		  }
 	       }
@@ -558,7 +560,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 	          fprintf(stdout, "} \\");
 	       }
 	       if (read_type == 0 || read_type == 2) {
-		  fprintf(stdout, "%s %s stats_info {}\\", stats_output, avg_output);  
+		  fprintf(stdout, "%s %s \\", stats_output, avg_output);  
 	       }
       }
       
@@ -615,8 +617,8 @@ char *getNodeAverageLine(char *node, char *member){
    }
    if(strcmp(node_tmpptr->node+1,node) == 0 && strcmp(node_tmpptr->member, member) == 0) {
       time_tmpptr=node_tmpptr->times;
-      snprintf(line, 256, "exectime %s submitdelay %s begintime %s endtime %s deltafromstart %s", time_tmpptr->exectime, time_tmpptr->submitdelay,
-          time_tmpptr->start, time_tmpptr->end, time_tmpptr->deltafromstart);
+      snprintf(line, 256, "exectime %s submitdelay %s submit %s begin %s end %s deltafromstart %s", time_tmpptr->exectime, time_tmpptr->submitdelay,
+          time_tmpptr->submit, time_tmpptr->begin, time_tmpptr->end, time_tmpptr->deltafromstart);
    } else {
       return "";
    }
@@ -669,74 +671,74 @@ void computeAverage(char *exp, char *datestamp, int stats_days){
 int getStats(FILE *_stats){
    char tmpline[1024];
    
-   char *tmp_node, *tmp_member, *tmp_btime, *tmp_etime, 
-       *tmp_exectime, *tmp_submitdelay, *tmp_deltafromstart;
-   
    if(_stats == NULL) {
       return -1;
    }
-       
    /*process lines one by one*/
    while ((fgets(tmpline, sizeof(tmpline), _stats) != NULL) && (strstr(tmpline, "SEQNODE") != NULL)) {
-      if(parseStatsLine(tmpline, tmp_node, tmp_member, tmp_btime, tmp_etime, 
-          tmp_exectime, tmp_submitdelay, tmp_deltafromstart) != 0) {
-
-         SeqUtil_TRACE(TL_ERROR,"logreader parsing error at the following stats line:\n");
-         SeqUtil_TRACE(TL_ERROR,"%s\n", tmpline);
-      
+      if(parseStatsLine(tmpline) != 0) {
+         SeqUtil_TRACE(TL_ERROR,"logreader parsing error at the following stats line:\n%s \n",tmpline);
       }
    }
-   
    return 0;
 }
 
 /*parse stats line and add stats node*/
-int parseStatsLine(char line[1024], char *node, char *member, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart){
-   char *tmp_node, *tmp_member, *tmp_btime, *tmp_etime, 
-   *tmp_exectime, *tmp_submitdelay, *tmp_deltafromstart;
+int parseStatsLine(char line[1024]){
+   char *node, *member, *stime, *btime, *etime, *exectime, *submitdelay, *deltafromstart;
+   int ret=0;
    
-   char *nodeptr, *memberptr, *btimeptr, *etimeptr, *exectimeptr,
-   *submitdelayptr, *deltafromstartptr;
+   char tmp_node[]="SEQNODE=", tmp_member[]="MEMBER=", tmp_stime[]="SUBMIT=", 
+      tmp_btime[]="BEGIN=", tmp_etime[]="END=", tmp_exectime[]="EXECTIME=", 
+      tmp_submitdelay[]="SUBMITDELAY=", tmp_deltafromstart[]="DELTAFROMSTART=";
+
+   int node_str_len=strlen(tmp_node), member_str_len=strlen(tmp_member), stime_str_len=strlen(tmp_stime), 
+      btime_str_len=strlen(tmp_btime), submitdelay_str_len=strlen(tmp_submitdelay), 
+      deltafromstart_str_len=strlen(tmp_deltafromstart), etime_str_len=strlen(tmp_etime), 
+      exectime_str_len=strlen(tmp_exectime);
    
-   int nodelen, memberlen, btimelen, etimelen, exectimelen,
-   submitdelaylen, deltafromstartlen;
+   char *nodeptr, *memberptr, *stimeptr, *btimeptr, *etimeptr, *exectimeptr,
+      *submitdelayptr, *deltafromstartptr;
    
-   if(strstr(line, "SEQNODE=") == NULL || strstr(line, "MEMBER=") == NULL ||
-      strstr(line, "START=") == NULL || strstr(line, "END=") == NULL ||
-      strstr(line, "EXECTIME=") == NULL || strstr(line, "SUBMITDELAY=") == NULL ||
-      strstr(line, "DELTAFROMSTART=") == NULL) {
-      return -1;
+   int nodelen, memberlen, stimelen, btimelen, etimelen, exectimelen, submitdelaylen, deltafromstartlen;
+   
+   nodeptr=strstr(line, tmp_node)+node_str_len;
+   memberptr=strstr(line, tmp_member)+member_str_len;
+   stimeptr=strstr(line, tmp_stime)+stime_str_len;
+   btimeptr=strstr(line, tmp_btime)+btime_str_len;
+   etimeptr=strstr(line, tmp_etime)+etime_str_len;
+   exectimeptr=strstr(line, tmp_exectime)+exectime_str_len;
+   submitdelayptr=strstr(line, tmp_submitdelay)+submitdelay_str_len;
+   deltafromstartptr=strstr(line, tmp_deltafromstart)+deltafromstart_str_len;
+   
+   if (!(nodeptr || memberptr || stimeptr || btimeptr || etimeptr || exectimeptr || submitdelay || deltafromstartptr )) {
+      SeqUtil_TRACE(TL_ERROR,"parseStatsLine error at the following stats line:\n%s \n",line);
+      return -1; 
    }
-   
-   nodeptr=strstr(line, "SEQNODE=")+8;
-   memberptr=strstr(line, "MEMBER=")+7;
-   btimeptr=strstr(line, "START=")+6;
-   etimeptr=strstr(line, "END=")+4;
-   exectimeptr=strstr(line, "EXECTIME=")+9;
-   submitdelayptr=strstr(line, "SUBMITDELAY=")+12;
-   deltafromstartptr=strstr(line, "DELTAFROMSTART=")+15;
-   
-   deltafromstartlen=strlen(deltafromstartptr)-1;
-   submitdelaylen=strlen(submitdelayptr)-deltafromstartlen-15-1-1;
-   exectimelen=strlen(exectimeptr)-submitdelaylen-deltafromstartlen-15-12-1-1-1;
-   etimelen=strlen(etimeptr)-exectimelen-submitdelaylen-deltafromstartlen-15-12-9-1-1-1-1;
-   btimelen=strlen(btimeptr)-etimelen-exectimelen-submitdelaylen-deltafromstartlen-15-12-9-4-1-1-1-1-1;
-   memberlen=strlen(memberptr)-btimelen-etimelen-exectimelen-submitdelaylen-deltafromstartlen-15-12-9-4-6-1-1-1-1-1-1;
-   nodelen=strlen(nodeptr)-memberlen-btimelen-etimelen-exectimelen-submitdelaylen-deltafromstartlen-15-12-9-4-6-7-1-1-1-1-1-1-1;
-   
+   deltafromstartlen = strlen(deltafromstartptr)-1;
+   submitdelaylen = strlen(submitdelayptr)-deltafromstartlen-deltafromstart_str_len-1-1;
+   exectimelen = strlen(exectimeptr)-submitdelaylen-deltafromstartlen-deltafromstart_str_len-submitdelay_str_len-1-1-1;
+   etimelen = strlen(etimeptr)-exectimelen-submitdelaylen-deltafromstartlen-deltafromstart_str_len-submitdelay_str_len-exectime_str_len-1-1-1-1;
+   btimelen = strlen(btimeptr)-etimelen-exectimelen-submitdelaylen-deltafromstartlen-deltafromstart_str_len-submitdelay_str_len-exectime_str_len-etime_str_len-1-1-1-1-1;
+   stimelen = strlen(stimeptr)-btimelen-etimelen-exectimelen-submitdelaylen-deltafromstartlen-deltafromstart_str_len-submitdelay_str_len-exectime_str_len-etime_str_len-btime_str_len-1-1-1-1-1-1;
+   memberlen = strlen(memberptr)-stimelen-btimelen-etimelen-exectimelen-submitdelaylen-deltafromstartlen-deltafromstart_str_len-submitdelay_str_len-exectime_str_len-etime_str_len-btime_str_len-stime_str_len-1-1-1-1-1-1-1;
+   nodelen = strlen(nodeptr)-memberlen-stimelen-btimelen-etimelen-exectimelen-submitdelaylen-deltafromstartlen-deltafromstart_str_len-submitdelay_str_len-exectime_str_len-etime_str_len-btime_str_len-stime_str_len-member_str_len-1-1-1-1-1-1-1-1;
+
    node=malloc(nodelen+1);
    member=malloc(memberlen+1);
+   stime=malloc(stimelen+1);
    btime=malloc(btimelen+1);
    etime=malloc(etimelen+1);
    exectime=malloc(exectimelen+1);
    submitdelay=malloc(submitdelaylen+1);
    deltafromstart=malloc(deltafromstartlen+1);
-   
+    
    if(node == NULL || member == NULL || btime == NULL || etime == NULL ||
       exectime == NULL || submitdelay == NULL || deltafromstart == NULL) {
+      SeqUtil_TRACE(TL_ERROR,"parseStatsLine malloc problem \n");
       return -1;
    }
-   
+    
    snprintf(node, nodelen+1, "%s", nodeptr);
    snprintf(member, memberlen+1, "%s", memberptr);
    snprintf(btime, btimelen+1, "%s", btimeptr);
@@ -745,11 +747,12 @@ int parseStatsLine(char line[1024], char *node, char *member, char *btime, char 
    snprintf(submitdelay, submitdelaylen+1, "%s", submitdelayptr);
    snprintf(deltafromstart, deltafromstartlen+1, "%s", deltafromstartptr);
    
-   return addStatsNode(node, member, btime, etime, exectime, submitdelay, deltafromstart);
+   ret=addStatsNode(node, member, stime, btime, etime, exectime, submitdelay, deltafromstart);
+   return ret;
 }
 
 /*add stat node to linked list plus set root node if the list is empty*/
-int addStatsNode(char *node, char *member, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart){
+int addStatsNode(char *node, char *member, char* stime, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart){
    StatsNode *stats_node_ptr;
    StatsNode *node_tmpptr;
    PastTimes *past_times_ptr = (PastTimes*)malloc(sizeof(PastTimes));
@@ -759,7 +762,8 @@ int addStatsNode(char *node, char *member, char *btime, char *etime, char *exect
       return -1;
    }
    
-   past_times_ptr->start = btime;
+   past_times_ptr->submit = stime; 
+   past_times_ptr->begin = btime;
    past_times_ptr->end = etime;
    past_times_ptr->submitdelay = submitdelay;
    past_times_ptr->exectime = exectime;
@@ -823,8 +827,8 @@ int addStatsNode(char *node, char *member, char *btime, char *etime, char *exect
 int processStats(char *exp, char *datestamp){
    StatsNode *node_tmpptr;
    PastTimes *time_tmpptr;
-   char *start=NULL, *end=NULL, *submitdelay=NULL, *exectime=NULL, *deltafromstart=NULL;
-   int int_start[30], int_end[30], int_submitdelay[30], int_exectime[30], int_deltafromstart[30];
+   char *begin=NULL, *end=NULL, *submitdelay=NULL, *exectime=NULL, *deltafromstart=NULL, *submit=NULL;
+   int int_begin[30], int_end[30], int_submitdelay[30], int_exectime[30], int_deltafromstart[30], int_submit[30];
    char *avg_path=NULL, *buffer_1=NULL, *buffer_2=NULL;
    int avg_counter, iter_counter,i,truncate_amount=0;
    FILE *avg=NULL;
@@ -849,7 +853,8 @@ int processStats(char *exp, char *datestamp){
       time_tmpptr=node_tmpptr->times;
       iter_counter=0;
       for(i=0; i<30; ++i) {
-        int_start[i]=0;
+        int_submit[i]=0;
+        int_begin[i]=0;
         int_end[i]=0;
         int_submitdelay[i]=0;
         int_exectime[i]=0;
@@ -862,7 +867,8 @@ int processStats(char *exp, char *datestamp){
       }
        
       while(time_tmpptr != NULL){
-         int_start[iter_counter] = charToSeconds(time_tmpptr->start);
+         int_submit[iter_counter] = charToSeconds(time_tmpptr->submit);
+         int_begin[iter_counter] = charToSeconds(time_tmpptr->begin);
          int_end[iter_counter] = charToSeconds(time_tmpptr->end);
          int_submitdelay[iter_counter] = charToSeconds(time_tmpptr->submitdelay);
          int_exectime[iter_counter] = charToSeconds(time_tmpptr->exectime);
@@ -877,15 +883,16 @@ int processStats(char *exp, char *datestamp){
       } else {
           truncate_amount=(avg_counter + 9) / 10;
       }
-      start=secondsToChar(SeqUtil_basicTruncatedMean(&int_start, avg_counter, truncate_amount));
+      submit=secondsToChar(SeqUtil_basicTruncatedMean(&int_submit, avg_counter, truncate_amount));
+      begin=secondsToChar(SeqUtil_basicTruncatedMean(&int_begin, avg_counter, truncate_amount));
       end=secondsToChar(SeqUtil_basicTruncatedMean(&int_end, avg_counter, truncate_amount));
       submitdelay=secondsToChar(SeqUtil_basicTruncatedMean(&int_submitdelay, avg_counter,truncate_amount));
       exectime=secondsToChar(SeqUtil_basicTruncatedMean(&int_exectime, avg_counter,truncate_amount));
       deltafromstart=secondsToChar(SeqUtil_basicTruncatedMean(&int_deltafromstart, avg_counter,truncate_amount));
  
       if(read_type==3){
-         fprintf(avg, "SEQNODE=%s:MEMBER=%s:START=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
-             node_tmpptr->node, node_tmpptr->member, start, end, exectime, submitdelay, deltafromstart);
+         fprintf(avg, "SEQNODE=%s:MEMBER=%s:SUBMIT=%s:BEGIN=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
+             node_tmpptr->node, node_tmpptr->member,submit, begin, end, exectime, submitdelay, deltafromstart);
       }
       
       node_tmpptr=node_tmpptr->next;
@@ -934,55 +941,6 @@ int charToSeconds (char *_timestamp) {
    total_seconds=(atoi(second)+(atoi(minute)*60)+(atoi(hour)*60*60));
    
    return total_seconds;
-}
-
-/*ATTENTION: pas utilisee, car produit une incertitude de stats_days secondes
- * Ecrite en avril 2015, a retirer eventuellement*/
-/*returns average + toAdd/counter */
-char *addToAverage(char *_toAdd, char *average, int counter){
-   char buffer[9];
-   char add_hour[3], add_minute[3], add_second[3];
-   int add_total_seconds;
-   char average_hour[3], average_minute[3], average_second[3];
-   int average_total_seconds;
-   int total_seconds, result_hour, result_minute, result_second;
-   char *toAdd=_toAdd;
-   
-   if(strstr(_toAdd, ".") != NULL) {
-      toAdd=strstr(_toAdd, ".")+1;
-   }
-   
-   add_hour[0]=toAdd[0];
-   add_hour[1]=toAdd[1];
-   add_hour[2]='\0';
-   add_minute[0]=toAdd[3];
-   add_minute[1]=toAdd[4];
-   add_minute[2]='\0';
-   add_second[0]=toAdd[6];
-   add_second[1]=toAdd[7];
-   add_second[2]='\0';
-   add_total_seconds=(atoi(add_second)+(atoi(add_minute)*60)+(atoi(add_hour)*60*60));
-   
-   average_hour[0]=average[0];
-   average_hour[1]=average[1];
-   average_hour[2]='\0';
-   average_minute[0]=average[3];
-   average_minute[1]=average[4];
-   average_minute[2]='\0';
-   average_second[0]=average[6];
-   average_second[1]=average[7];
-   average_second[2]='\0';
-   average_total_seconds=(atoi(average_second)+(atoi(average_minute)*60)+(atoi(average_hour)*3600));
-   
-   total_seconds=(add_total_seconds/counter)+average_total_seconds;
-   result_hour=(total_seconds/3600);
-   result_minute=(total_seconds%3600)/60;
-   result_second=(total_seconds%3600)%60;
-   
-   buffer[8]='\0';
-   snprintf(buffer, 9, "%02i:%02i:%02i", result_hour, result_minute, result_second);
-   
-   return strdup(buffer);
 }
 
 /*edited from http://www.c4learn.com/c-programming/c-concating-strings-dynamic-allocation */
