@@ -639,22 +639,22 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
    
    if (strcmp(tmpExpression, "") == 0) {
       if (strstr(start, "${") != NULL) {
-         if ( (value = SeqUtil_keysub( start, defFile, NULL)) != NULL ){
+         if ( (value = SeqUtil_keysub( start, defFile, NULL, node_ptr->expHome)) != NULL ){
             strcpy(tmpStart,value);
          }
       }
       if (strstr(step, "${") != NULL) {
-         if ( (value = SeqUtil_keysub( step, defFile, NULL)) != NULL ){
+         if ( (value = SeqUtil_keysub( step, defFile, NULL, node_ptr->expHome)) != NULL ){
             strcpy(tmpStep,value);
          }
       }
       if (strstr(set, "${") != NULL) {
-         if ( (value = SeqUtil_keysub( set, defFile, NULL)) != NULL ){
+         if ( (value = SeqUtil_keysub( set, defFile, NULL, node_ptr->expHome)) != NULL ){
             strcpy(tmpSet,value);
          }
       }
       if (strstr(end, "${") != NULL) {
-         if ( (value = SeqUtil_keysub( end, defFile, NULL)) != NULL ){
+         if ( (value = SeqUtil_keysub( end, defFile, NULL, node_ptr->expHome)) != NULL ){
             strcpy(tmpEnd,value);
          }
       }
@@ -665,7 +665,7 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
       SeqLoops_validateNumLoopExpression(newExpression);
    } else {
       if (strstr(expression, "${") != NULL) {
-         if ( (value = SeqUtil_keysub( expression, defFile, NULL)) != NULL ){
+         if ( (value = SeqUtil_keysub( expression, defFile, NULL, node_ptr->expHome)) != NULL ){
             strcpy(tmpExpression,value);
          }
       }
@@ -838,7 +838,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printNode() called\n" );
 
    if( filename != NULL ) {
-      removeFile_nfs(filename);
+      removeFile_nfs(filename,node_ptr->expHome);
       if ((tmpFile = fopen(filename,"a+")) == NULL) {
          raiseError( "Unable to write to file:%s\n",filename );
       }

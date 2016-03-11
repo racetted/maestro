@@ -42,13 +42,14 @@ static void printSeqUsage()
    
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      maestro -n node -s signal [-i] [-d datestamp] [-v] [-l loopargs] [-f flow] [-o extra_soumet_args]  \n");
+   printf("      maestro -n node -s signal [-i] [-e exp] [-d datestamp] [-v] [-l loopargs] [-f flow] [-o extra_soumet_args]  \n");
    printf("         where:\n");
    printf("         node is full path of task or family node (mandatory):\n");
    printf("         signal is one of:\n");
    printf("            submit begin end abort initbranch initnode\n");
    printf("         -i is to ignore dependencies and catchup values\n");
    printf("         -v is to run in debug mode\n");
+   printf("         -e exp : the experiment path (default is SEQ_EXP_HOME env. variable)\n");
    printf("         datestamp is the date on which to execute the command. Defaults: 1) SEQ_DATE 2) latest modified log in $SEQ_EXP_HOME/logs :\n");
    printf("         flow is continue (default) or stop, representing whether the flow should continue after this node\n");
    printf("         loopargs is the comma-separated list of loop arguments. ex: -l loopa=1,loopb=2\n");
@@ -62,7 +63,7 @@ int main (int argc, char * argv [])
 
 {
    extern char *optarg;
-   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL;
+   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL, *seq_exp_home= NULL;
    int errflg = 0, status = 0;
    int c, ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
@@ -73,7 +74,7 @@ int main (int argc, char * argv [])
    }
    flow = malloc( 9 * sizeof(char) + 1 );
    sprintf( flow, "%s", "continue" );
-   while ((c = getopt(argc, argv, "n:s:f:l:d:o:iv")) != -1) {
+   while ((c = getopt(argc, argv, "n:s:f:l:d:o:e:iv")) != -1) {
       switch(c) {
          case 'n':
             node = malloc( strlen( optarg ) + 1 );
@@ -109,6 +110,9 @@ int main (int argc, char * argv [])
             extraArgs = malloc( strlen( optarg ) + 1 );
             strcpy(extraArgs,optarg);
 	         break;
+         case 'e':
+            seq_exp_home = strdup( optarg );
+            break;
          case '?':
             printSeqUsage();
             exit(1);
@@ -128,8 +132,13 @@ int main (int argc, char * argv [])
       }
       /* SeqNameValues_printList( loopsArgs ); */
    }
+   if (seq_exp_home == NULL){
+      seq_exp_home = getenv("SEQ_EXP_HOME");
+      fprintf(stderr, "maestro_main looking for SEQ_EXP_HOME in environment: %s\n",seq_exp_home);
+   }
+   fprintf(stderr, "maestro_main calling maestro with SEQ_EXP_HOME=%s\n",seq_exp_home);
    /* printf( "node=%s signal=%s\n", node, sign ); */
-   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs, datestamp );
+   status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs, datestamp,seq_exp_home );
 
    free(flow);
    free(node);

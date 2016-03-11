@@ -52,7 +52,7 @@ static char nodelogger_buf_short[NODELOG_BUFSIZE];
 static char nodelogger_buf_notify[NODELOG_BUFSIZE];
 static char nodelogger_buf_notify_short[NODELOG_BUFSIZE];
 extern int MLLServerConnectionFid;
-extern int OpenConnectionToMLLServer (const char *, const char *);
+extern int OpenConnectionToMLLServer (const char *, const char *, const char *);
 
 static char NODELOG_JOB[NODELOG_BUFSIZE];
 static char NODELOG_MESSAGE[NODELOG_BUFSIZE];
@@ -67,7 +67,7 @@ static char TOP_LOG_PATH[1024];
 static int write_line(int sock, int top, const char* type);
 static void gen_message (const char *job, const char *type, const char* loop_ext, const char *message);
 static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp, const char *logtype);
-static  void NotifyUser (int sock , int top , char mode );
+static  void NotifyUser (int sock , int top , char mode , const char* _seq_exp_home);
 extern char* str2md5 (const char *str, int length);
 
 static void log_alarm_handler() { fprintf(stderr,"=== EXCEEDED TIME IN LOOP ITERATIONS ===\n"); };
@@ -79,7 +79,7 @@ typedef enum {
 } _FromWhere;
 _FromWhere FromWhere;
  
-void nodelogger(const char *job, const char* type, const char* loop_ext, const char *message, const char* datestamp)
+void nodelogger(const char *job, const char* type, const char* loop_ext, const char *message, const char* datestamp, const char* _seq_exp_home)
 {
    int i, sock=-1,ret, write_ret;
    int send_success = 0;
@@ -90,7 +90,6 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    char cmcnodelogger[25];
    char tmp[10];
    struct stat stbuf;
-   char *seq_exp_home = NULL;
    char *basec = NULL;
    struct passwd *p, *p2;
    int gid = 0;
@@ -124,18 +123,18 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    if (p2 == NULL) {
      fprintf( stderr, "Nodelogger::ERROR: getpwnam error... returns null.\n" );
    }
-   if( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
+   if( _seq_exp_home == NULL ) {
       fprintf( stderr, "Nodelogger::ERROR: You must provide a valid SEQ_EXP_HOME.\n" );
       exit(1);
    }
 
-   snprintf(LOG_PATH,sizeof(LOG_PATH),"%s/logs/%s_nodelog",seq_exp_home,datestamp);
-   snprintf(TMP_LOG_PATH,sizeof(TMP_LOG_PATH),"%s/sequencing/sync/%s",seq_exp_home,datestamp);
-   snprintf(TOP_LOG_PATH,sizeof(TOP_LOG_PATH),"%s/logs/%s_toplog",seq_exp_home,datestamp);
+   snprintf(LOG_PATH,sizeof(LOG_PATH),"%s/logs/%s_nodelog",_seq_exp_home,datestamp);
+   snprintf(TMP_LOG_PATH,sizeof(TMP_LOG_PATH),"%s/sequencing/sync/%s",_seq_exp_home,datestamp);
+   snprintf(TOP_LOG_PATH,sizeof(TOP_LOG_PATH),"%s/logs/%s_toplog",_seq_exp_home,datestamp);
 
    /* make a duplicate of seq_exp_home because basename may return pointers */
    /* to statically allocated memory which may be overwritten by subsequent calls.*/
-   basec = (char *) strdup(seq_exp_home);
+   basec = (char *) strdup(_seq_exp_home);
    experience = (char *) basename(basec);
 
     /* setup an alarm so that if the logging is stuck
@@ -167,7 +166,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     if ( tmpfrommaestro == NULL ) {
        SeqUtil_TRACE(TL_MEDIUM, "\n================= NODELOGGER: NOT_FROM_MAESTRO signal:%s================== \n",type);
        FromWhere = FROM_NODELOGGER;
-       if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
+       if ( (sock=OpenConnectionToMLLServer( job , "LOG",_seq_exp_home )) < 0 ) { 
           gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
           if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
             logtocreate = "both";
@@ -194,7 +193,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        } else {
         /* it could be that we dont have the env. variable set to use Server */
            FromWhere = FROM_MAESTRO_NO_SVR;
-	   if ( (sock=OpenConnectionToMLLServer( job , "LOG" )) < 0 ) { 
+	   if ( (sock=OpenConnectionToMLLServer( job , "LOG" , _seq_exp_home )) < 0 ) { 
                SeqUtil_TRACE(TL_MEDIUM, "\n================= NODELOGGER: CANNOT ACQUIRE CONNECTION FROM MAESTRO PROCESS signal:%s================== \n",type);
                gen_message(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE);
                if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
@@ -292,7 +291,7 @@ static int write_line(int sock, int top, const char* type)
    }
    /* Notify user if he is using nfs mode, this will be done at begin and end of root node 
       Note : we notify user when using inter-dependencies
-   if ( top != 0 && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( sock , top ,'S' );  */
+   if ( top != 0 && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( sock , top ,'S', _seq_exp_home  );  */
    
 
    return(0);
@@ -444,7 +443,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
      
     /* create sync directory if not there */
     snprintf(lpath,sizeof(lpath),"%s/v%s",TMP_LOG_PATH,mversion);
-    if ( access(lpath,R_OK) != 0 ) status=SeqUtil_mkdir_nfs(lpath , 1);
+    if ( access(lpath,R_OK) != 0 ) status=SeqUtil_mkdir_nfs(lpath , 1, NULL);
      
     snprintf(lock,sizeof(lock),"%s/v%s/node_logger_lock",TMP_LOG_PATH,mversion);
  
@@ -570,7 +569,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     /* Notify user if server not running  here we are at the level of root node so
        Only one task (root Node) is running
        Note : we notify user when using inter-dependencies
-    if ( (strcmp(logtype,"toplog") == 0)  && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( -1 , 1 ,'N' ); */
+    if ( (strcmp(logtype,"toplog") == 0)  && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( -1 , 1 ,'N', _seq_exp_home); */
     
     alarm(0);
     return(0);
@@ -580,7 +579,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
 * Notify User if he is using nfs mode, This notification will happen twice a run :
 * in the beginning and end of root Node
 */
-static void NotifyUser (int sock , int top , char mode)
+static void NotifyUser (int sock , int top , char mode, const char * _seq_exp_home)
 {
    char bf[512];
    char *rcfile, *lmech ;
@@ -589,7 +588,7 @@ static void NotifyUser (int sock , int top , char mode)
    if ( top != 0 ) {
          if ( (rcfile=malloc( strlen (getenv("HOME")) + strlen("/.maestrorc") + 2 )) != NULL ) {
 	     sprintf(rcfile, "%s/.maestrorc", getenv("HOME"));
-	     if ( (lmech=SeqUtil_getdef( rcfile, "SEQ_LOGGING_MECH" )) != NULL ) {
+        if ( (lmech=SeqUtil_getdef( rcfile, "SEQ_LOGGING_MECH", _seq_exp_home )) != NULL ) {
 		  switch ( mode ) {
 		        case 'S': /* mserver is up but logging mechanism is through NFS */
 			         strcat(nodelogger_buf_notify,"Please initialize SEQ_LOGGING_MECH=server in ~/.maestrorc file\n");

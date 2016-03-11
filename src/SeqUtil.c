@@ -182,7 +182,7 @@ int SeqUtil_getTraceLevel () {
  * as they are when struct TraceFlags traceFlags is initialized.
  *******************************************************************************/
 char *SeqUtil_getTraceLevelString(){
-   static traceString[100];
+   static char traceString[100];
    switch(traceFlags.importance){
       case TL_FULL_TRACE:
          strcpy(traceString, "TL_FULL_TRACE");
@@ -268,7 +268,7 @@ void actionsEnd(char *signal, char* flow, char* node) {
 *removeFile_nfs: Removes the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/
-int removeFile_nfs(const char *filename) {
+int removeFile_nfs(const char *filename, const char * _seq_exp_home) {
    int status=0;
 
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.removeFile_nfs() removing %s\n", filename );
@@ -281,7 +281,7 @@ int removeFile_nfs(const char *filename) {
 *access_nfs: access the named file 'filename'; it returns zero if succeeds 
 * and a nonzero value if it does not
 ********************************************************************************/
-int access_nfs (const char *filename , int stat ) {
+int access_nfs (const char *filename , int stat, const char * _seq_exp_home ) {
    int status=0;
 
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil.access_nfs() accessing %s\n", filename);
@@ -296,7 +296,7 @@ int access_nfs (const char *filename , int stat ) {
 /********************************************************************************
 *touch_nfs: simulate a "touch" on a given file 'filename'
 ********************************************************************************/
-int touch_nfs(const char *filename) {
+int touch_nfs(const char *filename, const char * _seq_exp_home) {
    FILE *actionfile;
    
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqUtil.touch_nfs(): filename=%s\n",filename);
@@ -317,7 +317,7 @@ int touch_nfs(const char *filename) {
 /* isFileExists_nfs
 * returns 1 if succeeds, 0 failure 
 */
-int isFileExists_nfs( const char* lockfile, const char *caller ) {
+int isFileExists_nfs( const char* lockfile, const char *caller, const char * _seq_exp_home ) {
     if ( access(lockfile, R_OK) == 0 ) {
        SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil.isFileExists_nfs() caller:%s found lock file=%s\n", caller, lockfile ); 
        return 1;
@@ -360,7 +360,7 @@ int SeqUtil_isDirExists( const char* path_name ) {
 * nfs Wrapper to glob function for
  * pathnames matching
 */
-int globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno)) 
+int globPath_nfs (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno), const char * _seq_exp_home) 
 {
     glob_t glob_p;
     int ret;
@@ -474,7 +474,7 @@ char *SeqUtil_getPathBase (const char *full_path) {
   * Create directory hierarchy
   *
   */
-int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive ) {
+int SeqUtil_mkdir_nfs( const char* dir_name, int is_recursive, const char * _seq_exp_home ) {
    char tmp[1000];
    char *split = NULL, *work_string = NULL; 
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_mkdir: dir_name %s recursive? %d \n", dir_name, is_recursive );
@@ -674,19 +674,16 @@ void SeqUtil_waitForFile (char* filename, int secondsLimit, int timeInterval) {
    }
 } 
 
-char* SeqUtil_getdef( const char* filename, const char* key ) {
+char* SeqUtil_getdef( const char* filename, const char* key , const char* _seq_exp_home) {
   char *retval=NULL,*home=NULL,*ovpath=NULL,*ovext="/.suites/overrides.def", *defpath=NULL, *defext="/.suites/default_resources.def";
-  char *seq_exp_home=NULL;
   struct passwd *passwdEnt;
   struct stat fileStat;
 
-  /* User ownership of the suite to determine path to overrides.def */
-  if ( (seq_exp_home = getenv("SEQ_EXP_HOME")) == NULL ){
-    raiseError("SeqUtil_getdef $SEQ_EXP_HOME not defined\n");
+  /* Use ownership of the suite to determine path to overrides.def */
+  if (stat(_seq_exp_home,&fileStat) < 0){
+     raiseError("SeqUtil_getdef unable to stat SEQ_EXP_HOME\n");
   }
-  if (stat(seq_exp_home,&fileStat) < 0){
-    raiseError("SeqUtil_getdef unable to stat SEQ_EXP_HOME\n");
-  }
+
   passwdEnt = getpwuid(fileStat.st_uid);
   home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
@@ -774,7 +771,7 @@ int SeqUtil_getmappedfile(const char *filename, char ** filestart , char** filee
  * Function for cleanup on program end: Unmaps all the files that were mapped
  * into memory. 
 ********************************************************************************/
-SeqUtil_unmapfiles()
+void SeqUtil_unmapfiles()
 {
   extern struct mappedFile mappedFiles[SEQ_MAXFILES];
   extern int nbMappedFiles;
@@ -868,7 +865,7 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
    SeqUtils_getdef(), provide the _deffile name; a NULL value passed to _deffile 
    causes the resolver to search in the environment for the key definition.  If 
    _srcfile is NULL, information about the str source is not printed in case of an error.*/
-char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ) {
+char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ,const char* _seq_exp_home) {
   char *strtmp=NULL,*substr=NULL,*var=NULL,*env=NULL,*post=NULL,*source=NULL;
   char *saveptr1,*saveptr2;
   static char newstr[SEQ_MAXFIELD];
@@ -891,7 +888,7 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
     if (strcmp(source,"environment") == 0){
       env = getenv(var);}
     else{
-      env = SeqUtil_getdef(_deffile,var);
+      env = SeqUtil_getdef(_deffile,var,_seq_exp_home);
     }
     post = strtok_r(NULL,"\0",&saveptr2);
     if (env == NULL){
@@ -1124,7 +1121,7 @@ int  WriteInterUserDepFile_nfs (const char *filename , const char * DepBuf , con
      snprintf(buff, sizeof(buff), "%s/.suites/maestrod/dependencies/polling/v%s",ppwdir,maestro_version);
    
      if ( access(buff,R_OK ) != 0 ) {
-          if ( SeqUtil_mkdir_nfs ( buff , 1) != 0 ) { 
+          if ( SeqUtil_mkdir_nfs ( buff , 1, NULL) != 0 ) { 
              raiseError( "WriteInterUserDepFile_nfs: Could not create dependency directory:%s",buff );
           }
      }
@@ -1235,30 +1232,30 @@ void SeqUtil_printOrWrite( FILE * tmpFile, char * text, ...) {
  * build a symlink on sequencing/sync/$datestamp/$version
  *
  */
-int lock_nfs ( const char * filename , const char * datestamp ) 
+int lock_nfs ( const char * filename , const char * datestamp, const char * _seq_exp_home ) 
 {
     char lpath[1024], src[1024], dest[1024], Ltime[25];
-     char *seq_exp_home, *mversion, *md5Token ;
+     char *mversion, *md5Token ;
      int i,ret=0;
      struct stat st;
      time_t now;
      double diff_t;
 
 
-     if ( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
-	            fprintf(stderr,"lock_nfs: Cannot get SEQ_EXP_HOME variable ...\n");
+     if ( _seq_exp_home == NULL ) {
+	            fprintf(stderr,"lock_nfs: Cannot bad SEQ_EXP_HOME received as argument ...\n");
      }
 
      if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
                      fprintf(stderr, "lock_nfs: Cannot get env. var SEQ_MAESTRO_VERSION\n");
      }
      
-     snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",seq_exp_home,datestamp,mversion);
-     if ( access(lpath,R_OK) != 0 ) ret=SeqUtil_mkdir_nfs(lpath , 1);
+     snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",_seq_exp_home,datestamp,mversion);
+     if ( access(lpath,R_OK) != 0 ) ret=SeqUtil_mkdir_nfs(lpath , 1,NULL);
 
      snprintf(src,sizeof(src),"%s/END_TASK_LOCK",lpath);
      if ( access(src,R_OK) != 0 ) {
-                 if ( (ret=touch_nfs(src)) != 0 ) fprintf(stderr,"cannot touch file:lock on %s \n",lpath);
+                 if ( (ret=touch_nfs(src,_seq_exp_home)) != 0 ) fprintf(stderr,"cannot touch file:lock on %s \n",lpath);
      }
 
      md5Token = (char *) str2md5(filename,strlen(filename));
@@ -1268,7 +1265,7 @@ int lock_nfs ( const char * filename , const char * datestamp )
           get_time(Ltime,3);
           ret=symlink("END_TASK_LOCK",dest);
           if ( ret == 0 )  {
-                 fprintf(stdout,"symlink obtained loop=%d AT:%s xpn=%s Token:%s\n",i,Ltime,seq_exp_home,md5Token);
+                 fprintf(stdout,"symlink obtained loop=%d AT:%s xpn=%s Token:%s\n",i,Ltime,_seq_exp_home,md5Token);
                  break;
           }
           usleep(500000);
@@ -1279,7 +1276,7 @@ int lock_nfs ( const char * filename , const char * datestamp )
                 time(&now);
                 if ( (diff_t=difftime(now,st.st_mtime)) > 5 ) {
                        ret=unlink(dest);
-                       fprintf(stderr,"symlink timeout xpn=%s Token:%s\n",seq_exp_home,md5Token);
+                       fprintf(stderr,"symlink timeout xpn=%s Token:%s\n",_seq_exp_home,md5Token);
                 }
           }
      }
@@ -1291,21 +1288,21 @@ int lock_nfs ( const char * filename , const char * datestamp )
 /*
 * remove a symlink in sequencing/sync/$datestamp/$version
 */
-int unlock_nfs ( const char * filename , const char * datestamp ) 
+int unlock_nfs ( const char * filename , const char * datestamp , const char * _seq_exp_home) 
 {
      char lpath[1024], src[1024], Ltime[25];
-     char *seq_exp_home, *mversion, *md5Token ;
+     char *mversion, *md5Token ;
      int ret=0;
 
-     if ( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
-	            fprintf(stderr,"lock_nfs: Cannot get SEQ_EXP_HOME variable\n");
+     if ( _seq_exp_home == NULL ) {
+	            fprintf(stderr,"lock_nfs: bad SEQ_EXP_HOME received as argument\n");
      }
 
      if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
                      fprintf(stderr, "lock_nfs: Cannot get SEQ_MAESTRO_VERSION variable\n");
      }
      
-     snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",seq_exp_home,datestamp,mversion);
+     snprintf(lpath,sizeof(lpath),"%s/sequencing/sync/%s/v%s",_seq_exp_home,datestamp,mversion);
      if ( access(lpath,R_OK) != 0 ) {
              fprintf(stderr,"unlock_nfs: dir=%s not exist\n",lpath);
 	     return(1);
@@ -1317,10 +1314,10 @@ int unlock_nfs ( const char * filename , const char * datestamp )
      get_time(Ltime,3);
      if ( access(src,R_OK) == 0 ) {
          if ( (ret=unlink(src)) != 0 ) {
-               fprintf(stderr,"unlink error:%d AT:%s xpn=%s Token:%s\n",ret,Ltime,seq_exp_home,md5Token);
+               fprintf(stderr,"unlink error:%d AT:%s xpn=%s Token:%s\n",ret,Ltime,_seq_exp_home,md5Token);
                ret=1;
          } else {
-               fprintf(stdout,"symlink released AT:%s xpn=%s Token:%s\n",Ltime,seq_exp_home,md5Token);
+               fprintf(stdout,"symlink released AT:%s xpn=%s Token:%s\n",Ltime,_seq_exp_home,md5Token);
          }
      } else {
                fprintf(stdout,"unlock_nfs: file not there:%s !!!\n",src);

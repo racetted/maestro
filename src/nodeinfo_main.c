@@ -35,10 +35,11 @@ static void printUsage()
    
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      nodeinfo -n node [-f filters -l loopargs -d datestamp -v]\n");
+   printf("      nodeinfo -n node [-f filters -l loopargs -d datestamp -e seq_exp_home -v]\n");
    printf("         where:\n");
    printf("         node     is full path of task or family node (mandatory (except -f root)):\n");
    printf("         datestamp is the datestamp of the action. Default: SEQ_DATE env var, then latest modified log under $SEQ_EXP_HOME/logs\n");
+   printf("         seq_exp_home is the location of the experiment on the filesystem.  Defaults to SEQ_EXP_HOME environment variable\n");
    printf("         -v       verbosity level\n");
    printf("         filters  is a comma separated list of filters (optional):\n");
    printf("                  all (default)\n");
@@ -62,7 +63,7 @@ int main ( int argc, char * argv[] )
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgs = NULL;
-   char *node = NULL, *outputFile=NULL, *datestamp=NULL ;
+   char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL ;
    char filters[256];
    int errflg = 0, nodeFound = 0;
    int c, gotLoops=0, showRootOnly = 0;
@@ -71,7 +72,7 @@ int main ( int argc, char * argv[] )
       exit(1);
    }
    strcpy(filters,"all");
-   while ((c = getopt(argc, (char* const*) argv, "n:f:l:o:d:v")) != -1) {
+   while ((c = getopt(argc, (char* const*) argv, "n:f:l:o:d:e:v")) != -1) {
          switch(c) {
          case 'n':
 	    node = malloc( strlen( optarg ) + 1 );
@@ -103,10 +104,21 @@ int main ( int argc, char * argv[] )
                exit(1);
             }
             break;
+         case 'e':
+            seq_exp_home = strdup( optarg );
+            break;
          case '?':
             printUsage();
             exit(1);
          }
+   }
+
+   if ( seq_exp_home == NULL) {
+      if ((seq_exp_home = getenv("SEQ_EXP_HOME")) == NULL){
+         fprintf(stderr , "nodelogger_main.c : SEQ_EXP_HOME must be set either with '-e' option or through the environment variable SEQ_EXP_HOME \n");
+         printUsage();
+         exit(1);
+      }
    }
 
    if ( nodeFound == 0 && strstr( filters, "root" ) == NULL ) {
@@ -114,7 +126,7 @@ int main ( int argc, char * argv[] )
       exit(1);
    }
 
-   nodeDataPtr = nodeinfo( node, filters, loopsArgs, NULL, NULL, datestamp );
+   nodeDataPtr = nodeinfo( node, filters, loopsArgs, seq_exp_home, NULL, datestamp );
 
    if (gotLoops){
       SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgs );

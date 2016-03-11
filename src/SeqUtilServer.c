@@ -40,11 +40,11 @@ extern int MLLServerConnectionFid;
  * removeFile_svr: Removes the named file 'filename' through mserver it returns 
  * zero if succeeds  and a nonzero value if it does not
  */
-int removeFile_svr (const char *filename ) {
+int removeFile_svr (const char *filename, const char * _seq_exp_home) {
 
    int status=0;
   
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_REMOVE, filename ,"" ); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_REMOVE, filename ,"" ,_seq_exp_home); 
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.removeFile_svr() removing %s return:%d\n", filename,status );
    return (status);
@@ -53,10 +53,10 @@ int removeFile_svr (const char *filename ) {
 /**
  * touch_svr : simulate a "touch" on a given file 'filename' through mserver
  */
-int touch_svr (const char *filename ) {
+int touch_svr (const char *filename , const char * _seq_exp_home) {
    int status;
   
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_TOUCH, filename ,"" ); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_TOUCH, filename ,"" ,_seq_exp_home); 
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.touch_svr(): %s return:%d\n",filename,status);
 
@@ -68,10 +68,10 @@ int touch_svr (const char *filename ) {
  * isFileExists_svr: test through server to see if  a given file 'filename' exist 
  * returns 1 if succeeds, 0 failure 
  */
-int isFileExists_svr ( const char* lockfile, const char *caller ) {
+int isFileExists_svr ( const char* lockfile, const char *caller, const char* _seq_exp_home ) {
    int status;
   
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_IS_FILE_EXISTS, lockfile ,"" ); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_IS_FILE_EXISTS, lockfile ,"" ,_seq_exp_home); 
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.isFileExists_svr()from %s filename:%s return:%d\n",caller,lockfile,status);
    return (status);
@@ -82,13 +82,13 @@ int isFileExists_svr ( const char* lockfile, const char *caller ) {
  * access_svr: test through server to see if  a given file 'filename' exist 
  *             returns 0 if succeeds, 1 failure 
  */
-int access_svr ( const char* filename , int mode ) {
+int access_svr ( const char* filename , int mode , const char* _seq_exp_home) {
    int status;
    char string[2]; 
    
    memset(string,'\0',sizeof(string));
    sprintf(string,"%d",mode);
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename , string); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_ACCESS, filename , string,_seq_exp_home); 
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.access_svr(): %s return:%d\n",filename,status);
    return (status);
@@ -98,11 +98,11 @@ int access_svr ( const char* filename , int mode ) {
  * SeqUtil_mkdir_svr: create a directory 
  *             returns 1 if succeeds, 0 failure 
  */
-int SeqUtil_mkdir_svr ( const char* dirname, int notUsed ) {
+int SeqUtil_mkdir_svr ( const char* dirname, int notUsed, const char * _seq_exp_home ) {
    int status;
  
 
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_MKDIR ,dirname, "" ); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_MKDIR ,dirname, "" ,_seq_exp_home); 
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.SeqUtil_mkdir_svr(): %s return:%d\n",dirname,status);
    return (status);
@@ -114,11 +114,11 @@ int SeqUtil_mkdir_svr ( const char* dirname, int notUsed ) {
 *               exists
 *               returns  number of matchs,  or no match 
 */
-int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) )
+int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *epath, int eerrno) , const char * _seq_exp_home)
 {
    int status;
   
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_GLOB_PATTERN_COUNT ,pattern ,"" ); 
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_GLOB_PATTERN_COUNT ,pattern ,"" ,_seq_exp_home); 
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.globPath_svr():%s \n",pattern);
    return (status);
@@ -139,7 +139,7 @@ int globPath_svr (const char *pattern, int flags, int (*errfunc) (const char *ep
       Sfile        - Status file of the dependent node
 */ 
 
-int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const char* datestamp, const char* loopArgs, 
+int WriteNodeWaitedFile_svr ( const char* seq_exp_home, const char* nname, const char* datestamp, const char* loopArgs, 
                               const char* filename, const char* statusfile ) 
 {
  
@@ -150,9 +150,9 @@ int WriteNodeWaitedFile_svr ( const char* seq_xp_home, const char* nname, const 
 
     memset(buffer,'\0',sizeof(buffer));
     
-    snprintf(buffer,sizeof(buffer),"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",statusfile,filename,seq_xp_home, nname, datestamp, loopArgs);
+    snprintf(buffer,sizeof(buffer),"sfile=%s wfile=%s exp=%s node=%s datestamp=%s args=%s",statusfile,filename,seq_exp_home, nname, datestamp, loopArgs);
     
-    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_WNF, buffer , "" );
+    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_WNF, buffer , "" , seq_exp_home);
     
     SeqUtil_TRACE(TL_FULL_TRACE,"maestro.WriteNodeWaitedFile_svr():buffer=%s return=%d\n",buffer,status);
 
@@ -186,7 +186,7 @@ int WriteInterUserDepFile_svr (const char *filename, const char *DepBuf, const c
     } else {
         raiseError("OutOfMemory exception in SeqUtilServer.WriteInterUserDepFile_svr()\n");
     }
-    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_USERDFILE, to_send , "");  
+    status = Query_L2D2_Server(MLLServerConnectionFid, SVR_WRITE_USERDFILE, to_send , "", seq_exp_home);  
     free(to_send);
 
 
@@ -304,7 +304,7 @@ FILE * fopen_svr ( const char * filename , int sock )
  * lock_svr: create a link  (on server /tmp) which will behave as a lock    
  * returns 1 if succeeds, 0 on failure 
  */
-int lock_svr (  const char* filename , const char * datestamp ) {
+int lock_svr (  const char* filename , const char * datestamp, const char* _seq_exp_home ) {
    char *md5sum = NULL;
    int i,status;
    
@@ -314,7 +314,7 @@ int lock_svr (  const char* filename , const char * datestamp ) {
 
    /* try to acquire the link for 5*0.5 = 2.5 sec */
    for ( i=0 ; i < 5 ; i++ ) {
-       status = Query_L2D2_Server(MLLServerConnectionFid, SVR_LOCK, md5sum , datestamp ); 
+       status = Query_L2D2_Server(MLLServerConnectionFid, SVR_LOCK, md5sum , datestamp , _seq_exp_home); 
        if ( status == 0 ) { break; }
        usleep(500000);
    }
@@ -329,7 +329,7 @@ int lock_svr (  const char* filename , const char * datestamp ) {
  * unlock_svr: remove link  
  * returns 1 if succeeds, 0 on failure 
  */
-int unlock_svr ( const char* filename , const char * datestamp ) {
+int unlock_svr ( const char* filename , const char * datestamp , const char * _seq_exp_home) {
    char *md5sum=NULL;
    int status;
 
@@ -337,7 +337,7 @@ int unlock_svr ( const char* filename , const char * datestamp ) {
 
    SeqUtil_TRACE(TL_FULL_TRACE,"\nUNLOCK_SVR() filename:%s md5sum=%s \n",filename,md5sum);
 
-   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_UNLOCK, md5sum , datestamp );
+   status = Query_L2D2_Server(MLLServerConnectionFid, SVR_UNLOCK, md5sum , datestamp , _seq_exp_home);
 
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.unlock_svr() filename:%s datestamp:%s return:%d\n",filename,datestamp,status);
    

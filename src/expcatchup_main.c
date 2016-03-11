@@ -34,11 +34,12 @@ static void printUsage()
    printf("Description - accessor/modifier interface for experiment catchup value \n");
    printf("         \n\n");
    printf("Usage:\n");
-   printf("      catchup [-s value] [-g]\n");
+   printf("      catchup [-s value] [-g] [-e experiment_home]\n");
    printf("         where:\n");
    printf("         -s value \t\tset catchup value, between [0-9]\n");
    printf("         -g       \t\tget catchup value\n");
-   printf("         -d       \t\tset debug mode\n");
+   printf("         -v       \t\tset verbose mode\n");
+   printf("         -e       \t\tspecify experiment home manually.  Takes precedence over environment variable.\n");
 
    printf("\n      EXPHOME=%s\n\n",seq_exp_home);
    printf("Example: catchup -s 4\n");
@@ -60,7 +61,7 @@ int main (int argc, char * argv [])
          fprintf(stderr, "ERROR: SEQ_EXP_HOME environment variable not set!\n" );
          exit(1);
       }
-      while ((c = getopt(argc, argv, "s:ghd")) != -1) {
+      while ((c = getopt(argc, argv, "s:e:ghd")) != -1) {
             switch(c) {
             case 's':
                catchupValue = atoi( optarg );
@@ -70,13 +71,16 @@ int main (int argc, char * argv [])
                   exit(1);
                }
                break;
+            case 'e':
+               expHome = strdup( optarg );
+               break;
             case 'g':
                isGetArg = 1;
                break;
             case 'h':
                printUsage();
                break;
-            case 'd':
+            case 'v':
                isDebugArg = 1;
                break;
             case '?':

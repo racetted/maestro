@@ -45,6 +45,6 @@
 *       messages, otherwise the  message will be written only to stdout.
 * 
 ******************************************************************************/
-extern void nodelogger(const char *job, const char *type, const char* loop_ext, const char *message, const char *datestamp);
+extern void nodelogger(const char *job, const char *type, const char* loop_ext, const char *message, const char *datestamp, const char* _seq_exp_home);
 extern void get_time (char * , int );
 

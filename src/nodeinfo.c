@@ -856,7 +856,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       context = xmlXPathNewContext(doc);
 
       /* resolve environment variables found in XML file */
-      XmlUtils_resolve(xmlFile,context,defFile);
+      XmlUtils_resolve(xmlFile,context,defFile,_nodeDataPtr->expHome);
 
       /* validate NODE_RESOURCES node */
       sprintf ( query, "(%s)", NODE_RES_XML_ROOT );
@@ -908,7 +908,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
       SeqUtil_TRACE(TL_FULL_TRACE, "getNodeResources query: %s\n", query );
       if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
          parseAbortActions( result, _nodeDataPtr ); 
-      } else if ( (abortValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_ABORT_ACTION" )) != NULL ){
+      } else if ( (abortValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_ABORT_ACTION", _nodeDataPtr->expHome )) != NULL ){
          SeqNode_addAbortAction( _nodeDataPtr, abortValue );
       }
 
@@ -938,7 +938,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* validate a machine has been provided */
    if ( strcmp(_nodeDataPtr->machine,"") == 0) { 
       /* get default machine*/
-      if ( (value = SeqUtil_getdef( defFile, "SEQ_DEFAULT_MACHINE" )) != NULL ){
+      if ( (value = SeqUtil_getdef( defFile, "SEQ_DEFAULT_MACHINE", _nodeDataPtr->expHome )) != NULL ){
           SeqNode_setMachine( _nodeDataPtr, value );
       } else {
           raiseError("ERROR: Required machine attribute of BATCH tag in %s or default machine key SEQ_DEFAULT_MACHINE in %s not set.\n",xmlFile, defFile); 
@@ -948,7 +948,7 @@ void getNodeResources ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, cons
    /* search for a defined SEQ_DEFAULT_SHELL */
    if ( strcmp(_nodeDataPtr->shell,"") == 0) { 
       /* get default shell*/
-      if ( (shellValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_SHELL" )) != NULL ){
+      if ( (shellValue = SeqUtil_getdef( defFile, "SEQ_DEFAULT_SHELL", _nodeDataPtr->expHome )) != NULL ){
          SeqNode_setShell( _nodeDataPtr, shellValue );
       } else {
          SeqNode_setShell( _nodeDataPtr, "/bin/ksh" );
@@ -1652,17 +1652,12 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
 SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
 
-   char *seq_exp_home = NULL, *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
+   char *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
    char workdir[SEQ_MAXFIELD];
    SeqNodeDataPtr  nodeDataPtr = NULL;
 
    if( _exp_home == NULL ) {
-      seq_exp_home=getenv("SEQ_EXP_HOME");
-      if ( seq_exp_home == NULL ) {
-         raiseError("SEQ_EXP_HOME not set! (nodeinfo) \n");
-      }
-   } else {
-      seq_exp_home = _exp_home;
+      raiseError("SEQ_EXP_HOME not set! (nodeinfo) \n");
    }
 
    tmpfilters = strdup( filters );
@@ -1680,23 +1675,23 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodeinfo() trying to create node %s\n", newNode );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
-   SeqNode_setSeqExpHome(nodeDataPtr,seq_exp_home); 
+   SeqNode_setSeqExpHome(nodeDataPtr,_exp_home); 
    memset(workdir,'\0',sizeof workdir);
-   sprintf(workdir,"%s/sequencing/status", seq_exp_home);
+   sprintf(workdir,"%s/sequencing/status", _exp_home);
    SeqNode_setWorkdir( nodeDataPtr, workdir );
 
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
-   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(seq_exp_home,"",datestamp) );
+   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(_exp_home,"",datestamp) );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
 
    if ( SHOW_ROOT_ONLY ) {
-      getRootNode ( nodeDataPtr, seq_exp_home );
+      getRootNode ( nodeDataPtr, _exp_home );
    } else {
       /* add loop arg list to node */
       SeqNode_setLoopArgs( nodeDataPtr,_loops);
-      getFlowInfo ( nodeDataPtr, (char*) newNode, seq_exp_home );
-      getNodeResources (nodeDataPtr, (char*) newNode, seq_exp_home);
+      getFlowInfo ( nodeDataPtr, (char*) newNode, _exp_home );
+      getNodeResources (nodeDataPtr, (char*) newNode, _exp_home);
 
    }
 
