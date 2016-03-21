@@ -27,37 +27,96 @@
 #include "logreader.h"
 #include <errno.h>
 #include "SeqUtil.h"
+#include "getopt.h"
 
 static void printUsage()
 {
-   printf("Logreader usage:\n");
-   printf("     logreader ([-i inputfile] [-t type] [-o outputfile] | -t avg [-n days]) [-e exp] [-d datestamp] [-v] [-c] \n");
-   printf("         where:\n");
-   printf("            -i inputfile     the logfile to read (default ${SEQ_EXP_HOME}/logs/${datestamp}_nodelog)\n");
-   printf("            -t type          the output filter. log (statuses & stats, used for xflow), statuses, stats or avg (default is log)\n");
-   printf("            -o outputfile    the file where the stats are logged (if defined)\n");
-   printf("            -e exp           the experiment path (default is SEQ_EXP_HOME env. variable)\n");
-   printf("            -d datestamp     the initial date for averages computation, or simply the target datestamp\n");
-   printf("            -n days          used with -t avg to define the number of days for the averages since \"datestamp\" (default is 7). This is a 10%% truncated average to account for extremes.\n");
-   printf("            -v               verbose mode\n");
-   printf("            -c               check if output file is present before trying to write. Will not write if file is present.\n");
-   printf("\nStandard usage:\n"); 
-   printf("            logreader -d $datestamp             will read that experiment's log, output the statuses and stats to stdout \n"); 
-   printf("            logreader -d $datestamp -t stats    will read that experiment's log, create a statistics file (default ${SEQ_EXP_HOME}/stats/${datestamp}\n"); 
-   printf("            logreader -d $datestamp -t avg      will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
+   char * usage = "DESCRIPTION: Logreader\n\
+\n\
+USAGE:\n\
+    \n\
+    logreader [-i inputfile] [-t type] [-o outputfile] | -t avg [-n days]) [-e exp] [-d datestamp] [-v] [-c]\n\
+\n\
+OPTIONS:\n\
+\n\
+    -i, --input-file\n\
+        Specify the logfile to read (default ${SEQ_EXP_HOME}/logs/${datestamp}_nodelog)\n\
+\n\
+    -o, --output-file\n\
+        Specify the file where the stats are logged (if defined)\n\
+\n\
+    -t, --type\n\
+        Specify an output filter : log (statuses & stats, used for xflow), statuses, \n\
+        stats or avg (default is log)\n\
+\n\
+    -n, --days\n\
+        Specify a number of days for averaging: Used with -t avg to define the number \n\
+        of days for the averages since \"datestamp\" (default is 7). This is a 10% truncated \n\
+        average to account for extremes.\n\
+\n\
+    -c, --check\n\
+        check if output file is present before trying to write. Will not write if file is present.\n\
+\n\
+    \n\
+    -d, --datestamp\n\
+        Specify the 14 character date of the experiment ex: 20080530000000\n\
+        (anything shorter will be padded with 0s until 14 characters) Default\n\
+        value is the date of the experiment.\n\
+\n\
+    -e, --exp \n\
+        Experiment path.  If it is not supplied, the environment variable \n\
+        SEQ_EXP_HOME will be used.\n\
+\n\
+    -v, --verbose\n\
+        Turn on full tracing\n\
+\n\
+    -h, --help\n\
+        Show this help screen\n\
+\n\
+EXAMPLES:\n\
+\n\
+    logreader -d $datestamp             \n\
+        will read that experiment's log, output the statuses and stats to stdout \n\
+\n\
+    logreader -d $datestamp -t stats    \n\
+        will read that experiment's log, create a statistics file \n\
+        (default ${SEQ_EXP_HOME}/stats/${datestamp}\n\
+\n\
+    logreader -d $datestamp -t avg      \n\
+        will calculate the x-day truncated average and create a averages file \n\
+        (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n";
+   puts(usage);
 }
 
 int main ( int argc, char * argv[] )
 {
    char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL; 
-   int stats_days=7, c, clobberFile=1; 
+   int stats_days=7, clobberFile=1; 
+   char * short_opts = "i:t:n:o:d:e:vch";
+
+   extern char *optarg;
+   extern int   optind;
+   struct       option long_opts[] =
+   { /*  NAME        ,    has_arg       , flag  val(ID) */
+      {"exp"         , required_argument,   0,     'e'},
+      {"type"        , required_argument,   0,     't'},
+      {"datestamp"   , required_argument,   0,     'd'},
+      {"input-file"   , required_argument,   0,     'i'},
+      {"output-file"  , required_argument,   0,     'o'},
+      {"days"        , required_argument,   0,     'n'},
+      {"check"       , no_argument      ,   0,     'c'},
+      {"verbose"     , no_argument      ,   0,     'v'},
+      {"help"        , no_argument      ,   0,     'h'},
+      {NULL,0,0,0} /* End indicator */
+   };
+   int opt_index, c = 0;
 
    if ( argc == 1 || argc == 2) {
       printUsage();
       exit(1);
    }
    
-   while ((c = getopt(argc, (char* const*) argv, "i:t:n:o:d:e:vc")) != -1) {
+   while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index)) != -1) {
       switch(c) {
 	   case 'i':
          inputFile=strdup( optarg );
@@ -81,6 +140,9 @@ int main ( int argc, char * argv[] )
 			SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
 			SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
 	      break;
+      case 'h':
+         printUsage();
+         exit(0);
       case 'c':
          clobberFile=0;
 	      break;

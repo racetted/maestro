@@ -26,6 +26,7 @@
 #include "SeqListNode.h"
 #include "SeqUtil.h"
 #include "SeqNameValues.h"
+#include "getopt.h"
 /***********************************************************************************
 * name: maestro
 *
@@ -38,43 +39,96 @@
 *************************************************************************************/
 static void printSeqUsage()
 {
-   char *seq_exp_home = NULL;
-   
-   seq_exp_home=getenv("SEQ_EXP_HOME");
-   printf("Usage:\n");
-   printf("      maestro -n node -s signal [-i] [-e exp] [-d datestamp] [-v] [-l loopargs] [-f flow] [-o extra_soumet_args]  \n");
-   printf("         where:\n");
-   printf("         node is full path of task or family node (mandatory):\n");
-   printf("         signal is one of:\n");
-   printf("            submit begin end abort initbranch initnode\n");
-   printf("         -i is to ignore dependencies and catchup values\n");
-   printf("         -v is to run in debug mode\n");
-   printf("         -e exp : the experiment path (default is SEQ_EXP_HOME env. variable)\n");
-   printf("         datestamp is the date on which to execute the command. Defaults: 1) SEQ_DATE 2) latest modified log in $SEQ_EXP_HOME/logs :\n");
-   printf("         flow is continue (default) or stop, representing whether the flow should continue after this node\n");
-   printf("         loopargs is the comma-separated list of loop arguments. ex: -l loopa=1,loopb=2\n");
-   printf("         extra_soumet_args are arguments being given to ord_soumet by the job (ex. -waste=50)\n");
-
-   printf("      SEQ_EXP_HOME=%s\n",seq_exp_home);
-   printf("Example: maestro -s submit -n regional/assimilation/00/task_0 -f continue\n");
+   char * usage = "DESCRIPTION: Maestro\n\
+\n\
+USAGE\n\
+\n\
+    maestro -n node -s signal [-i] [-e exp] [-d datestamp] [-v] [-l loopargs] [-f flow] [-o extra_soumet_args]\n\
+\n\
+OPTIONS\n\
+\n\
+    -n, --node\n\
+        Specify the full path of task or family node (mandatory (except -f root))\n\
+\n\
+    -l, --loop-args\n\
+        Specify the loop arguments as a comma seperated value loop index: inner_Loop=1,\n\
+        outer_Loop=3\n\
+\n\
+    -f, --flow\n\
+        Set the flow to continue (default) or stop, representing whether the flow should \n\
+        continue after this node.\n\
+\n\
+    -s, --signal\n\
+        Specify the signal as one of:\n\
+            submit\n\
+            begin\n\
+            end\n\
+            abort\n\
+            initbranch\n\
+            initnode\n\
+\n\
+    -o, --extra-soumet-args\n\
+        Specify extra arguments to be given to ord_soumet by the job (ex. -waste=50)\n\
+\n\
+    -i, --ignore-dependencies\n\
+        Ignore dependencies and catchup values\n\
+\n\
+    -d, --datestamp\n\
+        Specify the 14 character date of the experiment ex: 20080530000000\n\
+        (anything shorter will be padded with 0s until 14 characters) Default\n\
+        value is the date of the experiment.\n\
+\n\
+    -e, --exp \n\
+        Experiment path.  If it is not supplied, the environment variable \n\
+        SEQ_EXP_HOME will be used.\n\
+\n\
+    -v, --verbose\n\
+        Turn on full tracing\n\
+\n\
+    -h, --help\n\
+        Show this help screen\n\
+\n\
+EXAMPLES:\n\
+\n\
+    maestro -s submit -n regional/assimilation/00/task_0 -f continue\n"; 
+   puts(usage);
 }
 
 int main (int argc, char * argv [])
 
 {
+   const char  *short_opts = "n:s:f:l:d:o:e:ivh";
    extern char *optarg;
+   extern int   optind;
+   struct       option long_opts[] =
+   { /*  NAME               ,    has_arg       , flag  val(ID) */
+      {"exp"                , required_argument,   0,     'e'},
+      {"node"               , required_argument,   0,     'n'},
+      {"loop-args"          , required_argument,   0,     'l'},
+      {"datestamp"          , required_argument,   0,     'd'},
+      {"signal"             , required_argument,   0,     's'},
+      {"flow"               , required_argument,   0,     'f'},
+      {"extra-soumet-args"  , required_argument,   0,     'o'},
+      {"ignore-dependencies", no_argument      ,   0,     'i'},
+      {"help"               , no_argument      ,   0,     'h'},
+      {"verbose"            , no_argument      ,   0,     'v'},
+      {NULL,0,0,0} /* End indicator */
+   };
+   int opt_index, c = 0;
+
    char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL, *seq_exp_home= NULL;
    int errflg = 0, status = 0;
-   int c, ignoreAllDeps = 0;
+   int ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
 	SeqNameValuesPtr loopsArgs = NULL;
 
    if ( argc < 5 ) {
       printSeqUsage();
+      exit(1);
    }
    flow = malloc( 9 * sizeof(char) + 1 );
    sprintf( flow, "%s", "continue" );
-   while ((c = getopt(argc, argv, "n:s:f:l:d:o:e:iv")) != -1) {
+   while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index )) != -1) {
       switch(c) {
          case 'n':
             node = malloc( strlen( optarg ) + 1 );
