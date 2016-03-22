@@ -139,7 +139,7 @@ void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , 
 
 /**
  * accept connections on the bound server socket return socket for incoming connection 
- * bind_sock_to_port must have been called before connection can be accpeted           
+ * bind_sock_to_port must have been called before connection can be accepted           
  */
 int accept_from_socket (int fserver) 
 {
@@ -155,24 +155,37 @@ int accept_from_socket (int fserver)
 }
 
 /**
- * bind an existing socket to a free (automatic) port, return port number 
+ * bind an existing socket to a free port within the port range, return port number 
  * existing socket usually created by get_sock_net
  */
-int bind_sock_to_port (int s) 
+int bind_sock_to_port (int s, int min_port, int max_port) 
 {
-     struct sockaddr_in server_eff;
-     socklen_t sizeserver_eff = sizeof(server_eff) ;
+      struct sockaddr_in server_eff;
+      socklen_t sizeserver_eff = sizeof(server_eff) ;
+      int current_port=min_port, success=0;
 
-     server.sin_family = AF_INET;
-     server.sin_port = htons(0);
-     server.sin_addr.s_addr = INADDR_ANY;
-
-     if (bind(s, (struct  sockaddr *)&server, sizeserver) < 0) {
-	    fprintf(stderr, "Bind failed! \n");
-	    return(-1);
-     }
-     getsockname(s, (struct  sockaddr *)&server_eff, &sizeserver_eff);
-     return ntohs(server_eff.sin_port);
+      if ((min_port < 0) || ( min_port < 0)) {
+         fprintf(stderr, "Invalid port range. Min port %d. Max port %d. Must be >= 0 \n",min_port, max_port);
+         return (-1); 
+      }
+      if (min_port > max_port)  {
+	      fprintf(stderr, "Error in port range. Min port %d > max port %d \n",min_port, max_port);
+         return (-1); 
+      }
+      server.sin_family = AF_INET;
+      server.sin_addr.s_addr = INADDR_ANY;
+      while (current_port <= max_port) {
+         server.sin_port = htons(current_port);
+         if ((success=bind(s, (struct  sockaddr *)&server, sizeserver)) < 0) {
+           ++current_port;
+         } else {
+            fprintf(stderr, "Bind successful on port %d \n", current_port);
+            getsockname(s, (struct  sockaddr *)&server_eff, &sizeserver_eff);
+            return ntohs(server_eff.sin_port);
+         }
+      }
+	   fprintf(stderr, "Bind failed in port range %d -> %d \n", min_port,max_port);
+      return(-1);
 }
 
 /**

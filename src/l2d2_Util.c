@@ -827,7 +827,11 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	                    pl2d2->port_max=atoi(bf);
 			    fprintf(stdout,"in xml file found end port=%d\n",pl2d2->port_max);
                  }
-             }
+             } else {
+                  fprintf(stdout,"Default port range (OS-given) \n");
+                  pl2d2->port_min=0;
+                  pl2d2->port_max=0;
+               }
       } else {
              fprintf(stderr,"Incorrect root node name in xml config file:%s ... Setting Defaults \n",filename);
 	     pl2d2->maxNumOfProcess=4;
