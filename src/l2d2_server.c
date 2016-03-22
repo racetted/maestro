@@ -1394,6 +1394,10 @@ int main ( int argc , char * argv[] )
       exit(1);
   }
 
+  /* Parse config file. In which directory should this file reside ? */
+  snprintf(buf,sizeof(buf),"%s/.suites/mconfig.xml",passwdEnt->pw_dir);
+  ret = ParseXmlConfigFile(buf, &L2D2 );
+
   /* get hostname */
   gethostname(hostname, sizeof(hostname));
   strcpy(L2D2.host,hostname);
@@ -1406,11 +1410,14 @@ int main ( int argc , char * argv[] )
   set_socket_opt (fserver);
   
   /* bind to a free port, get port number */
-  server_port = bind_sock_to_port (fserver);
+  server_port = bind_sock_to_port (fserver, L2D2.port_min, L2D2.port_max);
+  if (server_port < 0) {
+     fprintf(stderr,"Cannot create server. Port blocked or bad range. \n",buf);
+	  exit(1);
+  } 
   
   /* parent writes host:port and exits after disconnecting stdin, stdout, and stderr */
   ip = get_own_ip_address();  /* get own IP address as 32 bit integer */
-
 
   unsigned int mypid=getpid();
 
@@ -1447,10 +1454,6 @@ int main ( int argc , char * argv[] )
   snprintf(buf,sizeof(buf),"%s/.suites/.maestro_server_%s",passwdEnt->pw_dir,L2D2.mversion);
   strcpy(L2D2.lock_server_pid_file,buf);
   free(Auth_token);
-
-  /* Parse config file. In which directory should this file reside ? */
-  snprintf(buf,sizeof(buf),"%s/.suites/mconfig.xml",passwdEnt->pw_dir);
-  ret = ParseXmlConfigFile(buf, &L2D2 );
 
   /* register handler for sigchild signal */
   struct sigaction chd;

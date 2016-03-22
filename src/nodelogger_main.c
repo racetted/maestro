@@ -56,7 +56,7 @@ static void printUsage()
 
    seq_exp_home=getenv("SEQ_EXP_HOME");
    printf("Usage:\n");
-   printf("      nodelogger -n node -s signal -m message [-l loop_members -d datestamp]\n");
+   printf("      nodelogger -n node -s signal -m message [-l loop_members -d datestamp -v ]\n");
    printf("         where:\n");
    printf("         node is full path of the node (mandatory):\n");
    printf("         signal is message type i.e abort,event,info,begin,end,etc (mandatory)\n");
@@ -65,6 +65,7 @@ static void printUsage()
    printf("         datestamp is the 14 character date of the experiment ex: 20080530000000\n");
    printf("                   (anything shorter will be padded with 0s until 14 characters)\n");
    printf("                   Default value is the date of the experiment. \n");
+   printf("         -v       verbose mode\n");
    printf("      SEQ_EXP_HOME=%s\n",seq_exp_home);
    printf("Example: nodelogger -n regional/assimilation/00/task_0 -s abort -m \"invalid hour number\"\n");
 }
@@ -87,8 +88,8 @@ int main (int argc, char * argv[])
    seq_exp_home=getenv("SEQ_EXP_HOME");
    SeqUtil_checkExpHome(seq_exp_home);
 
-   if (argc >= 5) {
-      while ((c = getopt(argc, argv, "n:s:l:m:d:")) != -1) {
+   if (argc >= 6) {
+      while ((c = getopt(argc, argv, "n:s:l:m:d:v")) != -1) {
             switch(c) {
             case 'n':
                hasNode = 1;
@@ -122,6 +123,10 @@ int main (int argc, char * argv[])
                datestamp = malloc( strlen( optarg ) + 1 ); 
                strcpy(datestamp,optarg);
                printf("Datestamp = %s \n", datestamp);
+               break;
+            case 'v':
+				   SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
+				   SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
                break;
             case '?':
                  errflg++;

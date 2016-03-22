@@ -53,7 +53,7 @@ int GetHostName (char *, size_t );
 char *get_Authorization( char * , char *, char **);
 void  set_Authorization (unsigned int  ,char * , char * , int  , char * , char *,char **);
 int accept_from_socket (int fserver);
-int bind_sock_to_port (int s);
+int bind_sock_to_port (int s, int min_port, int max_port);
 int get_socket_net();
 int set_socket_opt(int s);
 int get_ip_address(char *hostname);
