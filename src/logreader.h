@@ -34,6 +34,7 @@ typedef struct  _Node_prm {
    char wtime[18];
    char dtime[18];
    char LastAction;
+   char waitmsg[256];
    int ignoreNode;
 } Node_prm;
 
@@ -62,6 +63,7 @@ typedef struct _LoopExt {
    char deltafromstart[10];
    char LastAction;
    int ignoreNode;
+   char waitmsg[256];
    struct _LoopExt *next;
 } LoopExt;
 
@@ -102,7 +104,7 @@ extern struct stat pt;
 extern FILE *stats;
 
 extern void read_file  ( char *base);
-extern void insert_node( char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime, char *itime , char *wtime, char *dtime, char * exectime, char * submitdelay); 
+extern void insert_node( char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime, char *itime , char *wtime, char *dtime, char * exectime, char * submitdelay, char * waitmsg ); 
 extern void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile);
 
 extern void getAverage(char *exp, char *datestamp);

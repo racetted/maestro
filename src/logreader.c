@@ -47,7 +47,7 @@ struct _StatsNode *rootStatsNode;
 int read_type=LR_SHOW_ALL;
 struct stat pt;
 
-void insert_node(char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime , char *itime, char *wtime, char *dtime, char * exectime, char * submitdelay) {
+void insert_node(char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime , char *itime, char *wtime, char *dtime, char * exectime, char * submitdelay, char * waitmsg ) {
 
       char ComposedNode[512];
       struct _ListNodes     *ptr_lhead,  *ptr_Ltrotte, *ptr_Lpreced;
@@ -61,7 +61,6 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
       }
       SeqUtil_TRACE(TL_FULL_TRACE,"logreader inserting node %s loop %s state %c\n", node, loop, S);
 
-      
       /* must easier to work like this */
       snprintf(ComposedNode,sizeof(ComposedNode),"%s%s",node,loop);
       len =strlen(ComposedNode);
@@ -101,6 +100,7 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 				 break;
 			case 'w':
 			         strcpy(ptr_lhead->PNode.wtime,wtime);
+                  strcpy(ptr_lhead->PNode.waitmsg,waitmsg); 
 				 break;
 			case 'd':
 			         strcpy(ptr_lhead->PNode.dtime,dtime);
@@ -152,6 +152,8 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 				                break;
 				       case 'w':
 						strcpy(ptr_Ltrotte->PNode.wtime,wtime);
+                  strcpy(ptr_Ltrotte->PNode.waitmsg,waitmsg); 
+   
 						break;
 				       case 'd':
 						strcpy(ptr_Ltrotte->PNode.dtime,dtime);
@@ -199,6 +201,7 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 				  break;
 			 case 'w':
 			          strcpy(ptr_Lpreced->next->PNode.wtime,wtime);
+                   strcpy(ptr_Lpreced->next->PNode.waitmsg,waitmsg); 
 			          break;
 			 case 'd':
 			          strcpy(ptr_Lpreced->next->PNode.dtime,dtime);
@@ -253,6 +256,8 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 				  break;
 			 case 'w':
 			          strcpy(ptr_Ltrotte->PNode.wtime,wtime);
+                   strcpy(ptr_Ltrotte->PNode.waitmsg,waitmsg); 
+
 			          break;
 			 case 'd':
 			          strcpy(ptr_Ltrotte->PNode.dtime,dtime);
@@ -278,8 +283,8 @@ void read_file (char *base)
    char *ptr, *q, *qq, *pp;
    char string[1024];
    char dstamp[18];
-   char node[128], signal[16],loop[32];
-   int n,len,indx=0;
+   char node[128], signal[16],loop[32], waitmsg[256];
+   int n,len,size=0;
    for ( ptr = base ; ptr < &base[pt.st_size]; ptr++) {
       memset(dstamp,'\0',sizeof(dstamp));
       memset(node,'\0',sizeof(node));
@@ -291,46 +296,52 @@ void read_file (char *base)
           
       /* Node */
       qq = strchr(ptr+28,':');
-      indx=qq-(ptr+28);
-      strncpy(node,ptr+28, indx);
+      size=qq-(ptr+28);
+      strncpy(node,ptr+28, size);
 
       /* signal */
       pp = strchr(qq+1,':');
-      indx=pp-(qq+9);
-      strncpy(signal,qq+9, indx);
+      size=pp-(qq+9);
+      strncpy(signal,qq+9, size);
   
       /* loop */ 
       qq = strchr(pp+1,':');
-      indx=qq-(pp+1);
-      strncpy(loop,pp+1, indx);
+      size=qq-(pp+1);
+      strncpy(loop,pp+1, size);
       switch (signal[0]) {
          case 'a': /* [a]bort */
-             insert_node('a', &node[9], &loop[8], "", "", "", dstamp, "", "", "", "", ""); 
+             insert_node('a', &node[9], &loop[8], "", "", "", dstamp, "", "", "", "", "",""); 
              break;
          case 's': /* [s]ubmit */
-             insert_node('s', &node[9], &loop[8], dstamp, "", "", "", "", "", "", "", ""); 
+             insert_node('s', &node[9], &loop[8], dstamp, "", "", "", "", "", "", "", "",""); 
              break;
          case 'b': /* [b]egin */
-             insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
+             insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", "",""); 
              break;
          case 'e': /* [e]nd */
             if (signal[1] == 'n') {
-               insert_node('e', &node[9], &loop[8], "",  "", dstamp, "", "", "", "", "", ""); 
+               insert_node('e', &node[9], &loop[8], "",  "", dstamp, "", "", "", "", "", "",""); 
             }
             break;
          case 'i': /* [i]nit */
             if (signal[2] == 'i'){
-               insert_node('i', &node[9], &loop[8], "",  "", "", "", dstamp, "", "", "", ""); 
+               insert_node('i', &node[9], &loop[8], "",  "", "", "", dstamp, "", "", "", "",""); 
             }
             break;
          case 'w': /* [w]ait */
-            insert_node('w', &node[9], &loop[8], "",  "", "", "", "", dstamp, "", "", ""); 
+            /* msg */ 
+            memset(waitmsg,'\0',sizeof(waitmsg));
+            qq = strchr(qq+1,'=');  
+            pp = strchr(ptr,'\n');
+            size=pp-qq-1;
+            strncpy(waitmsg,qq+1, size);  
+            insert_node('w', &node[9], &loop[8], "",  "", "", "", "", dstamp, "", "", "",waitmsg); 
             break;
          case 'd': /* [d]iscret */
-            insert_node('d', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", ""); 
+            insert_node('d', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", "",""); 
             break;
          case 'c': /* [c]atchup */
-            insert_node('c', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", ""); 
+            insert_node('c', &node[9], &loop[8], "",  "", "", "", "", "", dstamp, "", "",""); 
             break;
 
       }
@@ -352,7 +363,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
       time_t Sepoch,Bepoch,Eepoch,TopNodeSubmitTime;
       time_t ExeTime, SubDelay, RelativeEnd;
       int n, found_loopNode, i, j, shortestLength=256;
-      static char sbuffer[10],ebuffer[10], rbuffer[10];
+      static char sbuffer[10],ebuffer[10], rbuffer[10], wbuffer[300];
       char *stats_output = NULL, *tmp_output, *tmp_statstring =NULL;
       char output_buffer[256], tmp_line[256];
 
@@ -426,6 +437,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 					  strcpy(ptr_LEXHead->litime,ptr_Ltrotte->PNode.itime);
 					  strcpy(ptr_LEXHead->latime,ptr_Ltrotte->PNode.atime);
 					  strcpy(ptr_LEXHead->lwtime,ptr_Ltrotte->PNode.wtime);
+					  strcpy(ptr_LEXHead->waitmsg,ptr_Ltrotte->PNode.waitmsg);
 					  strcpy(ptr_LEXHead->exectime, ebuffer);
 					  strcpy(ptr_LEXHead->submitdelay, sbuffer);
 					  strcpy(ptr_LEXHead->deltafromstart, rbuffer);
@@ -458,6 +470,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 				       strcpy(ptr_LXHpreced->next->latime,ptr_Ltrotte->PNode.atime);
 				       strcpy(ptr_LXHpreced->next->lwtime,ptr_Ltrotte->PNode.wtime);
 				       strcpy(ptr_LXHpreced->next->ldtime,ptr_Ltrotte->PNode.dtime);
+				       strcpy(ptr_LXHpreced->next->waitmsg,ptr_Ltrotte->PNode.waitmsg);
 				       strcpy(ptr_LXHpreced->next->exectime,ebuffer);
 				       strcpy(ptr_LXHpreced->next->submitdelay,sbuffer);
 				       strcpy(ptr_LXHpreced->next->deltafromstart,rbuffer);
@@ -487,6 +500,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 					     strcpy(ptr_LEXHead->latime,ptr_Ltrotte->PNode.atime);
 					     strcpy(ptr_LEXHead->lwtime,ptr_Ltrotte->PNode.wtime);
 					     strcpy(ptr_LEXHead->ldtime,ptr_Ltrotte->PNode.dtime);
+					     strcpy(ptr_LEXHead->waitmsg,ptr_Ltrotte->PNode.waitmsg);
 					     strcpy(ptr_LEXHead->exectime,ebuffer);
 					     strcpy(ptr_LEXHead->submitdelay,sbuffer);
 					     strcpy(ptr_LEXHead->deltafromstart,rbuffer);
@@ -563,7 +577,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 			               fprintf(stdout,"%s {submit %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lstime);
 			               break;
 			            case 'w':
-			               fprintf(stdout,"%s {wait %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lwtime);
+			               fprintf(stdout,"%s {wait %s {%s}} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lwtime, ptr_LXHtrotte->waitmsg);
 			               break;
 			            case 'd':
 			               fprintf(stdout,"%s {discret %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
