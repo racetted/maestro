@@ -371,9 +371,13 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
 
    /* check if node has a container to propagate the message up */
    if ( strcmp(_nodeDataPtr->container, "") != 0 && _nodeDataPtr->catchup != CatchupDiscretionary ) {
-       processContainerAbort(_nodeDataPtr);
+       if (strcmp(current_action,"cont") == 0) 
+         processContainerEnd( _nodeDataPtr, _flow );
+       else 
+         processContainerAbort(_nodeDataPtr);
    }
 
+   if (current_action != NULL) free( current_action ); 
    free( extName );
    free( extensionBase );
    actionsEnd( _signal, _flow, _nodeDataPtr->name );
