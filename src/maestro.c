@@ -2823,7 +2823,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    }
 
    printf( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" );
-   printf( "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs);
+   printf( "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s expHome=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs, _seq_exp_home);
 
    if ( _loops != NULL ) {
        SeqUtil_stringAppend(&tmp, " -l ");
@@ -2837,9 +2837,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
        SeqUtil_stringAppend(&tmp, _extraArgs);
    } 
    if ( tmp != NULL ){
-       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s %s \n",_signal, _node, _flow, tmp);
+       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s %s -e %s\n",_signal, _node, _flow, tmp, _seq_exp_home);
    } else {
-       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s \n",_signal , _node, _flow);
+       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s -e %s \n",_signal , _node, _flow, _seq_exp_home);
    } 
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro() ignoreAllDeps=%d \n",ignoreAllDeps );
@@ -2856,6 +2856,8 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
          raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n",SEQ_EXP_HOME );
       }
       closedir(dirp);
+   } else {
+      raiseError( "maestro(): argument _seq_exp_home of maestro() function must be supplied \n" );
    }
 
    /* save current node name if we must close & re-open connection */
@@ -2870,8 +2872,6 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    } else {
       raiseError( "flow value must be \"stop\" or \"continue\"\n" );
    } 
-
-   /* SeqUtil_TRACE(TL_FULL_TRACE, "maestro() SEQ_EXP_HOME=%s\n", SEQ_EXP_HOME );*/
 
    seq_soumet = getenv("SEQ_SOUMET");
    if ( seq_soumet != NULL ) {

@@ -52,6 +52,7 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
    char *job="TICTAC";
    char *tmpfromaestro=getenv("FROM_MAESTRO");
    int ret,sock;
+   SeqUtil_TRACE( TL_FULL_TRACE, "maestro.tictac_setDate( %s, %s ) called \n", _expHome, datestamp);
  
    _touch = touch_svr;
    if  ( tmpfromaestro == NULL ) {
@@ -218,7 +219,7 @@ extern void checkValidDatestamp(char *datestamp){
    if (validationInt < 0  || validationInt > 12)
       raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.checkValidDatestamp() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
    if (tmpDateString= (char*) malloc(3)) {
