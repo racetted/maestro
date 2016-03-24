@@ -30,7 +30,7 @@
 ****************************************************************/
 void nodewait( const SeqNodeDataPtr node_ptr, const char* msg, const char *datestamp)
 {
-   nodelogger(node_ptr->name,"wait",node_ptr->extension,msg,datestamp);
+   nodelogger(node_ptr->name,"wait",node_ptr->extension,msg,datestamp,node_ptr->expHome);
 }
 
 /****************************************************************/
@@ -57,7 +57,7 @@ void nodeend( const char *_signal, const SeqNodeDataPtr node_ptr, const char *da
    memset(message,'\0',sizeof message);
    sprintf(message,"job_ID=%s",jobID);
 
-   nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp);
+   nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp,node_ptr->expHome);
 
 }
 
@@ -87,7 +87,7 @@ void nodesubmit( const SeqNodeDataPtr node_ptr, const char *datestamp)
    SeqUtil_TRACE(TL_FULL_TRACE,"nodesubmit.Message=%s",message);
    free(cpu);
 
-   nodelogger(node_ptr->name,"submit",node_ptr->extension,message,datestamp);
+   nodelogger(node_ptr->name,"submit",node_ptr->extension,message,datestamp,node_ptr->expHome);
 }
 /****************************************************************/
 
@@ -118,8 +118,8 @@ void nodebegin( const char *_signal, const SeqNodeDataPtr node_ptr, const char *
    
    memset(message,'\0',sizeof message);
    sprintf(message,"host=%s job_ID=%s",hostname,jobID);
-   /* nodelogger(job,"begin",message); */
-   nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp);
+   /* nodelogger(job,"begin",message,_nodeDataPtr->expHome); */
+   nodelogger(node_ptr->name,_signal,node_ptr->extension,message,datestamp,node_ptr->expHome);
 }
 /****************************************************************/
 
@@ -184,21 +184,21 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 	memset(buf,'\0',sizeof buf);
 
    if ( strncmp(abort_type,"ABORTNB",7) == 0 ) {
-      nodelogger(job,_signal,loopExt,abortnb,datestamp);
+      nodelogger(job,_signal,loopExt,abortnb,datestamp,_nodeDataPtr->expHome);
    } else if ( strncmp(thisAbortType,"ABORT",5) == 0 ) {
       sprintf(buf,"%s %s, job_ID=%s",aborted, runc, jobID);
-      nodelogger(job,_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp,_nodeDataPtr->expHome);
    } else if ( strncmp(thisAbortType,"CONT",4) == 0 ) {
       sprintf(buf,"%s %s, job_ID=%s",aborted, jobc, jobID);
-      nodelogger(job,_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp,_nodeDataPtr->expHome);
    } else if ( strncmp(thisAbortType,"RERUN",5) == 0 ) {
       sprintf(buf,"%s %s, job_ID=%s", aborted, rerun, jobID);
-      nodelogger(job,_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp,_nodeDataPtr->expHome);
    } else if ( strncmp(thisAbortType,"STOP",4) == 0 ) {
       sprintf(buf,"%s %s, job_ID=%s", aborted, jobs, jobID);
-      nodelogger(job,_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp,_nodeDataPtr->expHome);
    } else if ( strncmp(thisAbortType,"XXJOB",5) == 0 ) {
-      nodelogger(job,"info",loopExt,xxjob,datestamp);
+      nodelogger(job,"info",loopExt,xxjob,datestamp,_nodeDataPtr->expHome);
    }	else {
 		SeqUtil_TRACE(TL_ERROR,"nodeabort: illegal type: %s\n", thisAbortType);
 		exit(1);
@@ -206,7 +206,7 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 
 	if ( errno != 0 ) {
       sprintf(buf,"MSG NO. = %d, job_ID=%s", errno, jobID);
-      nodelogger(job,_signal,loopExt,buf,datestamp);
+      nodelogger(job,_signal,loopExt,buf,datestamp,_nodeDataPtr->expHome);
 	}
    free(thisAbortType);
 }

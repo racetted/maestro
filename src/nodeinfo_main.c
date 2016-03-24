@@ -26,52 +26,97 @@
 #include "nodeinfo.h"
 #include "SeqLoopsUtil.h"
 #include "SeqNameValues.h"
+#include "getopt.h"
 
 int MLLServerConnectionFid=0;
 
 static void printUsage()
 {
    char *seq_exp_home = NULL;
-   
-   seq_exp_home=getenv("SEQ_EXP_HOME");
-   printf("Usage:\n");
-   printf("      nodeinfo -n node [-f filters -l loopargs -d datestamp -v]\n");
-   printf("         where:\n");
-   printf("         node     is full path of task or family node (mandatory (except -f root)):\n");
-   printf("         datestamp is the datestamp of the action. Default: SEQ_DATE env var, then latest modified log under $SEQ_EXP_HOME/logs\n");
-   printf("         -v       verbosity level\n");
-   printf("         filters  is a comma separated list of filters (optional):\n");
-   printf("                  all (default)\n");
-   printf("                  task (node task path only)\n");
-   printf("                  cfg (node config path only)\n");
-   printf("                  res (batch resource only)\n");
-   printf("                  res_path (batch resource path only)\n");
-   printf("                  type (node type only)\n");
-   printf("                  node (node name and extention if applicable)\n");
-   printf("                  root (root node name)\n");
-   printf("                  var  (variables exported in wrapper)\n");
-   printf("         loopargs is a comma separated list of loop arguments (optional):\n");
-   /* printf("      SEQ_EXP_HOME=%s\n",seq_exp_home); */
-   printf("Example: nodeinfo -n regional/assimilation/00/task_0\n");
+   char * usage = "\
+DESCRIPTION: Nodeinfo\n\
+\n\
+USAGE\n\
+\n\
+    nodeinfo -n node [-f filters -l loopargs -d datestamp -e expHome -v]\n\
+\n\
+OPTIONS\n\
+\n\
+    -n, --node\n\
+        Specify the full path of task or family node (mandatory (except -f root))\n\
+\n\
+    -l, --loop-args\n\
+        Specify the loop arguments as a comma seperated value loop index: inner_Loop=1,outer_Loop=3\n\
+\n\
+    -f, --filters\n\
+        Speciry a comma separated list of filters (optional):\n\
+            all (default)\n\
+            task (node task path only)\n\
+            cfg (node config path only)\n\
+            res (batch resource only)\n\
+            res_path (batch resource path only)\n\
+            type (node type only)\n\
+            node (node name and extention if applicable)\n\
+            root (root node name)\n\
+            var  (variables exported in wrapper)\n\
+\n\
+    -d, --datestamp\n\
+        Specify the 14 character date of the experiment ex: 20080530000000\n\
+        (anything shorter will be padded with 0s until 14 characters) Default\n\
+        value is the date of the experiment.\n\
+\n\
+    -e, --exp \n\
+        Experiment path.  If it is not supplied, the environment variable \n\
+        SEQ_EXP_HOME will be used.\n\
+\n\
+    -v, --verbose\n\
+        Turn on full tracing\n\
+\n\
+    -h, --help\n\
+        Show this help screen\n\
+\n\
+EXAMPLES:\n\
+\n\
+    nodeinfo -n regional/assimilation/00/task_0\n";
+puts(usage);
 }
 
 int main ( int argc, char * argv[] )
 {
+   char * short_opts = "n:f:l:o:d:e:v";
    extern char *optarg;
+   
+   extern char *optarg;
+   extern int   optind;
+   struct       option long_opts[] =
+   { /*  NAME        ,    has_arg       , flag  val(ID) */
+      {"exp"         , required_argument,   0,     'e'},
+      {"node"        , required_argument,   0,     'n'},
+      {"loop-args"   , required_argument,   0,     'l'},
+      {"datestamp"   , required_argument,   0,     'd'},
+      {"outputfile"  , required_argument,   0,     'o'},
+      {"filters"     , required_argument,   0,     'f'},
+      {"verbose"     , no_argument      ,   0,     'v'},
+      {NULL,0,0,0} /* End indicator */
+   };
+   int opt_index, c = 0;
+
+
+
    char * loops = NULL; 
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgs = NULL;
-   char *node = NULL, *outputFile=NULL, *datestamp=NULL ;
+   char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL ;
    char filters[256];
    int errflg = 0, nodeFound = 0;
-   int c, gotLoops=0, showRootOnly = 0;
+   int gotLoops=0, showRootOnly = 0;
    if ( argc == 1 || argc == 2) {
       printUsage();
       exit(1);
    }
    strcpy(filters,"all");
-   while ((c = getopt(argc, (char* const*) argv, "n:f:l:o:d:v")) != -1) {
+   while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index )) != -1) {
          switch(c) {
          case 'n':
 	    node = malloc( strlen( optarg ) + 1 );
@@ -103,10 +148,21 @@ int main ( int argc, char * argv[] )
                exit(1);
             }
             break;
+         case 'e':
+            seq_exp_home = strdup( optarg );
+            break;
          case '?':
             printUsage();
             exit(1);
          }
+   }
+
+   if ( seq_exp_home == NULL) {
+      if ((seq_exp_home = getenv("SEQ_EXP_HOME")) == NULL){
+         fprintf(stderr , "nodelogger_main.c : SEQ_EXP_HOME must be set either with '-e' option or through the environment variable SEQ_EXP_HOME \n");
+         printUsage();
+         exit(1);
+      }
    }
 
    if ( nodeFound == 0 && strstr( filters, "root" ) == NULL ) {
@@ -114,7 +170,7 @@ int main ( int argc, char * argv[] )
       exit(1);
    }
 
-   nodeDataPtr = nodeinfo( node, filters, loopsArgs, NULL, NULL, datestamp );
+   nodeDataPtr = nodeinfo( node, filters, loopsArgs, seq_exp_home, NULL, datestamp );
 
    if (gotLoops){
       SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgs );

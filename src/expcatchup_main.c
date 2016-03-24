@@ -25,42 +25,72 @@
 #include <unistd.h> 
 #include "SeqUtil.h"
 #include "expcatchup.h"
+#include "getopt.h"
 
 static void printUsage()
 {
    char *seq_exp_home = NULL;
-
-   seq_exp_home=getenv("SEQ_EXP_HOME");
-   printf("Description - accessor/modifier interface for experiment catchup value \n");
-   printf("         \n\n");
-   printf("Usage:\n");
-   printf("      catchup [-s value] [-g]\n");
-   printf("         where:\n");
-   printf("         -s value \t\tset catchup value, between [0-9]\n");
-   printf("         -g       \t\tget catchup value\n");
-   printf("         -d       \t\tset debug mode\n");
-
-   printf("\n      EXPHOME=%s\n\n",seq_exp_home);
-   printf("Example: catchup -s 4\n");
-   printf("             will set the experiment's catchup value to 4\n");
-   printf("Example: catchup -g \n");
-   printf("             will return to stdout the catchup value\n");
-
+   char * usage = "DESCRIPTION: Accessor/modifier interface for experiment catchup value.\n\
+\n\
+USAGE:\n\
+\n\
+    expcatchup [-s value] [-g] [-e experiment_home]\n\
+\n\
+OPTIONS:\n\
+\n\
+    -s, --set-catchup\n\
+        Set catchup value (integer in [0,9])\n\
+\n\
+    -g, --get-catchup\n\
+        Get catchup value\n\
+\n\
+    -e, --exp \n\
+        Experiment path.  If it is not supplied, the environment variable \n\
+        SEQ_EXP_HOME will be used.\n\
+\n\
+    -v, --verbose\n\
+        Turn on full tracing\n\
+\n\
+    -h, --help\n\
+        Show this help screen\n\
+\n\
+EXAMPLES:\n\
+\n\
+    expcatchup -s 4\n\
+        will set the experiment's catchup value to 4\n\
+\n\
+    expcatchup -g\n\
+        will return to stdout the catchup value\n";
+   puts(usage);
 }
 
 int main (int argc, char * argv [])
 {
    extern char *optarg;
+   extern int   optind;
+   char        *short_opts = "s:e:ghv";
+   struct       option long_opts[] =
+   { /*  NAME        ,    has_arg       , flag  val(ID) */
+      {"set-catchup" , required_argument,   0,     's'},
+      {"exp-home"    , required_argument,   0,     'e'},
+      {"get-catchup" , no_argument      ,   0,     'g'},
+      {"help"        , no_argument      ,   0,     'h'},
+      {"verbose"     , no_argument      ,   0,     'v'},
+      {NULL,0,0,0} /* End indicator */
+   };
+   int opt_index, c = 0;
    int catchupValue = 8;
    char *expHome = NULL;
-   int c=0, isDebugArg = 0, isSetArg = 0, isGetArg = 0;
+   int isDebugArg = 0, 
+         isSetArg = 0, 
+         isGetArg = 0;
    if (argc > 1) {
       expHome = getenv("SEQ_EXP_HOME");
       if ( expHome == NULL ) {
          fprintf(stderr, "ERROR: SEQ_EXP_HOME environment variable not set!\n" );
          exit(1);
       }
-      while ((c = getopt(argc, argv, "s:ghd")) != -1) {
+      while ((c = getopt_long(argc, argv, short_opts,long_opts, &opt_index)) != -1) {
             switch(c) {
             case 's':
                catchupValue = atoi( optarg );
@@ -70,13 +100,16 @@ int main (int argc, char * argv [])
                   exit(1);
                }
                break;
+            case 'e':
+               expHome = strdup( optarg );
+               break;
             case 'g':
                isGetArg = 1;
                break;
             case 'h':
                printUsage();
                break;
-            case 'd':
+            case 'v':
                isDebugArg = 1;
                break;
             case '?':

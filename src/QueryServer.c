@@ -36,7 +36,7 @@
  * 
  */
 
-int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , const char *buf2 )
+int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , const char *buf2 , const char * _seq_exp_home)
 {
     int bytes_read, bytes_sent;
     int ret_nfs;
@@ -88,7 +88,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
                             sprintf(buffer,"%s",buf);
 	                    break;
            default  :
-	                    fprintf (stderr,"@@@@@@@@@@@ ERROR Inrecognized action for the Server:%d @@@@@@@@@@@ \n",action);
+	                    fprintf (stderr,"@@@@@@@@@@@ ERROR Unrecognized action for the Server:%d @@@@@@@@@@@ \n",action);
 			    return(-1);
                             break;
     }
@@ -96,7 +96,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
     if ( (bytes_sent=send_socket(sock , buffer , sizeof(buffer) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
            fprintf(stderr,"%%%%%%%%%%%% Query_L2D2_Server: socket closed at send  %%%%%%%%%%%%%%\n");
 	   fprintf(stderr, "====== Reverting to Nfs Routines ====== \n");
-	   ret_nfs=revert_nfs ( buf , action , buf2 );
+	   ret_nfs=revert_nfs ( buf , action , buf2 , _seq_exp_home);
 	   return(ret_nfs);
     }
     
@@ -104,7 +104,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
     if ( (bytes_read=recv_socket (sock , Rbuffer , sizeof(Rbuffer) , SOCK_TIMEOUT_CLIENT)) <= 0 ) {
            fprintf(stderr,"%%%%%%%%%%%% Query_L2D2_Server: socket closed at recv   %%%%%%%%%%%%%%\n");
 	   fprintf(stderr, "====== Reverting to Nfs Routines ====== \n");
-	   ret_nfs=revert_nfs ( buf , action , buf2 );
+	   ret_nfs=revert_nfs ( buf , action , buf2 , _seq_exp_home);
 	   return(ret_nfs);
     } 
 
@@ -125,7 +125,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
 		    * Try to recuperate with nfs stuff
 		    */
 	          fprintf(stderr, "====== Reverting to nfs Routines Answer for action=%d:>%s< ====== \n",action, Rbuffer);
-		  ret_nfs = revert_nfs ( buf , action , buf2 );
+		  ret_nfs = revert_nfs ( buf , action , buf2 , _seq_exp_home);
 		  return (ret_nfs);
     }
 
@@ -137,7 +137,7 @@ int Query_L2D2_Server ( int sock , ServerActions action , const char *buf , cons
  * If we detect that socket is down revert to  
  * NFS routines to keep the flow going 
  */
-int revert_nfs (  const char * buf , ServerActions action , const char *buf2 ) 
+int revert_nfs (  const char * buf , ServerActions action , const char *buf2 , const char * _seq_exp_home) 
 {
         int ret=0;
         char sfile[1024],filename[1024],pwname[1024],seq_xp_home[1024], nname[1024], datestamp[1024], loopArgs[1024];
@@ -147,39 +147,39 @@ int revert_nfs (  const char * buf , ServerActions action , const char *buf2 )
         {
                       case SVR_ACCESS:
 		                fprintf(stderr,"Nfs Routine: SVR_ACCESS cmd=%s\n",buf); 
-		  	        ret=access_nfs (buf,R_OK ) ;
+		  	        ret=access_nfs (buf,R_OK,_seq_exp_home ) ;
 	                        break;
                       case SVR_TOUCH:
 		                fprintf(stderr,"Nfs Routine: SVR_TOUCH cmd=%s\n",buf); 
-			        ret=touch_nfs(buf) ;
+			        ret=touch_nfs(buf,_seq_exp_home) ;
 	                        break;
                       case SVR_REMOVE:
 		                fprintf(stderr,"Nfs Routine: SVR_REMOVE cmd=%s\n",buf); 
-			        ret=removeFile_nfs(buf) ;
+			        ret=removeFile_nfs(buf,_seq_exp_home) ;
 	                        break;
                       case SVR_CREATE:
 		                fprintf(stderr,"Nfs Routine: SVR_CREATE cmd=%s\n",buf); 
-			        ret=touch_nfs(buf) ;
+			        ret=touch_nfs(buf,_seq_exp_home) ;
 	                        break;
                       case SVR_IS_FILE_EXISTS:
 		                fprintf(stderr,"Nfs Routine: SVR_IS_FILE_EXISTS cmd=%s\n",buf); 
-			        ret=isFileExists_nfs(buf,"from Querey_server" ) ;
+			        ret=isFileExists_nfs(buf,"from Querey_server",_seq_exp_home ) ;
 	                        break;
                       case SVR_GLOB_PATTERN_COUNT:
 		                fprintf(stderr,"Nfs Routine: SVR_GLOB_PATTERN_COUNT cmd=%s\n",buf); 
-			        ret=globPath_nfs (buf, GLOB_NOSORT, 0);
+			        ret=globPath_nfs (buf, GLOB_NOSORT, 0,_seq_exp_home);
 	                        break;
                       case SVR_MKDIR:
 		                fprintf(stderr,"Nfs Routine: SVR_MKDIR cmd=%s\n",buf); 
-		                ret=SeqUtil_mkdir_nfs (buf,1) ;
+		                ret=SeqUtil_mkdir_nfs (buf,1,_seq_exp_home) ;
 	                        break;
 		      case SVR_LOCK:
 		                fprintf(stderr,"Nfs Routine: SVR_LOCK cmd=%s\n",buf); 
-		                ret=lock_nfs ( buf, buf2 ) ;
+		                ret=lock_nfs ( buf, buf2,_seq_exp_home) ;
 	                        break;
 		      case SVR_UNLOCK:
 		                fprintf(stderr,"Nfs Routine: SVR_UNLOCK cmd=%s\n",buf); 
-		                ret=unlock_nfs ( buf, buf2 ) ;
+		                ret=unlock_nfs ( buf, buf2, _seq_exp_home ) ;
 	                        break;
                       case SVR_LOG_NODE:
 		                fprintf(stderr,"===NO NFS FOR LOGGING===\n");
@@ -219,13 +219,13 @@ int revert_nfs (  const char * buf , ServerActions action , const char *buf2 )
 /**  
  * function : Open connection with Maestro L2D2 Server 
  *            and return handle.
- * objet    : open and maintain a persistente connection with the server
- *            - Client must go first throught a identification phase to log in
+ * objet    : open and maintain a persistent connection with the server
+ *            - Client must go first throught an identification phase to log in
  *
  * author   : R. lahlou CMOI, 2012.
  * rev.     : 1.0
  */
-int OpenConnectionToMLLServer ( char * node , char *signal )
+int OpenConnectionToMLLServer (const char * node ,const char *signal , const char* _seq_exp_home)
 {
     unsigned int pid;
 
@@ -244,7 +244,6 @@ int OpenConnectionToMLLServer ( char * node , char *signal )
     char resolved[MAXPATHLEN];
 
     char *path_status=NULL;
-    char *seq_exp_home=NULL;
     char *seq_date=NULL;
     char *Auth_token=NULL;
     char *mversion=NULL;
@@ -276,10 +275,7 @@ int OpenConnectionToMLLServer ( char * node , char *signal )
     
     gethostname(thisHost, sizeof(thisHost));
 
-    /* Build the authorization connection */
-    seq_exp_home = getenv("SEQ_EXP_HOME");
-
-    ret=do_Login(sock,pid,node,seq_exp_home,signal,passwdEnt->pw_name,&m5sum); 
+    ret=do_Login(sock,pid,node,_seq_exp_home,signal,passwdEnt->pw_name,&m5sum); 
     free(m5sum);
 
     if ( ret != 0 ) close(sock);

@@ -64,8 +64,8 @@ typedef enum _ServerActions {
 
 extern int MLLServerConnectionFid;
 
-int  Query_L2D2_Server ( int , ServerActions action , const char * , const char *);
-int  OpenConnectionToMLLServer (char * , char *);
+int  Query_L2D2_Server ( int , ServerActions action , const char * , const char *, const char * _seq_exp_home);
+int  OpenConnectionToMLLServer (const char * ,const char *, const char* _seq_exp_home);
 void CloseConnectionWithMLLServer ( int  );
-int  revert_nfs ( const char * , ServerActions action , const char * );
+int  revert_nfs ( const char * , ServerActions action , const char * , const char * _seq_exp_home);
 #endif

@@ -26,6 +26,7 @@
 #include <unistd.h> 
 #include "tictac.h"
 #include "SeqUtil.h"
+#include "getopt.h"
 
 /*****************************************************************************
 * tictac_main:
@@ -41,52 +42,90 @@ static void alarm_handler() { /* nothing */ };
 static void printUsage()
 {
 char *seq_exp_home = NULL;
-
-seq_exp_home=getenv("SEQ_EXP_HOME");
-printf("Tictac - date accessor/modifier interface for experiments \n");
-printf("         \n\n");
-printf("Usage:\n");
-printf("      tictac -[s date,f format] [-d datestamp] \n");
-printf("         where:\n");
-printf("         date is the date that is to be set (in a YYYYMMDD[HHMMSS] format)\n");
-printf("         format is the format of the date to return\n");
-printf("                         %%Y = year\n");
-printf("                         %%M = month\n");
-printf("                         %%D = day\n");
-printf("                         %%H = hour\n");
-printf("                         %%Min = minute\n");
-printf("                         %%S = second\n");
-printf("      EXPHOME=%s\n\n",seq_exp_home);
-printf("Example: tictac -s 2009053000\n");
-printf("             will set the experiment's datefile to that date\n");
-printf("Example: tictac -f %%Y%%M%%S\n");
-printf("             will return to stdout the value of the date in a %%Y%%M%%S format\n");
+char * usage = "DESCRIPTION: Date accessor/modifier interface for experiments\n\
+\n\
+USAGE:\N\
+    \n\
+    tictac [-s date,-f format] [-e exp] [-d datestamp] [-v]\n\
+\n\
+OPTIONS:\n\
+\n\
+    -s, --set-Date\n\
+        Set the date for the specified experiment.  The date must be given in\n\
+        a YYYYMMDD[HHMMSS] format.\n\
+\n\
+    -f, --format\n\
+        Specify the format of the date to return using the following format specifiers.\n\
+            %Y = year\n\
+            %M = month\n\
+            %D = day\n\
+            %H = hour\n\
+            %Min = minute\n\
+            %S = second\n\
+\n\
+    -e, --exp \n\
+        Experiment path.  If it is not supplied, the environment variable SEQ_EXP_HOME will be used.\n\
+\n\
+    -d, --datestamp\n\
+        Specify the 14 character date of the experiment ex: 20080530000000 (anything \n\
+        shorter will be padded with 0s until 14 characters) Default value is the date \n\
+        of the experiment.\n\
+\n\
+    -h, --help\n\
+        Show this help screen\n\
+\n\
+    -v, --verbose\n\
+        Turn on full tracing\n\
+\n\
+EXAMPLES:\n\
+    \n\
+    tictac -s 2009053000\n\
+        will set the experiment's datefile to that date.\n\
+\n\
+    tictac -f %Y%M%S\n\
+        will return to stdout the value of the date in a %Y%M%S format.\n";
+printf("%s",usage);
 }
 
 main (int argc, char * argv [])
 {
+   char * short_opts = "s:f:e:d:hv";
    extern char *optarg;
+   extern int   optind;
+   struct       option long_opts[] =
+   { /*  NAME        ,    has_arg       , flag  val(ID) */
+      {"exp"         , required_argument,   0,     'e'}, /* Used everywhere */
+      {"datestamp"   , required_argument,   0,     'd'}, /* Used in logreader maestro nodeinfo nodelogger */
+      {"set-date"    , required_argument,   0,     's'}, /* Used in tictac */
+      {"format"      , required_argument,   0,     'f'}, /* tictac */
+      {"help"        , no_argument      ,   0,     'h'}, /* Not everywhere */
+      {"verbose"     , no_argument      ,   0,     'v'}, /* Everywhere */
+      {NULL,0,0,0} /* End indicator */
+   };
+   int opt_index, c = 0;
+
+
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
-   int c=0,returnDate=0, r;
+   int returnDate=0, r;
    struct sigaction act;
 
    memset (&act, '\0', sizeof(act));
 
    if (argc >= 2) {
-      while ((c = getopt(argc, argv, "d:s:f:hv")) != -1) {
-            switch(c) {
+      while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index)) != -1) {
+         switch(c) {
+            case 'e':
+               expHome = strdup( optarg );
+               break;
             case 's':
-               expHome = getenv("SEQ_EXP_HOME");
                dateValue = malloc( strlen( optarg ) + 1 );
                strcpy(dateValue,optarg);
                break;
             case 'd':
-               expHome = getenv("SEQ_EXP_HOME");
                dateValue = malloc( strlen( optarg ) + 1 );
                strcpy(dateValue,optarg);
                break;
             case 'f':
-               expHome = getenv("SEQ_EXP_HOME");
                format = malloc( strlen( optarg ) + 1 );
                strcpy(format,optarg);
                returnDate=1;
@@ -103,7 +142,13 @@ main (int argc, char * argv [])
                printf ("Argument s or f must be specified!\n");
                printUsage();
                exit(1);
-            }
+         }
+      }
+      if (expHome == NULL){
+         if ( (expHome = getenv("SEQ_EXP_HOME")) == NULL ) {
+            fprintf( stderr , "SEQ_EXP_HOME must be set either through the environment or with -e (--exp)\n");
+            exit(1);
+         }
       }
 
       if (returnDate) {

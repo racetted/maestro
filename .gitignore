@@ -9,6 +9,7 @@ bin
 ssm/*.ssm
 ssm/maestro_* 
 ssm/profile*
+# the executables
 src/maestro
 src/nodelogger
 src/mserver
@@ -18,3 +19,5 @@ src/nodeinfo
 src/logreader
 src/getdef
 src/tictac
+# cscope database
+cscope.out

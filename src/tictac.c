@@ -23,6 +23,7 @@
 #include "l2d2_commun.h"
 #include "l2d2_socket.h"
 #include "QueryServer.h"
+#include "SeqUtilServer.h"
 
 /*****************************************************************************
 * tictac:
@@ -32,10 +33,7 @@
 ******************************************************************************/
 
 
-extern int touch_svr(const char *filename) ;
-extern int touch_nfs(const char *filename) ;
 extern int get_Inode(const char * );
-extern int (*_touch)(const char * );
 
 /* 
 tictac_setDate
@@ -57,7 +55,7 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
  
    _touch = touch_svr;
    if  ( tmpfromaestro == NULL ) {
-      if ( (MLLServerConnectionFid=OpenConnectionToMLLServer( _expHome , job )) < 0 ) {
+      if ( (MLLServerConnectionFid=OpenConnectionToMLLServer( _expHome , job , _expHome)) < 0 ) {
          _touch = touch_nfs;
          SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() (NFS) setting date to=%s\n", datestamp); 
       } else {
@@ -77,7 +75,7 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
    SeqUtil_stringAppend( &dateFileName, datestamp );
    SeqUtil_stringAppend( &dateFileName, "_nodelog" );
 
-   if ( _touch(dateFileName) != 0 ) raiseError( "Cannot touch log file: %s\n", dateFileName );  
+   if ( _touch(dateFileName, _expHome) != 0 ) raiseError( "Cannot touch log file: %s\n", dateFileName );  
 
    if  ( tmpfromaestro == NULL && MLLServerConnectionFid > 0 ) {
       CloseConnectionWithMLLServer(MLLServerConnectionFid);
@@ -119,34 +117,31 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    if( datestamp != NULL) {
          strcpy( dateValue, datestamp );
    } else {
-      if( getenv("SEQ_DATE") != NULL ) {
-         strcpy( dateValue, getenv("SEQ_DATE") );
+      glob(statePattern, GLOB_NOSORT,0 ,&glob_logs);
+      if (glob_logs.gl_pathc==0) {
+         SeqUtil_TRACE(TL_MEDIUM, "Warning: No latest datestamp available in %s/logs. Datestamp used is 197001010000 (epoch).\n", _expHome );
+         sprintf(dateValue,"19700101000000");
       } else {
-         glob(statePattern, GLOB_NOSORT,0 ,&glob_logs);
-	 if (glob_logs.gl_pathc==0) {
-	     SeqUtil_TRACE(TL_MEDIUM, "Warning: No latest datestamp available in %s/logs. Datestamp used is 197001010000 (epoch).\n", _expHome ); 
-             sprintf(dateValue,"19700101000000"); 
-	 } else {
-             while(counter < glob_logs.gl_pathc) {
-	         statbuf=malloc(sizeof(struct stat));
-	         /* Get entry's information. */
-                 if (stat(glob_logs.gl_pathv[counter], statbuf) == -1)
-                     continue;
-                 if (difftime(statbuf->st_mtime,latest) > 0) {
-  	            latest=statbuf->st_mtime;
-                    free(tmpLatestFile);
- 		    tmpLatestFile=strdup((glob_logs.gl_pathv[counter]));
-   	         } 
-    	         ++counter;
-	         free(statbuf);
-	     }
-             globfree(&glob_logs);
-             dateFileName = (char*) SeqUtil_getPathLeaf( (const char*) (tmpLatestFile) );
-             sprintf(dateValue,"%s", (char*) strtok( dateFileName, "_" )); 
+         while(counter < glob_logs.gl_pathc) {
+            statbuf=malloc(sizeof(struct stat));
+            /* Get entry's information. */
+            if (stat(glob_logs.gl_pathv[counter], statbuf) == -1)
+               continue;
+            if (difftime(statbuf->st_mtime,latest) > 0) {
+               latest=statbuf->st_mtime;
+               free(tmpLatestFile);
+               tmpLatestFile=strdup((glob_logs.gl_pathv[counter]));
+            }
+            ++counter;
+            free(statbuf);
          }
+         globfree(&glob_logs);
+         dateFileName = (char*) SeqUtil_getPathLeaf( (const char*) (tmpLatestFile) );
+         sprintf(dateValue,"%s", (char*) strtok( dateFileName, "_" ));
       }
    }
 
+   SeqUtil_TRACE(TL_FULL_TRACE,"tictac_getDate() checking validity of dateValue ... \n");
    checkValidDatestamp(dateValue);
 
    tmpstrtok = (char*) strtok( format, "%" );
