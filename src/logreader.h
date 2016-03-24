@@ -95,7 +95,7 @@ extern struct _NodeLoopList MyNodeLoopList;
 
 extern struct _StatsNode *rootStatsNode;
 
-/* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=averages*/
+/* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=show averages 4=compute averages*/
 extern int read_type;
 
 extern struct stat pt;
@@ -107,11 +107,11 @@ extern void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFi
 
 extern void getAverage(char *exp, char *datestamp);
 extern char *getNodeAverageLine(char *node, char *member);
-extern void computeAverage(char *exp, char *datestamp, int stats_days);
+extern void computeAverage(char *exp, char *datestamp, int stats_days, FILE *outputFile);
 extern int getStats(FILE *_stats);
 extern int parseStatsLine(char line[1024]);
 extern int addStatsNode(char *node, char *member, char *stime, char *btime, char *etime, char *exectime, char *submitdelay, char *deltafromstart);
-extern int processStats(char *exp, char *datestamp);
+extern int processStats(char *exp, char *datestamp, FILE *outputFile);
 extern char *secondsToChar (int seconds);
 extern int charToSeconds (char *timestamp);
 extern void reset_node (char *node, char *ext);

@@ -31,10 +31,10 @@
 static void printUsage()
 {
    printf("Logreader usage:\n");
-   printf("     logreader ([-i inputfile] [-t type] [-o outputfile] | -t avg [-n days]) [-e exp] [-d datestamp] [-v] [-c] \n");
+   printf("     logreader ([-i inputfile] [-t type] [-o outputfile] | -t compute_avg [-n days]) [-e exp] [-d datestamp] [-v] [-c] \n");
    printf("         where:\n");
    printf("            -i inputfile     the logfile to read (default ${SEQ_EXP_HOME}/logs/${datestamp}_nodelog)\n");
-   printf("            -t type          the output filter. log (statuses & stats, used for xflow), statuses, stats or avg (default is log)\n");
+   printf("            -t type          the output filter. log (statuses & stats, used mainly for xflow), statuses, stats, avg, compute_stats or compute_avg (default is log)\n");
    printf("            -o outputfile    the file where the stats are logged (if defined)\n");
    printf("            -e exp           the experiment path (default is SEQ_EXP_HOME env. variable)\n");
    printf("            -d datestamp     the initial date for averages computation, or simply the target datestamp\n");
@@ -42,9 +42,10 @@ static void printUsage()
    printf("            -v               verbose mode\n");
    printf("            -c               check if output file is present before trying to write. Will not write if file is present.\n");
    printf("\nStandard usage:\n"); 
-   printf("            logreader -d $datestamp             will read that experiment's log, output the statuses and stats to stdout \n"); 
-   printf("            logreader -d $datestamp -t stats    will read that experiment's log, create a statistics file (default ${SEQ_EXP_HOME}/stats/${datestamp}\n"); 
-   printf("            logreader -d $datestamp -t avg      will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
+   printf("            logreader -d $datestamp                    will read that experiment's log, output the statuses and stats to stdout \n"); 
+   printf("            logreader -d $datestamp -t stats           will read that experiment's log, create a statistics file (default ${SEQ_EXP_HOME}/stats/${datestamp}\n"); 
+   printf("            logreader -d $datestamp -t avg             will read the latest the average file and display the content (default ${SEQ_EXP_HOME}/stats/(${datestamp}-1)_avg\n"); 
+   printf("            logreader -d $datestamp -t compute_avg     will calculate the x-day truncated average and create a averages file (default ${SEQ_EXP_HOME}/stats/${datestamp}_avg\n"); 
 }
 
 int main ( int argc, char * argv[] )

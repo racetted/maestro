@@ -32,14 +32,19 @@
 #include "logreader.h"
 #include "SeqUtil.h"
 #include "SeqDatesUtil.h" 
+#define LR_SHOW_ALL 0
+#define LR_SHOW_STATUS 1
+#define LR_SHOW_STATS 2
+#define LR_SHOW_AVG 3
+#define LR_CALC_AVG 4
 
 /* global */
 struct _ListListNodes MyListListNodes = { -1 , NULL , NULL };
 struct _NodeLoopList MyNodeLoopList = {"first",NULL,NULL};
 struct _StatsNode *rootStatsNode;
 
-/* read_type: 0=statuses & stats, 1=statuses, 2=stats, 3=averages*/
-int read_type;
+/* read_type: see LR defines*/
+int read_type=LR_SHOW_ALL;
 struct stat pt;
 
 void insert_node(char S, char *node, char *loop, char *stime, char *btime, char *etime , char *atime , char *itime, char *wtime, char *dtime, char * exectime, char * submitdelay) {
@@ -306,9 +311,7 @@ void read_file (char *base)
              insert_node('s', &node[9], &loop[8], dstamp, "", "", "", "", "", "", "", ""); 
              break;
          case 'b': /* [b]egin */
-             if (signal[5] != 'x'){
-               insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
-             } 
+             insert_node('b', &node[9], &loop[8], "", dstamp, "", "", "", "", "", "", ""); 
              break;
          case 'e': /* [e]nd */
             if (signal[1] == 'n') {
@@ -348,9 +351,9 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
       struct tm ti;
       time_t Sepoch,Bepoch,Eepoch,TopNodeSubmitTime;
       time_t ExeTime, SubDelay, RelativeEnd;
-      int hre,min,sec,n, found_loopNode, i, j, shortestLength=256;
+      int n, found_loopNode, i, j, shortestLength=256;
       static char sbuffer[10],ebuffer[10], rbuffer[10];
-      char *last_ext, *tmp_last_ext, *tmp_Lext, *stats_output = NULL, *avg_output=NULL, *tmp_output;
+      char *stats_output = NULL, *tmp_output, *tmp_statstring =NULL;
       char output_buffer[256], tmp_line[256];
 
       /* Traverse the list to find the top node (shortest nodelength) to get its submit time to do the relative end time calculation */ 
@@ -371,19 +374,26 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
       {
 	   /* printf all node having this length */
            for ( ptr_Ltrotte = ptr_LLtrotte->Ptr_LNode ; ptr_Ltrotte != NULL ; ptr_Ltrotte = ptr_Ltrotte->next)
-	 {
+	         {
 	       found_loopNode = 0;
 
 	       /* timing */
 	       n=sscanf(ptr_Ltrotte->PNode.stime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
 	       Sepoch=mktime(&ti);
+	       memset(sbuffer,'\0', sizeof(sbuffer));
+          strftime (sbuffer,10,"%H:%M:%S",localtime(&Sepoch));
 	       
 	       n=sscanf(ptr_Ltrotte->PNode.btime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
 	       Bepoch=mktime(&ti);
+	       memset(rbuffer,'\0', sizeof(rbuffer));
+          strftime (rbuffer,10,"%H:%M:%S",localtime(&Bepoch));
 	       
 	       n=sscanf(ptr_Ltrotte->PNode.etime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
 	       Eepoch=mktime(&ti);
-
+          memset(ebuffer,'\0', sizeof(ebuffer));
+          strftime (ebuffer,10,"%H:%M:%S",localtime(&Eepoch));
+          
+          SeqUtil_TRACE(TL_FULL_TRACE,"node:%s submit %s begin %s end %s \n",ptr_Ltrotte->PNode.Node,sbuffer,rbuffer,ebuffer ); 
 
 	       ExeTime = Eepoch - Bepoch;
 	       SubDelay = Bepoch - Sepoch; /* check sign */
@@ -492,77 +502,100 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 
       /* print loop task */
       for ( ptr_NLHtrotte = &MyNodeLoopList; ptr_NLHtrotte != NULL ; ptr_NLHtrotte = ptr_NLHtrotte->next) {
-	       stats_output = "stats {";
-	       avg_output = "avg {";
-	       last_ext="\"\"";
-               /*fprintf(stdout,"node=%s Loops=",ptr_NLHtrotte->Node);*/
-	       if (read_type != 3) {
-	          fprintf(stdout, "/%s\\", ptr_NLHtrotte->Node);
+	       stats_output = "\\stats {";
+	       fprintf(stdout, "\\/%s", ptr_NLHtrotte->Node);
+
+	       if(read_type == LR_SHOW_ALL || read_type == LR_SHOW_STATUS ) {
+	          fprintf(stdout, "\\statuses {");
 	       }
-	       if(read_type == 0 || read_type == 1) {
-	          fprintf(stdout, "statuses {");
-	       }
-               for ( ptr_LXHtrotte = ptr_NLHtrotte->ptr_LoopExt; ptr_LXHtrotte != NULL ; ptr_LXHtrotte = ptr_LXHtrotte->next) {
-		  if ( ptr_LXHtrotte->ignoreNode == 0 ) {
-		     sprintf(output_buffer, "%s {exectime %s submitdelay %s submit %s begin %s end %s deltafromstart %s} ",
-			   ptr_LXHtrotte->Lext, ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->lstime,
-			   ptr_LXHtrotte->lbtime,  ptr_LXHtrotte->letime, ptr_LXHtrotte->deltafromstart);
-		     tmp_output=strdup(stats_output);
-		     stats_output=sconcat(tmp_output, output_buffer);
-		     strcpy(tmp_line, getNodeAverageLine(ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext));
-		     sprintf(output_buffer, "%s {%s} ", ptr_LXHtrotte->Lext, tmp_line);
-		     tmp_output=strdup(avg_output);
-		     avg_output=sconcat(tmp_output, output_buffer);
-		     if (read_type == 0 || read_type == 1) {
-			switch(ptr_LXHtrotte->LastAction){
-			   case 'a':
-			      fprintf(stdout,"%s {abort %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->latime);
-			      break;
-			   case 'b':
-			      fprintf(stdout,"%s {begin %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lbtime);
-			      break;
-			   case 'e':
-			      fprintf(stdout,"%s {end %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->letime);
-			      break;
-			   case 'i':
-			      fprintf(stdout,"%s {init %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->litime);
-			      break;
-			   case 's':
-			      fprintf(stdout,"%s {submit %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lstime);
-			      break;
-			   case 'w':
-			      fprintf(stdout,"%s {wait %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lwtime);
-			      break;
-			   case 'd':
-			      fprintf(stdout,"%s {discret %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
-			      break;
-			   case 'c':
-			      fprintf(stdout,"%s {catchup %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
-			      break;
-			}
-		     }
-		  } else {
-            SeqUtil_TRACE(TL_FULL_TRACE,"logreader ignoring node %s %s\n",ptr_NLHtrotte->Node , ptr_LXHtrotte->Lext);
-        } 
-		  
-		  if (outputFile != NULL) {
-		     fprintf(outputFile, "SEQNODE=/%s:MEMBER=%s:SUBMIT=%s:BEGIN=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
-			     ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext, ptr_LXHtrotte->lstime, ptr_LXHtrotte->lbtime, ptr_LXHtrotte->letime,
-			     ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->deltafromstart );
-		  }
+          for ( ptr_LXHtrotte = ptr_NLHtrotte->ptr_LoopExt; ptr_LXHtrotte != NULL ; ptr_LXHtrotte = ptr_LXHtrotte->next) {
+             if ( ptr_LXHtrotte->ignoreNode == 0 ) {
+		         /*sprintf(output_buffer, "%s {exectime %s submitdelay %s submit %s begin %s end %s deltafromstart %s} ",
+			         ptr_LXHtrotte->Lext, ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->lstime,
+			         ptr_LXHtrotte->lbtime,  ptr_LXHtrotte->letime, ptr_LXHtrotte->deltafromstart);
+               */
+               sprintf(output_buffer, "%s {",ptr_LXHtrotte->Lext);  
+               tmp_statstring=strdup(output_buffer); 
+               if (  ptr_LXHtrotte->exectime && strlen( ptr_LXHtrotte->exectime ) > 0 ) { 
+                  tmp_statstring = sconcat (tmp_statstring," exectime ");  
+                  tmp_statstring = sconcat (tmp_statstring,ptr_LXHtrotte->exectime);  
+               } 
+               if (  ptr_LXHtrotte->submitdelay && strlen( ptr_LXHtrotte->submitdelay ) > 0 ) { 
+                  tmp_statstring = sconcat (tmp_statstring," submitdelay ");  
+                  tmp_statstring = sconcat (tmp_statstring,ptr_LXHtrotte->submitdelay);  
+               } 
+               if (  ptr_LXHtrotte->lstime && strlen( ptr_LXHtrotte->lstime ) > 0 ) { 
+                  tmp_statstring = sconcat (tmp_statstring," submit ");  
+                  tmp_statstring = sconcat (tmp_statstring,ptr_LXHtrotte->lstime);  
+               } 
+               if (  ptr_LXHtrotte->lbtime && strlen( ptr_LXHtrotte->lbtime ) > 0 ) { 
+                  tmp_statstring = sconcat (tmp_statstring," begin ");  
+                  tmp_statstring = sconcat (tmp_statstring,ptr_LXHtrotte->lbtime);  
+               } 
+               if (  ptr_LXHtrotte->letime && strlen( ptr_LXHtrotte->letime ) > 0 ) { 
+                  tmp_statstring = sconcat (tmp_statstring," end ");  
+                  tmp_statstring = sconcat (tmp_statstring,ptr_LXHtrotte->letime);  
+               } 
+               if (  ptr_LXHtrotte->deltafromstart && strlen( ptr_LXHtrotte->deltafromstart ) > 0 ) { 
+                  tmp_statstring = sconcat (tmp_statstring," deltafromstart ");  
+                  tmp_statstring = sconcat (tmp_statstring,ptr_LXHtrotte->deltafromstart);  
+               } 
+
+               tmp_statstring = sconcat (tmp_statstring," } ");  
+
+		         tmp_output=strdup(stats_output);
+		         stats_output=sconcat(tmp_output, tmp_statstring);
+		         if (read_type == LR_SHOW_ALL || read_type == LR_SHOW_STATUS ) {
+			         switch(ptr_LXHtrotte->LastAction){
+			            case 'a':
+			               fprintf(stdout,"%s {abort %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->latime);
+			               break;
+			            case 'b':
+			               fprintf(stdout,"%s {begin %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lbtime);
+			               break;
+			            case 'e':
+			               fprintf(stdout,"%s {end %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->letime);
+			               break;
+			            case 'i':
+			               fprintf(stdout,"%s {init %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->litime);
+			               break;
+			            case 's':
+			               fprintf(stdout,"%s {submit %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lstime);
+			               break;
+			            case 'w':
+			               fprintf(stdout,"%s {wait %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->lwtime);
+			               break;
+			            case 'd':
+			               fprintf(stdout,"%s {discret %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
+			               break;
+			            case 'c':
+			               fprintf(stdout,"%s {catchup %s} ",ptr_LXHtrotte->Lext, ptr_LXHtrotte->ldtime);
+			               break;
+			         }
+		        }
+		      } else {
+                 SeqUtil_TRACE(TL_FULL_TRACE,"logreader ignoring node %s %s\n",ptr_NLHtrotte->Node , ptr_LXHtrotte->Lext);
+            } 
+		 
+		      if (outputFile != NULL) {
+		         fprintf(outputFile, "SEQNODE=/%s:MEMBER=%s:SUBMIT=%s:BEGIN=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
+			            ptr_NLHtrotte->Node, ptr_LXHtrotte->Lext, ptr_LXHtrotte->lstime, ptr_LXHtrotte->lbtime, ptr_LXHtrotte->letime,
+			             ptr_LXHtrotte->exectime, ptr_LXHtrotte->submitdelay, ptr_LXHtrotte->deltafromstart );
+		      }
 	       }
 	       sprintf(output_buffer, "}");
 	       tmp_output=strdup(stats_output);
 	       stats_output=sconcat(tmp_output, output_buffer);
-	       tmp_output=strdup(avg_output);
-	       avg_output=sconcat(tmp_output, output_buffer);
-	       if (read_type == 0 || read_type == 1) {
-	          fprintf(stdout, "} \\");
+          free(tmp_statstring);
+	       if (read_type == LR_SHOW_ALL || read_type == LR_SHOW_STATUS) {
+	          fprintf(stdout, "}");
 	       }
-	       if (read_type == 0 || read_type == 2) {
-		  fprintf(stdout, "%s %s \\", stats_output, avg_output);  
+	       if ((read_type == LR_SHOW_ALL || read_type == LR_SHOW_STATS)) {
+		       fprintf(stdout, "%s", stats_output);  
 	       }
+
       }
+      fprintf(stdout, "\n");  
       
 }
 
@@ -599,16 +632,79 @@ void getAverage(char *exp, char *datestamp){
    }
 }
 
+/* Print out average values for all nodes */ 
+int printAverage() {
+   StatsNode *node_tmpptr=rootStatsNode;
+   PastTimes *time_tmpptr;
+   char * output_line = NULL, *prev_node=NULL;
+   int new_node=0;
+
+   if(rootStatsNode == NULL ) {
+      fprintf(stdout,"\n");
+      return -1; 
+   }
+   node_tmpptr=rootStatsNode;
+
+   while ( node_tmpptr != NULL ) { 
+      if ((prev_node == NULL) || (strcmp (node_tmpptr->node, prev_node) != 0)){
+         fprintf(stdout,"%s\\avg {%s {",node_tmpptr->node, node_tmpptr->member);
+      } else {
+         fprintf(stdout," %s {", node_tmpptr->member);
+      }
+
+      output_line=malloc(256);
+      time_tmpptr=node_tmpptr->times;
+      if (  time_tmpptr->exectime && strlen( time_tmpptr->exectime ) > 0 ) { 
+         output_line = sconcat (output_line," exectime ");  
+         output_line = sconcat (output_line,time_tmpptr->exectime);  
+      } 
+      if (  time_tmpptr->submitdelay && strlen( time_tmpptr->submitdelay ) > 0 ) { 
+         output_line = sconcat (output_line," submitdelay ");  
+         output_line = sconcat (output_line,time_tmpptr->submitdelay);  
+      } 
+      if (  time_tmpptr->submit && strlen( time_tmpptr->submit ) > 0 ) { 
+         output_line = sconcat (output_line," submit ");  
+         output_line = sconcat (output_line,time_tmpptr->submit);  
+      } 
+      if (  time_tmpptr->begin && strlen( time_tmpptr->begin ) > 0 ) { 
+         output_line = sconcat (output_line," begin ");  
+         output_line = sconcat (output_line,time_tmpptr->begin);  
+      } 
+      if (  time_tmpptr->end && strlen( time_tmpptr->end ) > 0 ) { 
+         output_line = sconcat (output_line," end ");  
+         output_line = sconcat (output_line,time_tmpptr->end);  
+      } 
+      if (  time_tmpptr->deltafromstart && strlen( time_tmpptr->deltafromstart ) > 0 ) { 
+         output_line = sconcat (output_line," deltafromstart ");  
+         output_line = sconcat (output_line,time_tmpptr->deltafromstart);  
+      } 
+      fprintf(stdout,"%s }",output_line);
+      free(output_line);
+      if ((node_tmpptr->next == NULL) || strcmp (node_tmpptr->next->node, node_tmpptr->node) != 0) {
+         fprintf(stdout,"}"); 
+      }
+      prev_node=node_tmpptr->node; 
+      node_tmpptr=node_tmpptr->next;
+
+      if ((node_tmpptr != NULL) && (strcmp (node_tmpptr->node, prev_node) != 0)){
+         fprintf(stdout,"\\"); 
+      }
+   }  
+   fprintf(stdout,"\n");
+   return 0;
+
+}
+
 /*outputs a node-specific line formatted to fit in the tsv structure for logreader.tcl*/
 char *getNodeAverageLine(char *node, char *member){
    char line[256];
+   char * tmp_statstring; 
    StatsNode *node_tmpptr;
    PastTimes *time_tmpptr;
    
    if(rootStatsNode == NULL || node == NULL || member == NULL) {
       return "";
    }
-   
    node_tmpptr=rootStatsNode;
    
    while((strcmp(node_tmpptr->node+1,node) != 0 || strcmp(node_tmpptr->member, member) != 0) &&
@@ -616,18 +712,41 @@ char *getNodeAverageLine(char *node, char *member){
       node_tmpptr=node_tmpptr->next;
    }
    if(strcmp(node_tmpptr->node+1,node) == 0 && strcmp(node_tmpptr->member, member) == 0) {
+      tmp_statstring=malloc(256);
       time_tmpptr=node_tmpptr->times;
-      snprintf(line, 256, "exectime %s submitdelay %s submit %s begin %s end %s deltafromstart %s", time_tmpptr->exectime, time_tmpptr->submitdelay,
-          time_tmpptr->submit, time_tmpptr->begin, time_tmpptr->end, time_tmpptr->deltafromstart);
+      if (  time_tmpptr->exectime && strlen( time_tmpptr->exectime ) > 0 ) { 
+         tmp_statstring = sconcat (tmp_statstring," exectime ");  
+         tmp_statstring = sconcat (tmp_statstring,time_tmpptr->exectime);  
+      } 
+      if (  time_tmpptr->submitdelay && strlen( time_tmpptr->submitdelay ) > 0 ) { 
+         tmp_statstring = sconcat (tmp_statstring," submitdelay ");  
+         tmp_statstring = sconcat (tmp_statstring,time_tmpptr->submitdelay);  
+      } 
+      if (  time_tmpptr->submit && strlen( time_tmpptr->submit ) > 0 ) { 
+         tmp_statstring = sconcat (tmp_statstring," submit ");  
+         tmp_statstring = sconcat (tmp_statstring,time_tmpptr->submit);  
+      } 
+      if (  time_tmpptr->begin && strlen( time_tmpptr->begin ) > 0 ) { 
+         tmp_statstring = sconcat (tmp_statstring," begin ");  
+         tmp_statstring = sconcat (tmp_statstring,time_tmpptr->begin);  
+      } 
+      if (  time_tmpptr->end && strlen( time_tmpptr->end ) > 0 ) { 
+         tmp_statstring = sconcat (tmp_statstring," end ");  
+         tmp_statstring = sconcat (tmp_statstring,time_tmpptr->end);  
+      } 
+      if (  time_tmpptr->deltafromstart && strlen( time_tmpptr->deltafromstart ) > 0 ) { 
+         tmp_statstring = sconcat (tmp_statstring," deltafromstart ");  
+         tmp_statstring = sconcat (tmp_statstring,time_tmpptr->deltafromstart);  
+      } 
+      return tmp_statstring;
    } else {
       return "";
    }
    
-   return strdup(line);
 }
 
 /*used to generate averages from stats*/
-void computeAverage(char *exp, char *datestamp, int stats_days){
+void computeAverage(char *exp, char *datestamp, int stats_days, FILE * output_file){
    char *stats_file_path = NULL;
    char *full_path = NULL;
    char char_datestamp[15];
@@ -664,7 +783,7 @@ void computeAverage(char *exp, char *datestamp, int stats_days){
       fprintf(stderr,"Unable to calculate average; missing required statistics files under %s/stats\n", exp);
       exit(1); 
    }
-   processStats(exp, datestamp);
+   processStats(exp, datestamp, output_file);
 }
 
 /*translate stats file in linked list*/
@@ -824,25 +943,12 @@ int addStatsNode(char *node, char *member, char* stime, char *btime, char *etime
 }
 
 /*final step to the computation of averages; it calculates from the linked list and outputs results to avg file*/
-int processStats(char *exp, char *datestamp){
+int processStats(char *exp, char *datestamp, FILE * output_file){
    StatsNode *node_tmpptr;
    PastTimes *time_tmpptr;
    char *begin=NULL, *end=NULL, *submitdelay=NULL, *exectime=NULL, *deltafromstart=NULL, *submit=NULL;
    int int_begin[30], int_end[30], int_submitdelay[30], int_exectime[30], int_deltafromstart[30], int_submit[30];
-   char *avg_path=NULL, *buffer_1=NULL, *buffer_2=NULL;
    int avg_counter, iter_counter,i,truncate_amount=0;
-   FILE *avg=NULL;
-   
-   if(read_type==3){
-      buffer_1=sconcat(exp, "/stats/");
-      buffer_2=sconcat(buffer_1, datestamp);
-      avg_path=sconcat(buffer_2, "_avg");
-   
-      avg=fopen(avg_path, "w");
-      if(avg == NULL) {
-         return -1;
-      }
-   }
    
    if(rootStatsNode == NULL) {
       return 0;
@@ -890,17 +996,11 @@ int processStats(char *exp, char *datestamp){
       exectime=secondsToChar(SeqUtil_basicTruncatedMean(&int_exectime, avg_counter,truncate_amount));
       deltafromstart=secondsToChar(SeqUtil_basicTruncatedMean(&int_deltafromstart, avg_counter,truncate_amount));
  
-      if(read_type==3){
-         fprintf(avg, "SEQNODE=%s:MEMBER=%s:SUBMIT=%s:BEGIN=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
+      SeqUtil_printOrWrite(output_file, "SEQNODE=%s:MEMBER=%s:SUBMIT=%s:BEGIN=%s:END=%s:EXECTIME=%s:SUBMITDELAY=%s:DELTAFROMSTART=%s\n",
              node_tmpptr->node, node_tmpptr->member,submit, begin, end, exectime, submitdelay, deltafromstart);
-      }
-      
       node_tmpptr=node_tmpptr->next;
    }
    
-   if(avg != NULL){
-      fclose(avg);
-   }
    return 0;
 }
 
@@ -1031,8 +1131,8 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
 
    FILE *output_file = NULL;
    char * base; 
-   int fp=-1; 
-   char default_input_file_path[1024], optional_output_path[1024], optional_output_dir[1024];
+   int fp=-1, ret; 
+   char input_file_path[512], optional_output_path[512], optional_output_dir[512];
    
    if (exp == NULL || datestamp==NULL) {
       raiseError("logreader: exp and datestamp must be defined to use logreader\n");
@@ -1041,11 +1141,12 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
    if (strlen(datestamp) > 14) raiseError("logreader: datestamp format error. Should be YYYYMMDDHHmmss, is %s\n",datestamp);
 
    if ( inputFilePath ) { 
+      snprintf(input_file_path,512,"%s",inputFilePath);
       fp = open(inputFilePath, O_RDONLY, 0 );
    } else { 
-      sprintf(default_input_file_path, "%s/logs/%s_nodelog" , exp,datestamp);  
-      fp = open(default_input_file_path, O_RDONLY, 0 );
+      sprintf(input_file_path, "%s/logs/%s_nodelog" , exp,datestamp);  
    }
+   fp = open(input_file_path, O_RDONLY, 0 );
 
    if ( outputFilePath ) { 
        output_file = fopen(outputFilePath, "w+");
@@ -1058,81 +1159,71 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
    
    if (type != NULL) {
       if(strcmp(type, "log") == 0) {
-         read_type=0;
+         read_type=LR_SHOW_ALL;
       } else if(strcmp(type, "statuses") == 0) {
 	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: statuses\n");
-	      read_type=1;
+	      read_type=LR_SHOW_STATUS;
       } else if (strcmp(type, "stats") == 0){
 	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: stats\n"); 
-	      read_type=2;
-         if (outputFilePath == NULL){
-            sprintf(optional_output_dir, "%s/stats" , exp);
-            if( ! SeqUtil_isDirExists( optional_output_dir )) {
-               SeqUtil_TRACE(TL_FULL_TRACE, "mkdir: creating dir %s\n", optional_output_dir );
-               if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
-                  fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
-                  exit(EXIT_FAILURE);
-               }
-            }
-            sprintf(optional_output_path, "%s/stats/%s" , exp,datestamp);  
-            if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
-               SeqUtil_TRACE(TL_FULL_TRACE,"logreader: no clobber output flag set and file exists, writing to /dev/null\n");
-               sprintf(optional_output_path, "/dev/null");  
-            }
-               
-            if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
-               fprintf(stderr, "Cannot open output file %s", optional_output_path);
-               exit(1);
+	      read_type=LR_SHOW_STATS;
+      } else if (strcmp(type, "avg") == 0) {  
+         SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: show averages\n");
+         read_type=LR_SHOW_AVG;
+      } else if (strcmp(type, "compute_avg") == 0) {
+	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: compute averages\n");
+	      read_type=LR_CALC_AVG;
+      } else {
+         fprintf ( stderr, "Unsupported type (-t argument).\n");
+         exit(EXIT_FAILURE);
+      }
+      
+   }
+   
+   if (read_type == LR_SHOW_STATS) {
+      if (outputFilePath == NULL){
+         sprintf(optional_output_dir, "%s/stats" , exp);
+         if( ! SeqUtil_isDirExists( optional_output_dir )) {
+            SeqUtil_TRACE(TL_FULL_TRACE, "mkdir: creating dir %s\n", optional_output_dir );
+            if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
+               fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
+               exit(EXIT_FAILURE);
             }
          }
-      } else if (strcmp(type, "avg") == 0) {
-	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: compute averages\n");
-	      read_type=3;
-         if (outputFilePath == NULL){
-            sprintf(optional_output_dir, "%s/stats" , exp);
-            if( ! SeqUtil_isDirExists( optional_output_dir )) {
-               SeqUtil_TRACE(TL_FULL_TRACE, "mkdir: creating dir %s\n", optional_output_dir );
-               if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
-                  fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
-                  exit(EXIT_FAILURE);
-               }
-            }
-            sprintf(optional_output_path, "%s/stats/%s_avg" , exp,datestamp);  
-            if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
-               SeqUtil_TRACE(TL_FULL_TRACE,"logreader: no clobber output flag set and file exists, writing to /dev/null\n");
-               sprintf(optional_output_path, "/dev/null");  
-            }
-
-            if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
-               fprintf(stderr, "Cannot open output file %s", optional_output_path);
-               exit(1);
-            }
+         sprintf(optional_output_path, "%s/stats/%s" , exp,datestamp);  
+         if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
+            SeqUtil_TRACE(TL_FULL_TRACE,"logreader: no clobber output flag set and file exists, writing to /dev/null\n");
+            sprintf(optional_output_path, "/dev/null");  
+         }
+               
+         if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
+            fprintf(stderr, "Cannot open output file %s \n", optional_output_path);
+            exit(EXIT_FAILURE);
          }
       }
    }
-   
-   if(read_type != 3) {
+
+   if ((read_type == LR_SHOW_ALL) || (read_type == LR_SHOW_STATUS) || (read_type == LR_SHOW_STATS))  {
       if ( fp < 0 ) {
-         fprintf(stderr,"Cannot open input file\n");
+         fprintf(stderr,"Cannot open input file %s\n",input_file_path );
          exit(1);
       }
    
       if ( fstat(fp,&pt) != 0 ) {
-         fprintf(stderr,"Cannot fstat file\n");
+         fprintf(stderr,"Cannot fstat file %s\n", input_file_path);
          exit(1);
       }
-   
+
       if ( ( base = mmap(NULL, pt.st_size, PROT_READ, MAP_SHARED, fp, (off_t)0) ) == (char *) MAP_FAILED ) {
          if (errno == EINVAL) {
             fprintf (stdout,"\n");
             close(fp);
             if (output_file != NULL) fclose(output_file);
-            exit(0);
+            exit(EXIT_SUCCESS);
          } else { 
             fprintf(stderr,"Map failed \n");
             close(fp);
             if (output_file != NULL) fclose(output_file);
-            exit(1);
+            exit(EXIT_FAILURE);
          }
       }
       read_file(base); 
@@ -1140,15 +1231,45 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
       /* unmap */
       munmap(base, pt.st_size);  
       
-      /*parse avg file*/
-      getAverage(exp, datestamp);
-      
-      /*print nodes*/
+      /*print node status and/or stats*/
       print_LListe ( MyListListNodes, output_file );
-   } else {
-      computeAverage(exp, datestamp, statWindow);
+
+   }
+
+   if ((read_type == LR_SHOW_ALL) || (read_type == LR_SHOW_AVG)) {   
+      getAverage(exp, datestamp);
+      ret=printAverage();  
+   }
+
+   if (read_type == LR_CALC_AVG) { 
+      if (outputFilePath == NULL){
+         sprintf(optional_output_dir, "%s/stats" , exp);
+         if( ! SeqUtil_isDirExists( optional_output_dir )) {
+            SeqUtil_TRACE(TL_FULL_TRACE, "mkdir: creating dir %s\n", optional_output_dir );
+            if ( mkdir( optional_output_dir, 0755 ) == -1 ) {
+               fprintf ( stderr, "Cannot create: %s Reason: %s\n",optional_output_dir, strerror(errno) );
+               exit(EXIT_FAILURE);
+            }
+         }
+         sprintf(optional_output_path, "%s/stats/%s_avg" , exp,datestamp);  
+         if ( (clobberFile == 0) && (access(optional_output_path,R_OK)==0)) {
+            SeqUtil_TRACE(TL_FULL_TRACE,"logreader: no clobber output flag set and file exists, writing to /dev/null\n");
+            sprintf(optional_output_path, "/dev/null");  
+         }
+
+         if ( ( output_file = fopen(optional_output_path, "w+") ) == NULL) { 
+            fprintf(stderr, "Cannot open output file %s", optional_output_path);
+            exit(1);
+         }
+      }
+
+      computeAverage(exp, datestamp, statWindow, output_file);
    }
    
+   if (read_type == LR_SHOW_ALL) {
+      SeqUtil_printOrWrite(output_file,"last_read_offset %d \n", pt.st_size);
+   } 
+
    if (output_file != NULL) fclose(output_file);
 
 }

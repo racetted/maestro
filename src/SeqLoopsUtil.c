@@ -149,6 +149,7 @@ char* SeqLoops_getLoopAttribute( SeqNameValuesPtr loop_attr_ptr, char* attr_name
    while ( tmpptr != NULL ) {
       if( strcmp( tmpptr->name, attr_name ) == 0 ) {
          returnValue = strdup( tmpptr->value );
+         SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getLoopAttribute found attribute:%s value:%s \n", attr_name, returnValue );
          break;
       }
       tmpptr = tmpptr->nextPtr;
