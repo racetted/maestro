@@ -1268,13 +1268,13 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    xmlNodePtr currentNodePtr = NULL;
    xmlXPathContextPtr context = NULL, previousContext=NULL;
    const xmlChar *nodeName = NULL;
-   
+
    int j = 0, switchItemCount = 0, completeAnswerFound = 0, answerIndex = 0;
    char *tmpName = NULL, *tmpSwitchItemName = NULL, *savePtr = NULL;
    char tmpQuery[512];
    xmlXPathObjectPtr switchItem = NULL, tmpResult = NULL;
    xmlChar *switchItemName = NULL;
-   
+
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() node:%s seq_exp_home:%s\n", _nodePath, _seq_exp_home );
 
    /* count is 0-based */
@@ -1314,146 +1314,146 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          sprintf ( query, "(child::*[@name='%s'])", tmpstrtok );
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       }
-      
+
       /* run the normal query */
       if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
          raiseError("Node %s not found in XML master file! (getFlowInfo)\n", _nodePath);
       }
-       
+
       /* At this point I should only have one node in the result set
-      I'm getting the node to set it in the context so that
-      I can retrieve other nodes relative to the current one
-      i.e. depends/submits/etc
-      */
+         I'm getting the node to set it in the context so that
+         I can retrieve other nodes relative to the current one
+         i.e. depends/submits/etc
+         */
 
       nodeset = result->nodesetval;
       currentNodePtr = nodeset->nodeTab[0];
       _nodeDataPtr->type = getNodeType( currentNodePtr->name );
       context->node = currentNodePtr;
 
-          /* retrieve node specific attributes */
+      /* retrieve node specific attributes */
       if ( (attributesResult = XmlUtils_getnodeset ("(@*)", context)) != NULL){
          nodeset=attributesResult->nodesetval;
          for (i=0; i < nodeset->nodeNr; i++) {
             currentNodePtr = nodeset->nodeTab[i];
             nodeName = currentNodePtr->name;
-	    if ( strcmp( nodeName, "work_unit" ) == 0 ) {
+            if ( strcmp( nodeName, "work_unit" ) == 0 ) {
                if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask )  {
-	          raiseError("Work unit mode is only for containers (single_reserv=1)");
-	       } else {
-	          if (currentFlowNode==NULL) raiseError("Work unit mode cannot be on the root node (single_reserv=1)");
-	          parseWorkerPath(currentFlowNode, _seq_exp_home, _nodeDataPtr );
-	       }
-   	    }
-	    if ( strcmp (nodeName, "type") == 0 && _nodeDataPtr->type == Switch) {
-	        tmpSwitchType=strdup(currentNodePtr->children->content);
-	        tmpAnswer=switchReturn(_nodeDataPtr,tmpSwitchType);
-		sprintf ( query, "(child::SWITCH_ITEM[contains(@name,'%s')])", tmpAnswer);
-                /* run the normal query */
-                if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-		    /*No exact match found, search for default item*/
-		    SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\nSearching for default SWITCH_ITEM value (getFlowInfo) \n", query );
-		    sprintf ( query, "(child::SWITCH_ITEM[@name='default'])");
-		    if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-		      SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
-		      switchResultFound = 0;
-		    } else {
-		      SeqUtil_TRACE(TL_MEDIUM,"Query %s found default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
-		      /* query returned results */ 
-		      switchResultFound = 1;
-		      nodeset = result->nodesetval;
-		      currentNodePtr = nodeset->nodeTab[0];
-		      context->node = currentNodePtr;
-		    }
-		} /*getnodeset found switch item name containing tmpAnswer */ else {
-		  completeAnswerFound = 0;
-		  switchResultFound = 0;
-		  answerIndex = 0;
-		  switchItem = XmlUtils_getnodeset ("child::SWITCH_ITEM/@name", context);
-		  switchItemCount = switchItem->nodesetval->nodeNr;
-		  /*for each switch item containing tmpAnswer, check if it contains tmpAnswer as a complete name*/
-		  for (j=0; j < switchItemCount; j++) {
-		    if (completeAnswerFound == 0) {
-		      switchItemName = switchItem->nodesetval->nodeTab[j]->children->content;
-		      tmpSwitchItemName = switchItemName;
-		      tmpName = (char*) strtok_r(tmpSwitchItemName, " ,)", &savePtr);
-		      while (tmpName != NULL) {
-			if ( strcmp(tmpName, tmpAnswer) == 0 ) {
-			  completeAnswerFound = 1;
-			  answerIndex = j;
-			  break;
-			} else {
-			    tmpName = (char*) strtok_r ( NULL, " ,)", &savePtr);
-			}
-		      }
-		      savePtr = NULL;
-		  }
-		  if ( completeAnswerFound == 1) {
-		    sprintf(tmpQuery, "child::SWITCH_ITEM");
-		    tmpResult = XmlUtils_getnodeset (tmpQuery, context);
-		    /* query returned results */ 
-		    switchResultFound = 1;
-		    nodeset = tmpResult->nodesetval;
-                    currentNodePtr = nodeset->nodeTab[answerIndex];
-                    context->node = currentNodePtr;
-		    completeAnswerFound = 0;
-		  } 
-		 } 
-		if (switchResultFound == 0) {
-		    /*No exact match found, search for default item*/
-		    SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\nSearching for default SWITCH_ITEM value (getFlowInfo) \n", query );
-		    sprintf ( query, "(child::SWITCH_ITEM[@name='default'])");
-		    if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-		      SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
-		    } else {
-		      SeqUtil_TRACE(TL_MEDIUM,"Query %s found default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
-		      /* query returned results */ 
-		      switchResultFound = 1;
-		      nodeset = result->nodesetval;
-		      currentNodePtr = nodeset->nodeTab[0];
-		      context->node = currentNodePtr;
-		    }
-		} 
-	      }
-	      if ( switchResultFound == 0 ) {
-		 SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
-	      }
-	      SeqNameValues_insertItem( &_nodeDataPtr->switchAnswers, (char*) SeqUtil_fixPath(currentFlowNode), tmpAnswer);
-	     }
+                  raiseError("Work unit mode is only for containers (single_reserv=1)");
+               } else {
+                  if (currentFlowNode==NULL) raiseError("Work unit mode cannot be on the root node (single_reserv=1)");
+                  parseWorkerPath(currentFlowNode, _seq_exp_home, _nodeDataPtr );
+               }
+            }
+            if ( strcmp (nodeName, "type") == 0 && _nodeDataPtr->type == Switch) {
+               tmpSwitchType=strdup(currentNodePtr->children->content);
+               tmpAnswer=switchReturn(_nodeDataPtr,tmpSwitchType);
+               sprintf ( query, "(child::SWITCH_ITEM[contains(@name,'%s')])", tmpAnswer);
+               /* run the normal query */
+               if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+                  /*No exact match found, search for default item*/
+                  SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\nSearching for default SWITCH_ITEM value (getFlowInfo) \n", query );
+                  sprintf ( query, "(child::SWITCH_ITEM[@name='default'])");
+                  if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+                     SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+                     switchResultFound = 0;
+                  } else {
+                     SeqUtil_TRACE(TL_MEDIUM,"Query %s found default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+                     /* query returned results */ 
+                     switchResultFound = 1;
+                     nodeset = result->nodesetval;
+                     currentNodePtr = nodeset->nodeTab[0];
+                     context->node = currentNodePtr;
+                  }
+               } /*getnodeset found switch item name containing tmpAnswer */ else {
+                  completeAnswerFound = 0;
+                  switchResultFound = 0;
+                  answerIndex = 0;
+                  switchItem = XmlUtils_getnodeset ("child::SWITCH_ITEM/@name", context);
+                  switchItemCount = switchItem->nodesetval->nodeNr;
+                  /*for each switch item containing tmpAnswer, check if it contains tmpAnswer as a complete name*/
+                  for (j=0; j < switchItemCount; j++) {
+                     if (completeAnswerFound == 0) {
+                        switchItemName = switchItem->nodesetval->nodeTab[j]->children->content;
+                        tmpSwitchItemName = switchItemName;
+                        tmpName = (char*) strtok_r(tmpSwitchItemName, " ,)", &savePtr);
+                        while (tmpName != NULL) {
+                           if ( strcmp(tmpName, tmpAnswer) == 0 ) {
+                              completeAnswerFound = 1;
+                              answerIndex = j;
+                              break;
+                           } else {
+                              tmpName = (char*) strtok_r ( NULL, " ,)", &savePtr);
+                           }
+                        }
+                        savePtr = NULL;
+                     }
+                     if ( completeAnswerFound == 1) {
+                        sprintf(tmpQuery, "child::SWITCH_ITEM");
+                        tmpResult = XmlUtils_getnodeset (tmpQuery, context);
+                        /* query returned results */ 
+                        switchResultFound = 1;
+                        nodeset = tmpResult->nodesetval;
+                        currentNodePtr = nodeset->nodeTab[answerIndex];
+                        context->node = currentNodePtr;
+                        completeAnswerFound = 0;
+                     } 
+                  } 
+                  if (switchResultFound == 0) {
+                     /*No exact match found, search for default item*/
+                     SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\nSearching for default SWITCH_ITEM value (getFlowInfo) \n", query );
+                     sprintf ( query, "(child::SWITCH_ITEM[@name='default'])");
+                     if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
+                        SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+                     } else {
+                        SeqUtil_TRACE(TL_MEDIUM,"Query %s found default value SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+                        /* query returned results */ 
+                        switchResultFound = 1;
+                        nodeset = result->nodesetval;
+                        currentNodePtr = nodeset->nodeTab[0];
+                        context->node = currentNodePtr;
+                     }
+                  } 
+               }
+               if ( switchResultFound == 0 ) {
+                  SeqUtil_TRACE(TL_MEDIUM,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
+               }
+               SeqNameValues_insertItem( &_nodeDataPtr->switchAnswers, (char*) SeqUtil_fixPath(currentFlowNode), tmpAnswer);
+            }
+         }
+         xmlXPathFreeObject (attributesResult);
       }
-      xmlXPathFreeObject (attributesResult);
-    }
 
       /* read the new flow file described in the module */
       if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
-       
+
          /* reset the intramodule path */
          free(intramodulePath);
          intramodulePath = NULL;
 
          /* read the flow file located in the module depot */
-	      free(xmlFile);
-	      xmlFile = malloc( strlen( _seq_exp_home ) + strlen( "/modules//flow.xml") + strlen( tmpstrtok ) + 1 ); 
+         free(xmlFile);
+         xmlFile = malloc( strlen( _seq_exp_home ) + strlen( "/modules//flow.xml") + strlen( tmpstrtok ) + 1 ); 
          sprintf ( xmlFile, "%s/modules/%s/flow.xml",_seq_exp_home, tmpstrtok ); 
          SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo Found new XML source from module:%s/%s path:%s\n", taskPath, tmpstrtok , xmlFile);
 
-	 /* keep record of previous xml file for use in siblings query*/
+         /* keep record of previous xml file for use in siblings query*/
 
          if (previousContext != NULL){
-             xmlXPathFreeContext(previousContext);
-	 }
-	 if (previousDoc != NULL){
-             xmlFreeDoc(previousDoc); 
-	 }
+            xmlXPathFreeContext(previousContext);
+         }
+         if (previousDoc != NULL){
+            xmlFreeDoc(previousDoc); 
+         }
 
          previousContext=context;
-	 previousDoc=doc; 
+         previousDoc=doc; 
          context = NULL;
          doc = NULL;
 
          /* parse the xml file */
          if ((doc = XmlUtils_getdoc(xmlFile)) == NULL) {
-             raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
+            raiseError("Unable to parse file, or file not found: %s\n", xmlFile);
          }
 
          /* the context is used to walk trough the nodes */
@@ -1461,7 +1461,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          sprintf ( query, "(/MODULE)" );
 
          if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
-             raiseError ("ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
+            raiseError ("ERROR: Problem with result set, Node %s not found in XML master file\n", _nodePath );
          }
          nodeset = result->nodesetval;
          currentNodePtr = nodeset->nodeTab[0];
@@ -1489,17 +1489,17 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
             free(intramodulePath);
             intramodulePath = NULL;
             SeqUtil_stringAppend( &intramodulePath, taskPath );
-          }
+         }
 
       } else {
          if( _nodeDataPtr->type == Task || _nodeDataPtr->type == NpassTask )  {
-             SeqUtil_stringAppend( &taskPath, "/" );
-             SeqUtil_stringAppend( &taskPath, tmpstrtok );
+            SeqUtil_stringAppend( &taskPath, "/" );
+            SeqUtil_stringAppend( &taskPath, tmpstrtok );
          }
       } 
 
       /* the containing module is set if the current node
-      is a module and is not the last node  */
+         is a module and is not the last node  */
       if (  _nodeDataPtr->type == Module && tmpstrtok != NULL ) {
          free( module );
          module = malloc ( strlen(tmpstrtok) +1);
@@ -1515,7 +1515,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
          /* get loop info from parent loop xml resource file */
          getNodeLoopContainersAttr( _nodeDataPtr, currentFlowNode, _seq_exp_home );
       }
-       /* adds switch containers except if last node is also loop */
+      /* adds switch containers except if last node is also loop */
       if ( _nodeDataPtr->type == Switch &&  tmpstrtok != NULL ) {
          SeqNode_addSpecificData( _nodeDataPtr, "SWITCH_TYPE", tmpSwitchType );
          SeqNode_addSwitch(_nodeDataPtr, currentFlowNode, tmpSwitchType, tmpAnswer); 
@@ -1533,16 +1533,16 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       xmlXPathFreeObject (result);
    }
 
-  /* SeqUtil_stripSubstring(&pathToModule,intramodulePath,1); */
+   /* SeqUtil_stripSubstring(&pathToModule,intramodulePath,1); */
    memset(pathToModule, '\0', sizeof(pathToModule)); 
    if (intramodulePath != NULL) { 
-       /* if container and intramodule path are equal, you're in the Entry module, so pathToModule is empty */
+      /* if container and intramodule path are equal, you're in the Entry module, so pathToModule is empty */
       if (strcmp(intramodulePath, _nodeDataPtr->container) != 0) {   
-           tmpPTM=malloc(strlen(_nodeDataPtr->container) - strlen(intramodulePath)+1); 
-           (void)strncpy(pathToModule,_nodeDataPtr->container,strlen(_nodeDataPtr->container) - strlen(intramodulePath)); 
+         tmpPTM=malloc(strlen(_nodeDataPtr->container) - strlen(intramodulePath)+1); 
+         (void)strncpy(pathToModule,_nodeDataPtr->container,strlen(_nodeDataPtr->container) - strlen(intramodulePath)); 
       }
    } else {
-     strcpy(pathToModule,_nodeDataPtr->container); 
+      strcpy(pathToModule,_nodeDataPtr->container); 
    }
    sprintf(pathToModule,"%s/%s",pathToModule,module); 
    SeqNode_setPathToModule(_nodeDataPtr, pathToModule);
@@ -1558,7 +1558,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    /* at this point we're done validating the nodes */
    /* point the context to the last node retrieved so that we can
       do relative queries */
-  
+
    /* retrieve node specific attributes */
    strcpy ( query, "(@*)");
    if ( (result = XmlUtils_getnodeset (query, context)) != NULL){
@@ -1567,19 +1567,19 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
    xmlXPathFreeObject (result);
 
    if ( SHOW_ALL || SHOW_DEP ) {
-       /* retrieve depends node */
-       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** internal depends **********\n");
-       sprintf ( query, "(child::DEPENDS_ON)");
-       if (_nodeDataPtr->type==Module){
-           if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
-               parseDepends( result, _nodeDataPtr, 1 ); 
-           }
-        } else {
-           if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-               parseDepends( result, _nodeDataPtr, 1 ); 
-           }
-        }
-       xmlXPathFreeObject (result);
+      /* retrieve depends node */
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** internal depends **********\n");
+      sprintf ( query, "(child::DEPENDS_ON)");
+      if (_nodeDataPtr->type==Module){
+         if( (result = XmlUtils_getnodeset (query, previousContext)) != NULL ) {
+            parseDepends( result, _nodeDataPtr, 1 ); 
+         }
+      } else {
+         if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
+            parseDepends( result, _nodeDataPtr, 1 ); 
+         }
+      }
+      xmlXPathFreeObject (result);
    }
 
    if( SHOW_ALL ) {
@@ -1589,35 +1589,35 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
       result = XmlUtils_getnodeset (query, context);
       parseSubmits( result, _nodeDataPtr ); 
       xmlXPathFreeObject (result);
-    
+
       /* retrieve node's siblings */
       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** node siblings **********\n");
-      
+
       if ( _nodeDataPtr->type == Switch && switchResultFound ) {
-          strcpy (query, "(../preceding-sibling::*[@name])");
+         strcpy (query, "(../preceding-sibling::*[@name])");
       } else {
-          strcpy (query, "(preceding-sibling::*[@name])");
+         strcpy (query, "(preceding-sibling::*[@name])");
       }
       if ( _nodeDataPtr->type == Module) {
-          result =  XmlUtils_getnodeset (query, previousContext);
+         result =  XmlUtils_getnodeset (query, previousContext);
       } else {
-          result =  XmlUtils_getnodeset (query, context);
+         result =  XmlUtils_getnodeset (query, context);
       }
       if (result) {
          SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** preceding siblings found**********\n");
       }
       parseNodeSiblings( result, _nodeDataPtr); 
       xmlXPathFreeObject (result);
-   
+
       if ( _nodeDataPtr->type == Switch && switchResultFound ) {
-          strcpy (query, "(../following-sibling::*[@name])");
+         strcpy (query, "(../following-sibling::*[@name])");
       } else {
-          strcpy (query, "(following-sibling::*[@name])");
+         strcpy (query, "(following-sibling::*[@name])");
       }
       if ( _nodeDataPtr->type == Module) {
-          result =  XmlUtils_getnodeset (query, previousContext);
+         result =  XmlUtils_getnodeset (query, previousContext);
       } else {
-          result =  XmlUtils_getnodeset (query, context);
+         result =  XmlUtils_getnodeset (query, context);
       }
       if (result) {
          SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** following siblings found**********\n");
