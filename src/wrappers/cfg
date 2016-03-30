@@ -61,14 +61,18 @@ function Sys_SelfResubmit
    echo Sys_SelfResubmit  > /dev/null
 }
 
+# This function is removed by making it do nothing.
 function Sys_GridEngineHeader
 {
-   test "${SEQ_EXP_HOME}" != "" && GE_SystemPath=" -v SEQ_EXP_HOME=${SEQ_EXP_HOME}"
+   # test "${SEQ_EXP_HOME}" != "" && GE_SystemPath=" -v SEQ_EXP_HOME=${SEQ_EXP_HOME}"
+   true
 }
 
+# This function is removed by making it do nothing.
 function Sys_LoadLevelerHeader
 {
-   test "${SEQ_EXP_HOME}" != "" && LL_SystemPath="export SEQ_EXP_HOME=\"${SEQ_EXP_HOME}\""
+   # test "${SEQ_EXP_HOME}" != "" && LL_SystemPath="export SEQ_EXP_HOME=\"${SEQ_EXP_HOME}\""
+   true
 }
 
 function Sys_NoCfgError
@@ -76,9 +80,11 @@ function Sys_NoCfgError
    echo warning: cannot find configuration file ${1}. Using default. 
 }
 
+# This function is removed by making it do nothing.
 function Sys_JobHeader
 {
-   test "${SEQ_EXP_HOME}" != "" && SystemPath="export SEQ_EXP_HOME=${SEQ_EXP_HOME}"
+   # test "${SEQ_EXP_HOME}" != "" && SystemPath="export SEQ_EXP_HOME=${SEQ_EXP_HOME}"
+   true
 }
 
 function Sys_AddWrapperHeader

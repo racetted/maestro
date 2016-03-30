@@ -103,7 +103,11 @@ main (int argc, char * argv [])
       {NULL,0,0,0} /* End indicator */
    };
    int opt_index, c = 0;
-
+   int i = 0;
+   fprintf(stderr, "System command: ");
+   for (; i < argc; ++i) {
+      fprintf(stderr, "%s ", argv[i]);
+   }fprintf( stderr, "\n");
 
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
    int returnDate=0, r;
@@ -162,7 +166,7 @@ main (int argc, char * argv [])
         r = sigaction (SIGALRM, &act, NULL);
         if (r < 0) perror (__func__);
       
-        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac() setting date to=%s\n", dateValue); 
+        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_main() setting date to=%s\n", dateValue); 
         tictac_setDate( expHome,dateValue);
         /* remove installed SIGALRM handler */
         act.sa_handler = SIG_DFL;
