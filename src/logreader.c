@@ -362,7 +362,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
       struct tm ti;
       time_t Sepoch,Bepoch,Eepoch,TopNodeSubmitTime;
       time_t ExeTime, SubDelay, RelativeEnd;
-      int n, found_loopNode, i, j, shortestLength=256;
+      int n, found_loopNode, i, j, shortestLength=256, submit_time_found=0, begin_time_found=0, end_time_found=0 ;
       static char sbuffer[10],ebuffer[10], rbuffer[10], wbuffer[300];
       char *stats_output = NULL, *tmp_output, *tmp_statstring =NULL;
       char output_buffer[256], tmp_line[256];
@@ -390,34 +390,53 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 
 	       /* timing */
 	       n=sscanf(ptr_Ltrotte->PNode.stime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
-	       Sepoch=mktime(&ti);
-	       memset(sbuffer,'\0', sizeof(sbuffer));
-          strftime (sbuffer,10,"%H:%M:%S",localtime(&Sepoch));
-	       
-	       n=sscanf(ptr_Ltrotte->PNode.btime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
-	       Bepoch=mktime(&ti);
-	       memset(rbuffer,'\0', sizeof(rbuffer));
-          strftime (rbuffer,10,"%H:%M:%S",localtime(&Bepoch));
-	       
-	       n=sscanf(ptr_Ltrotte->PNode.etime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
-	       Eepoch=mktime(&ti);
-          memset(ebuffer,'\0', sizeof(ebuffer));
-          strftime (ebuffer,10,"%H:%M:%S",localtime(&Eepoch));
-          
-          SeqUtil_TRACE(TL_FULL_TRACE,"node:%s submit %s begin %s end %s \n",ptr_Ltrotte->PNode.Node,sbuffer,rbuffer,ebuffer ); 
+          if (n == 6) {
+            submit_time_found=1; 
+	         Sepoch=mktime(&ti);
+	         memset(sbuffer,'\0', sizeof(sbuffer));
+            strftime (sbuffer,10,"%H:%M:%S",localtime(&Sepoch));
+          } else {    
+            submit_time_found=0; 
+          }
 
-	       ExeTime = Eepoch - Bepoch;
-	       SubDelay = Bepoch - Sepoch; /* check sign */
-          RelativeEnd = Eepoch - TopNodeSubmitTime; 
+	       n=sscanf(ptr_Ltrotte->PNode.btime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
+          if (n == 6) {
+            begin_time_found=1; 
+	         Bepoch=mktime(&ti);
+	         memset(rbuffer,'\0', sizeof(rbuffer));
+            strftime (rbuffer,10,"%H:%M:%S",localtime(&Bepoch));
+	       } else {    
+            begin_time_found=0; 
+          }
+
+	       n=sscanf(ptr_Ltrotte->PNode.etime,"%4d%2d%2d.%2d:%2d:%2d", &ti.tm_year, &ti.tm_mon, &ti.tm_mday, &ti.tm_hour, &ti.tm_min, &ti.tm_sec);
+          if (n == 6) {
+            end_time_found=1; 
+	         Eepoch=mktime(&ti);
+            memset(ebuffer,'\0', sizeof(ebuffer));
+            strftime (ebuffer,10,"%H:%M:%S",localtime(&Eepoch));
+          } else {    
+            end_time_found=0; 
+          }
+
+          SeqUtil_TRACE(TL_FULL_TRACE,"node:%s submit %s begin %s end %s \n",ptr_Ltrotte->PNode.Node,sbuffer,rbuffer,ebuffer ); 
 
 	       memset(ebuffer,'\0', sizeof(ebuffer));
 	       memset(sbuffer,'\0', sizeof(sbuffer));
 	       memset(rbuffer,'\0', sizeof(rbuffer));
-
-	       strftime (ebuffer,10,"%H:%M:%S",localtime(&ExeTime));
-	       strftime (sbuffer,10,"%H:%M:%S",localtime(&SubDelay));
-	       strftime (rbuffer,10,"%H:%M:%S",localtime(&RelativeEnd));
-          
+   
+          if (begin_time_found && submit_time_found) {
+	         SubDelay = Bepoch - Sepoch; /* check sign */
+	         strftime (sbuffer,10,"%H:%M:%S",localtime(&SubDelay));
+          }
+          if (begin_time_found && end_time_found) {
+	         ExeTime = Eepoch - Bepoch;
+	         strftime (ebuffer,10,"%H:%M:%S",localtime(&ExeTime));
+          }
+          if (end_time_found) {
+            RelativeEnd = Eepoch - TopNodeSubmitTime; 
+	         strftime (rbuffer,10,"%H:%M:%S",localtime(&RelativeEnd));
+          } 
 	       /* end timing */
    
 	       /*if ( strcmp(ptr_Ltrotte->PNode.loop,"") != 0 ) {*/
@@ -866,7 +885,7 @@ int parseStatsLine(char line[1024]){
    submitdelay=malloc(submitdelaylen+1);
    deltafromstart=malloc(deltafromstartlen+1);
     
-   if(node == NULL || member == NULL || btime == NULL || etime == NULL ||
+   if(node == NULL || member == NULL || stime==NULL || btime == NULL || etime == NULL ||
       exectime == NULL || submitdelay == NULL || deltafromstart == NULL) {
       SeqUtil_TRACE(TL_ERROR,"parseStatsLine malloc problem \n");
       return -1;
@@ -874,6 +893,7 @@ int parseStatsLine(char line[1024]){
     
    snprintf(node, nodelen+1, "%s", nodeptr);
    snprintf(member, memberlen+1, "%s", memberptr);
+   snprintf(stime, stimelen+1, "%s", stimeptr);
    snprintf(btime, btimelen+1, "%s", btimeptr);
    snprintf(etime, etimelen+1, "%s", etimeptr);
    snprintf(exectime, exectimelen+1, "%s", exectimeptr);
