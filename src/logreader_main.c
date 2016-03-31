@@ -163,10 +163,8 @@ int main ( int argc, char * argv[] )
    }
 
    if (exp == NULL) {
-      if (getenv("SEQ_EXP_HOME") == NULL) {
-         raiseError("-e or SEQ_EXP_HOME must be defined.\n");
-      } else {
-         exp=strdup(getenv("SEQ_EXP_HOME"));
+      if ((exp = getenv("SEQ_EXP_HOME")) == NULL) {
+         raiseError("nodelogger_main(): -e or SEQ_EXP_HOME must be defined.\n");
       }
    }
    

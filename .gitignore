@@ -21,3 +21,7 @@ src/getdef
 src/tictac
 # cscope database
 cscope.out
+# Test suite submission script
+submitTests.sh
+# NFS files
+.nfs*

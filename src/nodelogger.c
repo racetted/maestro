@@ -66,7 +66,7 @@ static char TOP_LOG_PATH[1024];
 
 static int write_line(int sock, int top, const char* type);
 static void gen_message (const char *job, const char *type, const char* loop_ext, const char *message);
-static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp, const char *logtype);
+static int sync_nodelog_over_nfs(const char *job, const char *type, const char* loop_ext, const char *message, const char *dtstmp, const char *logtype, const char * _seq_exp_home);
 static  void NotifyUser (int sock , int top , char mode , const char* _seq_exp_home);
 extern char* str2md5 (const char *str, int length);
 
@@ -173,7 +173,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
           } else {
             logtocreate = "nodelog";
           }
-          ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
+          ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate,_seq_exp_home);
           return;
        }
        /* install SIGALRM handler */
@@ -201,7 +201,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
                } else {
                  logtocreate = "nodelog";
                }
-               ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
+               ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate, _seq_exp_home);
                return;
             } else {
                SeqUtil_TRACE(TL_MEDIUM, "\n================= ACQUIRED A NEW CONNECTION FROM NODELOGGER PROCESS ================== \n");
@@ -214,12 +214,12 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     if ( sock > -1 ) {
       if ((write_ret=write_line(sock, 0, type )) == -1) {
         logtocreate = "nodelog";
-        ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
+        ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate, _seq_exp_home); 
       }
       if ((pathcounter <= 1) || (strcmp(type, "abort") == 0) || (strcmp(type, "event") == 0) || (strcmp(type, "info") == 0) ) {
          if ((write_ret=write_line(sock, 1, type )) == -1) {
            logtocreate = "toplog";
-           ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate); 
+           ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate, _seq_exp_home); 
          }
       }
       if (write_ret == -1) return;
@@ -229,7 +229,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
       } else {
         logtocreate = "nodelog";
       }
-      ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate);
+      ret=sync_nodelog_over_nfs(NODELOG_JOB, type, loop_ext, NODELOG_MESSAGE, datestamp, logtocreate, _seq_exp_home);
       return;
     }
         /* @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ CRITICAL  : CLOSE SOCKET ONLY WHEN NOT ACQUIRED FROM MAESTRO @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ */
@@ -369,7 +369,7 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
   *
   *
   */
-static int sync_nodelog_over_nfs (const char *node, const char * type, const char * loop_ext, const char * message, const char * datestamp, const char *logtype)
+static int sync_nodelog_over_nfs (const char *node, const char * type, const char * loop_ext, const char * message, const char * datestamp, const char *logtype, const char * _seq_exp_home)
 {
     FILE *fd;
     struct passwd *ppass;
@@ -384,7 +384,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     static DIR *dp = NULL;
     struct dirent *d;
     time_t now;
-    char *seq_exp_home=NULL, *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_log_path=NULL;
+    char *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_log_path=NULL;
     char resolved[MAXPATHLEN];
     char host[128], lock[1024],flock[1024],lpath[1024],buf[1024];
     char time_string[40],Stime[40],Etime[40],Atime[40];
@@ -394,8 +394,8 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     double diff_t;
 
     if (logtype == "both") {
-       sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"nodelog");
-       sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"toplog");
+       sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"nodelog", _seq_exp_home);
+       sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"toplog", _seq_exp_home);
        return(0);
     }
     
@@ -420,8 +420,9 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     }
  
     /* env SEQ_EXP_HOME */
-    if ( (seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL ) {
-        fprintf(stderr,"Nodelogger::cannot get SEQ_EXP_HOME variable ...\n");
+    if ( _seq_exp_home == NULL ) {
+        fprintf(stderr,"Nodelogger::_seq_exp_home cannot be NULL...\n");
+        exit (1);
     }
  
     /* construct a unique bucket name  */
@@ -430,8 +431,8 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     memset(lpath,'\0', sizeof(lpath));
  
     /* I need an xp Inode */
-    if ( (path_status=realpath(seq_exp_home,resolved)) == NULL ) {
-       fprintf(stderr,"Nodelogger::Probleme avec seq_exp_home=%s\n",seq_exp_home);
+    if ( (path_status=realpath(_seq_exp_home,resolved)) == NULL ) {
+       fprintf(stderr,"Nodelogger::Probleme avec _seq_exp_home=%s\n",_seq_exp_home);
        return (-1);
     } 
  						     
