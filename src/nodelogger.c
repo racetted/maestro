@@ -312,10 +312,10 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     int c_month, c_day, c_hour, c_min, c_sec, c_year;
 
 
-    struct tm *localtime(), *tmptr;
+    struct tm *tmptr;
 
     (void) time(&timval);
-    tmptr = localtime(&timval);
+    tmptr = gmtime(&timval);
 
     /* obtain the current date */
 

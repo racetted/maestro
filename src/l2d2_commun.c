@@ -43,7 +43,7 @@ void get_time (char *btime , int mode )
 	     
    /* Obtain the time of day, and convert it to a tm struct.  */
    gettimeofday (&tv, NULL);
-   ptm = localtime (&tv.tv_sec);
+   ptm = gmtime (&tv.tv_sec);
    /* Format the date and time, down to a single second.  */
    strftime (time_string, sizeof (time_string), "%Y%m%d%H%M%S", ptm);
    /* Compute milliseconds from microseconds.  */
