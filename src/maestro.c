@@ -1993,14 +1993,14 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char nodelogger_msg[SEQ_MAXFIELD];
    FILE* waitedFile = NULL;
    SeqNameValuesPtr loopArgsPtr = NULL;
-   char depExp[256], depNode[256], depArgs[SEQ_MAXFIELD], depDatestamp[20];
-   char filename[SEQ_MAXFIELD], submitCmd[SEQ_MAXFIELD];
+   char depExp[256] = {'\0'}, depNode[256] = {'\0'}, depArgs[SEQ_MAXFIELD] = {'\0'}, depDatestamp[20] = {'\0'};
+   char filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'};
    char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL;
    int submitCode = 0, count = 0, line_count=0, ret;
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() executing for %s\n", _nodeDataPtr->nodeName );
 
-   LISTNODEPTR cmdList = NULL, currentCmd = NULL, nameList = NULL, currentName = NULL;
+   LISTNODEPTR submittedList = NULL;
 
    loopArgsPtr = _nodeDataPtr->loop_args;
    if (_nodeDataPtr->isLastArg){
@@ -2015,13 +2015,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       SeqUtil_stringAppend( &extName, "." );
       SeqUtil_stringAppend( &extName, tmpExt );
    } 
-
-   memset(filename,'\0',sizeof filename);
-   memset(depExp,'\0',sizeof depExp);
-   memset(depNode,'\0',sizeof depNode);
-   memset(depDatestamp,'\0',sizeof depDatestamp);
-   memset(depArgs,'\0',sizeof depArgs);
-   memset(submitCmd,'\0',sizeof submitCmd);
 
    /* local dependencies (same exp) are fetched from sequencing/status/depends/$datestamp,
       remote dependencies are fetched from sequencing/status/remote_depends/$datestamp */
@@ -2052,11 +2045,27 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                    continue; 
                }
 
-               SeqLoops_parseArgs(&submitDepArgs, depArgs);
-               SeqUtil_TRACE(TL_FULL_TRACE, "submitDependencies calling maestro:\n\t\
-                     maestro(%s, \"submit\", \"continue\", %s, 0, NULL, %s, %s );",
-                     depNode, submitDepArgs, depDatestamp, depExp );
-               submitCode = maestro( depNode, "submit", "continue", submitDepArgs, 0, NULL, depDatestamp, depExp);
+               if ( ! SeqListNode_isItemExists( submittedList, depNode ) ) {
+                  SeqListNode_insertItem( &submittedList, depNode );
+                  if ( strcmp( _flow, "continue" ) == 0 ){ 
+                     SeqLoops_parseArgs(&submitDepArgs, depArgs);
+                     SeqUtil_TRACE(TL_FULL_TRACE, "submitDependencies calling maestro:\n\t\
+                           maestro(%s, \"submit\", \"continue\", %s, 0, NULL, %s, %s );",
+                           depNode, submitDepArgs, depDatestamp, depExp );
+                     submitCode = maestro( depNode, "submit", "continue", submitDepArgs, 0, NULL, depDatestamp, depExp);
+                     SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() submitCode: %d\n", submitCode);
+                     if( submitCode != 0 ) {
+                        raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
+                     }
+                  } else {
+                     /* This dependency was not submitted because the flow is not continue */
+                     SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() not submitting a dependency of %s\n",_nodeDataPtr->nodeName);
+                     /* Construct a meaningful message with dependency node name */
+                     sprintf(nodelogger_msg, "Node %s will not be submitted because %s ended with flow != continue",depNode,_nodeDataPtr->nodeName);
+                     /* Make the nodelogger call */
+                     nodelogger(_nodeDataPtr->name, "info", _nodeDataPtr->extension, nodelogger_msg, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
+                  }
+               }
 
                free(submitDepArgs);
  	            submitDepArgs = NULL;
@@ -2075,6 +2084,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
          }
       }
    }
+   SeqListNode_deleteWholeList( &submittedList );
    free(extName);
    free(tmpExt);
    free(tmpValue);
