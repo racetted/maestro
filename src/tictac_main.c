@@ -28,6 +28,8 @@
 #include "SeqUtil.h"
 #include "getopt.h"
 
+
+
 /*****************************************************************************
 * tictac_main:
 * API call to read or set the datestamp of a given experiment.
@@ -110,7 +112,7 @@ main (int argc, char * argv [])
    }fprintf( stderr, "\n");
 
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
-   int returnDate=0, r;
+   int returnDate=0, r, padding;
    struct sigaction act;
 
    memset (&act, '\0', sizeof(act));
@@ -122,11 +124,11 @@ main (int argc, char * argv [])
                expHome = strdup( optarg );
                break;
             case 's':
-               dateValue = malloc( strlen( optarg ) + 1 );
+               dateValue = malloc( PADDED_DATE_LENGTH + 1 );
                strcpy(dateValue,optarg);
                break;
             case 'd':
-               dateValue = malloc( strlen( optarg ) + 1 );
+               dateValue = malloc( PADDED_DATE_LENGTH + 1 );
                strcpy(dateValue,optarg);
                break;
             case 'f':
@@ -148,6 +150,15 @@ main (int argc, char * argv [])
                exit(1);
          }
       }
+      
+      if ( dateValue != NULL ) {
+         i = strlen(dateValue);
+         while ( i < PADDED_DATE_LENGTH ){
+            dateValue[i++] = '0';
+         }
+         dateValue[PADDED_DATE_LENGTH] = '\0';
+      }
+
       if (expHome == NULL){
          if ( (expHome = getenv("SEQ_EXP_HOME")) == NULL ) {
             fprintf( stderr , "SEQ_EXP_HOME must be set either through the environment or with -e (--exp)\n");

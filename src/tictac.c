@@ -100,9 +100,10 @@ Inputs:
 
 extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
 
+   int i = 0;
    char *dateFileName = NULL, *tmpstrtok = NULL, *tmpLatestFile=NULL;
-   char statePattern[SEQ_MAXFIELD];
-   char dateValue[128], cmd[128];
+   char statePattern[SEQ_MAXFIELD] = {'\0'};
+   char dateValue[128] = {'\0'}, cmd[128] = {'\0'};
    char* returnDate = NULL;
    size_t counter=0, returnValue=0;
    FILE *dateFile = NULL;
@@ -160,8 +161,17 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
       if (strcmp(tmpstrtok,"S")==0)
          printf("%.*s", 2, &dateValue[12] );
       tmpstrtok = (char*) strtok(NULL,"%");
+   }
+
+   if ( format == NULL ) {
+      SeqUtil_TRACE ( TL_FULL_TRACE , "tictac_getDate() : format == NULL: padding date to 14 characters\n");
+      i = strlen(dateValue);
+      while ( i < PADDED_DATE_LENGTH ){
+         dateValue[i++] = '0';
       }
-   free (tmpstrtok);
+      dateValue[PADDED_DATE_LENGTH] = '\0';
+      SeqUtil_TRACE ( TL_FULL_TRACE , "tictac_getDate() : padded date %s:\n", dateValue );
+   }
 
    if (returnDate = malloc( strlen(dateValue) + 1 )) {
       strcpy( returnDate, dateValue );
