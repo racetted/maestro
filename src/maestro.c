@@ -1374,7 +1374,7 @@ int prepInterUserFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state
    gettimeofday (&tv, NULL); 
    current_time = time(NULL);
 
-   ptm = localtime (&tv.tv_sec); 
+   ptm = gmtime (&tv.tv_sec); 
    strftime (registration_time, sizeof (registration_time), "%Y%m%d-%H:%M:%S", ptm); 
    
    /* get maestro version & shortcut : what to do when cannot have it ???? */
@@ -2738,7 +2738,7 @@ int writeInterUserNodeWaitedFile ( const SeqNodeDataPtr _nodeDataPtr, const char
    gettimeofday (&tv, NULL); 
    current_time = time(NULL);
 
-   ptm = localtime (&tv.tv_sec); 
+   ptm = gmtime (&tv.tv_sec); 
    strftime (registration_time, sizeof (registration_time), "%Y%m%d-%H:%M:%S", ptm); 
    
    /* get maestro version & shortcut : what to do when cannot have it ???? */

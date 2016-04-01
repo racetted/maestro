@@ -394,7 +394,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
             submit_time_found=1; 
 	         Sepoch=mktime(&ti);
 	         memset(sbuffer,'\0', sizeof(sbuffer));
-            strftime (sbuffer,10,"%H:%M:%S",localtime(&Sepoch));
+            strftime (sbuffer,10,"%H:%M:%S",gmtime(&Sepoch));
           } else {    
             submit_time_found=0; 
           }
@@ -404,7 +404,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
             begin_time_found=1; 
 	         Bepoch=mktime(&ti);
 	         memset(rbuffer,'\0', sizeof(rbuffer));
-            strftime (rbuffer,10,"%H:%M:%S",localtime(&Bepoch));
+            strftime (rbuffer,10,"%H:%M:%S",gmtime(&Bepoch));
 	       } else {    
             begin_time_found=0; 
           }
@@ -414,7 +414,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
             end_time_found=1; 
 	         Eepoch=mktime(&ti);
             memset(ebuffer,'\0', sizeof(ebuffer));
-            strftime (ebuffer,10,"%H:%M:%S",localtime(&Eepoch));
+            strftime (ebuffer,10,"%H:%M:%S",gmtime(&Eepoch));
           } else {    
             end_time_found=0; 
           }
@@ -427,15 +427,15 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
    
           if (begin_time_found && submit_time_found) {
 	         SubDelay = Bepoch - Sepoch; /* check sign */
-	         strftime (sbuffer,10,"%H:%M:%S",localtime(&SubDelay));
+	         strftime (sbuffer,10,"%H:%M:%S",gmtime(&SubDelay));
           }
           if (begin_time_found && end_time_found) {
 	         ExeTime = Eepoch - Bepoch;
-	         strftime (ebuffer,10,"%H:%M:%S",localtime(&ExeTime));
+	         strftime (ebuffer,10,"%H:%M:%S",gmtime(&ExeTime));
           }
           if (end_time_found) {
             RelativeEnd = Eepoch - TopNodeSubmitTime; 
-	         strftime (rbuffer,10,"%H:%M:%S",localtime(&RelativeEnd));
+	         strftime (rbuffer,10,"%H:%M:%S",gmtime(&RelativeEnd));
           } 
 	       /* end timing */
    
