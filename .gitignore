@@ -22,6 +22,7 @@ src/tictac
 # cscope database
 cscope.out
 # Test suite submission script
+samenameTest.sh
 submitTests.sh
 # NFS files
 .nfs*

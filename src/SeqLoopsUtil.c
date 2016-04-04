@@ -146,6 +146,7 @@ char* SeqLoops_getLoopAttribute( SeqNameValuesPtr loop_attr_ptr, char* attr_name
    char* returnValue = NULL;
    SeqNameValuesPtr tmpptr=loop_attr_ptr;
 
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getLoopAttribute looking for attribute:%s\n", attr_name);
    while ( tmpptr != NULL ) {
       if( strcmp( tmpptr->name, attr_name ) == 0 ) {
          returnValue = strdup( tmpptr->value );
@@ -153,6 +154,9 @@ char* SeqLoops_getLoopAttribute( SeqNameValuesPtr loop_attr_ptr, char* attr_name
          break;
       }
       tmpptr = tmpptr->nextPtr;
+   }
+   if (returnValue == NULL ){
+      SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getLoopAttribute(): attribute %s not found\n", attr_name);
    }
    return returnValue;
 }
@@ -177,6 +181,7 @@ void SeqLoops_setLoopAttribute( SeqNameValuesPtr* loop_attr_ptr, char* attr_name
       loopAttrPtr = loopAttrPtr->nextPtr;
    }
    if( !found ) {
+      SeqUtil_TRACE(TL_FULL_TRACE,"Inserting %s=%s in loop attributes\n", attr_name, attr_value);
       SeqNameValues_insertItem( loop_attr_ptr, attr_name, attr_value );
    }
 }
@@ -820,13 +825,13 @@ SeqNameValuesPtr SeqLoops_submitLoopArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
             }
          }
          loopStart = (char *) detectedStart;
-         fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
+         SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
          SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
  
       } else {
       
          loopStart = SeqLoops_getLoopAttribute( nodeSpecPtr, "START" );
-         fprintf(stdout,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
+         SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_submitLoopArgs() loopstart:%s\n", loopStart);
          SeqLoops_setLoopAttribute( &newLoopsArgsPtr, _nodeDataPtr->nodeName, loopStart );
       }
    }
@@ -930,7 +935,7 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
  * number of the next definition in the parameter _newDefNumber.  If the current
  * iteration is the last of it's definition, and the current definition is the
  * last one, NULL will be returned and 0 will be put in *_newDefNumber
- * indicating to the caller that there is no next iteration so submit and no
+ * indicating to the caller that there is no next iteration to submit and no
  * next definition to start.
 ********************************************************************************/
 SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args, int* _newDefNumber ) {
@@ -971,14 +976,15 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 			/* Start a new iteration within the current definition */
 			sprintf( nextIterStr, "%d", nextIter );
 			nextLoopArgsPtr = SeqNameValues_clone( _loop_args );
+         SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_nextLoopArgs(): setting loop attribure of %s\n", _nodeDataPtr->nodeName);
 			SeqLoops_setLoopAttribute( &nextLoopArgsPtr, _nodeDataPtr->nodeName, nextIterStr );
 		} else if( loopCurrent == lastDefIter(currentDef[DEF_START], currentDef[DEF_END], currentDef[DEF_STEP]) ) {
 			if(!currentDefIsLast){
-				/* Inform caller that we will return args for new definition */
+				/* Inform caller that a new definition is to be started by * specifying it's number*/
 				*_newDefNumber = (startIndex/4) + 1;
 				SeqUtil_TRACE(TL_MEDIUM, "SeqLoops_nextLoopArgs():Informing caller of newdefinition, and also returning newdefinition number = %d within expressionArray.\n",*_newDefNumber);
 			}
-		}  /* else nextLoopArgsPtr == NULL indicating loop is finished */
+		}  /* else nextLoopArgsPtr == NULL and *_newDefNumber == 0 indicating loop is finished */
 	} /* end if ( loop uses expression ) */
 	else
 	{
@@ -998,6 +1004,7 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 		nextIter = loopCurrent + loopStep*loopSet;
 		if( isInDefinition(nextIter, loopStart, loopEnd, loopStep) ) {
 			sprintf( nextIterStr, "%d", loopCurrent + (loopSet * loopStep) );
+         SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_nextLoopArgs(): setting loop attribure of %s\n", _nodeDataPtr->nodeName);
 			nextLoopArgsPtr = SeqNameValues_clone( _loop_args );
 			SeqLoops_setLoopAttribute( &nextLoopArgsPtr, _nodeDataPtr->nodeName, nextIterStr );
 		} /* else nextLoopArgsPtr == NULL indicating loop is finished */
@@ -1083,6 +1090,8 @@ char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args ) {
 SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
    SeqNameValuesPtr loopArgsTmpPtr = _loop_args;
    SeqNameValuesPtr newLoopsArgsPtr = NULL;
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs(): Called for taskPath %s and _loop_args :\n", _nodeDataPtr->taskPath);
+   SeqNameValues_printList( _loop_args);
    while( loopArgsTmpPtr != NULL ) {
       if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
          break;

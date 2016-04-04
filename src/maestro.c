@@ -657,7 +657,10 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
    submitDependencies( _nodeDataPtr, "begin",_flow );
 
    if ( strcmp(_nodeDataPtr->container, "") != 0 ) {
+      SeqUtil_TRACE(TL_FULL_TRACE,"go_begin():Node %s has a container %s\n", _nodeDataPtr->nodeName, _nodeDataPtr->container);
       processContainerBegin(_nodeDataPtr, _flow); 
+   } else {
+      SeqUtil_TRACE(TL_FULL_TRACE,"go_begin():Node %s does not have a container\n", _nodeDataPtr->nodeName);
    }
    actionsEnd( _signal, _flow ,_nodeDataPtr->name );
    return(0);
@@ -733,8 +736,14 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_fl
       return;
    }
 
+   SeqUtil_TRACE(TL_FULL_TRACE, "processContainerBegin():_nodeDataPtr->loopArgs : \n");
+   SeqNameValues_printList(_nodeDataPtr->loop_args);
+   SeqUtil_TRACE(TL_FULL_TRACE,"processContainerBegin():_nodeDataPtr->nodeName : %s\n", _nodeDataPtr->nodeName);
+   SeqUtil_TRACE(TL_FULL_TRACE,"processContainerBegin():_nodeDataPtr->name : %s\n", _nodeDataPtr->name);
     /* deal with L(i) begin -> beginx of L if none are aborted, or Npass(i) -> Npass, or Switch(i) -> Switch */
    if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+        SeqUtil_TRACE(TL_FULL_TRACE, "processContainerBegin(): Entered if (SeqLoops_getLoopAttribute() != NULL).\n");
+        SeqUtil_TRACE(TL_FULL_TRACE, "processContainerBegin(): _nodeDataPtr->type : %s\n", SeqNode_getTypeString(_nodeDataPtr->type));
         if (( _nodeDataPtr->type == Loop && ! isLoopAborted ( _nodeDataPtr )) || (_nodeDataPtr->type == NpassTask && ! isNpassAborted (_nodeDataPtr)) || _nodeDataPtr->type == Switch ) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
             SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerBegin() calling maestro -s beginx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
@@ -777,6 +786,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_fl
        }
 
        if( abortedSibling == 0 ) {
+          SeqUtil_TRACE(TL_FULL_TRACE, "processContainerBegin(): Entered if( abortedSibling == 0 )\n");
           SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerBegin() calling maestro -s beginx -n %s with loop args=%s\n", _nodeDataPtr->container, SeqLoops_getLoopArgs(newArgs)  );
           maestro ( _nodeDataPtr->container, "beginx", _flow, newArgs, 0, NULL, _nodeDataPtr->datestamp , _nodeDataPtr->expHome);
        }
@@ -818,15 +828,20 @@ static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr)
 			newArgs = (SeqNameValuesPtr) SeqLoops_nextLoopArgs( _nodeDataPtr, _nodeDataPtr->loop_args, &newDefNumber );
 			if(  (strcmp(_flow, "continue") == 0) ) { 
 				if( newDefNumber != 0 ){
+               /* Submit the initial set of a new definition */
 					SeqUtil_TRACE(TL_MEDIUM, "go_end() submitting new definition. newDefNumber = %d\n",newDefNumber );
 					loopSetArgs = (SeqNameValuesPtr) SeqLoops_getLoopSetArgs( _nodeDataPtr, NULL , newDefNumber);
 					containerArgs = (SeqNameValuesPtr) SeqLoops_getContainerArgs(_nodeDataPtr, _nodeDataPtr->loop_args);
 					submitLoopSetNodeList(_nodeDataPtr, containerArgs, loopSetArgs );
 				} else if (newArgs != NULL) {
 					if  ( isEndCnt != 0 ) {
+                  /* Submit next iteration */
+                  SeqUtil_TRACE(TL_FULL_TRACE, "go_end() submitting next iteration with maestro call:\n\t\
+                        maestro( %s, \"submit\" , %s, %s, 0, NULL, %s, %s \n",
+                        _nodeDataPtr->name, _flow, newArgs, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
 						maestro (_nodeDataPtr->name, "submit", _flow, newArgs, 0, NULL, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
 					} else {
-						fprintf(stderr, "maestro.go_end() Skipping submission of next iteration -- already @ end state.\n");
+						SeqUtil_TRACE(TL_FULL_TRACE, "maestro.go_end() Skipping submission of next iteration -- already @ end state.\n");
 					}
 				}
 			}
@@ -1465,13 +1480,19 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
    SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
 
-    /* deal with L(i) ending -> end of L if all iterations are done, or Npass(i) -> Npass */
+   SeqUtil_TRACE(TL_FULL_TRACE, "_nodeDataPtr->loopArgs : \n");
+   SeqNameValues_printList(_nodeDataPtr->loop_args);
+   SeqUtil_TRACE(TL_FULL_TRACE,"_nodeDataPtr->nodeName : %s\n", _nodeDataPtr->nodeName);
+   SeqUtil_TRACE(TL_FULL_TRACE,"_nodeDataPtr->name : %s\n", _nodeDataPtr->name);
+   /* deal with L(i) ending -> end of L if all iterations are done, or Npass(i) -> Npass */
    if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
-        if (( _nodeDataPtr->type == Loop && isLoopComplete ( _nodeDataPtr )) || (_nodeDataPtr->type == NpassTask && isNpassComplete (_nodeDataPtr)) || _nodeDataPtr->type == Switch ) {
-            SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
-            SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
-            maestro ( _nodeDataPtr->name, "endx", _flow, newArgs, 0, NULL, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
-        }
+      SeqUtil_TRACE(TL_FULL_TRACE, "processContainerEnd(): Entered if (SeqLoops_getLoopAttribute() != NULL).\n");
+      SeqUtil_TRACE(TL_FULL_TRACE, "processContainerEnd(): _nodeDataPtr->type : %s\n", SeqNode_getTypeString(_nodeDataPtr->type));
+      if ( (_nodeDataPtr->type == Loop && isLoopComplete(_nodeDataPtr) ) || (_nodeDataPtr->type == NpassTask && isNpassComplete (_nodeDataPtr)) || _nodeDataPtr->type == Switch ) {
+         SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
+         SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
+         maestro ( _nodeDataPtr->name, "endx", _flow, newArgs, 0, NULL, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
+      }
    } else {
        /* all other cases will check siblings for end status */
        siblingIteratorPtr = _nodeDataPtr->siblings;
