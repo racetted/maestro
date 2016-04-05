@@ -116,7 +116,7 @@ extern int addStatsNode(char *node, char *member, char *stime, char *btime, char
 extern int processStats(char *exp, char *datestamp, FILE *outputFile);
 extern char *secondsToChar (int seconds);
 extern int charToSeconds (char *timestamp);
-extern void reset_node (char *node, char *ext);
+extern void reset_branch (char *node, char *ext);
 extern char * previousDay(char today[9]);
 extern char * sconcat(char *ptr1,char *ptr2);
 extern void delete_node(struct _ListNodes *node, struct _ListListNodes *list);
