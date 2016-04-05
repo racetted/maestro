@@ -56,8 +56,8 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
        
       /*if init state clean statuses of the branch*/
       if (S == 'i') {
-	 reset_node(node, loop);
-	 return;
+         reset_branch(node, loop);
+         return;
       }
       SeqUtil_TRACE(TL_FULL_TRACE,"logreader inserting node %s loop %s state %c\n", node, loop, S);
 
@@ -69,19 +69,19 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
            /* first time */
            MyListListNodes.Nodelength=len;
 	   if ( (ptr_lhead=(struct _ListNodes *) malloc(sizeof(struct _ListNodes))) != NULL ) {
-	              strcpy(ptr_lhead->PNode.Node,ComposedNode);
-	              strcpy(ptr_lhead->PNode.TNode,node);
-		      strcpy(ptr_lhead->PNode.loop,loop);
+		strcpy(ptr_lhead->PNode.Node,ComposedNode);
+	        strcpy(ptr_lhead->PNode.TNode,node);
+		strcpy(ptr_lhead->PNode.loop,loop);
 		      
-		      strcpy(ptr_lhead->PNode.atime,"");
-		      strcpy(ptr_lhead->PNode.btime,"");
-		      strcpy(ptr_lhead->PNode.etime,"");
-		      strcpy(ptr_lhead->PNode.itime,"");
-		      strcpy(ptr_lhead->PNode.stime,"");
-		      strcpy(ptr_lhead->PNode.wtime,"");
-		      strcpy(ptr_lhead->PNode.dtime,"");
+		strcpy(ptr_lhead->PNode.atime,"");
+		strcpy(ptr_lhead->PNode.btime,"");
+		strcpy(ptr_lhead->PNode.etime,"");
+		strcpy(ptr_lhead->PNode.itime,"");
+		strcpy(ptr_lhead->PNode.stime,"");
+		strcpy(ptr_lhead->PNode.wtime,"");
+		strcpy(ptr_lhead->PNode.dtime,"");
 		      
-		      switch ( S ) 
+		switch ( S ) 
 		      {
 		        case 'a':
 	                         strcpy(ptr_lhead->PNode.atime,atime);
@@ -99,8 +99,8 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 	                         strcpy(ptr_lhead->PNode.stime,stime);
 				 break;
 			case 'w':
-			         strcpy(ptr_lhead->PNode.wtime,wtime);
-                  strcpy(ptr_lhead->PNode.waitmsg,waitmsg); 
+				strcpy(ptr_lhead->PNode.wtime,wtime);
+                  		strcpy(ptr_lhead->PNode.waitmsg,waitmsg); 
 				 break;
 			case 'd':
 			         strcpy(ptr_lhead->PNode.dtime,dtime);
@@ -148,7 +148,14 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 	                                        strcpy(ptr_Ltrotte->PNode.itime,itime);
 				                break;
 		                       case 's':
+						/*resetting node values in submit state*/
 	                                        strcpy(ptr_Ltrotte->PNode.stime,stime);
+	                                        strcpy(ptr_Ltrotte->PNode.atime,"");
+	                                        strcpy(ptr_Ltrotte->PNode.btime,"");
+	                                        strcpy(ptr_Ltrotte->PNode.etime,"");
+	                                        strcpy(ptr_Ltrotte->PNode.itime,"");
+	                                        strcpy(ptr_Ltrotte->PNode.wtime,"");
+	                                        strcpy(ptr_Ltrotte->PNode.dtime,"");
 				                break;
 				       case 'w':
 						strcpy(ptr_Ltrotte->PNode.wtime,wtime);
@@ -1099,7 +1106,7 @@ char *sconcat(char *ptr1,char *ptr2){
 }
 
 /*in case of init, when parsing log file*/
-void reset_node (char *node, char *ext) {
+void reset_branch (char *node, char *ext) {
    struct _ListNodes      *ptr_Ltrotte;
    struct _ListListNodes  *ptr_LLtrotte;
    struct _ListNodes      *tmp_prev_list;
@@ -1114,7 +1121,7 @@ void reset_node (char *node, char *ext) {
          if (strcmp(node, tmp_prev_list->PNode.TNode) == 0 && strncmp(ext, tmp_prev_list->PNode.loop, strlen(ext)) == 0) {
             /*delete_node(tmp_prev_list, ptr_LLtrotte);*/
             tmp_prev_list->PNode.ignoreNode=1;
-            SeqUtil_TRACE(TL_FULL_TRACE,"logreader reset node done on node: %s ext: %s \n",node,ext);
+            SeqUtil_TRACE(TL_FULL_TRACE,"logreader reset branch done on node: %s ext: %s \n",node,ext);
          }
       }
    }

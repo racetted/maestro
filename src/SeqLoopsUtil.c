@@ -46,13 +46,11 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 
 int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) {
    char *tmpstrtok = NULL, *tmp_args = NULL;
-   char *loopName=NULL, *loopValue=NULL;
-   int isError = 0;
+   char loopName[100], loopValue[50];
+   int isError = 0, n=0;
    
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_parseArgs cmd_args:%s\n", cmd_args );
    /*
-   memset(loopName,'\0',sizeof loopName);
-   memset(loopValue,'\0',sizeof loopValue);
    */
    
    tmp_args = strdup( cmd_args );
@@ -60,23 +58,20 @@ int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) 
    while ( tmpstrtok != NULL ) {
       /* any alphanumeric characters and special chars
          _:/-$()* are supported */
-      loopName=NULL;
-      loopValue=NULL;
-      loopName=malloc(100);
-      loopValue=malloc(50);
+      memset(loopName,'\0',sizeof loopName);
+      memset(loopValue,'\0',sizeof loopValue);
 
-      sscanf( tmpstrtok, "%[A-Za-z0-9._:/]=%[A-Za-z0-9._^/-$()*]", loopName, loopValue );
-
+      SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_parseArgs token: %s\n", tmpstrtok ); 
+      n=sscanf( tmpstrtok, " %[A-Za-z0-9._:/]=%[A-Za-z0-9._^/-$()*]", loopName, loopValue );
+      SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_parseArgs parsed items (count=%d): %s = %s\n",n, loopName, loopValue ); 
       /* should add more syntax validation such as spaces not allowed... */
-      if ( strlen( loopName ) == 0 || strlen( loopValue ) == 0 ) {
+      if ( n != 2) {
          isError = -1;
       } else {
          SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_parseArgs inserted %s = %s\n", loopName, loopValue ); 
          SeqNameValues_insertItem( nameValuesPtr, loopName, loopValue );
       }
       tmpstrtok = (char*) strtok(NULL,",");
-      free(loopName);
-      free(loopValue);
    }
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_parseArgsdone exit status: %d\n", isError ); 
    free( tmp_args );
