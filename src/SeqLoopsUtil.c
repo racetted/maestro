@@ -1079,20 +1079,25 @@ char* SeqLoops_getExtFromLoopArgs( SeqNameValuesPtr _loop_args ) {
    return loopExtension;
 }
 
-/* returns only the loop arguments of parent loop containers
- * For instance, if  arguments is: outer_loop=2,inner_loop=3,
- * this function will return outer_loop=2 in the NameValue list
+/******************************************************************************** 
+ * Function SeqLoops_getContainerArgs
+ * returns only the loop arguments of parent loop containers For instance, if
+ * arguments is: outer_loop=2,inner_loop=3,this function will return
+ * outer_loop=2 in the NameValue list
+ *
+ * The function works by associating tokens in the container path with args of
+ * loopArgs.  This way is more robust against name conflicts than taking all the
+ * loop_args that don't match the node name.
  *
  * NAME=outer_loop VALUE=2
  *
- * Note: some modifications were made to take into account the
- * possibility of a loop (say Loop1) with a child or descendant
- * by the same name. (say Loop1/task/Loop1).  Some testing will
- * need to be done for NpassTasks.
- */
+ * Note: some modifications were made to take into account the possibility of a
+ * loop (say Loop1) with a child or descendant by the same name. (say
+ * Loop1/task/Loop1).  Some testing will need to be done for NpassTasks.
+ ********************************************************************************/
 SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
-   SeqNameValuesPtr loopArgsTmpPtr = _loop_args;
-   SeqNameValuesPtr newLoopsArgsPtr = NULL;
+   SeqNameValuesPtr current = _loop_args; /* Linked list iterator */
+   SeqNameValuesPtr containerArgs = NULL; /* Return value */
    char * path = NULL;
    char * token = NULL;
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs(): Called for node %s and _loop_args :\n", _nodeDataPtr->taskPath);
@@ -1100,37 +1105,23 @@ SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, S
    SeqUtil_TRACE(TL_FULL_TRACE, "_nodeDataPtr->name : %s\n", _nodeDataPtr->name);
    SeqUtil_TRACE(TL_FULL_TRACE, "_nodeDataPtr->container : %s\n", _nodeDataPtr->container);
 
-#if 1
    /* Container is the full path without the current node */
    path  = strdup(_nodeDataPtr->container);
    token = strtok(path,"/");
-   while ( token != NULL && loopArgsTmpPtr != NULL ){
-      if( strcmp( token, loopArgsTmpPtr->name ) == 0 ) {
+   while ( token != NULL && current != NULL ){
+      if( strcmp( token, current->name ) == 0 ) {
          /* If the token matches the key, add that to the container args */
-         SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
-         SeqNameValues_insertItem( &newLoopsArgsPtr, loopArgsTmpPtr->name, loopArgsTmpPtr->value);
+         SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  current->name, current->value);
+         SeqNameValues_insertItem( &containerArgs, current->name, current->value);
          /* And move on to the next loop_arg */
-         loopArgsTmpPtr = loopArgsTmpPtr->nextPtr;
+         current = current->nextPtr;
       }
       token = strtok(NULL,"/");
    }
    free(path);
-#else
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs(): Called for taskPath %s and _loop_args :\n", _nodeDataPtr->taskPath);
-   SeqNameValues_printList( _loop_args);
-   while( loopArgsTmpPtr != NULL ) {
-      if( strcmp( loopArgsTmpPtr->name, _nodeDataPtr->nodeName ) == 0 ) {
-         break;
-      }
-      SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
-
-      SeqNameValues_insertItem( &newLoopsArgsPtr,  loopArgsTmpPtr->name, loopArgsTmpPtr->value);
-      loopArgsTmpPtr  = loopArgsTmpPtr->nextPtr;
-   }
-#endif
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs(): returning loopArgs : \n");
-   SeqNameValues_printList(newLoopsArgsPtr);
-   return newLoopsArgsPtr;
+   SeqNameValues_printList(containerArgs);
+   return containerArgs;
 }
 
 /********************************************************************************

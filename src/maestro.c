@@ -712,6 +712,28 @@ static void setBeginState(char *_signal, const SeqNodeDataPtr _nodeDataPtr) {
    free( extName );
 }
 
+/********************************************************************************
+ * Function hasArgs()
+ *
+ * Serves to determine, for a loop, npastask or switch node N whether the node
+ * is N or N(i) by checking if the node has loop_args to it's name.
+ *
+ * Used in processContainerBegin() and processContainerEnd().
+********************************************************************************/
+int hasArgs(const SeqNodeDataPtr _nodeDataPtr){
+
+   /* Only loops, NpassTasks and switches may have args */
+   if (   _nodeDataPtr->type == Loop
+       || _nodeDataPtr->type == NpassTask
+       || _nodeDataPtr->type == Switch    )
+      if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL )
+         /* loop_args has an attribute which matches the nodeName */
+         return 1;
+
+   return 0;
+}
+
+
 /* 
 processContainerBegin
 
@@ -719,9 +741,9 @@ processContainerBegin
 
 Inputs:
   _nodeDataPtr - pointer to the node targetted by the execution
+  _flow - the execution flow
 
 */
-
 static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_flow ) {
 
    char filename[SEQ_MAXFIELD], tmp[SEQ_MAXFIELD];
@@ -732,7 +754,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_fl
    char* extWrite = NULL;
 
    if ( _nodeDataPtr->catchup == CatchupDiscretionary ) {   
-      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.processContainerBegin() bypassing discreet node:%s\n", _nodeDataPtr->name );
+      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.processContainerBegin() bypassing discrete node:%s\n", _nodeDataPtr->name );
       return;
    }
 
@@ -743,7 +765,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_fl
    SeqUtil_TRACE(TL_FULL_TRACE, "processContainerBegin(): _nodeDataPtr->type : %s\n", SeqNode_getTypeString(_nodeDataPtr->type));
 
     /* deal with L(i) begin -> beginx of L if none are aborted, or Npass(i) -> Npass, or Switch(i) -> Switch */
-   if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+   if(hasArgs(_nodeDataPtr)) {
         SeqUtil_TRACE(TL_FULL_TRACE, "processContainerBegin(): Entered if (SeqLoops_getLoopAttribute() != NULL).\n");
         if (( _nodeDataPtr->type == Loop && ! isLoopAborted ( _nodeDataPtr )) || (_nodeDataPtr->type == NpassTask && ! isNpassAborted (_nodeDataPtr)) || _nodeDataPtr->type == Switch ) {
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
@@ -1481,14 +1503,14 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
    SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "_nodeDataPtr->loopArgs : \n");
+   SeqUtil_TRACE(TL_FULL_TRACE, "processContainerEnd() :_nodeDataPtr->loopArgs : \n");
    SeqNameValues_printList(_nodeDataPtr->loop_args);
-   SeqUtil_TRACE(TL_FULL_TRACE,"_nodeDataPtr->nodeName : %s\n", _nodeDataPtr->nodeName);
-   SeqUtil_TRACE(TL_FULL_TRACE,"_nodeDataPtr->name : %s\n", _nodeDataPtr->name);
+   SeqUtil_TRACE(TL_FULL_TRACE,"processContainerEnd() :_nodeDataPtr->nodeName : %s\n", _nodeDataPtr->nodeName);
+   SeqUtil_TRACE(TL_FULL_TRACE,"processContainerEnd() :_nodeDataPtr->name : %s\n", _nodeDataPtr->name);
+   SeqUtil_TRACE(TL_FULL_TRACE, "processContainerEnd(): _nodeDataPtr->type : %s\n", SeqNode_getTypeString(_nodeDataPtr->type));
    /* deal with L(i) ending -> end of L if all iterations are done, or Npass(i) -> Npass */
-   if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+   if(hasArgs(_nodeDataPtr)) {
       SeqUtil_TRACE(TL_FULL_TRACE, "processContainerEnd(): Entered if (SeqLoops_getLoopAttribute() != NULL).\n");
-      SeqUtil_TRACE(TL_FULL_TRACE, "processContainerEnd(): _nodeDataPtr->type : %s\n", SeqNode_getTypeString(_nodeDataPtr->type));
       if ( (_nodeDataPtr->type == Loop && isLoopComplete(_nodeDataPtr) ) || (_nodeDataPtr->type == NpassTask && isNpassComplete (_nodeDataPtr)) || _nodeDataPtr->type == Switch ) {
          SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
          SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerEnd() calling maestro -s endx -n %s with loop args=%s\n", _nodeDataPtr->name, SeqLoops_getLoopArgs(newArgs)  );
