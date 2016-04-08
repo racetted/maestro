@@ -393,6 +393,8 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     double Tokendate,date,modiftime,actualtime;
     double diff_t;
 
+    SeqUtil_TRACE(TL_FULL_TRACE,"sync_nodelog_over_nfs(): Called\n");
+
     if (logtype == "both") {
        sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"nodelog", _seq_exp_home);
        sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"toplog", _seq_exp_home);
@@ -572,6 +574,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
        Note : we notify user when using inter-dependencies
     if ( (strcmp(logtype,"toplog") == 0)  && (strcmp(type,"begin") == 0 || strcmp(type,"endx") == 0 ) ) NotifyUser ( -1 , 1 ,'N', _seq_exp_home); */
     
+    SeqUtil_TRACE(TL_FULL_TRACE,"sync_nodelog_over_nfs(): returning\n");
     alarm(0);
     return(0);
 }
