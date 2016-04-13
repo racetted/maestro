@@ -2035,12 +2035,13 @@ Inputs:
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* _signal, const char* _flow ) {
    char line[512];
    char nodelogger_msg[SEQ_MAXFIELD];
-   FILE* waitedFile = NULL;
+   FILE* waitedFilePtr = NULL;
    SeqNameValuesPtr loopArgsPtr = NULL;
    char depExp[256] = {'\0'}, depNode[256] = {'\0'}, depArgs[SEQ_MAXFIELD] = {'\0'}, depDatestamp[20] = {'\0'};
-   char filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'};
-   char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL;
-   int submitCode = 0, count = 0, line_count=0, ret;
+   char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'};
+   char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL, statusFile = NULL;
+   int submitCode = 0, submitErrors = 0, count = 0, line_count=0, ret;
+   LISTNODEPTR dependencyLines = NULL, current_dep_line = NULL;
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() executing for %s\n", _nodeDataPtr->nodeName );
 
@@ -2060,26 +2061,37 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       SeqUtil_stringAppend( &extName, tmpExt );
    } 
 
+
    /* local dependencies (same exp) are fetched from sequencing/status/depends/$datestamp,
       remote dependencies are fetched from sequencing/status/remote_depends/$datestamp */
    for( count=0; count < 2; count++ ) {
       if( count == 0 ) {
          /* local dependencies */
-         sprintf(filename,"%s%s%s/%s.waited_%s", _nodeDataPtr->expHome, LOCAL_DEPENDS_DIR, _nodeDataPtr->datestamp, extName, _signal );
+         sprintf(waited_filename,"%s%s%s/%s.waited_%s", _nodeDataPtr->expHome, LOCAL_DEPENDS_DIR, _nodeDataPtr->datestamp, extName, _signal );
       } else {
          /* remote dependencies */
-         sprintf(filename,"%s%s%s/%s.waited_%s", _nodeDataPtr->expHome, REMOTE_DEPENDS_DIR, _nodeDataPtr->datestamp, extName, _signal );
+         sprintf(waited_filename,"%s%s%s/%s.waited_%s", _nodeDataPtr->expHome, REMOTE_DEPENDS_DIR, _nodeDataPtr->datestamp, extName, _signal );
       }
-      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() looking for waited file=%s\n", filename );
+      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() looking for waited file=%s\n", waited_filename );
 
-      if ( _access(filename, R_OK, _nodeDataPtr->expHome) == 0 ) {
-         SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() found waited file=%s\n", filename );
-         /* build a node list for all entries found in the waited file */
-         if ((waitedFile = _fopen(filename, MLLServerConnectionFid)) != NULL ) { 
-            while ( fgets( line, sizeof(line), waitedFile ) != NULL ) {
-               line_count++;
-               SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() from waited file line: %s\n", line );
-               sscanf( line, "exp=%s node=%s datestamp=%s args=%s", 
+
+      if ( _access(waited_filename, R_OK, _nodeDataPtr->expHome) == 0 ) {
+         SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() found waited file=%s\n", waited_filename );
+         if ((waitedFilePtr = _fopen(waited_filename, MLLServerConnectionFid)) != NULL ) { 
+          
+            /* Read file into linked list of lines, delete file */
+            while( fgets( line , sizeof(line), waitedFilePtr ) != NULL ){
+               SeqListNode_insertItem( &dependencyLines, strdup(line) );
+            }
+            fclose(waitedFilePtr);
+            _removeFile(waited_filename, _nodeDataPtr->expHome);
+            
+            /* Process each line in the list */
+            current_dep_line = dependencyLines;
+            while ( current_dep_line != NULL ) {
+               /* Extract dependant node information from line */
+               SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() from waited file line: %s\n", current_dep_line->data );
+               sscanf( current_dep_line->data, "exp=%s node=%s datestamp=%s args=%s", 
                   depExp, depNode, depDatestamp, depArgs );
                SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() waited file data depExp:%s depNode:%s depDatestamp:%s depArgs:%s\n", 
                   depExp, depNode, depDatestamp, depArgs );
@@ -2089,9 +2101,11 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                    continue; 
                }
 
+               /* Do the submit or send nodelogger message based on flow.  Avoid double submitting */
                if ( ! SeqListNode_isItemExists( submittedList, depNode ) ) {
                   SeqListNode_insertItem( &submittedList, depNode );
                   if ( strcmp( _flow, "continue" ) == 0 ){ 
+                     /* Attempt to submit dependant node */
                      SeqLoops_parseArgs(&submitDepArgs, depArgs);
                      SeqUtil_TRACE(TL_FULL_TRACE, "submitDependencies calling maestro:\n\t\
                            maestro(%s, \"submit\", \"continue\", %s, 0, NULL, %s, %s );",
@@ -2099,35 +2113,39 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                      submitCode = maestro( depNode, "submit", "continue", submitDepArgs, 0, NULL, depDatestamp, depExp);
                      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() submitCode: %d\n", submitCode);
                      if( submitCode != 0 ) {
+                        /* Put all subsequent lines back into the file and raise error.*/
+                        while ( current_dep_line != NULL ){
+                           /* Extract info from line for _WriteNWFile */
+                           sscanf( current_dep_line->data, "exp=%s node=%s datestamp=%s args=%s", depExp, depNode, depDatestamp, depArgs );
+                           sprintf(statusFile,"%s/sequencing/status/%s/%s.%s.%s", depExp, depDatestamp,depNode, SeqLoops_getExtFromLoopArgs(depArgs), "end" );
+                           /* Write the line back into the waited_file */
+                           _WriteNWFile(depExp,depNode,depDatestamp,depArgs, waited_filename, statusFile);
+                           current_dep_line = current_dep_line->nextPtr;
+                        }
                         raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
                      }
                   } else {
-                     /* This dependency was not submitted because the flow is not continue */
+                     /* This dependency was not submitted because the flow is not continue : emit nodelogger message */
                      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() not submitting a dependency of %s\n",_nodeDataPtr->nodeName);
-                     /* Construct a meaningful message with dependency node name */
                      sprintf(nodelogger_msg, "Node %s will not be submitted because %s ended with flow != continue",depNode,_nodeDataPtr->nodeName);
-                     /* Make the nodelogger call */
                      nodelogger(_nodeDataPtr->name, "info", _nodeDataPtr->extension, nodelogger_msg, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
                   }
                }
 
-               free(submitDepArgs);
- 	            submitDepArgs = NULL;
-
+               SeqNameValues_deleteWholeList(&submitDepArgs);
  	            depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
+               line_count++;
+               current_dep_line = current_dep_line->nextPtr;
             } /* end while loop */
-            fclose(waitedFile);
  
- 	    /* warn if file empty ... */
- 	    if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",filename );
+            /* warn if file empty ... */
+            if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",waited_filename );
 
-            /* we don't need to keep the file , must remove file on /tmp is TMPDIR is not set */
-            ret=_removeFile(filename, _nodeDataPtr->expHome);
          } else {
-            raiseError( "maestro cannot read file: %s (submitDependencies) \n", filename );
-         }
-      }
-   }
+            raiseError( "maestro cannot read file: %s (submitDependencies) \n", waited_filename );
+         } /* if ((waitedFilePtr = _fopen(waited_filename, MLLServerConnectionFid)) != NULL ) */
+      } /* if ( _access(waited_filename, R_OK, _nodeDataPtr->expHome) == 0 ) */
+   } /* for( count=0; count < 2; count++ ) */
    SeqListNode_deleteWholeList( &submittedList );
    free(extName);
    free(tmpExt);

@@ -5,6 +5,8 @@
 *.ssm
 *.swp
 *.swo
+*.swn
+*.swm
 bin
 ssm/*.ssm
 ssm/maestro_* 

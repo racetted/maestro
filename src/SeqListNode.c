@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "SeqListNode.h"
+#include "SeqUtil.h"
 
 /********************************************************************************
 * SeqListNode_insertItem: Inserts an Item into the list
@@ -202,12 +203,12 @@ int SeqListNode_isListEmpty(LISTNODEPTR sPtr)
 void SeqListNode_printList(LISTNODEPTR currentPtr)
 {
  if (currentPtr == NULL) {
-    printf("List is empty.\n");
+    SeqUtil_TRACE(TL_FULL_TRACE,"List is empty.\n");
   } else {
-      printf("%s", currentPtr->data);
+      SeqUtil_TRACE(TL_FULL_TRACE,"%s", currentPtr->data);
       currentPtr = currentPtr->nextPtr;
       while (currentPtr != NULL) {
-         printf(" %s", currentPtr->data);
+         SeqUtil_TRACE(TL_FULL_TRACE," %s", currentPtr->data);
          currentPtr = currentPtr->nextPtr;
       }
  }
