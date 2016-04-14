@@ -44,7 +44,7 @@ function Sys_ErrorTrap
    fi
 
    ${SEQ_BIN}/nodelogger -n "${node}" ${loopArgs} -s abort -m "ord_soumet failed status=$1 on `hostname`\n${LastErrorMessage}"
-   exit $1
+   exit 3
 }
 
 function Sys_SwitchUser

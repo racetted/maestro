@@ -199,6 +199,7 @@ int main (int argc, char * argv [])
    free(sign);
    free(extraArgs);
    free(datestamp);
+   fprintf(stderr, "maestro_main exiting with code %d\n", status );
    exit(status);
 }
 

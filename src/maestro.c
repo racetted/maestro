@@ -30,6 +30,7 @@
 #include <glob.h>
 #include <sys/types.h> 
 #include <sys/stat.h> 
+#include <sys/wait.h>
 #include <fcntl.h> 
 
 #include "SeqUtil.h"
@@ -1761,7 +1762,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
          fprintf(stdout,"Task type node submit command: %s\n", cmd );
 	      get_time(STime,2);
-         error_status = system(cmd);
+         error_status = WEXITSTATUS(system(cmd));
 	      get_time(ETime,2);
 
          fprintf(stdout,"TASK: TIMING_OF_SYSTEM_COMMAND: START=%s   END=%s\n",STime, ETime);
@@ -1883,6 +1884,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    free( jobName );
    free( prefix );
    free( containerMethod );
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit returning %d\n", error_status);
    return(error_status);
 }
 
@@ -2022,30 +2024,53 @@ static void setWaitingState(const SeqNodeDataPtr _nodeDataPtr, const char* waite
    free( waitMsg );
 }
 
-/*
-submitDependencies
-
- Checks nodes that are dependent on this node and the nodes for which the dependencies have been satisfied
-
-Inputs:
-  _nodeDataPtr - pointer to the node targetted by the execution
-  _signal - pointer to the signal being checked
-
-*/
+/********************************************************************************
+ * submitDependencies(): Submits nodes that are waiting for this node
+ * (_nodeDataPtr) to finish.
+ *
+ * The function looks through it's waited_end file for local and remote
+ * experiments.  For each line in these files, it submits the corresponding node
+ * if this node is still in waiting state.  
+ *
+ * If one of the submission fails, the line describing the dependency is put
+ * back into the waited_end file, a nodelogger message is emitted and submission
+ * of the following nodes continues.
+ *
+ * Inputs:
+ * _nodeDataPtr - pointer to the node targetted by the execution
+ * _signal - pointer to the signal being checked
+ * _flow        - Controls the decision of whether or not to submit the
+ *                dependencies.  If flow is not "continue", then instead of
+ *                submitting, a nodelogger message is emitted and the dependency
+ *                stays in the waited_end file
+ *
+ * NOTE: Since the execution of a maestro() call can encounter an exit statement
+ * if there is something wrong with the dependency, we are using system calls so
+ * that the submissions happen in a child process, and therefore exit calls will
+ * terminate the child and not the current process. Defining the macro
+ * SEQ_USE_SYSTEM_CALLS_FOR_DEPS controls whether submission is done with a
+ * system call or with a function call.
+ ********************************************************************************/
+#define SEQ_USE_SYSTEM_CALLS_FOR_DEPS
 static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* _signal, const char* _flow ) {
    char line[512];
    char nodelogger_msg[SEQ_MAXFIELD];
    FILE* waitedFilePtr = NULL;
    SeqNameValuesPtr loopArgsPtr = NULL;
    char depExp[256] = {'\0'}, depNode[256] = {'\0'}, depArgs[SEQ_MAXFIELD] = {'\0'}, depDatestamp[20] = {'\0'};
-   char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'};
-   char *extName = NULL, *submitDepArgs = NULL, *tmpValue=NULL, *tmpExt=NULL, statusFile = NULL;
+   char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'}, statusFile[SEQ_MAXFIELD] = {'\0'};
+   char *extName = NULL, * depExtension = NULL, *tmpValue=NULL, *tmpExt=NULL;
    int submitCode = 0, submitErrors = 0, count = 0, line_count=0, ret;
-   LISTNODEPTR dependencyLines = NULL, current_dep_line = NULL;
+   LISTNODEPTR submittedList = NULL, dependencyLines = NULL, current_dep_line = NULL;
+#ifdef SEQ_USE_SYSTEM_CALLS_FOR_DEPS
+   char * submitDepArgs = NULL;
+   SeqUtil_TRACE(TL_FULL_TRACE,"submitDependencies() in system call mode\n");
+#else
+   SeqNameValuesPtr submitDepArgs = NULL;
+   SeqUtil_TRACE(TL_FULL_TRACE,"submitDependencies() in function call mode\n");
+#endif
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() executing for %s\n", _nodeDataPtr->nodeName );
-
-   LISTNODEPTR submittedList = NULL;
 
    loopArgsPtr = _nodeDataPtr->loop_args;
    if (_nodeDataPtr->isLastArg){
@@ -2061,7 +2086,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       SeqUtil_stringAppend( &extName, tmpExt );
    } 
 
-
    /* local dependencies (same exp) are fetched from sequencing/status/depends/$datestamp,
       remote dependencies are fetched from sequencing/status/remote_depends/$datestamp */
    for( count=0; count < 2; count++ ) {
@@ -2074,7 +2098,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
       }
       SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() looking for waited file=%s\n", waited_filename );
 
-
       if ( _access(waited_filename, R_OK, _nodeDataPtr->expHome) == 0 ) {
          SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() found waited file=%s\n", waited_filename );
          if ((waitedFilePtr = _fopen(waited_filename, MLLServerConnectionFid)) != NULL ) { 
@@ -2085,10 +2108,11 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             }
             fclose(waitedFilePtr);
             _removeFile(waited_filename, _nodeDataPtr->expHome);
-            
+
             /* Process each line in the list */
             current_dep_line = dependencyLines;
             while ( current_dep_line != NULL ) {
+
                /* Extract dependant node information from line */
                SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() from waited file line: %s\n", current_dep_line->data );
                sscanf( current_dep_line->data, "exp=%s node=%s datestamp=%s args=%s", 
@@ -2098,6 +2122,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                /* is the dependant still waiting? if not, don't submit. */
                if ( ! isNodeXState (depNode, depArgs, depDatestamp, depExp, "waiting") ) {
                    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() dependant node not currently in wait state, skipping submission. \n");
+                   current_dep_line = current_dep_line->nextPtr;
                    continue; 
                }
 
@@ -2106,23 +2131,41 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                   SeqListNode_insertItem( &submittedList, depNode );
                   if ( strcmp( _flow, "continue" ) == 0 ){ 
                      /* Attempt to submit dependant node */
-                     SeqLoops_parseArgs(&submitDepArgs, depArgs);
+#ifdef SEQ_USE_SYSTEM_CALLS_FOR_DEPS
+                     SeqUtil_TRACE(TL_FULL_TRACE,"submitDependencies(): Using system calls to submit %s\n",depNode);
+                     if ( strlen( depArgs ) > 0 ) {
+                        SeqUtil_stringAppend( &submitDepArgs, "-l " );
+                     }
+                     SeqUtil_stringAppend( &submitDepArgs, depArgs );
+                     /* sprintf( submitCmd, "(export SEQ_EXP_HOME=%s;export SEQ_DATE=%s;maestro -s submit -f continue -n %s %s)", */
+                           /* depExp, depDatestamp, depNode, submitDepArgs ); */
+                     sprintf( submitCmd, "maestro -e %s -d %s -s submit -f continue -n %s %s",
+                           depExp, depDatestamp, depNode, submitDepArgs );
+                     SeqUtil_TRACE(TL_FULL_TRACE, "submitDependencies(): Running system command: %s\n", submitCmd);
+                     submitCode = WEXITSTATUS(system ( submitCmd ));
+                     free(submitDepArgs);
+                     submitDepArgs = NULL;
+#else
+                     SeqUtil_TRACE(TL_FULL_TRACE,"submitDependencies(): Using function call to submit dependency %s\n", depNode);
                      SeqUtil_TRACE(TL_FULL_TRACE, "submitDependencies calling maestro:\n\t\
-                           maestro(%s, \"submit\", \"continue\", %s, 0, NULL, %s, %s );",
-                           depNode, submitDepArgs, depDatestamp, depExp );
+                           maestro(%s, \"submit\", \"continue\", %s, 0, NULL, %s, %s );\n",
+                           depNode, depArgs, depDatestamp, depExp );
+                     SeqLoops_parseArgs(&submitDepArgs, depArgs);
                      submitCode = maestro( depNode, "submit", "continue", submitDepArgs, 0, NULL, depDatestamp, depExp);
+                     SeqNameValues_deleteWholeList(&submitDepArgs);
+#endif
                      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() submitCode: %d\n", submitCode);
                      if( submitCode != 0 ) {
-                        /* Put all subsequent lines back into the file and raise error.*/
-                        while ( current_dep_line != NULL ){
-                           /* Extract info from line for _WriteNWFile */
-                           sscanf( current_dep_line->data, "exp=%s node=%s datestamp=%s args=%s", depExp, depNode, depDatestamp, depArgs );
-                           sprintf(statusFile,"%s/sequencing/status/%s/%s.%s.%s", depExp, depDatestamp,depNode, SeqLoops_getExtFromLoopArgs(depArgs), "end" );
-                           /* Write the line back into the waited_file */
-                           _WriteNWFile(depExp,depNode,depDatestamp,depArgs, waited_filename, statusFile);
-                           current_dep_line = current_dep_line->nextPtr;
-                        }
-                        raiseError( "An error happened while submitting dependant nodes error number: %d\n", submitCode );
+                        depExtension = SeqLoops_getExtFromLoopArgs(depArgs);
+                        sprintf(statusFile,"%s/sequencing/status/%s/%s.%s.%s", depExp, depDatestamp,depNode, depExtension, "end" );
+                        free(depExtension);
+                        depExtension = NULL;
+                        /* Write the line back into the waited_file */
+                        _WriteNWFile(depExp,depNode,depDatestamp,depArgs, waited_filename, statusFile);
+                        SeqUtil_TRACE(TL_ERROR, "Error submitting node %s of experiment %s \n", depNode, depExp);
+                        sprintf(nodelogger_msg, "An error occurred while submitting dependant node %s in experiment %s", depNode, depExp);
+                        nodelogger(_nodeDataPtr->name, "info", _nodeDataPtr->extension, nodelogger_msg,
+                              _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
                      }
                   } else {
                      /* This dependency was not submitted because the flow is not continue : emit nodelogger message */
@@ -2132,7 +2175,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                   }
                }
 
-               SeqNameValues_deleteWholeList(&submitDepArgs);
  	            depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
                line_count++;
                current_dep_line = current_dep_line->nextPtr;
@@ -3135,5 +3177,6 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    free( extension );
    free( tmp );
  
+   SeqUtil_TRACE(TL_FULL_TRACE,"maestro() returning %d\n",status);
    return status;
 }
