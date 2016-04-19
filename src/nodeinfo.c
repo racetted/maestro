@@ -111,6 +111,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
              free(tmpString);
          } else if ( strcmp( nodeName, "wallclock" ) == 0 ) {
              _nodeDataPtr->wallclock = atoi( nodePtr->children->content );
+         } else if ( strcmp( nodeName, "immediate" ) == 0 ) {
+             _nodeDataPtr->immediateMode = atoi( nodePtr->children->content );
          } else if ( strcmp( nodeName, "catchup" ) == 0 ) {
              _nodeDataPtr->catchup = atoi( nodePtr->children->content );
 	 } else if ( strcmp( nodeName, "shell" ) == 0 ) {

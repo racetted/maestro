@@ -104,6 +104,7 @@ typedef struct _SeqNodeData {
    int   mpi;
    int   wallclock;
    int   isLastArg;
+   int   immediateMode; 
    char* queue;
    char* machine;
    char* memory;
