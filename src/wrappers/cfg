@@ -136,6 +136,9 @@ function Sys_AddWrapper
        printf "\n SEQ_NODE_TYPE=\$(\${SEQ_BIN}/nodeinfo -n \$SEQ_NODE -f type)" >>  ${dest_file}
        printf "\n if [[ \${SEQ_NODE_TYPE} = 'node.type=Task' ||  \${SEQ_NODE_TYPE} = 'node.type=NpassTask' ]] ; then " >>  ${dest_file}
 
+       [[ "immediate" = "${immediate}" ]] && printf "\n \t export JOB_IMMEDIATE_MODE=1" >>  ${dest_file}
+       printf "\n \t \${SEQ_UTILS_BIN}/chaindot.py -e \${SEQ_EXP_HOME} -n \${SEQ_NODE} -o \${SEQ_TMP_CFG}.complete" >>  ${dest_file}
+
        # add the task setup and chaindot utilities
        printf "\n \t \${SEQ_UTILS_BIN}/chaindot.py -e \${SEQ_EXP_HOME} -n \${SEQ_NODE} -o \${SEQ_TMP_CFG}.complete" >>  ${dest_file}
        #default workbase value
