@@ -240,8 +240,6 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
 
 							if ((tmpString=SeqNameValues_getValue(tokenValues, tmpTokenName)) != NULL) {
                               	SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpString);
-                           	} else {
-								raiseError("parseDepends(): token mismatch. Found token %s without matching token value in local_index attribute \n",tmpTokenName);
 							}
                         }
                      tmpIterator=tmpIterator->nextPtr;
