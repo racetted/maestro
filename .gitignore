@@ -5,6 +5,8 @@
 *.ssm
 *.swp
 *.swo
+*.swn
+*.swm
 bin
 ssm/*.ssm
 ssm/maestro_* 
@@ -19,8 +21,8 @@ src/nodeinfo
 src/logreader
 src/getdef
 src/tictac
-# cscope database
-cscope.out
+# cscope and ccglue database
+*.out
 # Test suite submission script
 samenameTest.sh
 submitTests.sh
