@@ -778,6 +778,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->wallclock = 5;
    nodePtr->mpi = 0;
    nodePtr->isLastArg = 0;
+   nodePtr->immediateMode = 0;
    nodePtr->cpu_multiplier = NULL;
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
@@ -894,6 +895,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
       SeqUtil_printOrWrite(tmpFile,"node.catchup=%d\n", node_ptr->catchup );
       SeqUtil_printOrWrite(tmpFile,"node.mpi=%d\n", node_ptr->mpi);
       SeqUtil_printOrWrite(tmpFile,"node.wallclock=%d\n", node_ptr->wallclock );
+      SeqUtil_printOrWrite(tmpFile,"node.immediateMode=%d\n", node_ptr->immediateMode );
       SeqUtil_printOrWrite(tmpFile,"node.cpu=%s\n", node_ptr->cpu );
       SeqUtil_printOrWrite(tmpFile,"node.cpu_multiplier=%s\n", node_ptr->cpu_multiplier );
       SeqUtil_printOrWrite(tmpFile,"node.machine=%s\n", node_ptr->machine );
