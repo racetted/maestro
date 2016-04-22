@@ -1731,17 +1731,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	         _touch(readyFile);
 	      }
 
-         if ( strlen( loopArgs ) > 0 ) {
-            sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
-         } else {
-            sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
-         }
-
-         nodetracer_status = system(nodetracercmd);
-         if ( nodetracer_status ) {
-            SeqUtil_TRACE(TL_CRITICAL,"Problem with nodetracer call, listing may not be available in the listings directory, possibly in $SEQ_EXP_HOME/sequencing/output.\n");
-         }
-	 
 	 /* 
 	    remove  *waiting.interUser* file if ignore dependency.
 	    AT any time, we will only have 1 dependency file (for any task) in inter_depend_dir, 
@@ -1750,18 +1739,18 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	    a dangling link. I have hardcoded depstatus to "end", to minimize code and cuse this
 	    is the status that we are depending on Now.
 	 */
-	      if ( ignoreAllDeps == 1 ) {
-            memset(tmpfile,'\0',sizeof tmpfile);
-	         if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
-	             snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s_%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, loopArgs);
-	         } else {
-	             snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name);
-	         }
-	         if ( _access(tmpfile , R_OK) == 0 ) {
-	             SeqUtil_TRACE(TL_MEDIUM,"removing dependency file:%s\n",tmpfile);
-	             ret=unlink(tmpfile);
-	         }
-	      }
+	    if ( ignoreAllDeps == 1 ) {
+          memset(tmpfile,'\0',sizeof tmpfile);
+	       if (  loopArgs != NULL && strlen(loopArgs) != 0 ) {
+	           snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s_%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name, loopArgs);
+	       } else {
+	           snprintf(tmpfile,sizeof(tmpfile),"%s%s%s%s.waiting.interUser.end", SEQ_EXP_HOME, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->name);
+	       }
+	       if ( _access(tmpfile , R_OK) == 0 ) {
+	           SeqUtil_TRACE(TL_MEDIUM,"removing dependency file:%s\n",tmpfile);
+	           ret=unlink(tmpfile);
+	       }
+	    }
       } else {   /* container */
          memset( noendwrap, '\0', sizeof( noendwrap ) );
          memset(tmpfile,'\0',sizeof tmpfile);
@@ -1799,13 +1788,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit() ord return status: %d \n",error_status);
       }
-      free(cpu);
       if ( strlen( loopArgs ) > 0 ) {
          sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
       } else {
          sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
       }
-
       nodetracer_status = system(nodetracercmd);
       if ( nodetracer_status ) {
          SeqUtil_TRACE(TL_CRITICAL,"Problem with nodetracer call, listing may not be available in the listings directory, possibly in $SEQ_EXP_HOME/sequencing/output.\n");
@@ -1813,6 +1800,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    }
 
    actionsEnd( (char*) _signal, _flow, _nodeDataPtr->name );
+   free( cpu );
    free( loopArgs ); 
    free( tmpCfgFile );
    free( tmpTarPath );
