@@ -2472,7 +2472,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
    char *depName = NULL, *depStatus = NULL, *depExp = NULL,
         *depIndex = NULL, *tmpExt = NULL, *depHour = NULL, *depProt = NULL,
         *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL,
-        *depValidHour = NULL, *depValidDOW = NULL;
+        *depValidHour = NULL, *depValidDOW = NULL, *depTimeDelta = NULL;
    char *waitingMsg = NULL, *depDatestamp = NULL;
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
@@ -2494,6 +2494,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
          depStatus = SeqNameValues_getValue( nameValuesPtr, "STATUS" );
          depExp = SeqNameValues_getValue( nameValuesPtr, "EXP" );
          depHour = SeqNameValues_getValue( nameValuesPtr, "HOUR" );
+         depTimeDelta = SeqNameValues_getValue( nameValuesPtr, "TIME_DELTA" );
          localIndex = SeqNameValues_getValue( nameValuesPtr, "LOCAL_INDEX" );
          depProt = SeqNameValues_getValue( nameValuesPtr, "PROT" );
          depValidHour = SeqNameValues_getValue( nameValuesPtr, "VALID_HOUR" );
@@ -2527,7 +2528,9 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
             SeqUtil_stringAppend( &localIndexString, tmpExt );
             free(tmpExt);
          }
-         if( depHour != NULL && strlen(depHour) > 0 ) {
+         if( depTimeDelta != NULL && strlen(depTimeDelta) > 0 ){
+            depDatestamp = SeqDatesUtil_addTimeDelta( _nodeDataPtr->datestamp, depTimeDelta);
+         } else if( depHour != NULL && strlen(depHour) > 0 ) {
             /* calculate relative datestamp based on the current one */
             depDatestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp,0, atoi(depHour),0,0 );
          } else {
