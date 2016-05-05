@@ -562,7 +562,7 @@ void SeqNode_setDepsNameValue (SeqNameValuesPtr name_values_ptr, char* name, cha
 
 /* add dependency of type node i.e. tasks/family  */
 void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, char* dep_node_name, char* dep_node_path,
-                         char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char* dep_Prot, char* dep_ValidHour, char* dep_ValidDOW) {
+                         char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char * dep_TimeDelta, char* dep_Prot, char* dep_ValidHour, char* dep_ValidDOW) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s, dep_Prot=%s,dep_ValidHour=%s, dep_ValidDOW=%s \n",
@@ -586,7 +586,10 @@ void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, c
    SeqNode_setDepsNameValue ( nameValuesPtr, "LOCAL_INDEX", local_index );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep_hour ); 
+   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep_hour );
+
+   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
+   SeqNode_setDepsNameValue ( nameValuesPtr, "TIME_DELTA", dep_TimeDelta );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
    SeqNode_setDepsNameValue ( nameValuesPtr, "PROT", dep_Prot );

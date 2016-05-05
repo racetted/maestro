@@ -129,7 +129,9 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const char *nodeName = NULL;
-   char *depType = NULL, *depExp=NULL, *depName = NULL,  *depPath = NULL, *depProt=NULL, *depHour = NULL, *depStatus = NULL, *depIndex = NULL, *depLocalIndex = NULL, *depValidHour=NULL, *depValidDOW=NULL;
+   char *depType = NULL, *depExp=NULL, *depName = NULL,  *depPath = NULL,
+        *depProt=NULL, *depHour = NULL, *depStatus = NULL, *depIndex = NULL,
+        *depLocalIndex = NULL, *depValidHour=NULL, *depValidDOW=NULL, *depTimeDelta = NULL;
    char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *parsedDepName=NULL, *tmpLoopName=NULL; 
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL, tokenValues=NULL;
    SeqLoopsPtr loopsPtr = NULL;
@@ -256,6 +258,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             depValidHour = (char *) xmlGetProp( nodePtr, "valid_hour" );
             depValidDOW = (char *) xmlGetProp( nodePtr, "valid_dow" );
             depStatus = (char *) xmlGetProp( nodePtr, "status" );
+            depTimeDelta = (char *) xmlGetProp( nodePtr, "time_delta" );
             if (depStatus == NULL) depStatus=strdup("end"); 
 
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depName: %s\n", depName );
@@ -266,11 +269,12 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depPath: %s\n", depPath );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
+            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depTimeDelta: %s\n", depTimeDelta );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depValidHour: %s\n", depValidHour );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depValidDOW: %s\n", depValidDOW );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() depProt: %s\n", depProt ); /* added by Rochdi */
-            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depProt, depValidHour, depValidDOW );
+            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depTimeDelta, depProt, depValidHour, depValidDOW );
             SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() done\n" );
             free( depName );
             free( depIndex );
@@ -279,6 +283,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
             free( depProt );
             free( depExp );
             free( depHour );
+            free( depTimeDelta );
             free( depValidHour );
             free( depValidDOW );
             free( parsedDepName );
