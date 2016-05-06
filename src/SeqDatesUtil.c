@@ -24,16 +24,68 @@
 #include "SeqUtil.h"
 #include "SeqDatesUtil.h"
 
-/* Returns incremented date (or decremented)
- char* printable_date  -- start date
- int day               -- increment or decrement by x days
- int hour              -- increment or decrement by x hours
- int minute            -- increment or decrement by x minutes
- int second            -- increment or decrement by x seconds
-
- */ 
 
 
+/********************************************************************************
+ * SeqDatesUtil_addTimeDelta()
+ * Returns a datestamp string incremented by the specified time delta.  The
+ * units are
+ *    d for days,
+ *    h for hours,
+ *    m for minutes,
+ *    s for seconds.
+ * If the first character is a '-', then the whole delta will be negative.
+ *
+ * The inted format is something like 1d2h3m4s or -1d2h3m4s but the parsing
+ * scheme actually allows for numbers to be followed by any number of non-digit
+ * characters as long as the first letter is d,h,m or s.  So
+ * -1day,2hours,3minutes,4seconds will work.
+ *
+ * Also note that if days are specified twice, no error will be raised, so
+ * 1d2m3d will be interpreted as days=3 minutes=2.  Unknown types will be
+ * ignored but will cause a TL_ERROR level trace call to show a message.
+********************************************************************************/
+#define isDigit(a) ('0' <= a && a <= '9')
+#define MAX_DIGITS 9
+char* SeqDatesUtil_addTimeDelta(char * datestamp, char * timeDelta){
+   char * p = timeDelta, buffer[MAX_DIGITS] = {'\0'}, type;
+   int sign = ( *p == '-' ? -1 : 1);
+   int days = 0, hours = 0, minutes = 0, seconds = 0, digitCounter = 0;
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil_addTimeDelta(): Parsing timeDelta=%s\n", timeDelta);
+   while( *p != '\0' && !isDigit(*p) ) p++;
+
+   while( *p != '\0' ){
+      while( isDigit(*p) && digitCounter < MAX_DIGITS )
+         buffer[digitCounter++] = *p++;
+      type = *p++;
+
+      switch(type){
+         case 'd': days = sign*atoi(buffer); break;
+         case 'h': hours = sign*atoi(buffer); break;
+         case 'm': minutes = sign*atoi(buffer); break;
+         case 's': seconds = sign*atoi(buffer); break;
+         default:
+            SeqUtil_TRACE(TL_ERROR,"SeqDatesUtil_addTimeDelta(): Encountered unknown type specifier '%c' after number %s\n", type, buffer);
+      }
+
+      while( *p != '\0' && !isDigit(*p) ) p++;
+      memset(buffer, '\0', sizeof(buffer));
+      digitCounter = 0;
+   }
+
+   SeqUtil_TRACE(TL_FULL_TRACE, "TimeDelta=%s : Days=%d, hours=%d, minutes=%d, seconds=%d\n",timeDelta, days,hours,minutes,seconds);
+   return SeqDatesUtil_getPrintableDate( datestamp, days, hours, minutes, seconds );
+}
+#undef MAX_DIGITS
+
+/********************************************************************************
+ * Returns incremented date (or decremented)
+ * char* printable_date  -- start date
+ * int day               -- increment or decrement by x days
+ * int hour              -- increment or decrement by x hours
+ * int minute            -- increment or decrement by x minutes
+ * int second            -- increment or decrement by x seconds
+********************************************************************************/
 char* SeqDatesUtil_getPrintableDate( char* printable_date, int day, int hour, int minute, int second )
 {
    long long int increment;
