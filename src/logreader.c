@@ -585,6 +585,7 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 
 		         tmp_output=strdup(stats_output);
 		         stats_output=sconcat(tmp_output, tmp_statstring);
+                 free(tmp_statstring);
 		         if (read_type == LR_SHOW_ALL || read_type == LR_SHOW_STATUS ) {
 			         switch(ptr_LXHtrotte->LastAction){
 			            case 'a':
@@ -626,7 +627,6 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 	       sprintf(output_buffer, "}");
 	       tmp_output=strdup(stats_output);
 	       stats_output=sconcat(tmp_output, output_buffer);
-          free(tmp_statstring);
 	       if (read_type == LR_SHOW_ALL || read_type == LR_SHOW_STATUS) {
 	          fprintf(stdout, "}");
 	       }
