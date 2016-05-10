@@ -190,6 +190,10 @@ int main (int argc, char * argv [])
       seq_exp_home = getenv("SEQ_EXP_HOME");
       fprintf(stderr, "maestro_main looking for SEQ_EXP_HOME in environment: %s\n",seq_exp_home);
    }
+   if (datestamp == NULL){
+      datestamp = strdup(getenv("SEQ_DATE"));
+      fprintf(stderr, "maestro_main looking for SEQ_DATE in environment: %s\n",datestamp);
+   }
    fprintf(stderr, "maestro_main calling maestro with SEQ_EXP_HOME=%s\n",seq_exp_home);
    /* printf( "node=%s signal=%s\n", node, sign ); */
    status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs, datestamp,seq_exp_home );

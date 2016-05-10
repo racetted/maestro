@@ -59,7 +59,6 @@ static const char* CATCHUP_DISCR_MSG = "DISCRETIONARY: this job is not scheduled
 static const char* CATCHUP_UNSUBMIT_MSG = "CATCHUP mode: this job will not be submitted";
 
 static char submit_tool[256];
-static char SEQ_EXP_HOME[SEQ_MAXFIELD];
 char *CurrentNode;
 
 /* external Function declarations */
@@ -1729,7 +1728,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	         ret=_removeFile(movedTarFile, _nodeDataPtr->expHome); 
 	         ret=_removeFile(readyFile, _nodeDataPtr->expHome); 
 
-	         sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s %s -args \"%s\" %s",submit_tool,getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+	         sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s %s -args \"%s\" %s",submit_tool,getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
 	         /*check if the running worker has not ended. If it has, launch another one.*/
             workerDataPtr =  nodeinfo( _nodeDataPtr->workerPath, "all",  _nodeDataPtr->loop_args, _nodeDataPtr->expHome, NULL, _nodeDataPtr->datestamp );
@@ -1761,7 +1760,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
         
          } else {
              /* normal task submission */
-	         sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, SEQ_EXP_HOME, tmpCfgFile, getenv("SEQ_BIN"),immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+	         sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, tmpCfgFile, getenv("SEQ_BIN"),immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
          }
 
          SeqUtil_TRACE(TL_FULL_TRACE,"Temporarily sending submission output to %s\n", submissionDir );
@@ -2916,6 +2915,7 @@ Inputs:
 */
 
 int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char* _extraArgs, char *_datestamp, char* _seq_exp_home ) {
+   char buffer[SEQ_MAXFIELD] = {'\0'};
    char tmpdir[256];
    char *seq_soumet = NULL, *tmp = NULL, *logMech=NULL, *defFile=NULL, *windowAverage = NULL, *runStats = NULL ;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL, *tmpFullOrigin=NULL, *tmpLoopExt=NULL, *tmpJobID=NULL, *tmpNodeOrigin=NULL, *tmpHost=NULL, *fixedPath;
@@ -2954,17 +2954,14 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro() ignoreAllDeps=%d \n",ignoreAllDeps );
 
-
+   /* Verify validity of _seq_exp_home */
    if ( _seq_exp_home != NULL ) {
-      memset(SEQ_EXP_HOME,'\0',sizeof SEQ_EXP_HOME);
-      SeqUtil_normpath(SEQ_EXP_HOME,_seq_exp_home);
-      fixedPath = SeqUtil_fixPath(SEQ_EXP_HOME);
-      sprintf(SEQ_EXP_HOME,"%s",fixedPath);
-      free(fixedPath);
-
-      if ( (dirp = opendir(SEQ_EXP_HOME)) == NULL){
-         raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n",SEQ_EXP_HOME );
+      SeqUtil_normpath(buffer,_seq_exp_home);
+      fixedPath = SeqUtil_fixPath(buffer);
+      if ( (dirp = opendir(fixedPath)) == NULL){
+         raiseError( "SEQ_EXP_HOME %s is an invalid link or directory!\n",fixedPath );
       }
+      free(fixedPath);
       closedir(dirp);
    } else {
       raiseError( "maestro(): argument _seq_exp_home of maestro() function must be supplied \n" );
