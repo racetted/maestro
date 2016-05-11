@@ -836,14 +836,8 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
     }
 
     /* Parse the string: put left of "=" into defkey and right into defval */
-    if ( sscanf( line, " %[^= ] = %[^\n]", defkey, defval ) == 2 ){
+    if ( sscanf( line, " %[^= \t] = %[^\n \t]", defkey, defval ) == 2 ){
       if ( strcmp( key, defkey ) == 0 ) {
-        /* remove trailing whitespace from defval*/
-        iterator = strlen(defval);
-        while ((defval[iterator] == ' ')||(defval[iterator] == '\0')) {
-          defval[iterator]='\0';
-          --iterator;
-        }
         /* Copy the string into retval for the caller and return it. */
         if ( ! (retval = (char *) malloc( strlen(defval)+1 )) ) {
           raiseError("SeqUtil_parsedef malloc: Out of memory!\n");
