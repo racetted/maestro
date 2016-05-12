@@ -1287,7 +1287,7 @@ int sendmail(const char *to, const char *from, const char *cc , const char *subj
 
 /**
 * getDependencyFiles
-* return parameteres of inter-dependencies
+* return parameters of inter-dependencies
 * located under $HOME/.suites/maestrod/dependencies/polling/$version
 */
 dpnode *getDependencyFiles(char *DDep, char *xp ,FILE *fp, const char *deptype)

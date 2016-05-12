@@ -111,9 +111,9 @@ static void sig_admin(int signo, siginfo_t *siginfo, void *context) {
 }
 
 /**
-   Routine which run as a Process for Verifying and 
-   Sumbiting dependencies. This routine is concurrency
-   safe meaning that a hcron script could be set to 
+   Routine which runs as a process for verifying and
+   submitting dependencies. This routine is concurrency
+   safe meaning that an hcron script could be set to
    manage dependency files.
 */
 void DependencyManager (_l2d2server l2d2 ) {
@@ -1344,12 +1344,12 @@ int main ( int argc , char * argv[] )
   
   /* get maestro current version and shortcut */
   if (  (L2D2.mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
-            fprintf(stderr, "maestro_server(),Could not get maestro current version. do a proper ssmuse \n");
+            fprintf(stderr, "maestro_server(),Could not get maestro current version. Please do a proper ssmuse \n");
             exit(1);
   }
 
   if (  (L2D2.mshortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
-            fprintf(stderr, "maestro_server(),Could not get maestro current version. do a proper ssmuse \n");
+            fprintf(stderr, "maestro_server(),Could not get maestro current version. Please do a proper ssmuse \n");
             exit(1);
   }
 
@@ -1376,12 +1376,13 @@ int main ( int argc , char * argv[] )
   snprintf(L2D2.auth,sizeof(L2D2.auth),"%s/.suites/%s",passwdEnt->pw_dir,authorization_file);
   Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   if ( Auth_token != NULL) {
-      fprintf(stderr, "maestro_server(),found .maestro_server_%s file, removing configuration file\n",L2D2.mversion);
+      fprintf(stderr, "maestro_server(): Found mserver process information file %s: removing and replacing with new one.\n",authorization_file);
       status=unlink(L2D2.auth);
       free(Auth_token);
       free(m5sum);
+  } else {
+     fprintf( stderr, "    file will be created.\n");
   }
-
   
   status=chdir("/");
   if ( status != 0 ) {

@@ -90,16 +90,16 @@ void print_usage (FILE* stream , int exit_code)
            "  -l   xp_name            xp_name: list current registered dependencies for this xp_name\n"
 	   "                          none: list current registered dependencies of defined SEQ_EXP_HOME\n" 
 	   " \n"
-           "  -r   key|xp_name|all    key: remove current registred dependency identified by the given key\n"
-	   "                          xp_name: remove current registred dependencies for this xp_name\n"
-	   "                          all: remove all current registred dependencies for this user\n"
-	   "                          none: remove current registred dependencies of defined SEQ_EXP_HOME\n"
+           "  -r   key|xp_name|all    key: remove current registered dependency identified by the given key\n"
+	   "                          xp_name: remove current registered dependencies for this xp_name\n"
+	   "                          all: remove all current registered dependencies for this user\n"
+	   "                          none: remove current registered dependencies of defined SEQ_EXP_HOME\n"
            "  -t   xp_name            list xp who are depending on this xp_name \n"
            "                          none: list xp who are depending on defined SEQ_EXP_HOME \n"
            "  -s                      Shutdown maestro server \n" 
            "  -i                      Inquire if maestro server is alive \n" 
 	   "-----------------------------------------------------------------\n"
-	   "xp_name    :referes to a valid experiment name\n"
+	   "xp_name    :refers to a valid experiment name\n"
 	   "all        :string \"all\"\n"
 	   "key        :key given by list command (-l)\n"
 	   "\n");
@@ -292,12 +292,12 @@ int main (int argc, char* argv[])
 
   /* The main program goes here.  */
   if ( (mversion=getenv("SEQ_MAESTRO_VERSION")) == NULL ) {
-           fprintf(stderr,"Cannot get maestro version do a proper ssmuse\n");
+           fprintf(stderr,"Cannot get maestro version, please do a proper ssmuse\n");
            exit(1);
   }
   
   if (  (mshortcut=getenv("SEQ_MAESTRO_SHORTCUT")) == NULL ) {
-           fprintf(stderr, "maestro_server(),Could not get maestro current version. do a proper ssmuse \n");
+           fprintf(stderr, "maestro_server(),Could not get maestro current version. Please do a proper ssmuse \n");
            exit(1);
   }
 
@@ -305,7 +305,7 @@ int main (int argc, char* argv[])
   char *Auth_token = get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   
   if ( Auth_token == NULL) {
-            fprintf(stderr, "Found No maestro_server_%s parameteres file\n",mversion);
+            fprintf(stderr, "Found No maestro_server_%s parameters file\n",mversion);
             exit(1);
   } else {
             int nscan = sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%u", &pid, htserver, ipserver, &port);
@@ -501,7 +501,7 @@ int main (int argc, char* argv[])
   alarm(5);
   bytes_sent=write(sock, "S ", 2);
   alarm(0);
-  if ( bytes_sent <= 0 ) fprintf(stderr,"Could not sent to mserver. Timed out ... bytes_sent=%d\n",bytes_sent);
+  if ( bytes_sent <= 0 ) fprintf(stderr,"Could not send to mserver. Timed out ... bytes_sent=%d\n",bytes_sent);
 
   close(sock);
 

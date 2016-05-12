@@ -132,7 +132,7 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
                 for ( ptr_Ltrotte = ptr_LLtrotte->Ptr_LNode; ptr_Ltrotte != NULL ; ptr_Ltrotte = ptr_Ltrotte->next) {
                                if ( strcmp(ptr_Ltrotte->PNode.Node,ComposedNode) == 0 ) {
                                     found_node=1;
-				    /* complete insertion of parameteres */
+				    /* complete insertion of parameters */
 				    switch (S) 
 				    {
 		                       case 'a':

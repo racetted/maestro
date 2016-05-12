@@ -51,7 +51,7 @@ int GetHostName(char *name, size_t len)
 }
 
 /**
- * get Parameteres token from file $HOME/.suites/.maestro_server_${version}
+ * get Parameters token from file $HOME/.suites/.maestro_server_${version}
  * return pointer to character string upon success
  * return NULL pointer in case of error
  */
@@ -70,7 +70,7 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
      }
 
      if (  (ppass=getpwnam(username)) == NULL ) {
-	 fprintf(stderr, "get_Authorization: Cannot get user:%s passwd parameteres\n",username);
+	 fprintf(stderr, "get_Authorization: Cannot get user:%s passwd parameters\n",username);
 	 free(auth_buf);
 	 return (NULL); 
      }
@@ -78,20 +78,20 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
      snprintf(buf, sizeof(buf), "%s/.suites/%s", ppass->pw_dir,filename);
 
      if ( access(buf, R_OK) != 0 ) {
-	 fprintf(stderr, "get_Authorization:  Parameteres file:%s do not exist \n",buf);
+	 fprintf(stderr, "get_Authorization:  Parameters file:%s does not exist \n",buf);
 	 free(auth_buf);
 	 return (NULL); 
 
      } 
 
      if ((fd = open(buf, O_RDONLY)) == -1) {
-	 fprintf(stderr, "get_Authorization: Can't open Parameteres file:%s\n",filename);
+	 fprintf(stderr, "get_Authorization: Can't open Parameters file:%s\n",filename);
 	 free(auth_buf);
 	 return(NULL); 
      }
 
      if (read(fd, auth_buf, 1024) <= 0) {
-	 fprintf(stderr, "get_Authorization: Can't read Parameteres file\n");
+	 fprintf(stderr, "get_Authorization: Can't read Parameters file\n");
 	 close(fd);
 	 free(auth_buf);
 	 return(NULL); 
@@ -106,7 +106,7 @@ char *get_Authorization( char *filename , char *username , char **m5sum )
 }
 
 /**
- * write Parameteres tokens into file ~user/.suites/.maestro_server_${version} 
+ * write Parameters tokens into file ~user/.suites/.maestro_server_${version} 
  */
 void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , char * filename, char *username , char **m5sum) 
 {
@@ -116,14 +116,14 @@ void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , 
      struct passwd *ppass;
     
      if (  (ppass=getpwnam(username)) == NULL ) {
-	 fprintf(stderr, "set_Authorization: Cannot get user:%s passwd parameteres\n",username);
+	 fprintf(stderr, "set_Authorization: Cannot get user:%s passwd parameters\n",username);
 	 return; 
      }
 
      snprintf(buf, sizeof(buf), "%s/.suites/%s", ppass->pw_dir,filename);
      
      if ((fd = open(buf, O_WRONLY + O_CREAT, 0600)) == -1) {
-	 fprintf(stderr,"set_Authorization: Can't open Parameteres file:%s\n",filename);
+	 fprintf(stderr,"set_Authorization: Can't open Parameters file:%s\n",filename);
 	 free(ppass);
 	 exit(1);
      }

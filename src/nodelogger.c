@@ -403,7 +403,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     
     /* get user parameters */
     if (  (ppass=getpwnam(username)) == NULL ) {
-        fprintf(stderr, " Nodelogger::Cannot get user:%s passwd parameteres\n",username);
+        fprintf(stderr, " Nodelogger::Cannot get user:%s passwd parameters\n",username);
         return (1); 
     }
     /* get host , pid */
