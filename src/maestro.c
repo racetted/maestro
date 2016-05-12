@@ -2096,8 +2096,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                   /* is the dependant still waiting? if not, don't submit. */
                   if ( ! isNodeXState (depNode, depArgs, depDatestamp, depExp, "waiting") ) {
                       SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() dependant node not currently in wait state, skipping submission. \n");
-                      current_dep_line = current_dep_line->nextPtr;
-                      continue; 
+                      goto next;
                   }
 
                   /* Do the submit or send nodelogger message based on flow.  Avoid double submitting */
@@ -2139,11 +2138,12 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                               _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
                      }
                   }
+               next:
                   depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
                   line_count++;
                   current_dep_line = current_dep_line->nextPtr;
                } /* end while loop */
-    
+
                /* warn if file empty ... */
                if ( line_count == 0 ) raiseError( "waited_end file:%s (submitDependencies) EMPTY !!!! \n",waited_filename );
             } else {
