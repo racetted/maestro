@@ -1382,11 +1382,6 @@ int main ( int argc , char * argv[] )
       free(m5sum);
   }
 
-  /* detach from current terminal */
-  if ( fork() > 0 ) {
-      fprintf(stdout, "maestro_server(), exiting from parent process \n");
-      exit(0);  /* parent exits now */
-  }
   
   status=chdir("/");
   if ( status != 0 ) {
@@ -1397,6 +1392,12 @@ int main ( int argc , char * argv[] )
   /* Parse config file. In which directory should this file reside ? */
   snprintf(buf,sizeof(buf),"%s/.suites/mconfig.xml",passwdEnt->pw_dir);
   ret = ParseXmlConfigFile(buf, &L2D2 );
+
+  /* detach from current terminal */
+  if ( fork() > 0 ) {
+      fprintf(stdout, "maestro_server(), exiting from parent process \n");
+      exit(0);  /* parent exits now */
+  }
 
   /* get hostname */
   gethostname(hostname, sizeof(hostname));
