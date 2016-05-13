@@ -634,18 +634,18 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 			    /* ADD statfs here to check filesys type */
 	                    status=r_mkdir(pl2d2->logdir ,1,stderr);
 			    if ( status != 0 ) {
-			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+			            fprintf(stderr,"Could not create log directory=%s\n",pl2d2->logdir);
                                     exit(1);
 			    }
 	                    snprintf(pl2d2->mlog,sizeof(pl2d2->mlog),"%s/mcontroller",pl2d2->logdir);
 			    /* set files */
 			    snprintf(pl2d2->dmlog,sizeof(pl2d2->dmlog),"%s/mdpmanager",pl2d2->logdir);
-			    fprintf(stdout,"In xml Config File found log directory=%s\n",pl2d2->logdir);
+			    fprintf(stderr,"In xml Config File found log directory=%s\n",pl2d2->logdir);
              } else {
 	                    sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->logdir,1,stderr);
 			    if ( status != 0 ) {
-			            fprintf(stdout,"Could not create log directory=%s\n",pl2d2->logdir);
+			            fprintf(stderr,"Could not create log directory=%s\n",pl2d2->logdir);
                                     exit(1);
 			    }
 			    /* set files */
@@ -660,16 +660,16 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	                    sprintf(pl2d2->web,"%s/v%s",bf,pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web,1,stderr);
 			    if ( status != 0 ) {
-			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
+			            fprintf(stderr,"Could not create web directory=%s\n",pl2d2->web);
                                     exit(1);
 			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies.html",pl2d2->web);
-			    fprintf(stdout,"In xml Config File found web directory=%s\n",pl2d2->web);
+			    fprintf(stderr,"In xml Config File found web directory=%s\n",pl2d2->web);
              } else {
 	                    sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	                    status=r_mkdir(pl2d2->web,1,stderr);
 			    if ( status != 0 ) {
-			            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
+			            fprintf(stderr,"Could not create web directory=%s\n",pl2d2->web);
                                     exit(1);
 			    }
 	                    sprintf(pl2d2->web_dep,"%s/dependencies_stat.html",pl2d2->web);
@@ -682,12 +682,12 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                       if ( prc_n != NULL && (c=roxml_get_content(prc_n,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    if ( (pl2d2->maxNumOfProcess=atoi(bf)) <= 0 ) {
 			              pl2d2->maxNumOfProcess=4;
-			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
+			              fprintf(stderr,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             } else if ( (pl2d2->maxNumOfProcess=atoi(bf)) > 8 ) {
 			              pl2d2->maxNumOfProcess=8;
-			              fprintf(stdout,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
+			              fprintf(stderr,"Forcing maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             } else {
-			              fprintf(stdout,"In xml Config File found maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
+			              fprintf(stderr,"In xml Config File found maxNumOfProcess=%d\n",pl2d2->maxNumOfProcess);
                             }
                       } else {
 		            pl2d2->maxNumOfProcess=4;
@@ -698,12 +698,12 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                       if ( pmc_n != NULL && (c=roxml_get_content(pmc_n,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    if ( (pl2d2->maxClientPerProcess=atoi(bf)) <= 10 ) {
 			              pl2d2->maxClientPerProcess=50; 
-			              fprintf(stdout,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+			              fprintf(stderr,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
                             } else if ( (pl2d2->maxClientPerProcess=atoi(bf)) > 512 ) {
 			              pl2d2->maxClientPerProcess=512;
-			              fprintf(stdout,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+			              fprintf(stderr,"Forcing maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
                             } else {
-			              fprintf(stdout,"In xml Config File found maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
+			              fprintf(stderr,"In xml Config File found maxClientPerProcess=%d\n",pl2d2->maxClientPerProcess);
                             }
                       } else {
 		            pl2d2->maxClientPerProcess=50;
@@ -722,10 +722,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    if ( pfq != NULL && (c=roxml_get_content(pfq,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    if ( (pl2d2->pollfreq=atoi(bf)) <= 15 || (pl2d2->pollfreq=atoi(bf)) > 120 ) { 
 			           pl2d2->pollfreq=30;
-			           fprintf(stdout,"Forcing polling frequency=%d\n",pl2d2->pollfreq);
+			           fprintf(stderr,"Forcing polling frequency=%d\n",pl2d2->pollfreq);
                             } else {
 			           pl2d2->pollfreq=atoi(bf);
-			           fprintf(stdout,"In xml Config File found polling frequency=%d\n",pl2d2->pollfreq);
+			           fprintf(stderr,"In xml Config File found polling frequency=%d\n",pl2d2->pollfreq);
                             } 
                    } else {
 	                    pl2d2->pollfreq=30;
@@ -736,7 +736,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    if ( dto != NULL && (c=roxml_get_content(dto,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                     if (  (pl2d2->dependencyTimeOut=atoi(bf)) <= 0 || (pl2d2->dependencyTimeOut=atoi(bf)) > 168 ) {
 	                                 pl2d2->dependencyTimeOut=24;
-			                 fprintf(stdout,"dependencyTimeOut invalid or too high. Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
+			                 fprintf(stderr,"dependencyTimeOut invalid or too high. Forcing dependencyTimeOut=%d\n",pl2d2->dependencyTimeOut);
                              } else {
 	                                 pl2d2->dependencyTimeOut=atoi(bf);
                                          fprintf(stderr,"In xml Config file found dependency time out period=%d\n",pl2d2->dependencyTimeOut);
@@ -756,10 +756,10 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
              if ( dbz_n != NULL && (c=roxml_get_content(dbz_txt,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 		      if ( (pl2d2->dzone=atoi(bf)) < 0 || (pl2d2->dzone=atoi(bf)) > 3 ) {
 		                   pl2d2->dzone=1;
-			           fprintf(stdout,"Setting Defaults for debug zone=%d\n",pl2d2->dzone);
+			           fprintf(stderr,"Setting Defaults for debug zone=%d\n",pl2d2->dzone);
                       } else {
 			           pl2d2->dzone=atoi(bf);
-			           fprintf(stdout,"In xml Config File found debug zone=%d\n",pl2d2->dzone);
+			           fprintf(stderr,"In xml Config File found debug zone=%d\n",pl2d2->dzone);
                       }
              } else {
 		       pl2d2->dzone=0;
@@ -771,7 +771,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
                    node_t *emlto = roxml_get_attr(eml_n,"to",0);
                    if ( emlto != NULL && (c=roxml_get_content(emlto,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    sprintf(pl2d2->emailTO,"%s",bf);
-			    fprintf(stdout,"in xml file found  email to=%s\n",pl2d2->emailTO);
+			    fprintf(stderr,"in xml file found  email to=%s\n",pl2d2->emailTO);
                    } else {
 	                    sprintf(pl2d2->emailTO,"%s@ec.gc.ca",pl2d2->user);
 		   }
@@ -779,7 +779,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 		   node_t *emlcc = roxml_get_attr(eml_n, "cc",0);
                    if ( emlcc != NULL && (c=roxml_get_content(emlcc,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    sprintf(pl2d2->emailCC,"%s",bf);
-			    fprintf(stdout,"in xml file found  email cc=%s\n",pl2d2->emailCC);
+			    fprintf(stderr,"in xml file found  email cc=%s\n",pl2d2->emailCC);
                    } else {
 	                    sprintf(pl2d2->emailCC,"");
 		   }
@@ -791,25 +791,25 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	         node_t *cln_cntr = roxml_get_attr(cln_n,"controller",0);
                  if ( cln_cntr != NULL && (c=roxml_get_content(cln_cntr,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    pl2d2->clean_times.controller_clntime=atoi(bf);
-			    fprintf(stdout,"in xml file found clean main controller=%d\n",pl2d2->clean_times.controller_clntime);
+			    fprintf(stderr,"in xml file found clean main controller=%d\n",pl2d2->clean_times.controller_clntime);
                  } 
 	     
 	         node_t *cln_dmgr = roxml_get_attr(cln_n,"dpmanager",0);
                  if ( cln_dmgr != NULL && (c=roxml_get_content(cln_dmgr,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    pl2d2->clean_times.dpmanager_clntime=atoi(bf);
-			    fprintf(stdout,"in xml file found clean dependency manager=%d\n",pl2d2->clean_times.dpmanager_clntime);
+			    fprintf(stderr,"in xml file found clean dependency manager=%d\n",pl2d2->clean_times.dpmanager_clntime);
                  } 
 	     
 	         node_t *cln_ewrk = roxml_get_attr(cln_n,"eworker",0);
                  if ( cln_ewrk != NULL && (c=roxml_get_content(cln_ewrk,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    pl2d2->clean_times.eworker_clntime=atoi(bf);
-			    fprintf(stdout,"in xml file found clean eternal worker=%d\n",pl2d2->clean_times.eworker_clntime);
+			    fprintf(stderr,"in xml file found clean eternal worker=%d\n",pl2d2->clean_times.eworker_clntime);
                  } 
 	     
 	         node_t *cln_twrk = roxml_get_attr(cln_n,"tworker",0);
                  if ( cln_twrk != NULL && (c=roxml_get_content(cln_twrk,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    pl2d2->clean_times.tworker_clntime=atoi(bf);
-			    fprintf(stdout,"in xml file found clean transient worker=%d\n",pl2d2->clean_times.tworker_clntime);
+			    fprintf(stderr,"in xml file found clean transient worker=%d\n",pl2d2->clean_times.tworker_clntime);
                  } 
              }
 
@@ -819,16 +819,16 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	         node_t *prt_min = roxml_get_attr(prt_n,"min",0);
                  if ( prt_min != NULL && (c=roxml_get_content(prt_min,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    pl2d2->port_min=atoi(bf);
-			    fprintf(stdout,"in xml file found start port=%d\n",pl2d2->port_min);
+			    fprintf(stderr,"in xml file found start port=%d\n",pl2d2->port_min);
                  }
 	         
 		 node_t *prt_max = roxml_get_attr(prt_n,"max",0);
                  if ( prt_max != NULL && (c=roxml_get_content(prt_max,bf,sizeof(bf),&size)) != NULL && size > 0 ) {
 	                    pl2d2->port_max=atoi(bf);
-			    fprintf(stdout,"in xml file found end port=%d\n",pl2d2->port_max);
+			    fprintf(stderr,"in xml file found end port=%d\n",pl2d2->port_max);
                  }
              } else {
-                  fprintf(stdout,"Default port range (OS-given) \n");
+                  fprintf(stderr,"Default port range (OS-given) \n");
                   pl2d2->port_min=0;
                   pl2d2->port_max=0;
                }
@@ -843,7 +843,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	     sprintf(pl2d2->web,"%s/public_html/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->web,1,stderr);
 	     if ( status != 0 ) {
-	            fprintf(stdout,"Could not create web directory=%s\n",pl2d2->web);
+	            fprintf(stderr,"Could not create web directory=%s\n",pl2d2->web);
                     exit(1);
 	     }
 
@@ -851,7 +851,7 @@ int ParseXmlConfigFile(char *filename ,  _l2d2server *pl2d2 )
 	     sprintf(pl2d2->logdir,"%s/.suites/log/v%s",getenv("HOME"),pl2d2->mversion);
 	     status=r_mkdir(pl2d2->logdir,1,stderr);
 	     if ( status != 0 ) {
-	            fprintf(stdout,"Could not create log directory=%s ... exiting\n",pl2d2->logdir);
+	            fprintf(stderr,"Could not create log directory=%s ... exiting\n",pl2d2->logdir);
                     exit(1);
 	     }
 	     sprintf(pl2d2->mlog,"%s/mcontroller",pl2d2->logdir);

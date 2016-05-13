@@ -178,7 +178,7 @@ void DependencyManager (_l2d2server l2d2 ) {
      snprintf(tlog,sizeof(tlog),"%.8s",Time);
      snprintf(buf,sizeof(buf),"%s_%.8s_%d",l2d2.dmlog,Time,l2d2.depProcPid);
      if ( (dmlg=fopen(buf,"w+")) == NULL ) {
-            fprintf(stdout,"Dependency Manager: Could not open dmlog stream:%s\n",buf);
+            fprintf(stderr,"Dependency Manager: Could not open dmlog stream:%s\n",buf);
 	    exit(1);
      }
    
@@ -599,7 +599,7 @@ static void l2d2SelectServlet( int listen_sd , TypeOfWorker tworker)
 	            fclose(mlog);
                     snprintf(buf,sizeof(buf),"%s/meworker_%.8s_%d",L2D2.logdir,Stime,getpid());
 	            if ( (mlog=fopen(buf,"w+")) == NULL ) {
-	                      fprintf(stdout,"Worker: Could not open mlog stream\n"); /* doesn't go anywhere */
+	                      fprintf(stderr,"Worker: Could not open mlog stream\n"); /* doesn't go anywhere */
 	            } else {
 	                setvbuf(mlog, NULL, _IONBF, 0);
                     }
@@ -1396,7 +1396,7 @@ int main ( int argc , char * argv[] )
 
   /* detach from current terminal */
   if ( fork() > 0 ) {
-      fprintf(stdout, "maestro_server(), exiting from parent process \n");
+      fprintf(stderr, "maestro_server(), exiting from parent process \n");
       exit(0);  /* parent exits now */
   }
 
@@ -1433,16 +1433,16 @@ int main ( int argc , char * argv[] )
   strcpy(L2D2.ip,ip);
 
   /* create local common tmp directory where to synchronize locks */
-  fprintf(stdout, "Host ip=%s Server port=%d user=%s pid=%d\n", ip, server_port, L2D2.user, L2D2.pid);
+  fprintf(stderr, "Host ip=%s Server port=%d user=%s pid=%d\n", ip, server_port, L2D2.user, L2D2.pid);
   sprintf(buf,"/tmp/%s/%d",L2D2.user,L2D2.pid);
   if ( (ret=r_mkdir(buf,1,stderr)) != 0 ) {
-          fprintf(stdout,"Cannot create server working tmpdir directory:%s ... exiting\n",buf);
+          fprintf(stderr,"Cannot create server working tmpdir directory:%s ... exiting\n",buf);
 	  exit(1);
   }
 
   /* put in global struct */
   if ( (L2D2.tmpdir=malloc((1+strlen(buf))*sizeof(char))) == NULL ) {
-          fprintf(stdout,"Cannot malloc for tmpdir ... exiting\n");
+          fprintf(stderr,"Cannot malloc for tmpdir ... exiting\n");
 	  exit(1);
   }
   strcpy(L2D2.tmpdir,buf);
@@ -1452,7 +1452,7 @@ int main ( int argc , char * argv[] )
   set_Authorization (mypid,hostname,ip,server_port,authorization_file,passwdEnt->pw_name,&L2D2.m5sum);
   Auth_token = get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%d", &pidTken, hostTken, ipTken, &portTken);
-  fprintf(stdout, "Set maestro_server pid key to:%u file md5=%s\n",pidTken,L2D2.m5sum);
+  fprintf(stderr, "Set maestro_server pid key to:%u file md5=%s\n",pidTken,L2D2.m5sum);
   snprintf(buf,sizeof(buf),"%s/.suites/.maestro_server_%s",passwdEnt->pw_dir,L2D2.mversion);
   strcpy(L2D2.lock_server_pid_file,buf);
   free(Auth_token);
