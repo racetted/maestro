@@ -27,103 +27,69 @@
 /********************************************************************************
 * SeqListNode_insertItem: Inserts an Item into the list
 ********************************************************************************/
-void SeqListNode_insertItem(LISTNODEPTR *sPtr, char *chaine)
+void SeqListNode_insertItem(LISTNODEPTR *list_head, char *data)
 {
-/*printf("SeqListNode_insertItem() called chaine=%s\n", chaine); */
- LISTNODEPTR newPtr=NULL, previousPtr=NULL, currentPtr=NULL;
+   /*printf("SeqListNode_insertItem() called chaine=%s\n", chaine); */
+   LISTNODEPTR new = NULL, current = *list_head;
 
-   newPtr = malloc(sizeof(LISTNODE));
-
-   if (newPtr != NULL) { /* is space available */
-      newPtr->data = (char *) malloc(strlen(chaine)+1);
-      strcpy(newPtr->data,chaine);
-      newPtr->nextPtr = NULL;
-      
-      previousPtr = NULL;
-      currentPtr = *sPtr;
-   
-      /* position ourselve at end of list */
-      while (currentPtr != NULL) {
-         previousPtr = currentPtr; 
-         currentPtr = currentPtr->nextPtr;
-      }
-      
-      if (previousPtr == NULL) {
-         newPtr->nextPtr=*sPtr;
-         *sPtr = newPtr;
-      } else {
-         previousPtr->nextPtr=newPtr;
-         newPtr->nextPtr=currentPtr;
-      }
-   } else {
-         printf("%s not inserted. No memory available.\n",chaine);
+   if ( (new = malloc(sizeof(LISTNODE))) == NULL){
+      SeqUtil_TRACE(TL_ERROR, "SeqListNode_insertItem(): Cannot allocate memory for new item data=%s\n",data);
+      return;
    }
-/*printf("SeqListNode_insertItem() called done\n", chaine); */
+   new->data = strdup(data);
+   new->nextPtr = NULL;
+   if( *list_head == NULL){
+      *list_head = new;
+   } else {
+      while( current->nextPtr != NULL ) current = current->nextPtr;
+      current->nextPtr = new;
+   }
 }
 
-void SeqListNode_insertTokenItem(TOKENNODEPTR *sPtr, char *token, char *data)
+void SeqListNode_insertTokenItem(TOKENNODEPTR *list_head, char *token, char *data)
 {
-   /*printf("SeqListNode_insertTokenItem() called token=%s\n", token); */
-   TOKENNODEPTR newPtr=NULL, previousPtr=NULL, currentPtr=NULL;
-   
-   newPtr = malloc(sizeof(TOKENNODE));
-   
-   if (newPtr != NULL) { /* is space available */
-      newPtr->token = (char *) malloc(strlen(token)+1);
-      strcpy(newPtr->token,token);
-      newPtr->data = (char *) malloc(strlen(data)+1);
-      strcpy(newPtr->data,data);
-      newPtr->nextPtr = NULL;
-      
-      previousPtr = NULL;
-      currentPtr = *sPtr;
-      
-      /* position ourselve at end of list */
-      while (currentPtr != NULL) {
-	 previousPtr = currentPtr; 
-	 currentPtr = currentPtr->nextPtr;
-      }
-      
-      if (previousPtr == NULL) {
-	 newPtr->nextPtr=*sPtr;
-	 *sPtr = newPtr;
-      } else {
-	 previousPtr->nextPtr=newPtr;
-	 newPtr->nextPtr=currentPtr;
-      }
-   } else {
-      printf("%s not inserted. No memory available.\n",token);
+   TOKENNODEPTR new = NULL, current = *list_head;
+   if( (new = malloc(sizeof(TOKENNODE)) ) == NULL ){
+      SeqUtil_TRACE(TL_ERROR, "SeqListNode_insertTokenItem(): Cannot allocate memory for new item token=%s, data=%s\n",token,data);
+      return;
    }
-   /*printf("SeqListNode_insertTokenItem() called done\n", token); */
+   new->data = strdup(data);
+   new->token = strdup(token);
+   new->nextPtr = NULL;
+   if ( current == NULL ){
+      *list_head = new;
+   } else {
+      while(current->nextPtr != NULL ) current = current->nextPtr;
+      current->nextPtr = new;
+   }
 }
 
 /********************************************************************************
 * SeqListNode_deleteTokenItem: deletes the first token node from the list.
 ********************************************************************************/
-void SeqListNode_deleteTokenItem(TOKENNODEPTR *sPtr)
+void SeqListNode_deleteTokenItem(TOKENNODEPTR *list_head)
 {
- TOKENNODEPTR tempPtr=NULL;
- tempPtr = *sPtr;
- *sPtr = (*sPtr)->nextPtr;
- tempPtr->nextPtr=NULL;
- free(tempPtr->data);
- free(tempPtr->token); 
- free(tempPtr);
- tempPtr=NULL;
+   TOKENNODEPTR to_delete = *list_head;
+   *list_head = to_delete->nextPtr;
+   free(to_delete->data);
+   free(to_delete->token);
+   free(to_delete);
 }
 
 /********************************************************************************
 * SeqListNode_deleteWholeList: deletes an element from the list.
 ********************************************************************************/
-void SeqListNode_deleteWholeList(LISTNODEPTR *sPtr)
+void SeqListNode_deleteWholeList(LISTNODEPTR *list_head)
 {
- if ( *sPtr != NULL) {
-   SeqListNode_deleteWholeList(&(*sPtr)->nextPtr);
-   free((*sPtr)->data);
-   free((*sPtr)->nextPtr);
-   free(*sPtr);
-   *sPtr=NULL;
- }
+   LISTNODEPTR current,tmp_next;
+   current = *list_head;
+   while ( current != NULL )
+   {
+      tmp_next = current->nextPtr;
+      free(current->data);
+      free(current);
+      current = tmp_next;
+   }
 }
 
 
@@ -131,58 +97,31 @@ void SeqListNode_deleteWholeList(LISTNODEPTR *sPtr)
 * SeqListNode_isItemExists: returns true if the data already exists in the list
 *                           otherwise returns false
 ********************************************************************************/
-int SeqListNode_isItemExists(LISTNODEPTR sPtr, char *data)
+int SeqListNode_isItemExists(LISTNODEPTR list_head, char *data)
 {
-   LISTNODEPTR currentPtr = sPtr;
-   int found = 0;
-
-   /* position ourselve at beginning of list */
-   while (currentPtr != NULL && found == 0) {
-      if ( strcmp( currentPtr->data, data ) == 0 ) {
-         /* item exists */
-	 found = 1;
-	 break;
-      }
-      currentPtr = currentPtr->nextPtr;
-   }
-
-   return found;
+   LISTNODEPTR current = list_head;
+   for ( current = list_head; current != NULL; current = current->nextPtr)
+      if ( strcmp( current->data, data ) == 0 )
+         return 1;
+   return 0;
 }
 
-int SeqListNode_isTokenItemExists(TOKENNODEPTR sPtr, char *token)
+int SeqListNode_isTokenItemExists(TOKENNODEPTR list_head, char *token)
 {
-   TOKENNODEPTR currentPtr = sPtr;
-   int found = 0;
-   
-   /* position ourselve at beginning of list */
-   while (currentPtr != NULL && found == 0) {
-      if ( strcmp( currentPtr->token, token ) == 0 ) {
-	 /* item exists */
-	 found = 1;
-	 if (strcmp(currentPtr->data, "") == 0 ) {
-	    SeqListNode_deleteTokenItem(&sPtr);
-	 }
-	 break;
-      }
-      currentPtr = currentPtr->nextPtr;
-   }
-   
-   return found;
+   TOKENNODEPTR current;
+   for ( current = list_head; current != NULL; current = current->nextPtr)
+      if ( strcmp( current->token, token ) == 0 )
+         return 1;
+   return 0;
 }
 
-char *SeqListNode_getTokenData(TOKENNODEPTR sPtr, char *token)
+char *SeqListNode_getTokenData(TOKENNODEPTR list_head, char *token)
 {
-   TOKENNODEPTR currentPtr = sPtr;
-   int found = 0;
-   
-   /* position ourselve at beginning of list */
-   while (currentPtr != NULL && found == 0) {
-      if ( strcmp( currentPtr->token, token ) == 0 ) {
-	 /* item exists */
-	 return currentPtr->data;
-      }
-      currentPtr = currentPtr->nextPtr;
-   }
+   TOKENNODEPTR current;
+   for ( current = list_head; current != NULL; current = current->nextPtr)
+      if ( strcmp( current->token, token ) == 0 )
+         return current->data;
+   return NULL;
 }
 
 /********************************************************************************
@@ -190,49 +129,45 @@ char *SeqListNode_getTokenData(TOKENNODEPTR sPtr, char *token)
 ********************************************************************************/
 int SeqListNode_isListEmpty(LISTNODEPTR sPtr)
 {
- if (sPtr == NULL) {
-    return(1);
- } else {
-    return(0);
- }
+   if (sPtr == NULL) {
+      return(1);
+   } else {
+      return(0);
+   }
 }
 
 /********************************************************************************
 *SeqListNode_printList: Prints the contents of the list
 ********************************************************************************/
-void SeqListNode_printList(LISTNODEPTR currentPtr)
+void SeqListNode_printList(LISTNODEPTR list_head)
 {
- if (currentPtr == NULL) {
-    SeqUtil_TRACE(TL_FULL_TRACE,"List is empty.\n");
-  } else {
-      SeqUtil_TRACE(TL_FULL_TRACE,"%s", currentPtr->data);
-      currentPtr = currentPtr->nextPtr;
-      while (currentPtr != NULL) {
-         SeqUtil_TRACE(TL_FULL_TRACE," %s", currentPtr->data);
-         currentPtr = currentPtr->nextPtr;
-      }
- }
+   LISTNODEPTR current = NULL;
+   if (SeqListNode_isListEmpty(list_head)) {
+      SeqUtil_TRACE(TL_FULL_TRACE,"List is empty.\n");
+   } else {
+      for ( current = list_head; current != NULL; current = current->nextPtr)
+         SeqUtil_TRACE(TL_FULL_TRACE," %s", current->data);
+   }
 }
 
 /********************************************************************************
- * SeqListNode_reverseList: reverse the contents of the list
+ * SeqListNode_reverseList: Reverses linked list 'in place'
+ * A -> B -> C -> D -> NULL
+ * while current != NULL
+ *    A <- prev    current -> D
+ *    A <- prev    current -> tmp_next
+ *    A <- prev <- current    tmp_next
+ *    A <- B    <-  prev      current
+ * A <- B    <-  C      <-  prev(=D)     current(=NULL)
  ********************************************************************************/
-void SeqListNode_reverseList(LISTNODEPTR *sPtr)
+void SeqListNode_reverseList(LISTNODEPTR *list_head)
 {
-   LISTNODEPTR p, q, r;
-   
-   p = q = r = *sPtr;
-   p = p->nextPtr->nextPtr;
-   q = q->nextPtr;
-   r->nextPtr = NULL;
-   q->nextPtr = r;
-   
-   while (p != NULL)
-   {
-      r = q;
-      q = p;
-      p = p->nextPtr;
-      q->nextPtr = r;
+   LISTNODEPTR prev = NULL, current = *list_head, tmp_next;
+   while( current != NULL ){
+      tmp_next = current->nextPtr;
+      current->nextPtr = prev;
+      prev = current;
+      current = tmp_next;
    }
-   *sPtr = q;
+   *list_head = prev;
 }
