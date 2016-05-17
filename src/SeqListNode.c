@@ -90,6 +90,7 @@ void SeqListNode_deleteWholeList(LISTNODEPTR *list_head)
       free(current);
       current = tmp_next;
    }
+   *list_head = NULL;
 }
 
 
@@ -171,3 +172,45 @@ void SeqListNode_reverseList(LISTNODEPTR *list_head)
    }
    *list_head = prev;
 }
+
+/********************************************************************************
+ * Creates the product of two lists:
+ * {a_1, ..., a_m }  (X) { b_1, ..., b_n }
+ *  = { a_1 b_1,..., a_1 b_n, ...., a_m b_1, ..., a_m b_n } where a_i b_j is a
+ *  concatenation of the strings a_i and b_j.
+********************************************************************************/
+LISTNODEPTR SeqListNode_multiply_lists(LISTNODEPTR lhs, LISTNODEPTR rhs){
+   LISTNODEPTR newList=NULL, lhs_itr, rhs_itr;
+   char buffer[SEQ_MAXFIELD];
+   for( lhs_itr = lhs; lhs_itr != NULL; lhs_itr = lhs_itr->nextPtr )
+      for( rhs_itr = rhs; rhs_itr != NULL; rhs_itr = rhs_itr->nextPtr ){
+         if( lhs_itr->data == NULL || rhs_itr->data == NULL )
+            SeqUtil_TRACE(TL_FULL_TRACE, "SeqListNode.multiply_lists(): something's wrong\n");
+         sprintf(buffer,"%s%s", lhs_itr->data, rhs_itr->data);
+         SeqListNode_insertItem(&newList,buffer);
+      }
+   return newList;
+}
+
+/********************************************************************************
+ * Concatenates lists: Makes the last element of lhs point to the first element
+ * of rhs.
+********************************************************************************/
+void SeqListNode_addLists(LISTNODEPTR * lhs, LISTNODEPTR rhs ){
+   LISTNODEPTR current = *lhs;
+   if(*lhs == NULL){
+      *lhs = rhs;
+      return;
+   }
+   while( current->nextPtr != NULL )
+      current = current->nextPtr;
+   current->nextPtr = rhs;
+}
+/* LISTNODEPTR SeqListNode_addList(LISTNODEPTR lhs, LISTNODEPTR rhs)
+{
+   LISTNODEPTR current = lhs;
+   if(lhs == NULL) return rhs;
+   for (; current != NULL; current=current->nextPtr );
+   current->nextPtr = rhs;
+   return lhs;
+} */

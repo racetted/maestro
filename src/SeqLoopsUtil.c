@@ -35,6 +35,11 @@
 
 static char* EXT_TOKEN = "+";
 
+static int hasWildCard(SeqNameValuesPtr depArg);
+static LISTNODEPTR loop_to_reverse_extension_list(SeqLoopsPtr loopPtr);
+static LISTNODEPTR expression_to_reverse_extension_list( char * expression );
+static LISTNODEPTR def_to_reverse_extension_list( int start, int end, int step);
+
 LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr );
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex );
 
@@ -389,20 +394,160 @@ LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
 int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
    int value = 0;
    SeqLoopsPtr loopsPtr =  _nodeDataPtr->loops;
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_isParentLoopContainer.isParentLoopContainer() container = %s\n", _nodeDataPtr->container );
    while( loopsPtr != NULL ) {
-      SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_isParentLoopContainer.isParentLoopContainer() container loop_name = %s\n", loopsPtr->loop_name );
       if( strcmp( loopsPtr->loop_name, _nodeDataPtr->container ) == 0 ) {
          value = 1;
          break;
       }
       loopsPtr  = loopsPtr->nextPtr;
    }
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_isParentLoopContainer.isParentLoopContainer() return value = %d\n", value );
    return value;
 }
 
+/********************************************************************************
+ * Creates the list of possible extensions from a loop definition.
+ * Ex: If start=10, end=21, step=2, the list will be
+ * +20, +18, +16, +14, +12, +10 (spaces and commas not included)
+ * Note the use of LISTNODEPTR previous: if we just did insertItem(&newList),
+ * the algorithm would be O(n^2) because we would traverse the whole list for
+ * every item to add.  This way is O(n).
+********************************************************************************/
+static LISTNODEPTR def_to_reverse_extension_list( int start, int end, int step){
+   LISTNODEPTR newList=NULL, current = NULL, previous = NULL;
+   char buffer[128];
+   int loopCount = lastDefIter(start,end,step);
+   sprintf(buffer,"%s%d",EXT_TOKEN,loopCount);
+   SeqListNode_insertItem(&newList,buffer);
+   previous = newList;
 
+   for(loopCount -= step;loopCount >= start; loopCount -= step){
+      sprintf(buffer,"%s%d",EXT_TOKEN,loopCount);
+      SeqListNode_insertItem(&previous, buffer);
+      previous = previous->nextPtr;
+   }
+   return newList;
+}
+
+/********************************************************************************
+ * Creates the reverse list of possible extensions for a loop defined by an
+ * expression.  Makes a call to def_to_reverse_extension_list() for each
+ * definition of the expression and adds the lists together.
+********************************************************************************/
+static LISTNODEPTR expression_to_reverse_extension_list( char * expression ){
+   LISTNODEPTR newList = NULL, rhs = NULL;
+   char * token = NULL;
+   int * currentDef = NULL;
+   int i=0,expressionArray[SEQ_MAXFIELD] = {'\0'},number_of_definitions=0;
+
+   for ( i = 0, token = strtok(expression,":,") ; token != NULL ; i++, token = strtok(NULL,":,") )
+      expressionArray[i] = atoi(token);
+   number_of_definitions = (i / 4);
+
+   /* Make an currentDef point to the start of the last definition */
+   currentDef = &expressionArray[i - 4];
+
+   /* Iterate over the definitions, constructing the desired list */
+   for ( i = number_of_definitions; i > 0; i--,currentDef -= 4 ){
+      rhs = def_to_reverse_extension_list(currentDef[DEF_START], currentDef[DEF_END], currentDef[DEF_STEP]);
+      SeqListNode_addLists(&newList, rhs);
+   }
+   return newList;
+}
+
+/********************************************************************************
+ * Creates the list of all possible extensions for a loop by either calling
+ * def_to_reverse_extension_list or by calling
+ * expression_to_reverse_extension_list based on the way the loop is defined.
+********************************************************************************/
+static LISTNODEPTR loop_to_reverse_extension_list(SeqLoopsPtr loopPtr){
+   SeqNameValuesPtr loopData = loopPtr->values;
+   char * attrib = NULL;
+   int start=0,end=0,step=0;
+   LISTNODEPTR retval = NULL;
+   if ( (attrib = (char*)SeqLoops_getLoopAttribute( loopData, "EXPRESSION" )) != NULL && strcmp(attrib,"") != 0 ){
+      retval = expression_to_reverse_extension_list( attrib );
+   } else {
+      if ( (attrib = (char*)SeqLoops_getLoopAttribute( loopData, "START" )) != NULL )
+         start = atoi(attrib);
+      if ( (attrib = (char*)SeqLoops_getLoopAttribute( loopData, "END" )) != NULL )
+         end = atoi(attrib);
+      if ( (attrib = (char*)SeqLoops_getLoopAttribute( loopData, "STEP" )) != NULL )
+         step = atoi(attrib);
+      retval = def_to_reverse_extension_list(start,end,step);
+   }
+   SeqUtil_TRACE(TL_FULL_TRACE,"loop_to_reverse_extension_list(): returning list: ");
+   SeqListNode_printList(retval);SeqUtil_TRACE(TL_FULL_TRACE,"\n");
+   return retval;
+}
+
+/* static LISTNODEPTR switch_to_reverse_extension_list( 
+ *    Construct list of all possible values for a switch.
+ * */
+
+/********************************************************************************
+ * Determines whether a loop argument is one whose value is a wildcard.
+********************************************************************************/
+static int hasWildCard(SeqNameValuesPtr loop_arg)
+{
+   return ( strstr(loop_arg->value, "*") != NULL );
+}
+
+/********************************************************************************
+ * Looks through a SeqLoopsPtr linked list to find a node whose loop_name field
+ * has a leaf matching name.
+********************************************************************************/
+SeqLoopsPtr SeqLoops_findLoopByName( SeqLoopsPtr loopsPtr, char * name)
+{
+   SeqLoopsPtr current = loopsPtr;
+   SeqNameValuesPtr loopData = NULL;
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_findLoopByName(): Looking for loop matching name=%s\n",name);
+   for (current = loopsPtr; current != NULL; current = current->nextPtr ){
+      SeqUtil_TRACE(TL_FULL_TRACE,"Current loopsPtr has name=%s\n",current->loop_name);
+      if ( strcmp( SeqUtil_getPathLeaf(current->loop_name), name) == 0 ){
+         return current;
+      }
+   }
+   return NULL;
+}
+
+#if 1
+/********************************************************************************
+ * This function determines the list of possible extensions specified by
+ * depIndex.  There may be many of them if there are wildcards in depIndex.
+********************************************************************************/
+LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
+   LISTNODEPTR loopExtensions=NULL, prod=NULL, rhs=NULL;
+   SeqLoopsPtr loopPtr=NULL;
+   SeqNameValuesPtr depArgs=NULL, arg=NULL;
+   SeqLoops_parseArgs(&depArgs,depIndex);
+
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): Begin call\n");
+   for( arg = depArgs; arg != NULL; arg = arg->nextPtr){
+      if( ! hasWildCard(arg)){
+         char buffer[100] = {'\0'};
+         sprintf(buffer,"%s%s",EXT_TOKEN,arg->value);
+         SeqListNode_insertItem(&rhs,buffer);
+      } else {
+         loopPtr = SeqLoops_findLoopByName(_nodeDataPtr->loops, arg->name);
+         if(loopPtr == NULL) raiseError("No loop found matching %s\n", arg->name);
+         rhs = loop_to_reverse_extension_list(loopPtr);
+      }
+      if ( loopExtensions == NULL ){
+         loopExtensions = rhs;
+      } else {
+         /* loopExtensions = loopExtensions (X) rhs */
+         prod = SeqListNode_multiply_lists(loopExtensions, rhs);
+         SeqListNode_deleteWholeList(&loopExtensions);
+         SeqListNode_deleteWholeList(&rhs);
+         rhs = NULL;
+         loopExtensions = prod;
+      }
+   }
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): returning list:   \n");
+   SeqListNode_printList(loopExtensions); SeqUtil_TRACE(TL_FULL_TRACE,"\n");
+   return loopExtensions;
+}
+#else
 /*
  * returns a list containing ALL the loop extensions for a node that is
  * a child of a loop container or loop containers, defined in the dep_index list of loops iterations. For instance, this 
@@ -435,7 +580,8 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
   	    while (loopsPtr != NULL && !foundIt ) {
                  loopsDataPtr =  loopsPtr->values;
                  if (loopsDataPtr != NULL ) {
-		     SeqUtil_TRACE(TL_FULL_TRACE,"%s\n", loopsPtr->loop_name);
+               SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse _nodeDataPtr->loop_name=%s\n", loopsPtr->loop_name );  
+               SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse SeqUtil_getPathLeaf(loopsPtr->loop_name)=%s\n",SeqUtil_getPathLeaf(loopsPtr->loop_name));
 		     /* find the right loop arg to match*/
                      if (strcmp(SeqUtil_getPathLeaf(loopsPtr->loop_name),depArgs->name)==0) {
 			loopsDataPtr = loopsDataPtr->nextPtr;
@@ -538,6 +684,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 
 }
 
+#endif
 
 
 /*

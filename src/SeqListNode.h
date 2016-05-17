@@ -79,5 +79,14 @@ void SeqListNode_printList(LISTNODEPTR list);
  ********************************************************************************/
 void SeqListNode_reverseList(LISTNODEPTR *sPtr);
 
+/********************************************************************************
+ * SeqListNode_multiply_lists: Creates the product of two lists
+ ********************************************************************************/
+LISTNODEPTR SeqListNode_multiply_lists(LISTNODEPTR lhs, LISTNODEPTR rhs);
+
+/********************************************************************************
+ * SeqListNode_addLists: Concatenates lists lhs->...->end_lhs->rhs->...->end_rhs->NULL
+ ********************************************************************************/
+void SeqListNode_addLists(LISTNODEPTR * lhs, LISTNODEPTR rhs );
 #endif
 
