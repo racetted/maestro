@@ -45,6 +45,24 @@ void SeqListNode_insertItem(LISTNODEPTR *list_head, char *data)
       current->nextPtr = new;
    }
 }
+/********************************************************************************
+ * Adds an item at the start of a list.  Note that the case where *list_head is
+ * NULL (empty list) is implicitely taken into account: newPtr->next will be NULL
+ * and list_head will be a pointer to the first element of the list.
+********************************************************************************/
+void SeqListNode_pushFront(LISTNODEPTR * list_head, char *data)
+{
+   LISTNODEPTR newPtr = NULL;
+   if( (newPtr = malloc(sizeof(LISTNODE)) ) == NULL ){
+      SeqUtil_TRACE(TL_CRITICAL,"SeqListNode_pushFront() No memory available.\n");
+      return;
+   }
+
+   newPtr->data = strdup(data);
+   newPtr->nextPtr = *list_head;
+
+   *list_head = newPtr;
+}
 
 void SeqListNode_insertTokenItem(TOKENNODEPTR *list_head, char *token, char *data)
 {
@@ -177,7 +195,8 @@ void SeqListNode_reverseList(LISTNODEPTR *list_head)
  * Creates the product of two lists:
  * {a_1, ..., a_m }  (X) { b_1, ..., b_n }
  *  = { a_1 b_1,..., a_1 b_n, ...., a_m b_1, ..., a_m b_n } where a_i b_j is a
- *  concatenation of the strings a_i and b_j.
+ * concatenation of the strings a_i and b_j.
+ * Note that if one of the lists is empty, the product will be empty ( 0*x == 0 )
 ********************************************************************************/
 LISTNODEPTR SeqListNode_multiply_lists(LISTNODEPTR lhs, LISTNODEPTR rhs){
    LISTNODEPTR newList=NULL, lhs_itr, rhs_itr;
@@ -206,11 +225,3 @@ void SeqListNode_addLists(LISTNODEPTR * lhs, LISTNODEPTR rhs ){
       current = current->nextPtr;
    current->nextPtr = rhs;
 }
-/* LISTNODEPTR SeqListNode_addList(LISTNODEPTR lhs, LISTNODEPTR rhs)
-{
-   LISTNODEPTR current = lhs;
-   if(lhs == NULL) return rhs;
-   for (; current != NULL; current=current->nextPtr );
-   current->nextPtr = rhs;
-   return lhs;
-} */
