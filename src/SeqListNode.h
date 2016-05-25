@@ -46,6 +46,11 @@ void SeqListNode_insertItem(LISTNODEPTR *list, char *s);
 void SeqListNode_insertTokenItem(TOKENNODEPTR *list, char *token, char *data);
 
 /****************************************************************
+* pushFront: Adds an item at the start of a list.
+*****************************************************************/
+void SeqListNode_pushFront(LISTNODEPTR * list_head, char *data);
+
+/****************************************************************
 *deleteItem: Delete the first item from the token node list pointer 'list'. 
 *The memory will be deallocated by deleteItem.
 *****************************************************************/
@@ -79,5 +84,14 @@ void SeqListNode_printList(LISTNODEPTR list);
  ********************************************************************************/
 void SeqListNode_reverseList(LISTNODEPTR *sPtr);
 
+/********************************************************************************
+ * SeqListNode_multiply_lists: Creates the product of two lists
+ ********************************************************************************/
+LISTNODEPTR SeqListNode_multiply_lists(LISTNODEPTR lhs, LISTNODEPTR rhs);
+
+/********************************************************************************
+ * SeqListNode_addLists: Concatenates lists lhs->...->end_lhs->rhs->...->end_rhs->NULL
+ ********************************************************************************/
+void SeqListNode_addLists(LISTNODEPTR * lhs, LISTNODEPTR rhs );
 #endif
 

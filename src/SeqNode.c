@@ -1027,6 +1027,16 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int
    free(extraString);
 } 
 
+void SeqNode_printLoops(SeqLoopsPtr loopsPtr){
+   SeqLoopsPtr current;
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqNode_printLoops():\n");
+   for(current = loopsPtr; current != NULL; current = current->nextPtr){
+      SeqUtil_TRACE(TL_FULL_TRACE, "====loop_name=%s, type=%d, values:\n", current->loop_name, current->type);
+      SeqNameValues_printList(current->values);
+   }
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqNode_printLoops() end\n");
+}
+
 SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    SeqNodeDataPtr nodeDataPtr = NULL;
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_createNode() started\n" );

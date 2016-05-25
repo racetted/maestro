@@ -993,8 +993,9 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
 
    tmpstrtok = (char*) strtok( tmpJobPath, "/" );
    while ( tmpstrtok != NULL ) {
+   SeqUtil_TRACE(TL_FULL_TRACE,"getFlowInfo(): token=%s, count=%d\n",tmpstrtok,count);
       switchResultFound=0;
-      /* build the query */      
+      /* build the query */
       if ( count == 0 ) {
          /* initial query */
          if ( SHOW_ROOT_ONLY == 1 ) {
@@ -1008,8 +1009,8 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
          sprintf ( query, "(child::*[@name='%s'])", tmpstrtok );
          SeqUtil_stringAppend( &currentFlowNode, tmpstrtok );
       }
-
       /* run the normal query */
+      SeqUtil_TRACE(TL_FULL_TRACE,"getFlowInfo(): run the normal query:%s\n",query);
       if( (result = XmlUtils_getnodeset (query, context)) == NULL ) {
          if ( verifyNodeExistence ) {
             SeqUtil_TRACE(TL_FULL_TRACE,"nodeinfo.getFlowInfo() (verifyNodeExistence) Node %s not found in XML master file! \n", _nodePath);
@@ -1047,7 +1048,9 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
       context->node = currentNodePtr;
 
       /* retrieve node specific attributes */
+      SeqUtil_TRACE(TL_FULL_TRACE, "/* retrieve node specific attributes */\n");
       if ( (attributesResult = XmlUtils_getnodeset ("(@*)", context)) != NULL){
+      SeqUtil_TRACE(TL_FULL_TRACE,"if ( (attributesResult = XmlUtils_getnodeset (\"(@*)\", context)) != NULL){\n");
          nodeset=attributesResult->nodesetval;
          for (i=0; i < nodeset->nodeNr; i++) {
             currentNodePtr = nodeset->nodeTab[i];
@@ -1090,6 +1093,7 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
                         free(currentFlowNode);
                         /* Check if we're simply targetting the switch and not something within the switch. Node will not exist if there are no default value and we're targetting something inside. */
                         tmpstrtok = (char*) strtok(NULL,"/");
+                        /* Compare count with total count instead of doing the tmpstrtok thing */
                         if  ( tmpstrtok != NULL ) {
                            SeqUtil_TRACE(TL_FULL_TRACE,"nodeinfo.getFlowInfo() (verifyNodeExistence) targetting something that does not exist within the switch. return = 0 \n");
                            return(0);
@@ -1132,7 +1136,7 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
                      if ( completeAnswerFound == 1) {
                         sprintf(tmpQuery, "child::SWITCH_ITEM");
                         tmpResult = XmlUtils_getnodeset (tmpQuery, context);
-                        /* query returned results */ 
+                        /* query returned results */
                         switchResultFound = 1;
                         nodeset = tmpResult->nodesetval;
                         currentNodePtr = nodeset->nodeTab[answerIndex];
@@ -1178,14 +1182,15 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
                if ( switchResultFound == 0 ) {
                   SeqUtil_TRACE(TL_FULL_TRACE,"Query %s did not find any corresponding SWITCH ITEM in XML flow file! (getFlowInfo)\n", query );
                }
+               SeqUtil_TRACE(TL_FULL_TRACE,"getFlowInfo(): SeqNameValues_insertItem( &_nodeDataPtr->switchAnswers, (char*) SeqUtil_fixPath(currentFlowNode), tmpAnswer);\n");
                SeqNameValues_insertItem( &_nodeDataPtr->switchAnswers, (char*) SeqUtil_fixPath(currentFlowNode), tmpAnswer);
             }
          }
          xmlXPathFreeObject (attributesResult);
       }
-
       /* read the new flow file described in the module */
       if ( _nodeDataPtr->type == Module && SHOW_ROOT_ONLY == 0 ) { 
+         SeqUtil_TRACE(TL_FULL_TRACE,"getFlowInfo(): reading the new flow file described in the module\n");
 
          /* reset the intramodule path */
          free(intramodulePath);
@@ -1251,6 +1256,7 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
 
       /* we are building the internal path of the node and container*/
       if ( count != totalCount ) {
+         SeqUtil_TRACE(TL_FULL_TRACE,"getFlowInfo(): Building the internal path of the node and container\n");
          SeqUtil_stringAppend( &currentFlowNode, "/");
          /* Case and case_item are not part of the task_depot */
          /* they are however part of the container path */
@@ -1298,14 +1304,22 @@ int getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char
             getNodeLoopContainersAttr( _nodeDataPtr, currentFlowNode, _seq_exp_home );
          }
          /* adds switch containers except if last node is also loop */
-         if ( _nodeDataPtr->type == Switch &&  tmpstrtok != NULL ) {
-            SeqNode_addSpecificData( _nodeDataPtr, "SWITCH_TYPE", tmpSwitchType );
-            SeqNode_addSwitch(_nodeDataPtr, currentFlowNode, tmpSwitchType, tmpAnswer); 
-            /*reset switch and answer*/ 
-            free(tmpSwitchType); 
-            free(tmpAnswer);
-            tmpSwitchType=NULL;
-            tmpAnswer=NULL;
+         if ( _nodeDataPtr->type == Switch ) {
+            if (tmpstrtok != NULL){
+               SeqNode_addSpecificData( _nodeDataPtr, "SWITCH_TYPE", tmpSwitchType );
+               SeqNode_addSwitch(_nodeDataPtr, currentFlowNode, tmpSwitchType, tmpAnswer);
+               /*reset switch and answer*/
+               free(tmpSwitchType);
+               free(tmpAnswer);
+               tmpSwitchType=NULL;
+               tmpAnswer=NULL;
+            } else {
+               /* If the XML node we are on corresponds to the _nodeDataPtr,
+                * (which is what tmpstrtok == NULL signifies), then add the
+                * switchAnswer in the _nodeDataPtr->data using
+                * SeqNode_addSpecificData().*/
+               SeqNode_addSpecificData(_nodeDataPtr, "VALUE", tmpAnswer);
+            }
          }
 
          if ( SHOW_ROOT_ONLY == 1 ) {

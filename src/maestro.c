@@ -2644,6 +2644,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
            SeqUtil_TRACE(TL_FULL_TRACE,"dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
            return(0);
        }
+       SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): depWildcard=%d\n",depWildcard);
        if( ! depWildcard ) {
            /* no wilcard, we check only one iteration */
            if( _dep_exp != NULL ) { 
@@ -2651,6 +2652,8 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
            } else {
                sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _nodeDataPtr->workdir, _dep_datestamp, _dep_name, depExtension, _dep_status );
            }
+
+           SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): statusFile=%s\n",statusFile);
            ret=_lock( statusFile ,_nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
            if ( (undoneIteration=! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome)) ) {
               if( _dep_scope == InterUser ) {
@@ -2659,10 +2662,12 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
                    isWaiting = writeNodeWaitedFile( _nodeDataPtr, _dep_exp, _dep_name, _dep_status, depExtension, _dep_datestamp, _dep_scope, statusFile);
               }
            }
+           SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): After checking calling Write...WaitedFile(), isWaiting=%d\n",isWaiting);
            ret=_unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
        } else {
            /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
            /* get all the node extensions to be checked */
+          SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): calling SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep_index)\n");
            extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, _dep_index );
  
            /* loop iterations until we find one that is not satisfied */
@@ -2672,6 +2677,8 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
               } else {
                  sprintf(statusFile,"%s/sequencing/status/%s/%s.%s.%s", _nodeDataPtr->workdir, _dep_datestamp, _dep_name, extensions->data, _dep_status );
               }
+
+              SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): Iterating over extensions list: current=%s, filename=%s\n",extensions->data,statusFile);
        
               ret=_lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
               if( ! (undoneIteration = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome))) {
