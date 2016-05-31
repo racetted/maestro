@@ -23,7 +23,7 @@
 #include "SeqUtil.h"
 #include <string.h>
 
-xmlDocPtr XmlUtils_getdoc (char *_docname) {
+xmlDocPtr XmlUtils_getdoc (const char *_docname) {
    xmlDocPtr doc;
    doc = xmlParseFile(_docname);
    
@@ -36,13 +36,14 @@ xmlDocPtr XmlUtils_getdoc (char *_docname) {
 }
 
 xmlXPathObjectPtr
-XmlUtils_getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
+XmlUtils_getnodeset (const xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
    
    xmlXPathObjectPtr result;
    SeqUtil_TRACE( TL_FULL_TRACE,"XmlUtils_getnodeset(): xpath query: %s\n", _xpathQuery );
    result = xmlXPathEvalExpression(_xpathQuery, _context);
 
    if(xmlXPathNodeSetIsEmpty(result->nodesetval)) {
+      xmlXPathFreeObject(result);
       SeqUtil_TRACE(TL_FULL_TRACE, "XmlUtils_getnodeset(): No result\n");
       return NULL;
    }
@@ -52,7 +53,7 @@ XmlUtils_getnodeset (xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
 /* Resolve keywords in xml files.  To use a definition file (format defined by
    SeqUtils_getdef(), provide the _deffile name; a NULL value passed to _deffile 
    causes the resolver to search in the environment for the key definition.*/
-void XmlUtils_resolve (char *_docname, xmlXPathContextPtr _context, char *_deffile, const char* _seq_exp_home) {
+void XmlUtils_resolve (const char *_docname, xmlXPathContextPtr _context, char *_deffile, const char* _seq_exp_home) {
   xmlXPathObjectPtr result;
   xmlNodeSetPtr nodeset = NULL;
   xmlNodePtr nodePtr = NULL;

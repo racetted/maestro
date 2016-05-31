@@ -2632,7 +2632,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
 
    if (strncmp(_dep_prot,"ocm",3) != 0 ) {
     /* maestro stuff */
-       if  (! getFlowInfo(NULL,_dep_name, _dep_exp, _dep_datestamp)) {
+       if  (! doesNodeExist(_dep_name, _dep_exp, _dep_datestamp)) {
               snprintf(msg,sizeof(msg),"Dependency on node:%s of exp: %s which does not exist in the given context, dependency ignored.",_dep_name, _dep_exp);
               nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,_nodeDataPtr->datestamp, _nodeDataPtr->expHome); 
               return(0);

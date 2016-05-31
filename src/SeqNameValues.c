@@ -34,6 +34,8 @@ void SeqNameValues_insertItem(SeqNameValuesPtr *listPtrPtr, char *name, char* va
    newPtr = malloc(sizeof(SeqNameValues));
 
    if (newPtr != NULL) { /* is space available */
+      newPtr->value = NULL;
+      newPtr->name = NULL;
       newPtr->name = (char *) malloc(strlen(name)+1);
       newPtr->value = (char *) malloc(strlen(value)+1);
       strcpy(newPtr->name,name);
@@ -153,6 +155,19 @@ void SeqNameValues_setValue( SeqNameValuesPtr* ptr, char* attr_name, char* attr_
 
 void SeqNameValues_deleteWholeList(SeqNameValuesPtr *sPtr)
 {
+ #if 1
+	SeqNameValuesPtr current, tmp_next;
+	current = *sPtr;
+	while ( current != NULL)
+	{
+		tmp_next = current->nextPtr;
+		free(current->value);
+		free(current->name);
+		free(current);
+		current = tmp_next;
+	}
+	*sPtr = NULL;
+#else
  if ( *sPtr != NULL) {
    SeqNameValues_deleteWholeList(&(*sPtr)->nextPtr);
    free((*sPtr)->value);
@@ -161,6 +176,7 @@ void SeqNameValues_deleteWholeList(SeqNameValuesPtr *sPtr)
    free(*sPtr);
    *sPtr=NULL;
  }
+#endif
 
 }
 

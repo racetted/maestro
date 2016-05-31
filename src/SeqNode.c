@@ -631,7 +631,7 @@ void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data ) {
 
 void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end, char* expression ) {
    SeqLoopsPtr loopsPtr = NULL;
-   char newExpression[128];
+   char newExpression[128] = {'\0'};
    char *tmpStart = start, *tmpStep = step, *tmpSet = set, *tmpEnd = end, *tmpExpression = expression;
    char *defFile = NULL, *value = NULL;
    
@@ -1077,6 +1077,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
 
    if ( seqNodeDataPtr != NULL ) {
       free( seqNodeDataPtr->name ) ;
+      free( seqNodeDataPtr->expHome );
       free( seqNodeDataPtr->nodeName );
       free( seqNodeDataPtr->container ) ;
       free( seqNodeDataPtr->intramodule_container ) ;
@@ -1119,6 +1120,18 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->switchAnswers)) ;
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->data ));
       SeqNameValues_deleteWholeList( &(seqNodeDataPtr->loop_args ));
+      /* SeqLoops_deleteWholeList( SeqLoopsPtr* list_head) */
+      {
+         SeqLoopsPtr current = seqNodeDataPtr->loops;
+         for( current = seqNodeDataPtr->loops; current != NULL;){
+            SeqLoopsPtr tmp_next = current->nextPtr;
+            SeqNameValues_deleteWholeList(&(current->values));
+            free(current->loop_name);
+            free(current);
+            current = tmp_next;
+         }
+         seqNodeDataPtr->loops = NULL;
+      }
       SeqNode_freeForEachTarget(seqNodeDataPtr->forEachTarget);
       free( seqNodeDataPtr );
    }

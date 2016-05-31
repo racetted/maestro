@@ -191,7 +191,7 @@ int main (int argc, char * argv [])
       fprintf(stderr, "maestro_main looking for SEQ_EXP_HOME in environment: %s\n",seq_exp_home);
    }
    if (datestamp == NULL){
-      datestamp = strdup(getenv("SEQ_DATE"));
+      datestamp = getenv("SEQ_DATE");
       fprintf(stderr, "maestro_main looking for SEQ_DATE in environment: %s\n",datestamp);
    }
    fprintf(stderr, "maestro_main calling maestro with SEQ_EXP_HOME=%s\n",seq_exp_home);
@@ -202,7 +202,6 @@ int main (int argc, char * argv [])
    free(node);
    free(sign);
    free(extraArgs);
-   free(datestamp);
    fprintf(stderr, "maestro_main exiting with code %d\n", status );
    exit(status);
 }

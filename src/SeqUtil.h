@@ -43,6 +43,23 @@
 #define TF_OFF 0
 
 
+/* Usage: given a string, the macro will allocate a copy on the stack and
+ * iterate through it using strtok_r and will provide an iterator named token
+ * for the user to use inside the for_tokens block. The macro allows you to
+ * specify the name of the save pointer in case you want to use two of these
+ * macros in the same function. Note that since the copy of the string is
+ * allocated on the stack, it will be deallocated when the function exits. This
+ * way, the macro doesn't require the user to declare anything.
+ * for_tokens( my_token_name, my_string, my_delimiters, my_sp){
+ *    ...
+ * }
+ */
+#define for_tokens( token, string, delimiters, sp) \
+   char * sp = NULL;\
+   char tmpString[strlen(string) + 1];\
+   char * token = NULL; \
+   strcpy(tmpString,string);\
+   for( token = strtok_r(tmpString,delimiters, &sp); token != NULL; token = strtok_r(NULL,delimiters,&sp))
 
 void  raiseError(const char* fmt, ... );
 void  SeqUtil_TRACE( int level,const char * fmt, ...);
@@ -71,7 +88,7 @@ char* SeqUtil_getPathLeaf (const char *full_path) ;
 char* SeqUtil_getPathBase (const char *full_path) ;
 char* SeqUtil_cpuCalculate( const char* npex, const char* npey, const char* omp, const char* cpu_multiplier ) ;
 char* SeqUtil_resub (const char *regex_text, const char *repl_text, const char *str) ;
-void  SeqUtil_stringAppend( char** source, char* data );
+void  SeqUtil_stringAppend( char** source, const char* data );
 int   SeqUtil_tokenCount( const char* source, const char* tokenSeparator );
 char* SeqUtil_fixPath ( const char* source );
 void  SeqUtil_waitForFile( char* filename, int secondsLimit, int intervalTime); 

@@ -550,7 +550,7 @@ char *SeqUtil_cpuCalculate_new( const char* npex, const char* npey, const char* 
 }
 
 /* dynamic string cat, content of source is freed */
-void SeqUtil_stringAppend( char** source, char* data )
+void SeqUtil_stringAppend( char** source,const char* data )
 {
    char* newDataPtr = NULL;
    /*do not change source if data is null*/
