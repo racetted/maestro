@@ -65,6 +65,7 @@ void  raiseError(const char* fmt, ... );
 void  SeqUtil_TRACE( int level,const char * fmt, ...);
 void  SeqUtil_setTraceLevel (int _trace) ;
 int   SeqUtil_getTraceLevel () ;
+void SeqUtil_setTraceFlag(int flag, int value);
 void  SeqUtil_checkExpHome (char * _expHome) ;
 void  actions(char *signal, char* flow, char *node) ;
 void  actionsEnd(char *signal, char* flow, char* node) ;
@@ -102,4 +103,5 @@ void  SeqUtil_printOrWrite( FILE * filename, char * text, ...);
 int   SeqUtil_basicTruncatedAverage(int *unsorted_int_array, int elements, int removal_quantity); 
 int   SeqUtil_compareInt (const void * a, const void * b);
 char* SeqUtil_normpath(char *out, const char *in); 
+const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home);
 #endif

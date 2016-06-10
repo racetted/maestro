@@ -53,7 +53,7 @@ XmlUtils_getnodeset (const xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
 /* Resolve keywords in xml files.  To use a definition file (format defined by
    SeqUtils_getdef(), provide the _deffile name; a NULL value passed to _deffile 
    causes the resolver to search in the environment for the key definition.*/
-void XmlUtils_resolve (const char *_docname, xmlXPathContextPtr _context, char *_deffile, const char* _seq_exp_home) {
+void XmlUtils_resolve (const char *_docname, xmlXPathContextPtr _context, const char *_deffile, const char* _seq_exp_home) {
   xmlXPathObjectPtr result;
   xmlNodeSetPtr nodeset = NULL;
   xmlNodePtr nodePtr = NULL;

@@ -44,10 +44,6 @@
 #define SOCK_BUF_SIZE 10
 #define SOCK_TIMEOUT_CLIENT 20
 
-static struct  sockaddr_in server;      /* server socket */
-static socklen_t sizeserver = sizeof(server);
-static int must_init_signal = 1;
-
 /* prototype */
 int GetHostName (char *, size_t );
 char *get_Authorization( char * , char *, char **);

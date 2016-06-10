@@ -53,6 +53,26 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
    returns -1 if the function fais with an error
    cmd_args must be in the form "loop_name=value,loop_namex=valuex"
 */
+char * SeqLoops_indexToExt(const char * index)
+{
+   if( index == NULL ) return NULL;
+   const char * src = index;
+   char ext[strlen(index)];
+   char * dst = ext;
+   while (*src != '\0'){
+      /* Skip the left hand side of the '=' */
+      while (*src != '=') ++src; ++src;
+
+      /* copy EXT_TOKEN */
+      char * tok = EXT_TOKEN;
+      while ( *tok != '\0' ) *dst++ = *tok++;
+
+      /* copy the right hand side of the '=' */
+      while( *src != ',' && *src != '\0') *dst++ = *src++;
+   }
+   *dst = '\0';
+   return strdup(ext);
+}
 
 int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) {
    char *tmpstrtok = NULL, *tmp_args = NULL;

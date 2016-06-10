@@ -1,0 +1,16 @@
+<NODE_RESOURCES> 
+   <VALIDITY local_index="loop=1">
+       First text inside validity
+       <BATCH cpu="3"  machine="castor"  /> 
+       Second text inside validity 
+       <LOOP expression="0:48:3:6"/>
+       Third text inside validity
+   </VALIDITY> 
+   some text here
+  <VALIDITY dow="0" hour="00" local_index="loop=0">
+       <BATCH cpu="3"  machine="castor"  /> 
+       <LOOP expression="0:24:3:6"/>
+   </VALIDITY> 
+   <BATCH cpu="2"  machine="castor"  /> 
+   <LOOP expression="0:54:3:6"/>
+</NODE_RESOURCES>

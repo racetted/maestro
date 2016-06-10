@@ -42,6 +42,10 @@
 
 extern char * str2md5(const char *, int );
 
+static struct  sockaddr_in server;      /* server socket */
+static socklen_t sizeserver = sizeof(server);
+static int must_init_signal = 1;
+
 /* GetHostName */
 int GetHostName(char *name, size_t len) 
 {

@@ -2943,9 +2943,9 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
        SeqUtil_stringAppend(&tmp, _extraArgs);
    } 
    if ( tmp != NULL ){
-       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s %s -e %s\n",_signal, _node, _flow, tmp, _seq_exp_home);
+       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s %s -e %s -d %s\n",_signal, _node, _flow, tmp, _seq_exp_home, _datestamp);
    } else {
-       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s -e %s \n",_signal , _node, _flow, _seq_exp_home);
+       SeqUtil_TRACE(TL_FULL_TRACE, "Command called:\nmaestro -s %s -n %s -f %s -e %s -d %s \n",_signal , _node, _flow, _seq_exp_home, _datestamp);
    } 
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro() ignoreAllDeps=%d \n",ignoreAllDeps );

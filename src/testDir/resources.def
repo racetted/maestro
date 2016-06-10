@@ -1,0 +1,12 @@
+SEQ_DEFAULT_MACHINE=pollux
+BACKEND=spica                                   
+# Transfer server FRONTEND/BACKEND
+DBASE_SERVER=datasvr
+
+# for experiment dependencies
+FORECAST_EXP=/home/binops/afsi/ops/.suites/gdps/forecast
+LATE_SFC_EXP=/home/binops/afsi/ops/.suites/gdps/surface/late
+FINAL_SFC_EXP=/home/binops/afsi/ops/.suites/gdps/surface/final
+
+# fasttmp
+TMPFSSIZE=3000

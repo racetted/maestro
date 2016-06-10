@@ -1039,6 +1039,8 @@ void SeqNode_printLoops(SeqLoopsPtr loopsPtr){
 
 SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    SeqNodeDataPtr nodeDataPtr = NULL;
+   char * pathLeaf = SeqUtil_getPathLeaf(name);
+   char * pathBase = SeqUtil_getPathBase(name);
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_createNode() started\n" );
    if (nodeDataPtr = malloc( sizeof( SeqNodeData ) )){
        SeqNode_init ( nodeDataPtr );
@@ -1046,9 +1048,12 @@ SeqNodeDataPtr SeqNode_createNode ( char* name ) {
        raiseError("OutOfMemory exception in SeqNode_createNode()\n");
    }
    SeqNode_setName( nodeDataPtr, name );
-   SeqNode_setNodeName ( nodeDataPtr, (char*) SeqUtil_getPathLeaf(name));
-   SeqNode_setContainer ( nodeDataPtr, (char*) SeqUtil_getPathBase(name));
+   SeqNode_setNodeName ( nodeDataPtr, pathLeaf );
+   SeqNode_setContainer ( nodeDataPtr, pathBase );
+
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_createNode() done\n" );
+   free(pathLeaf);
+   free(pathBase);
    return nodeDataPtr;
 }
 
@@ -1102,6 +1107,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->submitOrigin) ;
       free( seqNodeDataPtr->extension) ;
       free( seqNodeDataPtr->workerPath) ;
+      free( seqNodeDataPtr->shell);
   
       depsPtr = seqNodeDataPtr->depends;
       /* free a link-list of dependency items */
@@ -1154,7 +1160,7 @@ void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow
    int stringLength = 0, isRerun = 0; 
    char lockFile[SEQ_MAXFIELD];
    char pidbuf[100];
-   char shortdate[11];
+   char shortdate[11] = {'\0'};
    char *tmpdir = NULL, *loopArgs = NULL, *containerLoopArgs = NULL, *containerLoopExt = NULL, *tmpValue = NULL, *tmp2Value = NULL;
    FILE * tmpFile = NULL; 
    SeqNameValuesPtr loopArgsPtr=NULL , containerLoopArgsList = NULL;

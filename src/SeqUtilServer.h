@@ -22,6 +22,7 @@
 #ifndef _SEQ_UTIL_SERVER
 #define _SEQ_UTIL_SERVER
 #include <openssl/md5.h>
+#include "SeqListNode.h"
 #include "l2d2_socket.h"
 
 int  removeFile_svr(const char *filename, const char * _seq_exp_home ) ;

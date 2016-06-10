@@ -28,3 +28,4 @@ samenameTest.sh
 submitTests.sh
 # NFS files
 .nfs*
+mtest
