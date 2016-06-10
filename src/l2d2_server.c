@@ -266,17 +266,18 @@ void DependencyManager (_l2d2server l2d2 ) {
 				} else {
 				        /* Is dependant node still in waiting state? If not, do not submit. */
 					if (l2d2_Util_isNodeXState (depXp->xpd_snode, depXp->xpd_slargs, depXp->xpd_sxpdate, depXp->xpd_sname, "waiting") == 0) {
-					     fprintf(dmlg,"DependencyManager(): Removing dependency (waiting state of dependant gone) ffilename=%s ; linkname=%s\n",ffilename,linkname);
+						 get_time(Time,2);
+					     fprintf(dmlg,"%s Removing dependency (waiting state of dependant gone) ffilename=%s ; linkname=%s\n",Time, ffilename,linkname);
 					     unlink(linkname);
 					     unlink(ffilename);
 					     break;
 					}
 
-                                        if ( strcmp(depXp->xpd_slargs,"") != 0 )  
-					        snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
-                                        else 
-					        strcpy(largs,"");
-                                        /* before trying to access lock file, see if dependency is still active */
+                   if ( strcmp(depXp->xpd_slargs,"") != 0 )  
+					   snprintf(largs,sizeof(largs),"-l \"%s\"",depXp->xpd_slargs);
+                   else 
+					   strcpy(largs,"");
+                  /* before trying to access lock file, see if dependency is still active */
 					epoch_diff=(int)(current_epoch - atoi(depXp->xpd_regtimepoch))/3600; 
 					if ( epoch_diff >= l2d2.dependencyTimeOut ) {
 					            ret=unlink(linkname);
