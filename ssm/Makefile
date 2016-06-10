@@ -20,6 +20,7 @@ ssm:	profile.sh  ../bin/$(BASE_ARCH)
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	mkdir -p $(SSMPACKAGE)/src;
 	cp ../src/Makefile ../src/*.c ../src/*.h $(SSMPACKAGE)/src;
+	cp -r ../src/wrappers $(SSMPACKAGE)/src;
 	echo "Package: maestro" > $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Version: ${VERSION}" >> $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Platform: ${ORDENV_PLAT}" >> $(SSMPACKAGE)/.ssm.d/control; \

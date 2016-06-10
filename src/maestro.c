@@ -319,7 +319,6 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    if ( current_action == NULL) {
       if( _nodeDataPtr->abort_actions != NULL ) {
          SeqUtil_TRACE(TL_FULL_TRACE, "nodelogger: %s i \"maestro info: abort action list finished. Aborting with stop.\" \n", _nodeDataPtr->name );
-         nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, "maestro info: abort action list finished. Aborting with stop.",_nodeDataPtr->datestamp, _nodeDataPtr->expHome);
       }
       current_action = strdup("stop");
    }
@@ -366,7 +365,6 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
       */
       SeqUtil_TRACE(TL_ERROR,"invalid abort action flag %s... aborting...nodeabort: %s stop\n", current_action, _nodeDataPtr->name);
       nodeabort(_signal, _nodeDataPtr,"stop", _nodeDataPtr->datestamp);
-
    }
 
    /* check if node has a container to propagate the message up */

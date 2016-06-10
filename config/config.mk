@@ -1,6 +1,6 @@
 # this file contains common config that is sourced by all makefiles
 WHO_I_AM=$(shell whoami)
-VERSION=1.5.0
+VERSION=1.5.1
 SEQ_WRAPPER=maestro_$(VERSION)
 MACHINE=$(shell uname -s)
 HARDWARE=$(shell uname -m | tr '_' '-')
