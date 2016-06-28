@@ -165,6 +165,36 @@ typedef SeqNodeData *SeqNodeDataPtr;
 
 SeqNodeDataPtr SeqNode_createNode ( char* name );
 void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * filename, int isPrettyPrint );
+void SeqNode_setCpu ( SeqNodeDataPtr node_ptr, const char* cpu );
+void SeqNode_setCpuMultiplier ( SeqNodeDataPtr node_ptr, const char* cpu_multiplier );
+void SeqNode_setMachine ( SeqNodeDataPtr node_ptr, const char* machine );
+void SeqNode_setQueue ( SeqNodeDataPtr node_ptr, const char* queue );
+void SeqNode_setMemory ( SeqNodeDataPtr node_ptr, const char* memory );
+void SeqNode_setShell ( SeqNodeDataPtr node_ptr, const char* shell );
+void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, char* dep_node_name, char* dep_node_path,
+                         char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char * dep_TimeDelta, char* dep_Prot, char* dep_ValidHour, char* dep_ValidDOW);
+void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end, char* expression );
+void SeqNode_addSubmit ( SeqNodeDataPtr node_ptr, char* data );
+void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath );
+void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data );
+char* SeqNode_getTypeString( SeqNodeType _node_type );
+void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, char* name, char* value );
+void SeqNode_addSibling ( SeqNodeDataPtr node_ptr, char* data );
+void SeqNode_setName ( SeqNodeDataPtr node_ptr, const char* name );
+void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs );
+void SeqNode_setForEachTarget(SeqNodeDataPtr nodePtr, const char * t_node,  const char * t_index,  const char * t_exp,  const char * t_hour);
+void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args );
+void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr );
+void SeqNode_setDatestamp( SeqNodeDataPtr node_ptr, const char* datestamp);
+void SeqNode_setSeqExpHome ( SeqNodeDataPtr node_ptr, const char* expHome );
+void SeqNode_setWorkdir( SeqNodeDataPtr node_ptr, const char* workdir);
+void SeqNode_setLoopArgs ( SeqNodeDataPtr node_ptr, SeqNameValuesPtr _loop_args );
+void SeqNode_setIntramoduleContainer ( SeqNodeDataPtr node_ptr, const char* intramodule_container );
+void SeqNode_setPathToModule ( SeqNodeDataPtr node_ptr, const char* pathToModule );
+void SeqNode_setSuiteName ( SeqNodeDataPtr node_ptr, const char* suiteName );
+void SeqNode_setInternalPath ( SeqNodeDataPtr node_ptr, const char* path );
+void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module );
+void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, char* switchName, char* switchType, char* returnValue);
 
 extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename );
 extern char * SeqNode_extension (const SeqNodeDataPtr _nodeDataPtr);

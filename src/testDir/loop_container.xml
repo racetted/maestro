@@ -1,0 +1,19 @@
+<NODE_RESOURCES>
+   <LOOP expression="1:2:3:4"/>
+   <WORKER path="hello/my/name/is/inigo/montoya/you/killed/my/father/prepare/to/die" />
+   <VALIDITY valid_dow="6">
+      <LOOP expression="5:6:7:8" />
+      <BATCH cpu="1"/>
+      <DEPENDS_ON node="a_node"/>
+      <VALIDITY valid_hour="12">
+         <LOOP expression="9:10:11:12"/>
+         <BATCH cpu="2"/>
+         <VALIDITY local_index="loop1=1">
+            <LOOP expression="13:14:15:16"/>
+            <FOR_EACH node="node" index="loop3=3" exp="this"/>
+            <WORKER path="this/is/the/end" />
+         </VALIDITY>
+      </VALIDITY>
+   </VALIDITY>
+   <ABORT_ACTION action="end"/>
+</NODE_RESOURCES>
