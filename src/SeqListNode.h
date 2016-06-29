@@ -21,6 +21,13 @@
 #ifndef _SEQ_LISTNODE
 #define _SEQ_LISTNODE
 
+#define for_list(iterator, list_head) \
+   LISTNODEPTR iterator;\
+   for( iterator = list_head;\
+        iterator != NULL;\
+        iterator = iterator->nextPtr \
+      )
+
 struct listNode {
     char *data;
     struct listNode *nextPtr;
