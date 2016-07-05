@@ -20,6 +20,7 @@
  */
 #ifndef _FLOW_VISITOR_H_
 #define _FLOW_VISITOR_H_
+#include "SeqNode.h"
 
 
 #define FLOW_SUCCESS 0

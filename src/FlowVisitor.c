@@ -468,7 +468,7 @@ out:
 int Flow_findSwitchItemWithValue( FlowVisitorPtr _flow_visitor, const char * switchValue)
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_findSwitchItemWithValue() begin\n");
-   int retval = FLOW_SUCCESS;
+   int retval = FLOW_FAILURE;
    xmlXPathObjectPtr switchItemResult;
 
    if( (switchItemResult = XmlUtils_getnodeset( "(child::SWITCH_ITEM[not(@name='default')])", _flow_visitor->context)) == NULL){
@@ -542,7 +542,7 @@ int Flow_switchItemHasValue(const FlowVisitorPtr _flow_visitor, xmlNodePtr curre
 out:
    xmlXPathFreeObject(attributesResult);
    _flow_visitor->context->node = previousNodePtr;
-   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_switchItemHasValue() begin\n");
+   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_switchItemHasValue() end\n");
    return retval;
 }
 
