@@ -128,7 +128,6 @@ int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr, co
          goto out;
       }
 
-      Flow_updatePaths(_flow_visitor, pathToken, count != totalCount );
 
       if( _flow_visitor->currentNodeType == Module ){
          if ( Flow_changeModule(_flow_visitor, pathToken) == FLOW_FAILURE ){
@@ -136,6 +135,8 @@ int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr, co
             goto out;
          }
       }
+
+      Flow_updatePaths(_flow_visitor, pathToken, count != totalCount );
 
       /* retrieve node specific attributes */
       if( _flow_visitor->currentNodeType != Task && _flow_visitor->currentNodeType != NpassTask )
@@ -257,11 +258,6 @@ int Flow_changeModule(FlowVisitorPtr _flow_visitor, const char * module)
    char * postfix = "/flow.xml";
    char xmlFilename[strlen(_flow_visitor->expHome) + strlen(infix) + strlen(module) + strlen(postfix) + 1];
    sprintf( xmlFilename, "%s%s%s%s", _flow_visitor->expHome, infix, module, postfix);
-
-   if( _flow_visitor->intramodulePath != NULL ){
-      free(_flow_visitor->intramodulePath);
-      _flow_visitor->intramodulePath = NULL;
-   }
 
    if (Flow_changeXmlFile(_flow_visitor,  xmlFilename ) == FLOW_FAILURE){
       retval = FLOW_FAILURE;
