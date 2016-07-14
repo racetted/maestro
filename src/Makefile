@@ -151,6 +151,11 @@ getopt_long.o:	getopt_long.c getopt.h
 	$(CC) -c getopt_long.c
 
 # Targets for command line executables:
+#
+# For reference (I always forget them):
+# $^ is the whole prerequisite list
+# $@ is the target name
+# $< the name of the first prerequisite
 
 TICTAC_OBJECTS = tictac.o SeqUtil.o QueryServer.o l2d2_socket.o SeqUtilServer.o \
 	l2d2_commun.o SeqListNode.o getopt_long.o
@@ -215,5 +220,5 @@ TEST_OBJECTS = SeqUtil.o SeqNode.o XmlUtils.o SeqLoopsUtil.o l2d2_commun.o \
 	ResourceVisitor.o
 
 mtest:	mtest_main.c $(TEST_OBJECTS)
-	$(CC) -g $^ -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
+	$(CC) -g $(WERROR_FLAGS) $^ -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
 	cp $@ $(BINDIR)
