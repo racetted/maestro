@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include "SeqUtil.h"
 #include "nodeinfo.h"
+#include "nodeinfo_filters.h"
 #include "SeqLoopsUtil.h"
 #include "SeqNameValues.h"
 #include "getopt.h"
@@ -49,16 +50,16 @@ OPTIONS\n\
         Specify the loop arguments as a comma seperated value loop index: inner_Loop=1,outer_Loop=3\n\
 \n\
     -f, --filters\n\
-        Speciry a comma separated list of filters (optional):\n\
-            all (default)\n\
-            task (node task path only)\n\
-            cfg (node config path only)\n\
-            res (batch resource only)\n\
+        Specify a comma separated list of filters (optional):\n\
+            all      (default)\n\
+            task     (node task path only)\n\
+            cfg      (node config path only)\n\
+            res      (batch resource only)\n\
             res_path (batch resource path only)\n\
-            type (node type only)\n\
-            node (node name and extention if applicable)\n\
-            root (root node name)\n\
-            var  (variables exported in wrapper)\n\
+            type     (node type only (unused))\n\
+            node     (node name and extention if applicable)\n\
+            root     (root node name)\n\
+            var      (variables exported in wrapper)\n\
 \n\
     -d, --datestamp\n\
         Specify the 14 character date of the experiment ex: 20080530000000\n\
@@ -107,28 +108,28 @@ int main ( int argc, char * argv[] )
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgs = NULL;
-   char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL ;
-   char filters[256];
+   char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL,
+        *filters_str = strdup("all");
    int errflg = 0, nodeFound = 0;
    int gotLoops=0, showRootOnly = 0;
    if ( argc == 1 || argc == 2) {
       printUsage();
       exit(1);
    }
-   strcpy(filters,"all");
    while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index )) != -1) {
          switch(c) {
          case 'n':
-	    node = malloc( strlen( optarg ) + 1 );
+            node = malloc( strlen( optarg ) + 1 );
             strcpy(node,optarg);
             nodeFound = 1;
             break;
          case 'd':
-	    datestamp = malloc( strlen( optarg ) + 1 );
+            datestamp = malloc( strlen( optarg ) + 1 );
             strcpy(datestamp,optarg);
             break;
          case 'f':
-            strcpy(filters,optarg);
+            free(filters_str);
+            filters_str = strdup(optarg);
             break;
          case 'v':
 				SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
@@ -165,7 +166,23 @@ int main ( int argc, char * argv[] )
       }
    }
 
-   if ( nodeFound == 0 && strstr( filters, "root" ) == NULL ) {
+
+   unsigned int filters = 0;
+   for_tokens(filter_token,filters_str,",",sp){
+           if ( strcmp( filter_token, "all" ) == 0 )      filters |= NI_SHOW_ALL;
+      else if ( strcmp( filter_token, "cfg" ) == 0 )      filters |= NI_SHOW_CFGPATH;
+      else if ( strcmp( filter_token, "task" ) == 0 )     filters |= NI_SHOW_TASKPATH;
+      else if ( strcmp( filter_token, "res" ) == 0 )      filters |= NI_SHOW_RESOURCE;
+      else if ( strcmp( filter_token, "root" ) == 0 )     filters |= NI_SHOW_ROOT_ONLY;
+      else if ( strcmp( filter_token, "dep" ) == 0 )      filters |= NI_SHOW_DEP;
+      else if ( strcmp( filter_token, "res_path" ) == 0 ) filters |= NI_SHOW_RESPATH;
+      else if ( strcmp( filter_token, "type" ) == 0 )     filters |= NI_SHOW_TYPE;
+      else if ( strcmp( filter_token, "node" ) == 0 )     filters |= NI_SHOW_NODE;
+      else if ( strcmp( filter_token, "var" ) == 0 )      filters |= NI_SHOW_VAR;
+      else raiseError("Unrecognized filter %s\n", filter_token);
+   }
+
+   if ( nodeFound == 0 && (filters & NI_SHOW_ROOT_ONLY) ) {
       printUsage();
       exit(1);
    }
@@ -181,5 +198,6 @@ int main ( int argc, char * argv[] )
    free( node );
    free(outputFile);
    free(datestamp);
+   free(filters_str);
    exit(0);
 }

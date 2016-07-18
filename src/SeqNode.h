@@ -196,6 +196,23 @@ void SeqNode_setInternalPath ( SeqNodeDataPtr node_ptr, const char* path );
 void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module );
 void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, char* switchName, char* switchType, char* returnValue);
 
+const char *SeqNode_getCfgPath( SeqNodeDataPtr node_ptr);
+const char *SeqNode_getTaskPath(SeqNodeDataPtr node_ptr);
+const char *SeqNode_getResourcePath(SeqNodeDataPtr node_ptr);
+
+void SeqNode_printForEachTargets(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printNodeSpecifics(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printSubmits(FILE *file,SeqNodeDataPtr node_ptr );
+void SeqNode_printAborts( FILE * file, SeqNodeDataPtr node_ptr);
+void SeqNode_printLoops( FILE* file , SeqNodeDataPtr node_ptr);
+void SeqNode_printSiblings(FILE * file, SeqNodeDataPtr node_ptr );
+void SeqNode_printCfgPath(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printTaskPath(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printResourcePath(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printBatchResources(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printPathInfo(FILE *file, SeqNodeDataPtr node_ptr);
+void SeqNode_printNode ( SeqNodeDataPtr node_ptr, unsigned int filters, const char * filename );
+
 extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename );
 extern char * SeqNode_extension (const SeqNodeDataPtr _nodeDataPtr);
 

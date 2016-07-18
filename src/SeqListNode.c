@@ -50,7 +50,7 @@ void SeqListNode_insertItem(LISTNODEPTR *list_head, char *data)
  * NULL (empty list) is implicitely taken into account: newPtr->next will be NULL
  * and list_head will be a pointer to the first element of the list.
 ********************************************************************************/
-void SeqListNode_pushFront(LISTNODEPTR * list_head, char *data)
+void SeqListNode_pushFront(LISTNODEPTR * list_head,const char *data)
 {
    LISTNODEPTR newPtr = NULL;
    if( (newPtr = malloc(sizeof(LISTNODE)) ) == NULL ){

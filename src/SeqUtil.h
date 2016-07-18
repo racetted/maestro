@@ -104,4 +104,5 @@ int   SeqUtil_basicTruncatedAverage(int *unsorted_int_array, int elements, int r
 int   SeqUtil_compareInt (const void * a, const void * b);
 char* SeqUtil_normpath(char *out, const char *in); 
 const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home);
+char *SeqUtil_getTraceLevelString();
 #endif

@@ -37,15 +37,6 @@
 #include "FlowVisitor.h"
 #include "ResourceVisitor.h"
 
-
-int SHOW_ALL = 0;
-int SHOW_CFGPATH = 0;
-int SHOW_TASKPATH = 0;
-int SHOW_RESSOURCE = 0;
-int SHOW_ROOT_ONLY = 0;
-int SHOW_DEP = 0;
-int SHOW_RESPATH = 0;
-
 /* root node of xml resource file */
 const char* NODE_RES_XML_ROOT = "/NODE_RESOURCES";
 const char* NODE_RES_XML_ROOT_NAME = "NODE_RESOURCES";
@@ -606,9 +597,9 @@ void parseForEachTarget(xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
  * Adds information to the SeqNodeData data structure about the the flow, such
  * as children, parent, siblings, submits and dependencies.
 *********************************************************************************/
-void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home)
+void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home, unsigned int filters)
 {
-   if (strcmp(_nodePath, "") == 0) raiseError("Calling getFlowInfo() with an empty path, that's paddlin'\n");
+   if (strcmp(_nodePath, "") == 0) raiseError("Calling getFlowInfo() with an empty path'\n");
    FlowVisitorPtr flow_visitor = Flow_newVisitor(_seq_exp_home);
 
    if ( Flow_parsePath(flow_visitor,_nodeDataPtr, _nodePath) == FLOW_FAILURE )
@@ -618,10 +609,10 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 
    Flow_parseSpecifics(flow_visitor,_nodeDataPtr);
 
-   if ( SHOW_ALL || SHOW_DEP )
+   if(filters & (NI_SHOW_ALL | NI_SHOW_DEP) )
       Flow_parseDependencies(flow_visitor, _nodeDataPtr);
 
-   if( SHOW_ALL ){
+   if(filters & NI_SHOW_ALL ){
       Flow_parseSubmits(flow_visitor, _nodeDataPtr);
       Flow_parseSiblings(flow_visitor, _nodeDataPtr);
    }
@@ -654,9 +645,9 @@ int doesNodeExist (const char *_nodePath, const char *_seq_exp_home , const char
    return nodeExists;
 }
 
-SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
+SeqNodeDataPtr nodeinfo ( const char* node, unsigned int filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
 
-   char *newNode = NULL, *tmpstrtok = NULL, *tmpfilters = NULL;
+   char *newNode = NULL,  *tmpfilters = NULL;
    char workdir[SEQ_MAXFIELD];
    SeqNodeDataPtr  nodeDataPtr = NULL;
 
@@ -664,18 +655,6 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
       raiseError("SEQ_EXP_HOME not set! (nodeinfo) \n");
    }
 
-   tmpfilters = strdup( filters );
-   tmpstrtok = (char*) strtok( tmpfilters, "," );
-   while ( tmpstrtok != NULL ) {
-      if ( strcmp( tmpfilters, "all" ) == 0 ) SHOW_ALL = 1;
-      if ( strcmp( tmpfilters, "cfg" ) == 0 ) SHOW_CFGPATH = 1;
-      if ( strcmp( tmpfilters, "task" ) == 0 ) SHOW_TASKPATH= 1;
-      if ( strcmp( tmpfilters, "res" ) == 0 ) SHOW_RESSOURCE = 1;
-      if ( strcmp( tmpfilters, "root" ) == 0 ) SHOW_ROOT_ONLY = 1;
-      if ( strcmp( tmpfilters, "dep" ) == 0 ) SHOW_DEP = 1;
-      if ( strcmp( tmpfilters, "res_path" ) == 0 ) SHOW_RESPATH = 1;
-      tmpstrtok = (char*) strtok(NULL,",");
-   }
    newNode = (char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodeinfo() trying to create node %s, exp %s\n", newNode, _exp_home );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
@@ -690,18 +669,18 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
 
-   if ( SHOW_ROOT_ONLY ) {
+   if (filters & NI_SHOW_ROOT_ONLY ) {
       getRootNode ( nodeDataPtr, _exp_home );
    } else {
       /* add loop arg list to node */
       SeqNode_setLoopArgs( nodeDataPtr,_loops);
-      getFlowInfo ( nodeDataPtr, (char*) newNode, _exp_home);
+      getFlowInfo ( nodeDataPtr, (char*) newNode, _exp_home,filters);
       getNodeResources(nodeDataPtr,_exp_home, newNode);
 
    }
 
    free(newNode);
    free((char*) newDatestamp);
-   free( tmpfilters ); 
+   free( tmpfilters );
    return nodeDataPtr;
 }

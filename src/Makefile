@@ -67,7 +67,7 @@ runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h
 	$(CC) -g -c runcontrollib.c
 
 SeqNode.o:	SeqNode.c SeqNode.h
-	$(CC) -g -c SeqNode.c;
+	$(CC) -g $(WERROR_FLAGS) -c SeqNode.c;
 
 SeqListNode.o:	SeqListNode.c
 	$(CC) -g -c SeqListNode.c

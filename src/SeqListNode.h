@@ -55,7 +55,7 @@ void SeqListNode_insertTokenItem(TOKENNODEPTR *list, char *token, char *data);
 /****************************************************************
 * pushFront: Adds an item at the start of a list.
 *****************************************************************/
-void SeqListNode_pushFront(LISTNODEPTR * list_head, char *data);
+void SeqListNode_pushFront(LISTNODEPTR * list_head,const char *data);
 
 /****************************************************************
 *deleteItem: Delete the first item from the token node list pointer 'list'. 

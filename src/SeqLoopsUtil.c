@@ -446,7 +446,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): Begin call\n");
 
-   SeqNode_printLoops(_nodeDataPtr->loops);
+   SeqNode_printLoops(NULL,_nodeDataPtr);
    SeqLoops_parseArgs(&depArgs,depIndex);
 
    for( arg = depArgs; arg != NULL; arg = arg->nextPtr){
@@ -1143,7 +1143,7 @@ int SeqLoops_validateLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesP
       }
    }
 
-   SeqNode_printLoops(loopsPtr);
+   SeqNode_showLoops(loopsPtr,TL_FULL_TRACE);
    /* validate loop containers */
    if( loopsPtr != NULL ) {
       SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_validateLoopArgs() loop pointer found\n" );
