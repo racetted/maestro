@@ -400,63 +400,6 @@ void parseSubmits (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    }
 }
 
-#ifndef _RESOURCE_NEW_WORKER_FUNCTIONS_
-/* set the node's worker path */
-
-void parseWorkerPath (char * pathToNode, const char * _seq_exp_home, SeqNodeDataPtr _nodeDataPtr ) {
-   xmlDocPtr doc = NULL;
-   xmlXPathObjectPtr result = NULL;
-   xmlXPathContextPtr context = NULL;
-   xmlNodeSetPtr nodeset = NULL;
-   xmlNodePtr nodePtr = NULL;
-   const xmlChar *nodeName = NULL;
-   char query[256], *xmlFile=NULL ;
-   int foundPath=0, i=0;
-
-   memset(query,'\0',sizeof query);
-
-   xmlFile = malloc( strlen(_seq_exp_home) + strlen("/resources/") + strlen(pathToNode) + strlen("/container.xml") + 1);
-
-   /* build the xmlfile path */
-   sprintf( xmlFile, "%s/resources/%s/container.xml", _seq_exp_home, pathToNode);
-
-   /* parse the xml file */
-   doc = XmlUtils_getdoc(xmlFile);
-
-   if (doc==NULL) raiseError("File %s does not exist, but should contain necessary WORKER tag with path attribute for a work_unit container \n", xmlFile); 
-
-   /* the context is used to walk trough the nodes */
-   context = xmlXPathNewContext(doc);
-
-  /* get the batch system resources */
-   sprintf ( query, "(%s/WORKER/@*)", NODE_RES_XML_ROOT );
-   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseWorkerPath query: %s\n", query );
-   if( (result = XmlUtils_getnodeset (query, context)) != NULL ) {
-         nodeset = result->nodesetval;
-         for (i=0; i < nodeset->nodeNr; i++) {
-            nodePtr = nodeset->nodeTab[i];
-            nodeName = nodePtr->name;
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseWorkerPath() nodePtr->name=%s\n", nodePtr->name);
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseWorkerPath() value=%s\n", nodePtr->children->content );
-            if ( strcmp( nodeName, "path" ) == 0 ) {
-               SeqNode_setWorkerPath( _nodeDataPtr, nodePtr->children->content );
-               foundPath=1;
-            }
-      }
-   }
-
-   if (!foundPath) raiseError("File %s does not contain necessary WORKER tag with path attribute for a work_unit container \n", xmlFile); 
-
-   xmlXPathFreeObject (result);
-   free(xmlFile);
-   xmlXPathFreeContext(context);
-   xmlFreeDoc(doc);
-   xmlCleanupParser();
-
-
-}
-#endif
-
 void parseAbortActions (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) {
    xmlNodeSetPtr nodeset = NULL;
    xmlNodePtr nodePtr = NULL;

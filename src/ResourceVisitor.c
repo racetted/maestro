@@ -656,23 +656,9 @@ int Resource_setWorkerData(ResourceVisitorPtr rv, SeqNodeDataPtr _nodeDataPtr)
       goto out;
    }
 
-#ifndef _RESOURCE_NEW_WORKER_FUNCTIONS_
-   SeqNodeDataPtr workerNodeDataPtr = nodeinfo( _nodeDataPtr->workerPath, "all", NULL, _nodeDataPtr->expHome, NULL, NULL);
-   _nodeDataPtr->mpi=workerNodeDataPtr->mpi;
-   _nodeDataPtr->catchup=workerNodeDataPtr->catchup;
-   SeqNode_setCpu( _nodeDataPtr, workerNodeDataPtr->cpu );
-   SeqNode_setCpuMultiplier( _nodeDataPtr, workerNodeDataPtr->cpu_multiplier);
-   SeqNode_setQueue( _nodeDataPtr,  workerNodeDataPtr->queue );
-   SeqNode_setMachine( _nodeDataPtr, workerNodeDataPtr->machine );
-   SeqNode_setMemory( _nodeDataPtr,  workerNodeDataPtr->memory );
-   SeqNode_setArgs( _nodeDataPtr,  workerNodeDataPtr->soumetArgs );
-   SeqNode_setShell( _nodeDataPtr,  workerNodeDataPtr->shell );
-   SeqNode_freeNode( workerNodeDataPtr );
-#else
    ResourceVisitorPtr worker_rv = newResourceVisitor(_nodeDataPtr, _nodeDataPtr->expHome, _nodeDataPtr->workerPath, Task);
    Resource_parseNodeDFS(worker_rv, _nodeDataPtr, Resource_getBatchAttributes );
    deleteResourceVisitor(worker_rv);
-#endif
 
 out:
    SeqUtil_TRACE(TL_FULL_TRACE, "Resource_setWorkerData() end\n");

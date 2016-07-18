@@ -640,11 +640,7 @@ int Flow_checkWorkUnit(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr
       goto out_free;
    }
 
-#ifndef _RESOURCE_NEW_WORKER_FUNCTIONS_
-   parseWorkerPath(_flow_visitor->currentFlowNode, _flow_visitor->expHome, _nodeDataPtr);
-#else
    Resource_parseWorkerPath(_flow_visitor->currentFlowNode, _flow_visitor->expHome, _nodeDataPtr);
-#endif
 
 out_free:
    xmlXPathFreeObject(attributesResult);

@@ -35,7 +35,6 @@
  * ParseWorkerPath() is replaced by Resource_parseWorkerPath in
  * Flow_setWorkerPath() which do a DFS through the VALIDITY nodes of the xml
  * file.*/
-#define _RESOURCE_NEW_WORKER_FUNCTIONS_
 
 #define RESOURCE_VISITOR_STACK_SIZE 30
 #define RESOURCE_MAX_RECURSION_DEPTH ((RESOURCE_VISITOR_STACK_SIZE)-1)
