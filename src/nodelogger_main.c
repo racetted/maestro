@@ -211,7 +211,7 @@ int main (int argc, char * argv[])
 
       printf("validDate = %s \n", validDate);
 
-      nodeDataPtr = nodeinfo( node, NI_SHOW_ALL, loopsArgsPtr, seq_exp_home, NULL, validDate );
+      nodeDataPtr = nodeinfo( node, NI_SHOW_ALL, loopsArgsPtr, seq_exp_home, NULL, validDate,NULL );
       if (hasLoops){
           SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgsPtr );
       }

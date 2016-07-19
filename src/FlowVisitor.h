@@ -37,8 +37,19 @@
  *
  * There is possibly more in here than is needed but this will be dealt with as
  * work progresses.
+ *
+ * Note on switch_args: Special purpose internal mechanism for controlling the
+ * behavior of the visitor when it encounters SWITCH_ITEMS.  The presence (when
+ * it is not null) of switch_args in the visitor will cause the visitor to
+ * ignore the context when choosing which SWITCH_ITEM to enter and instead, look
+ * in the switch_args string to decide.  This is so that the FlowVisitor can be
+ * used to create the nodeinfo database required by bug4869.  It is necessary to
+ * ignore the context in this situation because we must have all posssible
+ * nodes, and not just the ones that 'exist in the current context'.
 ********************************************************************************/
 typedef struct _FlowVisitor{
+   char * nodePath;
+   char * switch_args;
    const char * expHome;
    char * currentFlowNode;
    char * taskPath;
@@ -64,7 +75,8 @@ xmlXPathContextPtr Flow_previousContext(FlowVisitorPtr fv);
  * Initializes the flow_visitor to the entry module;
  * Caller should check if the return pointer is NULL.
 ********************************************************************************/
-FlowVisitorPtr Flow_newVisitor(const char * _seq_exp_home);
+FlowVisitorPtr Flow_newVisitor(const char *nodePath, const char *seq_exp_home,
+                                                     const char *switch_args);
 
 /********************************************************************************
  * Destructor for the flow_visitor object.
@@ -77,7 +89,8 @@ int Flow_deleteVisitor(FlowVisitorPtr _flow_visitor);
  * returns FLOW_SUCCESS if it is able to completely parse the path
  * returns FLOW_FAILURE otherwise.
 ********************************************************************************/
-int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr, const char * _nodePath);
+int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
+                                                        const char * _nodePath);
 
 /********************************************************************************
  * Tries to get to the node specified by nodePath.

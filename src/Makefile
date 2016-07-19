@@ -64,58 +64,61 @@ prep:
 objects:	$(OBJECTS)
 
 runcontrollib.o:	runcontrollib.c runcontrollib.h nodelogger.h nodeinfo.h
-	$(CC) -g -c runcontrollib.c
+	$(CC) $(CFLAGS) -c runcontrollib.c
 
 SeqNode.o:	SeqNode.c SeqNode.h
-	$(CC) -g $(WERROR_FLAGS) -c SeqNode.c;
+	$(CC) $(CFLAGS) $(WERROR_FLAGS) -c SeqNode.c;
 
 SeqListNode.o:	SeqListNode.c
-	$(CC) -g -c SeqListNode.c
+	$(CC) $(CFLAGS) -c SeqListNode.c
 
 SeqNameValues.o:	SeqNameValues.c
-	$(CC) -g -c SeqNameValues.c
+	$(CC) $(CFLAGS) -c SeqNameValues.c
 
 SeqLoopsUtil.o:	SeqLoopsUtil.c
-	$(CC) -g -c SeqLoopsUtil.c
+	$(CC) $(CFLAGS) -c SeqLoopsUtil.c
 
 SeqDatesUtil.o:	SeqDatesUtil.c
-	$(CC) -g -c  SeqDatesUtil.c
+	$(CC) $(CFLAGS) -c  SeqDatesUtil.c
 
 XmlUtils.o:	XmlUtils.c
-	$(CC) -g -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c XmlUtils.c
+	$(CC) $(CFLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c XmlUtils.c
 
 SeqUtil.o:	SeqUtil.c SeqUtil.h
-	$(CC) -g -Wall -c SeqUtil.c
+	$(CC) $(CFLAGS) -Wall -c SeqUtil.c
 
 SeqUtilServer.o: SeqUtilServer.c QueryServer.h
-	$(CC) -g -c SeqUtilServer.c
+	$(CC) $(CFLAGS) -c SeqUtilServer.c
  
 QueryServer.o: QueryServer.c QueryServer.h
-	$(CC) -g -c QueryServer.c
+	$(CC) $(CFLAGS) -c QueryServer.c
   
 l2d2_socket.o: l2d2_socket.h l2d2_socket.c 
-	$(CC) -g -c l2d2_socket.c
+	$(CC) $(CFLAGS) -c l2d2_socket.c
 
 expcatchup.o:	expcatchup.c expcatchup.h
-	$(CC) -g -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c expcatchup.c
+	$(CC) $(CFLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c expcatchup.c
 
 FlowVisitor.o:  FlowVisitor.c FlowVisitor.h nodeinfo.c nodeinfo.h ResourceVisitor.h ResourceVisitor.c
-	$(CC) -g $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c $<
+	$(CC) -c $< $(CFLAGS) $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR)
 
 ResourceVisitor.o: ResourceVisitor.c ResourceVisitor.h nodeinfo.c nodeinfo.h
-	$(CC) -g $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c $<
+	$(CC) -c $< $(CFLAGS) $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR)
+
+SeqNodeCensus.o: SeqNodeCensus.c SeqNodeCensus.h FlowVisitor.h
+	$(CC) -c $< $(CFLAGS) $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR)
 
 nodeinfo.o:	nodeinfo.c nodeinfo.h FlowVisitor.h runcontrollib.h ResourceVisitor.c ResourceVisitor.h
-	$(CC) -g $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c $<
+	$(CC) $(CFLAGS) $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c $<
 
 logreader.o:	logreader.c logreader.h logreader_main.c
-	$(CC) -g -c logreader.c
+	$(CC) $(CFLAGS) -c logreader.c
 
 maestro.o:	maestro.c QueryServer.h maestro.h nodeinfo.h runcontrollib.h nodelogger.h tictac.h SeqUtil.h
-	$(CC) -g -c maestro.c -I $(XML_INCLUDE_DIR)
+	$(CC) $(CFLAGS) -c maestro.c -I $(XML_INCLUDE_DIR)
 
 ocmjinfo.o:	ocmjinfo.c ocmjinfo.h 
-	$(CC) -g -c ocmjinfo.c
+	$(CC) $(CFLAGS) -c ocmjinfo.c
 
 l2d2_lists.o: l2d2_lists.h l2d2_lists.c
 	$(CC) -c l2d2_lists.c
@@ -142,10 +145,10 @@ l2d2_roxml-parse-engine.o: l2d2_roxml-parse-engine.c
 	$(CC)  $(CFLAGS2) -c l2d2_roxml-parse-engine.c
  
 nodelogger.o:	nodelogger.c nodelogger.h SeqUtil.c l2d2_commun.c l2d2_Util.c l2d2_socket.c
-	$(CC) -g -c nodelogger.c 
+	$(CC) $(CFLAGS) -c nodelogger.c 
 
 tictac.o:	tictac.c tictac.h
-	$(CC) -g -c tictac.c
+	$(CC) $(CFLAGS) -c tictac.c
 
 getopt_long.o:	getopt_long.c getopt.h
 	$(CC) -c getopt_long.c
@@ -217,8 +220,8 @@ madmin: $(L2D2AOBJECTS)
 TEST_OBJECTS = SeqUtil.o SeqNode.o XmlUtils.o SeqLoopsUtil.o l2d2_commun.o \
 	QueryServer.o l2d2_socket.o SeqListNode.o SeqDatesUtil.o SeqUtilServer.o \
 	tictac.o SeqNameValues.o nodeinfo.o getopt_long.o FlowVisitor.o \
-	ResourceVisitor.o
+	ResourceVisitor.o SeqNodeCensus.o
 
 mtest:	mtest_main.c $(TEST_OBJECTS)
-	$(CC) -g $(WERROR_FLAGS) $^ -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
+	$(CC) $^ -g $(WERROR_FLAGS) -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
 	cp $@ $(BINDIR)

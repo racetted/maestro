@@ -32,6 +32,7 @@
 #include "getopt.h"
 #include "SeqNode.h"
 #include "XmlUtils.h"
+#include "SeqNodeCensus.h"
 
 static char * testDir = NULL;
 int MLLServerConnectionFid=0;
@@ -85,11 +86,8 @@ void header(const char * test){
    SeqUtil_TRACE(TL_CRITICAL, "\n=================== UNIT TEST FOR %s ===================\n",test);
 }
 
-void printListWithLinefeed(LISTNODEPTR list_head, int trace_level){
-   for_list(itr,list_head){
-      SeqUtil_TRACE(trace_level, "%s\n", itr->data);
-   }
-}
+
+
 
 
 /*
@@ -109,102 +107,71 @@ void printListWithLinefeed(LISTNODEPTR list_head, int trace_level){
  * instead of weird hackish paths, we could use a (path,loop_args) pair as
  * entries in our 'node census'.
  */
-void parseFlowTree_internal(FlowVisitorPtr fv, LISTNODEPTR * list_head,
-                                    const char * basePath, int depth);
 
-LISTNODEPTR parseFlowTree(const char * seq_exp_home)
+
+#define COPY_TO_LINE(dst,src,len)                                              \
+   memcpy((dst),(src),(len)=strlen((src)));                                    \
+   (dst)+=(len);                                                               \
+   *(dst)++ = '\t';                                                            \
+
+#define LONG_LINE 10000
+const char *node_to_line(SeqNodeDataPtr ndp)
 {
-   LISTNODEPTR list_head = NULL;
-   FlowVisitorPtr fv = Flow_newVisitor(seq_exp_home);
+   static char buffer[LONG_LINE];
+   static char small_buffer[50];
 
-   const char * basePath = (const char *) xmlGetProp(fv->context->node,
-                                                      (const xmlChar *)"name");
-   SeqListNode_pushFront(&list_head, basePath);
+   char *dst = buffer;
+   size_t len;
 
-   parseFlowTree_internal(fv, &list_head,basePath, 0);
 
-   free((char*)basePath);
-   Flow_deleteVisitor(fv);
-   return list_head;
 
+      COPY_TO_LINE(dst,ndp->name,len)
+
+      char *type_str = SeqNode_getTypeString(ndp->type);
+      COPY_TO_LINE(dst,type_str,len)
+
+      COPY_TO_LINE(dst,ndp->cpu,len)
+
+      sprintf(small_buffer,"%d",ndp->mpi);
+      COPY_TO_LINE(dst,small_buffer,len)
+
+      /* COPY_TO_LINE(dst,ndp-> */
+
+      /* ET CETERA */
+
+   *dst = 0;
+
+   return (const char *)buffer;
 }
 
-void indent(int depth)
-{
-   int i;
-   for(i = depth; i--;)
-      fprintf(stderr, "    ");
-}
-
-void parseFlowTree_internal(FlowVisitorPtr fv, LISTNODEPTR * list_head,
-                                    const char * basePath, int depth)
-{
-   /*
-    * Oh heavenly Father, I pray to thee to forgive me for this inelegant query
-    * which amounts to saying "all children except SUBMITS".  There has to be a
-    * way of saying something like child::!SUBMITS or something.
-    */
-   xmlXPathObjectPtr results = XmlUtils_getnodeset("(child::FAMILY|child::TASK\
-                                                     |child::SWITCH|child::SWITCH_ITEM\
-                                                     |child::MODULE|child::LOOP\
-                                                     |child::NPASS_TASK|child::FOR_EACH)"
-                                                      , fv->context);
-
-   for_results( xmlNode, results ){
-      const char * name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
-      xmlNodePtr node = xmlNode;
-
-      if( strcmp(node->name, "TASK") == 0 || strcmp(node->name, "NPASS_TASK") == 0){
-         char path[SEQ_MAXFIELD] = {0};
-         sprintf( path, "%s/%s", basePath,name);
-         SeqListNode_pushFront(list_head, path);
-      } else if( strcmp(node->name, "MODULE") == 0){
-         char path[SEQ_MAXFIELD] = {0};
-         sprintf( path, "%s/%s", basePath,name);
-         SeqListNode_pushFront(list_head, path);
-         Flow_changeModule(fv, (const char *) name);
-         parseFlowTree_internal(fv, list_head,path, depth+1);
-         Flow_restoreContext(fv);
-      } else if( strcmp(node->name, "LOOP") == 0
-          || strcmp(node->name, "FAMILY") == 0
-          || strcmp(node->name, "SWITCH") == 0){
-         char path[SEQ_MAXFIELD] = {0};
-         sprintf( path, "%s/%s", basePath,name);
-         SeqListNode_pushFront(list_head, path);
-         xmlNodePtr previousNode = fv->context->node;
-         fv->context->node = node;
-         parseFlowTree_internal(fv, list_head,path,depth+1);
-         fv->context->node = previousNode;
-      } else if( strcmp(node->name, "SWITCH_ITEM") == 0 ){
-         char path[SEQ_MAXFIELD] = {0};
-         const char * switch_item_name = xmlGetProp(xmlNode, (const xmlChar *)"name");
-         sprintf( path, "%s[%s]", basePath,switch_item_name);
-         xmlNodePtr previousNode = fv->context->node;
-         fv->context->node = node;
-         parseFlowTree_internal(fv, list_head,path, depth+1);
-         fv->context->node = previousNode;
-         free((char*)switch_item_name);
-      }
-      free((char *)name);
-   }
-   xmlXPathFreeObject(results);
-}
 
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
-
    SeqUtil_setTraceFlag(TRACE_LEVEL, TL_CRITICAL);
-   LISTNODEPTR list_head = parseFlowTree(seq_exp_home);
+   PathArgNodePtr lp = getNodeList(seq_exp_home);
 
    SeqUtil_setTraceFlag(TRACE_LEVEL, TL_FULL_TRACE);
    SeqUtil_TRACE(TL_FULL_TRACE, "===============================================================\nNote that this test is dependent on an experiment that is not in the test directory.\n\n");
    SeqUtil_setTraceFlag(TRACE_LEVEL, TL_FULL_TRACE);
-   SeqListNode_reverseList(&list_head);
-   printListWithLinefeed(list_head,TL_FULL_TRACE);
+   SeqListNode_reverseList((LISTNODEPTR*)&lp); /* Understanding how inheritance is implemented */
+   PathArgNode_printList(lp);
 
+   SeqUtil_TRACE(TL_FULL_TRACE, "Press ENTER to do nodeinfo on all these nodes\n");
+   getchar();
 
+   SeqUtil_setTraceFlag(TRACE_LEVEL,TL_CRITICAL);
+   SeqNodeDataPtr ndp = NULL;
+   for_pap_list(itr,lp){
+      SeqUtil_TRACE(TL_CRITICAL,"calling nodeinfo with path=%s, switch_args=%s\n",
+                                    itr->path, itr->switch_args);
+      ndp = nodeinfo(itr->path, NI_SHOW_ALL, NULL, seq_exp_home,
+                                          NULL, NULL,itr->switch_args );
+      SeqNode_printNode(ndp,NI_SHOW_ALL,NULL);
+      getchar();
+      SeqNode_freeNode(ndp);
+   }
+   PathArgNode_deleteList(&lp);
 
-   SeqListNode_deleteWholeList(&list_head);
    SeqUtil_TRACE(TL_CRITICAL, "============== ALL TESTS HAVE PASSED =====================\n");
    return 0;
 }
@@ -270,8 +237,10 @@ from the maestro directory.\n");
    sprintf( testDir, "%s%s" , PWD, suffix);
 
    puts ( testDir );
-   seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/");
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/"); */
 
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/"); */
+   seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/bug6268_switch");
    runTests(seq_exp_home,node,datestamp);
 
    free(node);
