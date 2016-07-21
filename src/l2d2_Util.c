@@ -323,8 +323,8 @@ int  writeNodeWaitedFile ( const char * string , FILE *mlog )
     char this_line[1024];
     char statusFile[1024],waitfile[1024],exp[256],node[256],datestamp[25],loopArgs[128];
     char this_exp[256],this_node[256],this_datestamp[25],this_loopArgs[128];
-    int  n, this_inode, inode, found=0;
-    size_t num;
+    int  n, found=0;
+    size_t num, this_inode, inode;
 
     memset(line,'\0',sizeof(line));
     memset(this_line,'\0',sizeof(this_line));
@@ -1296,7 +1296,7 @@ dpnode *getDependencyFiles(char *DDep, char *xp ,FILE *fp, const char *deptype)
    size_t cnt;
    ssize_t r;
    int  g_ldp,ret;
-   int Inode,this_inode;
+   size_t Inode,this_inode;
    char buf[1024],  linkname[1024];
    struct _depParameters *depXp=NULL;
    char **p;

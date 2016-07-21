@@ -1037,8 +1037,8 @@ int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const 
     char tmp_line[SEQ_MAXFIELD];
     char line[SEQ_MAXFIELD];
     char Lexp[256],Lnode[256],Ldatestamp[25],LloopArgs[128];
-    int inode,Linode,n,found=0;
-    size_t num;
+    int n,found=0;
+    size_t num, inode, Linode;
  
     fprintf(stderr,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_nfs routine\n");
 
@@ -1152,8 +1152,8 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
     char tmp_line[SEQ_MAXFIELD];
     char line[SEQ_MAXFIELD];
     char Lexp[256],Lnode[256],Ldatestamp[25],LloopArgs[128], Lindex[128];
-    int inode,Linode,n,found=0;
-    size_t num;
+    int n,found=0;
+    size_t inode, Linode, num;
  
     SeqUtil_TRACE(TL_FULL_TRACE,"WriteNodeWaitedFile(): Using WriteForEachFileFile_nfs routine\n");
     memset(tmp_line,'\0',sizeof(tmp_line));
@@ -1188,7 +1188,7 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
                    fprintf(stderr,"writeNodeWaitedFile_nfs: Cannot get Inode of registred xp=%s\n",Lexp);
                    continue;
            }
-           SeqUtil_TRACE(TL_FULL_TRACE, "writeForEachFile_nfs checking inodes: %d vs %d, %s vs %s, %s vs %s, %s vs %s, %s vs %s\n", Linode, inode, Lnode, _node, Ldatestamp, _datestamp, LloopArgs, _loopArgs, Lindex, _target_index);
+           SeqUtil_TRACE(TL_FULL_TRACE, "writeForEachFile_nfs checking inodes: %zu vs %zu, %s vs %s, %s vs %s, %s vs %s, %s vs %s\n", Linode, inode, Lnode, _node, Ldatestamp, _datestamp, LloopArgs, _loopArgs, Lindex, _target_index);
            if ( Linode == inode && strcmp(Lnode,_node) == 0 && strcmp(Ldatestamp,_datestamp) == 0 && strcmp(LloopArgs,_loopArgs) == 0 && strcmp(Lindex,_target_index) == 0 ) {
                   found = 1;
                   break;
