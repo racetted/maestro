@@ -28,11 +28,13 @@
 #include "ResourceVisitor.h"
 #include "FlowVisitor.h"
 #include "SeqUtil.h"
+#include "SeqLoopsUtil.h"
 #include "nodeinfo.h"
 #include "getopt.h"
 #include "SeqNode.h"
 #include "XmlUtils.h"
 #include "SeqNodeCensus.h"
+#include "TsvInfoDatabase.h"
 
 static char * testDir = NULL;
 int MLLServerConnectionFid=0;
@@ -86,93 +88,12 @@ void header(const char * test){
    SeqUtil_TRACE(TL_CRITICAL, "\n=================== UNIT TEST FOR %s ===================\n",test);
 }
 
-
-
-
-
-/*
- * SOME NOTES ABOUT THIS TEST:
- * This test was made in another commit to develop an algorithm for getting the
- * list of all the nodes in an experiment.  I include it here as a means to test
- * the Flow_changeModule() function that uses a stack of xmlXPathContextPtr.
- *
- * This algorithm was going to be used for bug4689 but I ended up having to do
- * too many hackish things for my liking.  Therefore I'm going to wait until
- * Dominic gets back from vacation and discuss things like changing the desired
- * behavior so that it can be implemented with good design/coding practices.
- *
- * The root of the hackishness is switches, and the starting hack is to put
- * switch item names in square brackets.  As I worked on generic switches
- * (bug7312) I noticed that I hadn't thought about using loop_args.  So maybe
- * instead of weird hackish paths, we could use a (path,loop_args) pair as
- * entries in our 'node census'.
- */
-
-
-#define COPY_TO_LINE(dst,src,len)                                              \
-   memcpy((dst),(src),(len)=strlen((src)));                                    \
-   (dst)+=(len);                                                               \
-   *(dst)++ = '\t';                                                            \
-
-#define LONG_LINE 10000
-const char *node_to_line(SeqNodeDataPtr ndp)
-{
-   static char buffer[LONG_LINE];
-   static char small_buffer[50];
-
-   char *dst = buffer;
-   size_t len;
-
-
-
-      COPY_TO_LINE(dst,ndp->name,len)
-
-      char *type_str = SeqNode_getTypeString(ndp->type);
-      COPY_TO_LINE(dst,type_str,len)
-
-      COPY_TO_LINE(dst,ndp->cpu,len)
-
-      sprintf(small_buffer,"%d",ndp->mpi);
-      COPY_TO_LINE(dst,small_buffer,len)
-
-      /* COPY_TO_LINE(dst,ndp-> */
-
-      /* ET CETERA */
-
-   *dst = 0;
-
-   return (const char *)buffer;
-}
+/* Define tests here */
 
 
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
-   SeqUtil_setTraceFlag(TRACE_LEVEL, TL_CRITICAL);
-   PathArgNodePtr lp = getNodeList(seq_exp_home);
-
-   SeqUtil_setTraceFlag(TRACE_LEVEL, TL_FULL_TRACE);
-   SeqUtil_TRACE(TL_FULL_TRACE, "===============================================================\nNote that this test is dependent on an experiment that is not in the test directory.\n\n");
-   SeqUtil_setTraceFlag(TRACE_LEVEL, TL_FULL_TRACE);
-   SeqListNode_reverseList((LISTNODEPTR*)&lp); /* Understanding how inheritance is implemented */
-   PathArgNode_printList(lp);
-
-   SeqUtil_TRACE(TL_FULL_TRACE, "Press ENTER to do nodeinfo on all these nodes\n");
-   getchar();
-
-   SeqUtil_setTraceFlag(TRACE_LEVEL,TL_CRITICAL);
-   SeqNodeDataPtr ndp = NULL;
-   for_pap_list(itr,lp){
-      SeqUtil_TRACE(TL_CRITICAL,"calling nodeinfo with path=%s, switch_args=%s\n",
-                                    itr->path, itr->switch_args);
-      ndp = nodeinfo(itr->path, NI_SHOW_ALL, NULL, seq_exp_home,
-                                          NULL, NULL,itr->switch_args );
-      SeqNode_printNode(ndp,NI_SHOW_ALL,NULL);
-      getchar();
-      SeqNode_freeNode(ndp);
-   }
-   PathArgNode_deleteList(&lp);
-
-   SeqUtil_TRACE(TL_CRITICAL, "============== ALL TESTS HAVE PASSED =====================\n");
+   /* Call the tests here */
    return 0;
 }
 int main ( int argc, char * argv[] )
@@ -221,6 +142,7 @@ int main ( int argc, char * argv[] )
    const char * p = PWD;
    while(*p++ != 0 );
    while(*(p-1) != '/') --p;
+
    if( strcmp(p,"maestro") != 0 ){
       SeqUtil_TRACE(TL_FULL_TRACE, "\
 Main function for doing tests, please run this from the maestro directory so\n\
@@ -238,9 +160,9 @@ from the maestro directory.\n");
 
    puts ( testDir );
    /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/"); */
-
-   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/"); */
-   seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/bug6268_switch");
+   seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/");
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/HelloWorldPhil/"); */
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/bug6268_switch"); */
    runTests(seq_exp_home,node,datestamp);
 
    free(node);
