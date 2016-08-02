@@ -85,7 +85,7 @@ XmlUtils.o:	XmlUtils.c
 	$(CC) -g -I $(INCDIR) -I $(XML_INCLUDE_DIR) -c XmlUtils.c
 
 SeqUtil.o:	SeqUtil.c SeqUtil.h
-	$(CC) -g -c SeqUtil.c 
+	$(CC) -g -Wall -c SeqUtil.c
 
 SeqUtilServer.o: SeqUtilServer.c QueryServer.h
 	$(CC) -g -c SeqUtilServer.c

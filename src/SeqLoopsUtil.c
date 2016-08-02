@@ -551,6 +551,8 @@ static LISTNODEPTR SeqNodeData_to_reverse_extension_list( SeqNodeDataPtr _nodeDa
       return newList;
    } else if (_nodeDataPtr->type == Loop) {
       return numerical_to_reverse_extension_list(_nodeDataPtr->data);
+   } else {
+      return NULL;
    }
 }
 
@@ -980,9 +982,9 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
 	SeqNameValuesPtr nodeSpecPtr = NULL;
 	char tmp[20];
 	char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL, *loopSetStr = NULL;
-	char *loopStart = NULL, *tmpExpression = NULL, *tmpArrayValue = NULL;
-	int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0, _i, expressionArray[256], detectedEnd=0;
-	int isLast = 0, endIndex=1;
+	char *tmpExpression = NULL, *tmpArrayValue = NULL;
+	int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0, _i, expressionArray[256];
+	int isLast = 0;
 	int* lastDef;
 	memset( tmp, '\0', sizeof(tmp) );
 	/* get the first loop iteration */
@@ -1016,9 +1018,6 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
 		/* get the iteration step */
 		if( ( loopStepStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "STEP" ) ) != NULL )
 			loopStep = atoi(loopStepStr);
-		/* if the set has a value, the next iteration is (current iteration + set value)*/
-		if( ( loopSetStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "SET" ) ) != NULL )
-			loopSet = atoi(loopSetStr);
 		/* get the iteration end */
 		if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
 			loopTotal = atoi(loopEndStr);
@@ -1055,8 +1054,8 @@ SeqNameValuesPtr SeqLoops_nextLoopArgs( const SeqNodeDataPtr _nodeDataPtr, SeqNa
 	const int loopCurrent = atoi( SeqLoops_getLoopAttribute( _loop_args, _nodeDataPtr->nodeName ) );
 	char *expression, *token; 
 	char nextIterStr[200]; 
-	int expressionArray[256], index = 0, startIndex = 0, nextIter,loopStart,  loopCount,  loopSetCount, loopSet = 1, loopStep = 1, loopEnd;
-	int *currentDef, *nextDef;
+	int expressionArray[256], index = 0, startIndex = 0, nextIter,loopStart, loopSet = 1, loopStep = 1, loopEnd;
+	int *currentDef;
 	int currentDefIsLast; /* Boolean value */ 
 	memset( nextIterStr, '\0', sizeof(nextIterStr));
 

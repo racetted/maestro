@@ -178,7 +178,7 @@ void SeqNode_addSubmit ( SeqNodeDataPtr node_ptr, char* data );
 void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath );
 void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data );
 char* SeqNode_getTypeString( SeqNodeType _node_type );
-void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, char* name, char* value );
+void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, const char* name, const char* value );
 void SeqNode_addSibling ( SeqNodeDataPtr node_ptr, char* data );
 void SeqNode_setName ( SeqNodeDataPtr node_ptr, const char* name );
 void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs );
@@ -194,7 +194,7 @@ void SeqNode_setPathToModule ( SeqNodeDataPtr node_ptr, const char* pathToModule
 void SeqNode_setSuiteName ( SeqNodeDataPtr node_ptr, const char* suiteName );
 void SeqNode_setInternalPath ( SeqNodeDataPtr node_ptr, const char* path );
 void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module );
-void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, char* switchName, char* switchType, char* returnValue);
+void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, const char* switchName, const char* switchType, const char* returnValue);
 
 const char *SeqNode_getCfgPath( SeqNodeDataPtr node_ptr);
 const char *SeqNode_getTaskPath(SeqNodeDataPtr node_ptr);

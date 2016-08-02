@@ -69,7 +69,8 @@ const char * SeqDatesUtil_getIncrementedDatestamp( const char * baseDatestamp,co
 #define isDigit(a) ('0' <= a && a <= '9')
 #define MAX_DIGITS 9
 char* SeqDatesUtil_addTimeDelta(const char * datestamp, const char * timeDelta){
-   char * p = timeDelta, buffer[MAX_DIGITS] = {'\0'}, type;
+   const char * p = timeDelta;
+   char buffer[MAX_DIGITS] = {'\0'}, type;
    int sign = ( *p == '-' ? -1 : 1);
    int days = 0, hours = 0, minutes = 0, seconds = 0, digitCounter = 0;
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqDatesUtil_addTimeDelta(): Parsing timeDelta=%s\n", timeDelta);
@@ -111,7 +112,6 @@ char* SeqDatesUtil_getPrintableDate(const char* printable_date, int day, int hou
 {
    long long int increment;
    char fulldate[15],buffer[15],four_char_date[5],two_char_date[3];
-   char *datePtr = NULL;
    long long int stamp;
    int yyyymmdd, hhmmss, i_year=0, i_month=0, i_day=0, i_hour=0, i_minute=0, i_second=0;
   

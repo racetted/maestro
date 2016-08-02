@@ -57,9 +57,8 @@ void XmlUtils_resolve (const char *_docname, xmlXPathContextPtr _context, const 
   xmlXPathObjectPtr result;
   xmlNodeSetPtr nodeset = NULL;
   xmlNodePtr nodePtr = NULL;
-  char *source=NULL,*nodeContent=NULL;
+  char *nodeContent=NULL;
   int i;
-  static char newContent[SEQ_MAXFIELD];
 
   result =  xmlXPathEvalExpression("//@*",_context);
   nodeset = result->nodesetval;

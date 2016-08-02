@@ -181,7 +181,7 @@ int Flow_walkPath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_walkPath() begin\n");
    int count = 0;
-   int totalCount = SeqUtil_tokenCount(nodePath,"/");
+   int totalCount = SeqUtil_tokenCount(nodePath,"/") - 1 ;
    int retval = FLOW_SUCCESS;
    for_tokens(pathToken, nodePath , "/", sp){
       if( Flow_doNodeQuery(_flow_visitor, pathToken, count == 0) == FLOW_FAILURE ){
@@ -190,6 +190,9 @@ int Flow_walkPath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
       }
 
       if( count == totalCount ){
+         SeqUtil_TRACE(TL_FULL_TRACE,"Flow_walkPath setting node %s to type %d\n",
+                                          nodePath,_flow_visitor->currentNodeType);
+         _nodeDataPtr->type = _flow_visitor->currentNodeType;
          retval = FLOW_SUCCESS;
          goto out;
       }
