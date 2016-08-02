@@ -7,6 +7,7 @@
 #include "XmlUtils.h"
 #include "FlowVisitor.h"
 #include "SeqUtil.h"
+#include "nodeinfo.h"
 
 #include "SeqNodeCensus.h"
 void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *lp,
@@ -25,7 +26,7 @@ void gnl_switch_item(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
                         const char *basePath,const char *baseSwitchArgs,
                         int depth,xmlNodePtr xmlNode);
 
-int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const char *switch_args);
+int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const char *switch_args, SeqNodeType type);
 
 
 /********************************************************************************
@@ -42,18 +43,19 @@ PathArgNodePtr getNodeList(const char * seq_exp_home)
 
    const char * basePath = (const char *) xmlGetProp(fv->context->node,
                                                       (const xmlChar *)"name");
-
+   const char * fixedBasePath = SeqUtil_fixPath(basePath);
    /*
     * Base step of recursion
     */
-   PathArgNode_pushFront(&pap, basePath, "" );
+   PathArgNode_pushFront(&pap, fixedBasePath, "", Module );
 
    /*
     * Start recursion
     */
-   getNodeList_internal(fv, &pap ,basePath,"", 0);
+   getNodeList_internal(fv, &pap ,fixedBasePath,"", 0);
 
 out_free:
+   free((char*)fixedBasePath);
    free((char*)basePath);
    Flow_deleteVisitor(fv);
    return pap;
@@ -63,7 +65,7 @@ out_free:
  * Inserts a PathArgNodePtr at the front of the list pointed to by *list_head
  * and stores the address of the new element in list_head.
 ********************************************************************************/
-int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const char *switch_args)
+int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const char *switch_args,SeqNodeType type)
 {
    PathArgNodePtr newNode = NULL;
    if( (newNode = malloc(sizeof *newNode)) == NULL ){
@@ -72,6 +74,7 @@ int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const cha
    }
    newNode->path = strdup(path);
    newNode->switch_args = strdup(switch_args);
+   newNode->type = type;
    newNode->nextPtr = *list_head;
 
    *list_head = newNode;
@@ -109,8 +112,7 @@ void PathArgNode_printList(PathArgNodePtr list_head, int trace_level)
       return;
 
    for_pap_list(itr,list_head){
-      PathArgNodePtr pap_itr = (PathArgNodePtr) itr;
-      fprintf(stderr,"%s {%s}\n", pap_itr->path, pap_itr->switch_args);
+      fprintf(stderr,"%s {%s} [type %d]\n", itr->path, itr->switch_args,itr->type);
    }
 }
 
@@ -174,12 +176,13 @@ void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
 {
    char path[SEQ_MAXFIELD];
    const char * container_name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
+   SeqNodeType type = getNodeType(xmlNode->name);
 
    /*
     * Append current node name to basePath and add list entry
     */
    sprintf( path, "%s/%s", basePath,container_name);
-   PathArgNode_pushFront( pathArgList, path, baseSwitchArgs );
+   PathArgNode_pushFront( pathArgList, path, baseSwitchArgs, type);
 
    /*
     * Continue recursion
@@ -204,7 +207,7 @@ void gnl_module(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
     * Append current node name to basePath and add list entry
     */
    sprintf( path, "%s/%s", basePath,module_name);
-   PathArgNode_pushFront( pathArgList, path, baseSwitchArgs );
+   PathArgNode_pushFront( pathArgList, path, baseSwitchArgs,Module);
 
    /*
     * Continue recursion
@@ -226,12 +229,13 @@ void gnl_task(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
 {
    char path[SEQ_MAXFIELD];
    const char * name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
+   SeqNodeType type = getNodeType(xmlNode->name);
 
    /*
     * Append current node name to basePath and add list entry
     */
    sprintf( path, "%s/%s", basePath,name);
-   PathArgNode_pushFront( pathArgList , path, baseSwitchArgs );
+   PathArgNode_pushFront( pathArgList , path, baseSwitchArgs,type );
 
    /*
     * Recursion does ends with Task or NpassTask nodes

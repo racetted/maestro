@@ -37,7 +37,8 @@ proc readNodeinfoDB { } {
    # Normally, generating this info file would be done when quitting the GUI
    # after changing the experiment.  But for testing purposes, I do it here, and
    # the rest of the function is going to stay.
-   exec ../mtest > nodeinfo_keyedlist.tsv
+   set expHome /home/ops/afsi/phc/Documents/Experiences/sample
+   exec ../tsvinfo -t nodeinfo_keyedlist.tsv -e $expHome
 
    # Read the file (The file path will need to be constructed with the
    # experiment path, and a static path within the experiment). Something like

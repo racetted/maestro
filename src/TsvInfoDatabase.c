@@ -5,7 +5,8 @@
 #include "SeqUtil.h"
 #include "SeqLoopsUtil.h"
 #include "SeqNodeCensus.h"
-#include "nodeinfo.h"
+/* #include "nodeinfo.h" */
+#include "ResourceVisitor.h"
 
 static const char *indent = "    ";
 static const char *doubleIndent = "        ";
@@ -215,8 +216,11 @@ int write_db_file(const char *seq_exp_home, FILE *tsv_output_fp, FILE *hr_output
    SeqNodeDataPtr ndp = NULL;
    for_pap_list(itr,nodeList){
 
-      ndp = nodeinfo(itr->path, NI_SHOW_ALL, NULL, seq_exp_home,
-                                             NULL, NULL,itr->switch_args );
+      /* ndp = nodeinfo(itr->path, NI_RESOURCE_ONLY, NULL, seq_exp_home, NULL, NULL,itr->switch_args ); */
+      ndp = SeqNode_createNode(itr->path);
+      SeqNode_setSeqExpHome(ndp,seq_exp_home);
+      ndp->type = itr->type;
+      getNodeResources(ndp,seq_exp_home,itr->path);
       /*
        * Note that fprintf(NULL,...) is OK, but testing it here avoids testing
        * for every subsequent fprintf() that results from calling

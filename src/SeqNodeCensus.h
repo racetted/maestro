@@ -10,6 +10,7 @@ typedef struct _PathArgNode{
    struct _PathArgNode *nextPtr;
    const char * path;
    const char * switch_args;
+   SeqNodeType type;
 } PathArgNode;
 typedef PathArgNode *PathArgNodePtr;
 
