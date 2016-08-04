@@ -226,6 +226,52 @@ void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIn
    SeqNameValues_deleteWholeList( &depArgs );
    SeqNameValues_deleteWholeList( &tokenValues );
 }
+SeqDepDataPtr xmlDepNode_to_depDataPtr(SeqNodeDataPtr _nodeDataPtr, xmlNodePtr nodePtr, int isIntraDep)
+{
+   SeqDepDataPtr dep = SeqDep_newDep();
+   /*
+    * char * depType = xmlGetProp( nodePtr, "type" );
+    * if (strcmp(depType, "node") == 0)
+    *    depType = NodeDependancy;
+    * else if (strcmp(depType, "date") == 0)
+    *    depType = DateDependancy;
+    * else
+    *    depType = NodeDependancy;
+    */
+   dep->type = NodeDependancy; /* Since there is only one dependency type */
+   dep->exp = (char *) xmlGetProp( nodePtr, "exp" );
+
+   /*
+    * Get dep_name from XML and do relative path eveluation
+    */
+   char *depName = NULL;
+   depName = (char *) xmlGetProp( nodePtr, "dep_name" );
+   dep->node_name = SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
+   free(depName);depName = NULL;
+
+   dep->index = (char *) xmlGetProp( nodePtr, "index" );
+   dep->local_index = (char *) xmlGetProp( nodePtr, "local_index" );
+   dep->node_path = (char *) xmlGetProp( nodePtr, "path" );
+   dep->hour = (char *) xmlGetProp( nodePtr, "hour" );
+   dep->valid_hour = (char *) xmlGetProp( nodePtr, "valid_hour" );
+   dep->valid_dow = (char *) xmlGetProp( nodePtr, "valid_dow" );
+   dep->time_delta = (char *) xmlGetProp( nodePtr, "time_delta" );
+   dep->protocol  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
+   dep->status = (char *) xmlGetProp( nodePtr, "status" );
+
+   /*
+    * Set default values for protocol and status if not set
+    */
+   if (dep->protocol == NULL) dep->protocol=strdup("polling"); 
+   if (dep->status == NULL) dep->status=strdup("end"); 
+
+   /*
+    * Do some special treatement on dep->index and dep->local_index
+    */
+   validateDepIndices(_nodeDataPtr, dep, isIntraDep);
+
+   return dep;
+}
 
 void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep )
 {
@@ -239,11 +285,22 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
    int i=0;
    for (i=0; i < nodeset->nodeNr; i++) {
       xmlNodePtr nodePtr = nodeset->nodeTab[i];
-      SeqDepDataPtr dep = SeqDep_newDep();
       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodePtr->name);
 
       /*
-       * Kinda weird but I get it, it's for some kind of future stuff.
+       * Design comments: This following paragraph should be in
+       * xmlDepNode_to_depDataPtr() and I have already put the basic idea there.
+       * In the interest of being seamless, I'm leaving the control flow as is.
+       *
+       * Suggestion: there should be no If here, there should be only one
+       * SeqNode_addDependency() with the struct SeqDependencyData serving for
+       * both types of dependency with a sort of "lazy polymorphism": the struct
+       * has fields for both sub-types of dependency, and functions that deal
+       * with them treat the deps differently based on the dep->type field.
+       *
+       * It's what the cool cats call runtime-type-ID (RTTI).  It's not as good
+       * as polymorphism but I'm not going to get carried away with
+       * improvements.
        */
       char * depType = NULL;
       depType = (char *) xmlGetProp( nodePtr, "type" );
@@ -251,37 +308,8 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
       if ( depType == NULL ) depType=strdup("node");
 
       if ( strcmp( depType, "node" ) == 0 ) {
-         dep->type = NodeDependancy;
-         dep->exp = (char *) xmlGetProp( nodePtr, "exp" );
 
-         /*
-          * Get dep_name from XML and do relative path eveluation
-          */
-         char *depName = NULL;
-         depName = (char *) xmlGetProp( nodePtr, "dep_name" );
-         dep->node_name = SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
-         free(depName);depName = NULL;
-
-         dep->index = (char *) xmlGetProp( nodePtr, "index" );
-         dep->local_index = (char *) xmlGetProp( nodePtr, "local_index" );
-         dep->node_path = (char *) xmlGetProp( nodePtr, "path" );
-         dep->hour = (char *) xmlGetProp( nodePtr, "hour" );
-         dep->valid_hour = (char *) xmlGetProp( nodePtr, "valid_hour" );
-         dep->valid_dow = (char *) xmlGetProp( nodePtr, "valid_dow" );
-         dep->time_delta = (char *) xmlGetProp( nodePtr, "time_delta" );
-         dep->protocol  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
-         dep->status = (char *) xmlGetProp( nodePtr, "status" );
-
-         /*
-          * Set default values for protocol and status if not set
-          */
-         if (dep->protocol == NULL) dep->protocol=strdup("polling"); 
-         if (dep->status == NULL) dep->status=strdup("end"); 
-
-         /*
-          * Do some special treatement on dep->index and dep->local_index
-          */
-         validateDepIndices(_nodeDataPtr, dep, isIntraDep);
+         SeqDepDataPtr dep = xmlDepNode_to_depDataPtr(_nodeDataPtr, nodePtr, isIntraDep);
 
          SeqDep_printDep(TL_FULL_TRACE, dep);
 
