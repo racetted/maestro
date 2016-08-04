@@ -560,46 +560,47 @@ void SeqNode_setDepsNameValue (SeqNameValuesPtr name_values_ptr, char* name, cha
       }
    }
 }
-
 /* add dependency of type node i.e. tasks/family  */
-void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, char* dep_node_name, char* dep_node_path,
-                         char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char * dep_TimeDelta, char* dep_Prot, char* dep_ValidHour, char* dep_ValidDOW) {
+void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDepDataPtr dep) {
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
+   /*
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s, dep_Prot=%s,dep_ValidHour=%s, dep_ValidDOW=%s \n",
       dep_node_name, dep_node_path, dep_exp, dep_status, dep_index, local_index, dep_Prot, dep_ValidHour, dep_ValidDOW);
+   */
+   SeqDep_printDep(TL_FULL_TRACE,dep);
    deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
-   deps_ptr->type = type;
+   deps_ptr->type = dep->type;
    nameValuesPtr = deps_ptr->dependencyItem;
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "NAME", dep_node_name );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "NAME", dep->node_name );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "INDEX", dep_index );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "INDEX", dep->index );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "EXP", dep_exp );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "EXP", dep->exp );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "STATUS", dep_status );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "STATUS", dep->status );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "LOCAL_INDEX", local_index );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "LOCAL_INDEX", dep->local_index );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep_hour );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep->hour );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "TIME_DELTA", dep_TimeDelta );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "TIME_DELTA", dep->time_delta );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "PROT", dep_Prot );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "PROT", dep->protocol );
  
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "VALID_HOUR", dep_ValidHour );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "VALID_HOUR", dep->valid_hour );
 
    nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "VALID_DOW", dep_ValidDOW );
+   SeqNode_setDepsNameValue ( nameValuesPtr, "VALID_DOW", dep->valid_dow );
 
 }
 

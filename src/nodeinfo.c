@@ -316,11 +316,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
          /*
           * Add the dependency to the nodeDataPtr's dependency list
           */
-         SeqNode_addNodeDependency ( _nodeDataPtr, dep->type, dep->node_name,
-                                    dep->node_path, dep->exp, dep->status,
-                                    dep->index, dep->local_index, dep->hour,
-                                    dep->time_delta, dep->protocol,
-                                    dep->valid_hour, dep->valid_dow );
+         SeqNode_addNodeDependency ( _nodeDataPtr, dep );
       } else {
          SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() no dependency found.\n" );
       }

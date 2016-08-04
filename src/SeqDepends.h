@@ -1,7 +1,12 @@
 #ifndef SEQ_DEPENDS_H
 #define SEQ_DEPENDS_H
 
-#include "SeqNode.h"
+
+typedef enum _SeqDependsType {
+   NodeDependancy,
+   DateDependancy
+} SeqDependsType;
+
 typedef struct _SeqDependencyData {
    SeqDependsType type;
    char *node_name;
