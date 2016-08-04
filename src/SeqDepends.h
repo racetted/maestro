@@ -37,7 +37,7 @@ typedef struct _SeqDependsNode {
 typedef SeqDependsNode* SeqDepNodePtr;
 
 SeqDepNodePtr newDepNode(SeqDepDataPtr depData);
-void SeqDep_addDepNode(SeqDepNodePtr* list_head, SeqDepDataPtr depData);
-void SeqDep_deleteDepList(SeqDepNodePtr* list_head);
+void SeqDep_addDepNode (SeqDepNodePtr* list_head, SeqDepDataPtr depData);
+void SeqDep_deleteDepList (SeqDepNodePtr* list_head);
 
 #endif /* SEQ_DEPENDS_H */

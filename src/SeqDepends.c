@@ -127,7 +127,7 @@ void SeqDep_deleteDepList(SeqDepNodePtr* list_head)
                  tmp_next;
    while(current != NULL){
       tmp_next = current->nextPtr;
-      SeqDep_deleteDep(current->depData);
+      SeqDep_deleteDep(&(current->depData));
       free(current);
       current = tmp_next;
    }

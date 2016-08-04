@@ -562,6 +562,14 @@ void SeqNode_setDepsNameValue (SeqNameValuesPtr name_values_ptr, char* name, cha
 }
 /* add dependency of type node i.e. tasks/family  */
 void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDepDataPtr dep) {
+
+   SeqDep_addDepNode(&(node_ptr->dependencies), dep);
+
+   /*
+    * Remove the rest of this function when I'm done
+    * -PHIL
+    */
+
    SeqDependenciesPtr deps_ptr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL;
    /*
@@ -788,7 +796,8 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
    nodePtr->soumetArgs = NULL;
-   nodePtr->depends = NULL;
+   nodePtr->depends = NULL; /* This guy is on his way out */
+   nodePtr->dependencies = NULL; /* This guy will replace depends */
    nodePtr->submits = NULL;
    nodePtr->abort_actions = NULL;
    nodePtr->siblings = NULL;
@@ -1063,21 +1072,50 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, unsigned int filters, const ch
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printNode() done\n" );
 }
 
+void printField(FILE *fp, const char *prefix, const char *name, const char *field)
+{
+   if( field != NULL )
+      SeqUtil_printOrWrite(fp,"%s%s=%s\n",prefix,name,field);
+}
+void SeqNode_printDependency( FILE *fp,const char *prefix, SeqDepDataPtr dep)
+{
+   printField(fp,prefix,"NAME",dep->node_name);
+   printField(fp,prefix,"INDEX",dep->index);
+   printField(fp,prefix,"EXP",dep->exp);
+   printField(fp,prefix,"STATUS",dep->status);
+   printField(fp,prefix,"LOCAL_INDEX",dep->local_index);
+   printField(fp,prefix,"HOUR",dep->hour);
+   printField(fp,prefix,"TIME_DELTA",dep->time_delta);
+   printField(fp,prefix,"PROT",dep->protocol);
+   printField(fp,prefix,"VALID_HOUR",dep->valid_hour);
+   printField(fp,prefix,"VALID_DOW",dep->valid_dow);
+}
+
 void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int isPrettyPrint ){
 
-   SeqDependenciesPtr depsPtr = NULL;
-   SeqNameValuesPtr nameValuesPtr = NULL;
    char *extraString=NULL;
    int count=1;
 
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printDependencies() started\n" );
-   depsPtr = _nodeDataPtr->depends;
    if (isPrettyPrint) {
        SeqUtil_stringAppend( &extraString, "");
    } else {
        SeqUtil_stringAppend( &extraString, "node.depend.");
    }
 
+#if 1
+   count = 1;
+   SeqDepNodePtr current = _nodeDataPtr->dependencies;
+   for(;current != NULL; current = current->nextPtr){
+      if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"Dependency #%d\n", count);
+      SeqNode_printDependency(tmpFile,extraString,current->depData);
+      ++count;
+      if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"\n", count);
+   }
+#else
+   SeqDependenciesPtr depsPtr = _nodeDataPtr->depends;
+   SeqNameValuesPtr nameValuesPtr = NULL;
+   count = 1;
    while( depsPtr != NULL ) {
       nameValuesPtr =  depsPtr->dependencyItem;
       if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"Dependency #%d\n", count);
@@ -1107,6 +1145,7 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int
 
       depsPtr  = depsPtr->nextPtr;
    }
+#endif
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printDependencies() ended\n" );
    free(extraString);
 } 
@@ -1183,10 +1222,9 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->workerPath) ;
       free( seqNodeDataPtr->shell);
   
+      /* free a link-list of dependency items This is on is's way out*/
       depsPtr = seqNodeDataPtr->depends;
-      /* free a link-list of dependency items */
       while( depsPtr != NULL ) {
-
          /* make a copy of the next dependency item to be freed */
          depsNextPtr = depsPtr->nextPtr;
 
@@ -1194,6 +1232,10 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
          free( depsPtr );
          depsPtr  = depsNextPtr;
       }
+
+      /* This replaces the preceding code for deleting the dependencies list */
+      SeqDep_deleteDepList(&(seqNodeDataPtr->dependencies));
+
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->submits) );
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->abort_actions) );
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->siblings) );
