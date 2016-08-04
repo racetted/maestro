@@ -120,6 +120,113 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
    free(cpuString);
 }
 
+/********************************************************************************
+ *
+********************************************************************************/
+void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep)
+{
+   char *tmpLoopName=NULL, *tmpValue=NULL;
+   char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpString=NULL, tmpTokenName[100];
+   SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() dep->local_index = %s\n",dep->local_index );
+   SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL, tokenValues=NULL;
+   if (isIntraDep) {
+      SeqLoopsPtr loopsPtr = NULL;
+      loopsPtr =  _nodeDataPtr->loops;
+      while( loopsPtr != NULL ) {
+         if( strstr(  _nodeDataPtr->pathToModule ,loopsPtr->loop_name ) != NULL ) {
+            /* add loop arg to full dep index */
+            tmpLoopName=(char*) SeqUtil_getPathLeaf( (const char*) loopsPtr->loop_name );
+            SeqUtil_TRACE(TL_FULL_TRACE, "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
+            if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName) != NULL) {
+               SeqNameValues_insertItem( &depArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
+               SeqNameValues_insertItem( &localArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
+            }
+            free(tmpLoopName);
+         }
+         loopsPtr  = loopsPtr->nextPtr;
+      }
+   }
+
+   if( dep->local_index != NULL ) {
+      /*validate local dependency args and create a namevalue list*/
+      if( SeqLoops_parseArgs( &localArgs, dep->local_index ) != -1 ) {
+
+         tmpIterator = localArgs;
+         while (tmpIterator != NULL) {
+            SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() tmpIterator->value=%s \n", tmpIterator->value);
+            /*checks for current index keyword*/
+            if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0) {
+               if ((tmpValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
+                  SeqNameValues_setValue( &localArgs, tmpIterator->name,tmpValue);
+                  free(tmpValue);
+                  /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
+               }
+            } else if ((tmpSavePtr1=strstr(tmpIterator->value, "$((")) != NULL) {
+               /* associative token local loopA's index -> target loopB's index */
+               tmpSavePtr2=strstr(tmpSavePtr1,"))");
+               if (tmpSavePtr2 == NULL) {
+                  raiseError("parseDepends(): local dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
+               }
+               memset(tmpTokenName,'\0',sizeof tmpTokenName);
+               snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
+               if ((tmpString=SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
+                  SeqNameValues_setValue( &localArgs, tmpIterator->name, tmpString);
+                  SeqNameValues_insertItem( &tokenValues, tmpTokenName, tmpString);
+                  SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() inserting token=%s value=%s\n", tmpTokenName, tmpString);
+               }
+            }
+            tmpIterator=tmpIterator->nextPtr;
+         }
+      } else {
+         raiseError( "parseDepends(): local dependency index format error\n" );
+      }
+   }
+
+   if( dep->index != NULL ) {
+      /*validate dependency args and create a namevalue list*/
+      if( SeqLoops_parseArgs( &depArgs, dep->index ) != -1 ) {
+         tmpIterator = depArgs;
+         while (tmpIterator != NULL) {
+            /*checks for current index keyword*/
+            if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0) {
+               if ((tmpValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
+                  SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpValue);
+                  free(tmpValue);
+                  /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
+               }
+            } else if ((tmpSavePtr1=strstr(tmpIterator->value, "$((")) != NULL) { 
+               tmpSavePtr2=strstr(tmpSavePtr1,"))");
+               if (tmpSavePtr2 == NULL) {
+                  raiseError("parseDepends(): target dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
+               }
+               memset(tmpTokenName,'\0',sizeof tmpTokenName);
+               snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
+               SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() looking for token=%s\n", tmpTokenName);
+
+               if ((tmpString=SeqNameValues_getValue(tokenValues, tmpTokenName)) != NULL) {
+                  SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpString);
+               }
+            }
+            tmpIterator=tmpIterator->nextPtr;
+         }   
+      } else {
+         raiseError( "parseDepends(): dependency index format error\n" );
+      }
+   }
+
+   if ( depArgs != NULL ){
+      free(dep->index);
+      dep->index = SeqLoops_getLoopArgs(depArgs);
+   }
+   if( localArgs != NULL ){
+      free(dep->local_index);
+      dep->local_index = SeqLoops_getLoopArgs(localArgs);
+   }
+   SeqNameValues_deleteWholeList( &localArgs );
+   SeqNameValues_deleteWholeList( &depArgs );
+   SeqNameValues_deleteWholeList( &tokenValues );
+}
+
 void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep )
 {
    if (_result == NULL){
@@ -170,116 +277,17 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
           */
          if (dep->protocol == NULL) dep->protocol=strdup("polling"); 
          if (dep->status == NULL) dep->status=strdup("end"); 
-        
 
-
-         /* look for keywords in index fields */
-         /* add loop context in case of intra dep */
-         /* void keywords_and_args_and_stuff(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep) */
-         {
-            char *tmpLoopName=NULL, *tmpValue=NULL;
-            char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpString=NULL, tmpTokenName[100];
-            SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() dep->local_index = %s\n",dep->local_index );
-            SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL, tokenValues=NULL;
-            if (isIntraDep) {
-               SeqLoopsPtr loopsPtr = NULL;
-               loopsPtr =  _nodeDataPtr->loops;
-               while( loopsPtr != NULL ) {
-                 if( strstr(  _nodeDataPtr->pathToModule ,loopsPtr->loop_name ) != NULL ) {
-                 /* add loop arg to full dep index */
-                    tmpLoopName=(char*) SeqUtil_getPathLeaf( (const char*) loopsPtr->loop_name );
-                    SeqUtil_TRACE(TL_FULL_TRACE, "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
-                    if (SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName) != NULL) {
-                        SeqNameValues_insertItem( &depArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
-                        SeqNameValues_insertItem( &localArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
-                    }
-                    free(tmpLoopName);
-                 }
-                 loopsPtr  = loopsPtr->nextPtr;
-               }
-            }
-
-            if( dep->local_index != NULL ) {
-               /*validate local dependency args and create a namevalue list*/
-               if( SeqLoops_parseArgs( &localArgs, dep->local_index ) != -1 ) {
-
-                  tmpIterator = localArgs;
-                  while (tmpIterator != NULL) {
-                     SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() tmpIterator->value=%s \n", tmpIterator->value);
-                 /*checks for current index keyword*/
-                     if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0) {
-                        if ((tmpValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
-                           SeqNameValues_setValue( &localArgs, tmpIterator->name,tmpValue);
-                           free(tmpValue);
-                           /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
-                        }
-                    } else if ((tmpSavePtr1=strstr(tmpIterator->value, "$((")) != NULL) {
-                      /* associative token local loopA's index -> target loopB's index */
-                     tmpSavePtr2=strstr(tmpSavePtr1,"))");
-                     if (tmpSavePtr2 == NULL) {
-                        raiseError("parseDepends(): local dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
-                     }
-                     memset(tmpTokenName,'\0',sizeof tmpTokenName);
-                     snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
-                           if ((tmpString=SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
-                                 SeqNameValues_setValue( &localArgs, tmpIterator->name, tmpString);
-                                 SeqNameValues_insertItem( &tokenValues, tmpTokenName, tmpString);
-                        SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() inserting token=%s value=%s\n", tmpTokenName, tmpString);
-                           }
-                    }
-                    tmpIterator=tmpIterator->nextPtr;
-                 }
-              } else {
-                 raiseError( "parseDepends(): local dependency index format error\n" );
-              }
-           }
-
-            if( dep->index != NULL ) {
-               /*validate dependency args and create a namevalue list*/
-               if( SeqLoops_parseArgs( &depArgs, dep->index ) != -1 ) {
-                  tmpIterator = depArgs;
-                  while (tmpIterator != NULL) {
-                 /*checks for current index keyword*/
-                     if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0) {
-                        if ((tmpValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
-                           SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpValue);
-                           free(tmpValue);
-                           /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
-                        }
-                     } else if ((tmpSavePtr1=strstr(tmpIterator->value, "$((")) != NULL) { 
-                     tmpSavePtr2=strstr(tmpSavePtr1,"))");
-                      if (tmpSavePtr2 == NULL) {
-                        raiseError("parseDepends(): target dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
-                     }
-                      memset(tmpTokenName,'\0',sizeof tmpTokenName);
-                      snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
-                     SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() looking for token=%s\n", tmpTokenName);
-
-                     if ((tmpString=SeqNameValues_getValue(tokenValues, tmpTokenName)) != NULL) {
-                                 SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpString);
-                     }
-                        }
-                     tmpIterator=tmpIterator->nextPtr;
-                  }   
-               } else {
-                  raiseError( "parseDepends(): dependency index format error\n" );
-               }
-            }
-  
-            if ( depArgs != NULL ){
-               free(dep->index);
-               dep->index = SeqLoops_getLoopArgs(depArgs);
-            }
-            if( localArgs != NULL ){
-               free(dep->local_index);
-               dep->local_index = SeqLoops_getLoopArgs(localArgs);
-            }
-            SeqNameValues_deleteWholeList( &localArgs );
-            SeqNameValues_deleteWholeList( &depArgs );
-            SeqNameValues_deleteWholeList( &tokenValues );
-         } /* END  void keywords_and_args_and_stuff(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep) */
+         /*
+          * Do some special treatement on dep->index and dep->local_index
+          */
+         validateDepIndices(_nodeDataPtr, dep, isIntraDep);
 
          SeqDep_printDep(TL_FULL_TRACE, dep);
+
+         /*
+          * Add the dependency to the nodeDataPtr's dependency list
+          */
          SeqNode_addNodeDependency ( _nodeDataPtr, dep->type, dep->node_name,
                                     dep->node_path, dep->exp, dep->status,
                                     dep->index, dep->local_index, dep->hour,

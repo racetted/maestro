@@ -1080,6 +1080,22 @@ void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int
    while( depsPtr != NULL ) {
       nameValuesPtr =  depsPtr->dependencyItem;
       if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"Dependency #%d\n", count);
+      /*
+       * SeqNode_printDependency(FILE *fp, SeqDepDataPtr dep)
+       * {
+       *    if( dep->node_name != NULL )
+       *       SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,"NAME" ,dep->node_name );
+       *    if( dep->exp != NULL )
+       *       SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,"EXP" ,dep->exp );
+       *    ...
+       * }
+       *
+       * This will replace the while(nameValuesPtr != NULL){ } loop.
+       * The rest of the function will stay the same.
+       * Same as before, selecting which fields to print based on whether it's
+       * NULL instead of based on whether it's the empty string.
+       */
+
       while (nameValuesPtr != NULL ) {
          if( strlen( nameValuesPtr->value ) > 0 ) 
             SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,nameValuesPtr->name, nameValuesPtr->value );
