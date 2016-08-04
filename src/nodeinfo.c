@@ -29,6 +29,7 @@
 #include <libxml/tree.h>
 #include <libxml/xpathInternals.h>
 #include "nodeinfo.h"
+#include "SeqDepends.h"
 #include "tictac.h"
 #include "SeqUtil.h"
 #include "SeqDatesUtil.h"
@@ -119,50 +120,69 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
    free(cpuString);
 }
 
-void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep ) {
-   xmlNodeSetPtr nodeset;
-   xmlNodePtr nodePtr;
-   const char *nodeName = NULL;
-   char *depType = NULL, *depExp=NULL, *depName = NULL,  *depPath = NULL,
-        *depProt=NULL, *depHour = NULL, *depStatus = NULL, *depIndex = NULL,
-        *depLocalIndex = NULL, *depValidHour=NULL, *depValidDOW=NULL, *depTimeDelta = NULL;
-   char* fullDepIndex = NULL, *fullDepLocalIndex=NULL, *parsedDepName=NULL, *tmpLoopName=NULL, *tmpValue=NULL;
-   SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL, tokenValues=NULL;
-   SeqLoopsPtr loopsPtr = NULL;
+void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep )
+{
+   if (_result == NULL){
+      goto out;
+   }
+
+   xmlNodeSetPtr nodeset = _result->nodesetval;
+
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
    int i=0;
-   char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpString=NULL, tmpTokenName[100];
-   
-   if (_result) {
-      nodeset = _result->nodesetval;
+   for (i=0; i < nodeset->nodeNr; i++) {
+      xmlNodePtr nodePtr = nodeset->nodeTab[i];
+      SeqDepDataPtr dep = SeqDep_newDep();
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodePtr->name);
 
-      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() nodeset->nodeNr=%d\n", nodeset->nodeNr);
-      for (i=0; i < nodeset->nodeNr; i++) {
-         /* reset variables to null after being freed at the end of the loop for reuse*/
+      /*
+       * Kinda weird but I get it, it's for some kind of future stuff.
+       */
+      char * depType = NULL;
+      depType = (char *) xmlGetProp( nodePtr, "type" );
+      SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
+      if ( depType == NULL ) depType=strdup("node");
 
-         fullDepIndex=NULL;
-         fullDepLocalIndex=NULL;
-         nodePtr = nodeset->nodeTab[i];
-         nodeName = nodePtr->name;
-         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends()   *** depends_item=%s ***\n", nodeName);
-         depType = (char *) xmlGetProp( nodePtr, "type" );
-         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
-         if ( depType == NULL ) depType=strdup("node");
+      if ( strcmp( depType, "node" ) == 0 ) {
+         dep->type = NodeDependancy;
+         dep->exp = (char *) xmlGetProp( nodePtr, "exp" );
 
-         if ( strcmp( depType, "node" ) == 0 ) {
-            depExp = (char *) xmlGetProp( nodePtr, "exp" );
-            depName = (char *) xmlGetProp( nodePtr, "dep_name" );
-            parsedDepName=SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
-   
-            depProt  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
-            /* default interuser protocol if not defined */
-            if (depProt == NULL) depProt=strdup("polling"); 
-            depIndex = (char *) xmlGetProp( nodePtr, "index" );
-           
-            depLocalIndex = (char *) xmlGetProp( nodePtr, "local_index" );
-            SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() depLocalIndex = %s\n",depLocalIndex );
-            /* look for keywords in index fields */
-            /* add loop context in case of intra dep */
+         /*
+          * Get dep_name from XML and do relative path eveluation
+          */
+         char *depName = NULL;
+         depName = (char *) xmlGetProp( nodePtr, "dep_name" );
+         dep->node_name = SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
+         free(depName);depName = NULL;
+
+         dep->index = (char *) xmlGetProp( nodePtr, "index" );
+         dep->local_index = (char *) xmlGetProp( nodePtr, "local_index" );
+         dep->node_path = (char *) xmlGetProp( nodePtr, "path" );
+         dep->hour = (char *) xmlGetProp( nodePtr, "hour" );
+         dep->valid_hour = (char *) xmlGetProp( nodePtr, "valid_hour" );
+         dep->valid_dow = (char *) xmlGetProp( nodePtr, "valid_dow" );
+         dep->time_delta = (char *) xmlGetProp( nodePtr, "time_delta" );
+         dep->protocol  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
+         dep->status = (char *) xmlGetProp( nodePtr, "status" );
+
+         /*
+          * Set default values for protocol and status if not set
+          */
+         if (dep->protocol == NULL) dep->protocol=strdup("polling"); 
+         if (dep->status == NULL) dep->status=strdup("end"); 
+        
+
+
+         /* look for keywords in index fields */
+         /* add loop context in case of intra dep */
+         /* void keywords_and_args_and_stuff(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep) */
+         {
+            char *tmpLoopName=NULL, *tmpValue=NULL;
+            char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpString=NULL, tmpTokenName[100];
+            SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() dep->local_index = %s\n",dep->local_index );
+            SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tmpIterator = NULL, tokenValues=NULL;
             if (isIntraDep) {
+               SeqLoopsPtr loopsPtr = NULL;
                loopsPtr =  _nodeDataPtr->loops;
                while( loopsPtr != NULL ) {
                  if( strstr(  _nodeDataPtr->pathToModule ,loopsPtr->loop_name ) != NULL ) {
@@ -178,13 +198,12 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
                  loopsPtr  = loopsPtr->nextPtr;
                }
             }
-   
-            if( depLocalIndex != NULL ) {
-            
-            /*validate local dependency args and create a namevalue list*/
-               if( SeqLoops_parseArgs( &localArgs, depLocalIndex ) != -1 ) {
 
-                  tmpIterator = localArgs; 
+            if( dep->local_index != NULL ) {
+               /*validate local dependency args and create a namevalue list*/
+               if( SeqLoops_parseArgs( &localArgs, dep->local_index ) != -1 ) {
+
+                  tmpIterator = localArgs;
                   while (tmpIterator != NULL) {
                      SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() tmpIterator->value=%s \n", tmpIterator->value);
                  /*checks for current index keyword*/
@@ -193,32 +212,32 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
                            SeqNameValues_setValue( &localArgs, tmpIterator->name,tmpValue);
                            free(tmpValue);
                            /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
-                        }   
+                        }
                     } else if ((tmpSavePtr1=strstr(tmpIterator->value, "$((")) != NULL) {
-						    /* associative token local loopA's index -> target loopB's index */
-						   tmpSavePtr2=strstr(tmpSavePtr1,"))");
-						   if (tmpSavePtr2 == NULL) {
-							 	raiseError("parseDepends(): local dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
-							}
-						   memset(tmpTokenName,'\0',sizeof tmpTokenName);
-						   snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
+                      /* associative token local loopA's index -> target loopB's index */
+                     tmpSavePtr2=strstr(tmpSavePtr1,"))");
+                     if (tmpSavePtr2 == NULL) {
+                        raiseError("parseDepends(): local dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
+                     }
+                     memset(tmpTokenName,'\0',sizeof tmpTokenName);
+                     snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
                            if ((tmpString=SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpIterator->name)) != NULL) {
-                              	SeqNameValues_setValue( &localArgs, tmpIterator->name, tmpString);
-                              	SeqNameValues_insertItem( &tokenValues, tmpTokenName, tmpString);
-							  	SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() inserting token=%s value=%s\n", tmpTokenName, tmpString);
+                                 SeqNameValues_setValue( &localArgs, tmpIterator->name, tmpString);
+                                 SeqNameValues_insertItem( &tokenValues, tmpTokenName, tmpString);
+                        SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() inserting token=%s value=%s\n", tmpTokenName, tmpString);
                            }
                     }
                     tmpIterator=tmpIterator->nextPtr;
                  }
               } else {
                  raiseError( "parseDepends(): local dependency index format error\n" );
-              } 
+              }
            }
 
-            if( depIndex != NULL ) {
+            if( dep->index != NULL ) {
                /*validate dependency args and create a namevalue list*/
-               if( SeqLoops_parseArgs( &depArgs, depIndex ) != -1 ) {
-                  tmpIterator = depArgs; 
+               if( SeqLoops_parseArgs( &depArgs, dep->index ) != -1 ) {
+                  tmpIterator = depArgs;
                   while (tmpIterator != NULL) {
                  /*checks for current index keyword*/
                      if (strcmp(tmpIterator->value,"CURRENT_INDEX")==0) {
@@ -228,17 +247,17 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
                            /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
                         }
                      } else if ((tmpSavePtr1=strstr(tmpIterator->value, "$((")) != NULL) { 
-							tmpSavePtr2=strstr(tmpSavePtr1,"))");
-						    if (tmpSavePtr2 == NULL) {
-							 	raiseError("parseDepends(): target dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
-							}
-						    memset(tmpTokenName,'\0',sizeof tmpTokenName);
-						    snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
-							SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() looking for token=%s\n", tmpTokenName);
+                     tmpSavePtr2=strstr(tmpSavePtr1,"))");
+                      if (tmpSavePtr2 == NULL) {
+                        raiseError("parseDepends(): target dependency index format error with associative token. Format should be: %s=\"$((token))\"\n",tmpIterator->name);
+                     }
+                      memset(tmpTokenName,'\0',sizeof tmpTokenName);
+                      snprintf(tmpTokenName,strlen(tmpSavePtr1)-strlen(tmpSavePtr2) - strlen("$((")+1,"%s", tmpSavePtr1+3);
+                     SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() looking for token=%s\n", tmpTokenName);
 
-							if ((tmpString=SeqNameValues_getValue(tokenValues, tmpTokenName)) != NULL) {
-                              	SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpString);
-							}
+                     if ((tmpString=SeqNameValues_getValue(tokenValues, tmpTokenName)) != NULL) {
+                                 SeqNameValues_setValue( &depArgs, tmpIterator->name, tmpString);
+                     }
                         }
                      tmpIterator=tmpIterator->nextPtr;
                   }   
@@ -247,55 +266,31 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
                }
             }
   
-            if ( depArgs != NULL ) fullDepIndex = SeqLoops_getLoopArgs(depArgs);
-            if( localArgs != NULL ) fullDepLocalIndex = SeqLoops_getLoopArgs(localArgs);
-            depPath = (char *) xmlGetProp( nodePtr, "path" );
-            depHour = (char *) xmlGetProp( nodePtr, "hour" );
-            depValidHour = (char *) xmlGetProp( nodePtr, "valid_hour" );
-            depValidDOW = (char *) xmlGetProp( nodePtr, "valid_dow" );
-            depStatus = (char *) xmlGetProp( nodePtr, "status" );
-            depTimeDelta = (char *) xmlGetProp( nodePtr, "time_delta" );
-            if (depStatus == NULL) depStatus=strdup("end"); 
-
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depName: %s\n", depName );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep parsedDepName: %s\n", parsedDepName );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depIndex: %s\n", depIndex );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() fullDepIndex: %s \n", fullDepIndex);
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() fullDepLocalIndex: %s\n", fullDepLocalIndex );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depPath: %s\n", depPath );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depExp: %s\n", depExp );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depType: %s\n", depType );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depHour: %s\n", depHour );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depTimeDelta: %s\n", depTimeDelta );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depValidHour: %s\n", depValidHour );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() dep depValidDOW: %s\n", depValidDOW );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() depStatus: %s\n", depStatus );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() depProt: %s\n", depProt ); /* added by Rochdi */
-            SeqNode_addNodeDependency ( _nodeDataPtr, NodeDependancy, parsedDepName, depPath, depExp, depStatus, fullDepIndex, fullDepLocalIndex, depHour, depTimeDelta, depProt, depValidHour, depValidDOW );
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() done\n" );
-            free( depName );
-            free( depIndex );
-            free( depPath );
-            free( depStatus );
-            free( depProt );
-            free( depExp );
-            free( depType );
-            free( depHour );
-            free( depTimeDelta );
-            free( depValidHour );
-            free( depValidDOW );
-            free( depLocalIndex );
-            free( parsedDepName );
-            free( fullDepIndex );
-            free( fullDepLocalIndex );
+            if ( depArgs != NULL ){
+               free(dep->index);
+               dep->index = SeqLoops_getLoopArgs(depArgs);
+            }
+            if( localArgs != NULL ){
+               free(dep->local_index);
+               dep->local_index = SeqLoops_getLoopArgs(localArgs);
+            }
             SeqNameValues_deleteWholeList( &localArgs );
             SeqNameValues_deleteWholeList( &depArgs );
             SeqNameValues_deleteWholeList( &tokenValues );
-         } else {
-            SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() no dependency found.\n" );
-         }
+         } /* END  void keywords_and_args_and_stuff(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep) */
+
+         SeqDep_printDep(TL_FULL_TRACE, dep);
+         SeqNode_addNodeDependency ( _nodeDataPtr, dep->type, dep->node_name,
+                                    dep->node_path, dep->exp, dep->status,
+                                    dep->index, dep->local_index, dep->hour,
+                                    dep->time_delta, dep->protocol,
+                                    dep->valid_hour, dep->valid_dow );
+      } else {
+         SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() no dependency found.\n" );
       }
    }
+out:
+   return;
 }
 
 void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path, SeqNodeDataPtr _nodeDataPtr) {
