@@ -129,6 +129,7 @@ typedef struct _SeqNodeData {
 
    /* list of dependencies */
    SeqDependenciesPtr depends;
+   SeqDepNodePtr dependencies;
 
    /* next nodes to submit */
    LISTNODEPTR submits;

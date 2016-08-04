@@ -24,12 +24,20 @@ typedef struct _SeqDependencyData {
    char *valid_dow;
    char *protocol;
 } SeqDependencyData;
-
 typedef SeqDependencyData* SeqDepDataPtr;
-
-
 
 SeqDepDataPtr SeqDep_newDep(void);
 void SeqDep_deleteDep(SeqDepDataPtr * dep);
 void SeqDep_printDep(int trace_level, SeqDepDataPtr dep);
+
+typedef struct _SeqDependsNode {
+   struct _SeqDependsList *nextPtr;
+   SeqDepDataPtr depData;
+} SeqDependsNode;
+typedef SeqDependsNode* SeqDepNodePtr;
+
+SeqDepNodePtr newDepNode(SeqDepDataPtr depData);
+void SeqDep_addDepNode(SeqDepNodePtr* list_head, SeqDepDataPtr depData);
+void SeqDep_deleteDepList(SeqDepNodePtr* list_head);
+
 #endif /* SEQ_DEPENDS_H */

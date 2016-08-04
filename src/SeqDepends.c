@@ -2,6 +2,9 @@
 #include "SeqDepends.h"
 #include "SeqUtil.h"
 
+/********************************************************************************
+ * Allocate and intialize a new SeqDepData object
+********************************************************************************/
 SeqDepDataPtr SeqDep_newDep(void)
 {
    SeqDepDataPtr newDep = malloc( sizeof(*newDep) );
@@ -25,6 +28,9 @@ SeqDepDataPtr SeqDep_newDep(void)
    return newDep;
 }
 
+/********************************************************************************
+ * Frees up the memory from a DepDataObject and sets the pointer to NULL
+********************************************************************************/
 void SeqDep_deleteDep(SeqDepDataPtr * dep)
 {
    SeqDepDataPtr the_dep = *dep;
@@ -47,6 +53,10 @@ void SeqDep_deleteDep(SeqDepDataPtr * dep)
    dep = NULL;
 }
 
+/********************************************************************************
+ * Prints the data in a SeqDepData object.  It would be a good idea to make it
+ * only print the non-NULL values.
+********************************************************************************/
 void SeqDep_printDep(int trace_level, SeqDepDataPtr dep)
 {
    const char *typeString;
@@ -71,4 +81,55 @@ void SeqDep_printDep(int trace_level, SeqDepDataPtr dep)
    SeqUtil_TRACE(trace_level,"  valid_hour = %s\n", dep->valid_hour);
    SeqUtil_TRACE(trace_level,"  valid_dow = %s\n", dep->valid_dow);
    SeqUtil_TRACE(trace_level,"  protocol = %s\n", dep->protocol);
+}
+
+
+/********************************************************************************
+ * Allocates and initializes a new SeqDepNode object and returns a pointer to
+ * the new object.
+********************************************************************************/
+SeqDepNodePtr newDepNode(SeqDepDataPtr depData)
+{
+   SeqDepNodePtr newDepNode = malloc( sizeof(*newDepNode) );
+   if( newDepNode == NULL )
+      raiseError("ERROR: malloc() failed in newDepNode()\n");
+
+   newDepNode->nextPtr = NULL;
+   newDepNode->depData = depData;
+
+   return newDepNode;
+}
+
+/********************************************************************************
+ * Appends a dependency node at the end of the list pointed to by *list_head
+********************************************************************************/
+void SeqDep_addDepNode(SeqDepNodePtr* list_head, SeqDepDataPtr depData)
+{
+   SeqDepNodePtr newNode = newDepNode(depData);
+   SeqDepNodePtr current = *list_head;
+
+   if( *list_head == NULL ){
+      *list_head = newNode;
+   } else {
+      while( current->nextPtr != NULL ){
+         current = current->nextPtr;
+      }
+      current->nextPtr = newNode;
+   }
+}
+
+/********************************************************************************
+ * Frees the resources for a SeqDepNodePtr linked list of dependency data.
+********************************************************************************/
+void SeqDep_deleteDepList(SeqDepNodePtr* list_head)
+{
+   SeqDepNodePtr current = *list_head,
+                 tmp_next;
+   while(current != NULL){
+      tmp_next = current->nextPtr;
+      SeqDep_deleteDep(current->depData);
+      free(current);
+      current = tmp_next;
+   }
+   *list_head = NULL;
 }
