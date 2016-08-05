@@ -121,7 +121,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
 }
 
 /********************************************************************************
- *
+ * This does something with the local_index and the index based on the
+ * nodeDataPtr's loop arguments and also substitues some $((blah)) keywords.
 ********************************************************************************/
 void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep)
 {
@@ -226,6 +227,13 @@ void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIn
    SeqNameValues_deleteWholeList( &depArgs );
    SeqNameValues_deleteWholeList( &tokenValues );
 }
+
+
+/********************************************************************************
+ * Gets properties from an xmlNodePtr and puts them into a SeqDepDataPtr.  Also
+ * does a "validation" step with the index.  For lack of understanding that
+ * step, I called it validateIndices().
+********************************************************************************/
 SeqDepDataPtr xmlDepNode_to_depDataPtr(SeqNodeDataPtr _nodeDataPtr, xmlNodePtr nodePtr, int isIntraDep)
 {
    SeqDepDataPtr dep = SeqDep_newDep();
@@ -239,31 +247,39 @@ SeqDepDataPtr xmlDepNode_to_depDataPtr(SeqNodeDataPtr _nodeDataPtr, xmlNodePtr n
     *    depType = NodeDependancy;
     */
    dep->type = NodeDependancy; /* Since there is only one dependency type */
-   dep->exp = (char *) xmlGetProp( nodePtr, "exp" );
 
    /*
     * Get dep_name from XML and do relative path eveluation
     */
-   char *depName = NULL;
-   depName = (char *) xmlGetProp( nodePtr, "dep_name" );
-   dep->node_name = SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
-   free(depName);depName = NULL;
+   {
+      char *depName = NULL;
+      depName = (char *) xmlGetProp( nodePtr, "dep_name" );
+      dep->node_name = SeqUtil_relativePathEvaluation(depName,_nodeDataPtr);
+      free(depName);depName = NULL;
+   }
 
-   dep->index = (char *) xmlGetProp( nodePtr, "index" );
-   dep->local_index = (char *) xmlGetProp( nodePtr, "local_index" );
-   dep->node_path = (char *) xmlGetProp( nodePtr, "path" );
-   dep->hour = (char *) xmlGetProp( nodePtr, "hour" );
-   dep->valid_hour = (char *) xmlGetProp( nodePtr, "valid_hour" );
-   dep->valid_dow = (char *) xmlGetProp( nodePtr, "valid_dow" );
-   dep->time_delta = (char *) xmlGetProp( nodePtr, "time_delta" );
-   dep->protocol  = (char * ) xmlGetProp( nodePtr, "protocol" ); 
-   dep->status = (char *) xmlGetProp( nodePtr, "status" );
+   dep->exp         = XmlUtils_getProp_ES( nodePtr, "exp" );
+   dep->index       = XmlUtils_getProp_ES( nodePtr, "index" );
+   dep->local_index = XmlUtils_getProp_ES( nodePtr, "local_index" );
+   dep->node_path   = XmlUtils_getProp_ES( nodePtr, "path" );
+   dep->hour        = XmlUtils_getProp_ES( nodePtr, "hour" );
+   dep->valid_hour  = XmlUtils_getProp_ES( nodePtr, "valid_hour" );
+   dep->valid_dow   = XmlUtils_getProp_ES( nodePtr, "valid_dow" );
+   dep->time_delta  = XmlUtils_getProp_ES( nodePtr, "time_delta" );
+   dep->protocol    = XmlUtils_getProp_ES( nodePtr, "protocol" );
+   dep->status      = XmlUtils_getProp_ES( nodePtr, "status" );
 
    /*
     * Set default values for protocol and status if not set
     */
-   if (dep->protocol == NULL) dep->protocol=strdup("polling"); 
-   if (dep->status == NULL) dep->status=strdup("end"); 
+   if (strlen(dep->protocol) == 0){
+      free(dep->protocol);
+      dep->protocol=strdup("polling");
+   }
+   if (strlen(dep->status) == 0){
+      free(dep->status);
+      dep->status=strdup("end");
+   }
 
    /*
     * Do some special treatement on dep->index and dep->local_index
@@ -320,6 +336,7 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
       } else {
          SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() no dependency found.\n" );
       }
+      free(depType);
    }
 out:
    return;

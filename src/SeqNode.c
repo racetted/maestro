@@ -1074,7 +1074,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, unsigned int filters, const ch
 
 void printField(FILE *fp, const char *prefix, const char *name, const char *field)
 {
-   if( field != NULL )
+   if( strlen(field) > 0 )
       SeqUtil_printOrWrite(fp,"%s%s=%s\n",prefix,name,field);
 }
 void SeqNode_printDependency( FILE *fp,const char *prefix, SeqDepDataPtr dep)
