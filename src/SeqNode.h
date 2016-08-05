@@ -38,16 +38,6 @@ typedef enum _SeqNodeType {
    ForEach,
 } SeqNodeType;
 
-typedef struct _SeqDependencies {
-   SeqNameValuesPtr dependencyItem;
-   /* the type is a discriminant to
-   process the generic name-value structure */
-   SeqDependsType type;
-   struct _SeqDependencies *nextPtr;
-} SeqDependencies;
-
-typedef SeqDependencies *SeqDependenciesPtr;
-
 typedef struct _SeqForEachTarget {
    char* index;
    char* exp;
@@ -123,7 +113,6 @@ typedef struct _SeqNodeData {
    SeqForEachTargetPtr forEachTarget; 
 
    /* list of dependencies */
-   SeqDependenciesPtr depends;
    SeqDepNodePtr dependencies;
 
    /* next nodes to submit */

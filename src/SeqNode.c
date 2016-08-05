@@ -472,157 +472,10 @@ SeqLoopsPtr SeqNode_allocateLoopsEntry ( SeqNodeDataPtr node_ptr ) {
    return loopsPtr;
 }
 
-/* returns ptr to newly allocated memory structure 
-   to store a new name value link list */
-SeqDependenciesPtr SeqNode_allocateDepsEntry ( SeqNodeDataPtr node_ptr ) {
-   SeqDependenciesPtr deps_ptr = NULL;
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsEntry()\n" );
-   if ( node_ptr->depends == NULL ) {
-      if (node_ptr->depends = malloc( sizeof (SeqDependencies) )){
-          deps_ptr = node_ptr->depends;
-      } else {
-          raiseError("OutOfMemory exception in SeqNode_allocateDepsEntry()\n");
-      }
-   } else {
-      deps_ptr = node_ptr->depends;
-      /* position ourselves at the end of the list */
-      while( deps_ptr->nextPtr != NULL ) {
-         deps_ptr = deps_ptr->nextPtr;
-      }
 
-      /* allocate memory for new data */
-      if (deps_ptr->nextPtr = malloc( sizeof(SeqDependencies) )){
-          /* go to memory for new data */
-          deps_ptr = deps_ptr->nextPtr;
-      } else {
-          raiseError("OutOfMemory exception in SeqNode_allocateDepsEntry()\n");
-      }
-   }
-   deps_ptr->nextPtr = NULL;
-   deps_ptr->dependencyItem = NULL;
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsEntry() done\n" );
-   return deps_ptr;
-}
-
-/* returns ptr to newly allocated memory structure
-   to store a name value pair */
-SeqNameValuesPtr SeqNode_allocateDepsNameValue ( SeqDependenciesPtr deps_ptr ) {
-   SeqNameValuesPtr nameValuesPtr = NULL;
-
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsNameValue()\n" );
-   assert( deps_ptr != NULL );
-   if ( deps_ptr->dependencyItem == NULL ) {
-      deps_ptr->dependencyItem = malloc( sizeof (SeqNameValues) );
-      nameValuesPtr = deps_ptr->dependencyItem;
-   } else {
-      nameValuesPtr = deps_ptr->dependencyItem;
-      /* position ourselves at the end of the list */
-      while( nameValuesPtr->nextPtr != NULL ) {
-         nameValuesPtr = nameValuesPtr->nextPtr;
-      }
-
-      /* allocate memory for new data */
-      if (nameValuesPtr->nextPtr = malloc( sizeof(SeqNameValues) )){
-          /* go to memory for new data */
-          nameValuesPtr = nameValuesPtr->nextPtr;
-      } else {
-          raiseError("OutOfMemory exception in SeqNode_allocatedDepsNameValue()\n");
-      }
-   }
-   /* set end of list */
-   nameValuesPtr->nextPtr = NULL;
-   nameValuesPtr->name = NULL;
-   nameValuesPtr->value = NULL;
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_allocateDepsNameValue() done\n" );
-   return nameValuesPtr;
-}
-
-/* allocates and store the name-value pair in the
-   name-value structure */
-void SeqNode_setDepsNameValue (SeqNameValuesPtr name_values_ptr, char* name, char* value ) {
-   /* printf ("SeqNode_setDepsNameValue name=%s value=%s\n", name , value ); */
-   if (name_values_ptr->name = malloc( sizeof(char) * ( strlen( name ) + 1) )){
-       strcpy( name_values_ptr->name, (char*)name );
-   } else {
-       raiseError("OutOfMemory exception in SeqNode_setDepsNameValue()\n");
-   }
-   if ( value != NULL ) {
-      if (name_values_ptr->value = malloc( sizeof(char) * ( strlen( value ) + 1) )){
-         strcpy( name_values_ptr->value, (char*)value );
-      } else {
-          raiseError("OutOfMemory exception in SeqNode_setDepsNameValue()\n");
-      }
-   } else {
-      if (name_values_ptr->value = malloc( sizeof(char) * 2)){
-          strcpy( name_values_ptr->value, "" );
-      } else {
-          raiseError("OutOfMemory exception in SeqNode_setDepsNameValue()\n");
-      }
-   }
-}
 /* add dependency of type node i.e. tasks/family  */
 void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDepDataPtr dep) {
-
    SeqDep_addDepNode(&(node_ptr->dependencies), dep);
-
-   /*
-    * Remove the rest of this function when I'm done
-    * -PHIL
-    */
-
-   SeqDependenciesPtr deps_ptr = NULL;
-   SeqNameValuesPtr nameValuesPtr = NULL;
-   /*
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode_addNodeDependency() dep_node=%s, dep_node_path=%s, dep_exp=%s, dep_status=%s, dep_index=%s, local_index=%s, dep_Prot=%s,dep_ValidHour=%s, dep_ValidDOW=%s \n",
-      dep_node_name, dep_node_path, dep_exp, dep_status, dep_index, local_index, dep_Prot, dep_ValidHour, dep_ValidDOW);
-   */
-   SeqDep_printDep(TL_FULL_TRACE,dep);
-   deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
-   deps_ptr->type = dep->type;
-   nameValuesPtr = deps_ptr->dependencyItem;
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "NAME", dep->node_name );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "INDEX", dep->index );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "EXP", dep->exp );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "STATUS", dep->status );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "LOCAL_INDEX", dep->local_index );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "HOUR", dep->hour );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "TIME_DELTA", dep->time_delta );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "PROT", dep->protocol );
- 
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "VALID_HOUR", dep->valid_hour );
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "VALID_DOW", dep->valid_dow );
-
-}
-
-/* add dependency of type date i.e. not sure how we will implement this yet */
-void SeqNode_addDateDependency ( SeqNodeDataPtr node_ptr, char* date ) {
-   SeqDependenciesPtr deps_ptr = NULL;
-   SeqNameValuesPtr nameValuesPtr = NULL;
-
-   deps_ptr = SeqNode_allocateDepsEntry( node_ptr );
-   deps_ptr->type = DateDependancy;
-   nameValuesPtr = deps_ptr->dependencyItem;
-
-   nameValuesPtr = SeqNode_allocateDepsNameValue (deps_ptr);
-   SeqNode_setDepsNameValue ( nameValuesPtr, "DATE", date );
 }
 
 void SeqNode_addSubmit ( SeqNodeDataPtr node_ptr, char* data ) {
@@ -796,8 +649,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
    nodePtr->soumetArgs = NULL;
-   nodePtr->depends = NULL; /* This guy is on his way out */
-   nodePtr->dependencies = NULL; /* This guy will replace depends */
+   nodePtr->dependencies = NULL;
    nodePtr->submits = NULL;
    nodePtr->abort_actions = NULL;
    nodePtr->siblings = NULL;
@@ -1093,61 +945,25 @@ void SeqNode_printDependency( FILE *fp,const char *prefix, SeqDepDataPtr dep)
 
 void SeqNode_printDependencies( SeqNodeDataPtr _nodeDataPtr, FILE * tmpFile, int isPrettyPrint ){
 
-   char *extraString=NULL;
+   char *prefix=NULL;
    int count=1;
 
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printDependencies() started\n" );
    if (isPrettyPrint) {
-       SeqUtil_stringAppend( &extraString, "");
+       prefix = "";
    } else {
-       SeqUtil_stringAppend( &extraString, "node.depend.");
+       prefix = "node.depend.";
    }
 
-#if 1
    count = 1;
    SeqDepNodePtr current = _nodeDataPtr->dependencies;
    for(;current != NULL; current = current->nextPtr){
       if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"Dependency #%d\n", count);
-      SeqNode_printDependency(tmpFile,extraString,current->depData);
+      SeqNode_printDependency(tmpFile,prefix,current->depData);
       ++count;
       if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"\n", count);
    }
-#else
-   SeqDependenciesPtr depsPtr = _nodeDataPtr->depends;
-   SeqNameValuesPtr nameValuesPtr = NULL;
-   count = 1;
-   while( depsPtr != NULL ) {
-      nameValuesPtr =  depsPtr->dependencyItem;
-      if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"Dependency #%d\n", count);
-      /*
-       * SeqNode_printDependency(FILE *fp, SeqDepDataPtr dep)
-       * {
-       *    if( dep->node_name != NULL )
-       *       SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,"NAME" ,dep->node_name );
-       *    if( dep->exp != NULL )
-       *       SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,"EXP" ,dep->exp );
-       *    ...
-       * }
-       *
-       * This will replace the while(nameValuesPtr != NULL){ } loop.
-       * The rest of the function will stay the same.
-       * Same as before, selecting which fields to print based on whether it's
-       * NULL instead of based on whether it's the empty string.
-       */
-
-      while (nameValuesPtr != NULL ) {
-         if( strlen( nameValuesPtr->value ) > 0 ) 
-            SeqUtil_printOrWrite(tmpFile,"%s%s=%s\n", extraString ,nameValuesPtr->name, nameValuesPtr->value );
-         nameValuesPtr = nameValuesPtr->nextPtr;
-      }
-      ++count; 
-      if (isPrettyPrint) SeqUtil_printOrWrite(tmpFile,"\n", count);
-
-      depsPtr  = depsPtr->nextPtr;
-   }
-#endif
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqNode.SeqNode_printDependencies() ended\n" );
-   free(extraString);
 } 
 
 SeqNodeDataPtr SeqNode_createNode ( char* name ) {
@@ -1191,7 +1007,6 @@ void SeqNode_freeNameValues ( SeqNameValuesPtr _nameValuesPtr ) {
 
 
 void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
-   SeqDependenciesPtr depsPtr, depsNextPtr;
 
    if ( seqNodeDataPtr != NULL ) {
       free( seqNodeDataPtr->name ) ;
@@ -1222,18 +1037,6 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->workerPath) ;
       free( seqNodeDataPtr->shell);
   
-      /* free a link-list of dependency items This is on is's way out*/
-      depsPtr = seqNodeDataPtr->depends;
-      while( depsPtr != NULL ) {
-         /* make a copy of the next dependency item to be freed */
-         depsNextPtr = depsPtr->nextPtr;
-
-         SeqNode_freeNameValues( depsPtr->dependencyItem );
-         free( depsPtr );
-         depsPtr  = depsNextPtr;
-      }
-
-      /* This replaces the preceding code for deleting the dependencies list */
       SeqDep_deleteDepList(&(seqNodeDataPtr->dependencies));
 
       SeqListNode_deleteWholeList( &(seqNodeDataPtr->submits) );
