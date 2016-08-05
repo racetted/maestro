@@ -2466,31 +2466,36 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
         *localIndex = NULL, *localIndexString = NULL, *depIndexString = NULL,
         *depValidHour = NULL, *depValidDOW = NULL, *depTimeDelta = NULL;
    char *waitingMsg = NULL, *depDatestamp = NULL;
-   SeqDependenciesPtr depsPtr = NULL;
-   SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
+   SeqDepNodePtr depsPtr = NULL;
+   /* SeqNameValuesPtr nameValuesPtr = NULL; */
+   SeqDepDataPtr dep = NULL;
+   SeqNameValuesPtr loopArgsPtr = NULL;
    SeqDependsScope depScope = IntraSuite;
    size_t thisInode, rcInode; /* seq_exp_home vs xp given in resource */
 
    memset(filename,'\0',sizeof filename);
    memset(seqPath,'\0',sizeof seqPath);
    /* check dependencies */
-   depsPtr = _nodeDataPtr->depends;
+   depsPtr = _nodeDataPtr->dependencies;
    while( depsPtr != NULL && isWaiting == 0 ) {
-      nameValuesPtr =  depsPtr->dependencyItem;
+      dep =  depsPtr->depData;
 
-      if ( depsPtr->type == NodeDependancy) {
+      if ( dep->type == NodeDependancy) {
+         /*
+          * Phase 1 of switching to structs, pretend we don't have structs yet.
+          */
          SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() nodeinfo_depend_type=Node\n" );
-         depName = SeqNameValues_getValue( nameValuesPtr, "NAME" );
+         depName = dep->node_name;
          SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() nodeinfo_depend_name=%s\n", depName );
-         depIndex = SeqNameValues_getValue( nameValuesPtr, "INDEX" );
-         depStatus = SeqNameValues_getValue( nameValuesPtr, "STATUS" );
-         depExp = SeqNameValues_getValue( nameValuesPtr, "EXP" );
-         depHour = SeqNameValues_getValue( nameValuesPtr, "HOUR" );
-         depTimeDelta = SeqNameValues_getValue( nameValuesPtr, "TIME_DELTA" );
-         localIndex = SeqNameValues_getValue( nameValuesPtr, "LOCAL_INDEX" );
-         depProt = SeqNameValues_getValue( nameValuesPtr, "PROT" );
-         depValidHour = SeqNameValues_getValue( nameValuesPtr, "VALID_HOUR" );
-         depValidDOW = SeqNameValues_getValue( nameValuesPtr, "VALID_DOW" );
+         depIndex = dep->index;
+         depStatus = dep->status;
+         depExp = dep->exp;
+         depHour = dep->hour;
+         depTimeDelta = dep->time_delta;
+         localIndex = dep->local_index;
+         depProt = dep->protocol;
+         depValidHour = dep->valid_hour;
+         depValidDOW = dep->valid_dow;
 
          if( depExp == NULL || strlen( depExp ) == 0 ) {
             depExp = strdup(_nodeDataPtr->expHome);
@@ -2547,12 +2552,6 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
          } else {
             SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() Skipping dependency, out of scope. depExp=%s depName=%s depIndex=%s depDatestamp=%s depStatus=%s\n", depExp, depName, depIndex, depDatestamp, depStatus );
          }
-         
-         free(depName); free(depStatus); free(depExp);
-         free(localIndexString); free(depProt);
-         free(depDatestamp); free(depIndexString);
-         free(depHour); free(depIndex); free(localIndex);
-         free(depValidHour); free(depValidDOW);
 
          SeqNameValues_deleteWholeList(&loopArgsPtr);
 
