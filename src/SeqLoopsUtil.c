@@ -109,6 +109,7 @@ char * SeqLoops_indexToExt(const char * index)
       retval = strdup("");
    }
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_indexToExt() end. Returning %s\n",retval);
+   SeqNameValues_deleteWholeList(&loopArgsPtr);
    return retval;
 #endif
 

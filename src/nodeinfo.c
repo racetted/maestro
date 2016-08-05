@@ -126,6 +126,7 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
 ********************************************************************************/
 void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIntraDep)
 {
+   SeqUtil_TRACE(TL_FULL_TRACE, "validateDepIndices() begin\n");
    char *tmpLoopName=NULL, *tmpValue=NULL;
    char *tmpSavePtr1 = NULL, *tmpSavePtr2 = NULL, *tmpString=NULL, tmpTokenName[100];
    SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() dep->local_index = %s\n",dep->local_index );
@@ -226,6 +227,7 @@ void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIn
    SeqNameValues_deleteWholeList( &localArgs );
    SeqNameValues_deleteWholeList( &depArgs );
    SeqNameValues_deleteWholeList( &tokenValues );
+   SeqUtil_TRACE(TL_FULL_TRACE, "validateDepIndices() end\n");
 }
 
 
@@ -236,6 +238,7 @@ void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIn
 ********************************************************************************/
 SeqDepDataPtr xmlDepNode_to_depDataPtr(SeqNodeDataPtr _nodeDataPtr, xmlNodePtr nodePtr, int isIntraDep)
 {
+   SeqUtil_TRACE(TL_FULL_TRACE, "xmlDepNode_to_depDataPtr() begin\n");
    SeqDepDataPtr dep = SeqDep_newDep();
    /*
     * char * depType = xmlGetProp( nodePtr, "type" );
@@ -258,6 +261,12 @@ SeqDepDataPtr xmlDepNode_to_depDataPtr(SeqNodeDataPtr _nodeDataPtr, xmlNodePtr n
       free(depName);depName = NULL;
    }
 
+   /*
+    * Note the use of XmlUtils_getProp_ES() so that the properties retrieved
+    * here will set to emptyString ("") if the property is not found in the xml
+    * node. This is important to preserve consistency with the way this part
+    * worked before.
+    */
    dep->exp         = XmlUtils_getProp_ES( nodePtr, "exp" );
    dep->index       = XmlUtils_getProp_ES( nodePtr, "index" );
    dep->local_index = XmlUtils_getProp_ES( nodePtr, "local_index" );
@@ -286,11 +295,17 @@ SeqDepDataPtr xmlDepNode_to_depDataPtr(SeqNodeDataPtr _nodeDataPtr, xmlNodePtr n
     */
    validateDepIndices(_nodeDataPtr, dep, isIntraDep);
 
+   SeqUtil_TRACE(TL_FULL_TRACE, "xmlDepNode_to_depDataPtr() end\n");
    return dep;
 }
 
+/********************************************************************************
+ * Parses <DEPENDS_ON /> xml nodes and adds them to the nodeDataPtr's list of
+ * dependencies.
+********************************************************************************/
 void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int isIntraDep )
 {
+   SeqUtil_TRACE(TL_FULL_TRACE, "parseDepends() begin\n");
    if (_result == NULL){
       goto out;
    }
@@ -317,13 +332,17 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
        * It's what the cool cats call runtime-type-ID (RTTI).  It's not as good
        * as polymorphism but I'm not going to get carried away with
        * improvements.
+       *
+       * The parts surrounded by "#if 1" should be removed.
        */
+#if 1
       char * depType = NULL;
       depType = (char *) xmlGetProp( nodePtr, "type" );
       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() Parsing Dependency Type:%s\n", depType);
       if ( depType == NULL ) depType=strdup("node");
 
       if ( strcmp( depType, "node" ) == 0 ) {
+#endif
 
          SeqDepDataPtr dep = xmlDepNode_to_depDataPtr(_nodeDataPtr, nodePtr, isIntraDep);
 
@@ -333,12 +352,15 @@ void parseDepends (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr, int i
           * Add the dependency to the nodeDataPtr's dependency list
           */
          SeqNode_addNodeDependency ( _nodeDataPtr, dep );
+#if 1
       } else {
          SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.parseDepends() no dependency found.\n" );
       }
       free(depType);
+#endif
    }
 out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "parseDepends() end\n");
    return;
 }
 
