@@ -27,11 +27,6 @@
 #include "SeqDepends.h"
 #include <stdio.h>
 
-typedef enum _SeqDependsScope {
-   IntraSuite,
-   IntraUser,
-   InterUser,
-} SeqDependsScope;
 
 typedef enum _SeqNodeType {
    Family,

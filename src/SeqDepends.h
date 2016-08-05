@@ -7,8 +7,16 @@ typedef enum _SeqDependsType {
    DateDependancy
 } SeqDependsType;
 
+typedef enum _SeqDependsScope {
+   IntraSuite,
+   IntraUser,
+   InterUser,
+} SeqDependsScope;
+
 typedef struct _SeqDependencyData {
    SeqDependsType type;
+   SeqDependsScope expScope;
+   int isInScope;
    char *node_name;
    char *node_path;
    char *exp;
