@@ -15,7 +15,7 @@ typedef enum _SeqDependsScope {
 
 typedef struct _SeqDependencyData {
    SeqDependsType type;
-   SeqDependsScope expScope;
+   SeqDependsScope exp_scope;
    int isInScope;
    char *node_name;
    char *node_path;

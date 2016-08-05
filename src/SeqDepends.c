@@ -10,7 +10,7 @@ SeqDepDataPtr SeqDep_newDep(void)
    SeqDepDataPtr newDep = malloc( sizeof(*newDep) );
 
    newDep->type = NodeDependancy;
-   newDep->expScope = IntraSuite;
+   newDep->exp_scope = IntraSuite;
    newDep->isInScope = -1; /* Invalid value */
    newDep->node_name = NULL;
    newDep->node_path = NULL;

@@ -2458,22 +2458,16 @@ Inputs:
 */
 
 static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *_flow ) {
-   int isWaiting = 0, isDepIndexWildcard = 0, isDepInScope = 0;
-   char filename[SEQ_MAXFIELD];
-   char seqPath[SEQ_MAXFIELD];
-   char *waitingMsg = NULL;
+   int isWaiting = 0;
    SeqDepNodePtr depsPtr = NULL;
    /* SeqNameValuesPtr nameValuesPtr = NULL; */
-   SeqDepDataPtr dep = NULL;
-   SeqNameValuesPtr loopArgsPtr = NULL;
    SeqDependsScope depScope = IntraSuite;
    size_t thisInode, rcInode; /* seq_exp_home vs xp given in resource */
 
-   memset(filename,'\0',sizeof filename);
-   memset(seqPath,'\0',sizeof seqPath);
    /* check dependencies */
    depsPtr = _nodeDataPtr->dependencies;
    while( depsPtr != NULL && isWaiting == 0 ) {
+      SeqDepDataPtr dep = NULL;
       dep =  depsPtr->depData;
 
       if ( dep->type == NodeDependancy) {
@@ -2483,36 +2477,35 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
          SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() nodeinfo_depend_type=Node\n" );
          SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() nodeinfo_depend_name=%s\n", dep->node_name );
 
+         /* This goes in parseDepends */
          if( dep->exp == NULL || strlen( dep->exp ) == 0 ) {
             dep->exp = strdup(_nodeDataPtr->expHome);
          }
-         sprintf(seqPath,"%s/sequencing/status",dep->exp);
-         if (_access(seqPath,W_OK, _nodeDataPtr->expHome) == 0) {
-            thisInode=get_Inode (_nodeDataPtr->expHome);
-            rcInode=get_Inode(dep->exp);
-            if ( thisInode == rcInode ){ 
-                 depScope = IntraSuite;  /* yes -> intraSuite ,will write under ...../status/depends/ */
-                 SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() depScope=%d -> IntraSuite \n", depScope );
+
+
+         /* void setDepExpScope(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep) */
+         {
+            char seqPath[SEQ_MAXFIELD];
+            /* memset(seqPath,'\0',sizeof seqPath); */
+            sprintf(seqPath,"%s/sequencing/status",dep->exp);
+            if (_access(seqPath,W_OK, _nodeDataPtr->expHome) == 0) {
+               thisInode=get_Inode (_nodeDataPtr->expHome);
+               rcInode=get_Inode(dep->exp);
+               if ( thisInode == rcInode ){ 
+                    depScope = IntraSuite;  /* yes -> intraSuite ,will write under ...../status/depends/ */
+                    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() depScope=%d -> IntraSuite \n", depScope );
+               } else {
+                    depScope = IntraUser;   /* no  -> intraUser  ,will write under ...../status/remote_depends/ */
+                    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() depScope=%d -> IntraUser \n", depScope );
+               }
             } else {
-                 depScope = IntraUser;   /* no  -> intraUser  ,will write under ...../status/remote_depends/ */
-                 SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() depScope=%d -> IntraUser \n", depScope );
+               depScope = InterUser;
+               SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() depScope=%d -> InterUser \n", depScope );
             }
-         } else {
-            depScope = InterUser;
-            SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() depScope=%d -> InterUser \n", depScope );
          }
 
-         /* if I'm a loop iteration, process it */
+         /* void SetDepDatestamp(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep) */
          {
-            char *tmpExt = NULL, *localIndexString = NULL;
-            SeqUtil_stringAppend( &localIndexString, "" );
-            if( dep->local_index != NULL && strlen( dep->local_index ) > 0 ) {
-               SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() dep->local_index=%s\n", dep->local_index );
-               SeqLoops_parseArgs(&loopArgsPtr, dep->local_index);
-               tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
-               SeqUtil_stringAppend( &localIndexString, tmpExt );
-               free(tmpExt);tmpExt = NULL;
-            }
             if( dep->time_delta != NULL && strlen(dep->time_delta) > 0 ){
                dep->datestamp = SeqDatesUtil_addTimeDelta( _nodeDataPtr->datestamp, dep->time_delta);
             } else if( dep->hour != NULL && strlen(dep->hour) > 0 ) {
@@ -2522,6 +2515,23 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
                dep->datestamp = strdup( _nodeDataPtr->datestamp );
             }
             SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() Dependency Scope: %d dep->datestamp=%s\n", depScope, dep->datestamp);
+         }
+
+
+         /* void isDepInScope(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep) */
+         {
+            int isDepInScope = 0;
+            char *tmpExt = NULL, *localIndexString = NULL;
+            SeqNameValuesPtr loopArgsPtr = NULL;
+            SeqUtil_stringAppend( &localIndexString, "" );
+            /* if I'm a loop iteration, process it */
+            if( dep->local_index != NULL && strlen( dep->local_index ) > 0 ) {
+               SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() dep->local_index=%s\n", dep->local_index );
+               SeqLoops_parseArgs(&loopArgsPtr, dep->local_index);
+               tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
+               SeqUtil_stringAppend( &localIndexString, tmpExt );
+               free(tmpExt);tmpExt = NULL;
+            }
 
             /* does this dependency apply to the current situation? */
             if( (strcmp( localIndexString, _nodeDataPtr->extension ) == 0 ) || (strcmp( localIndexString,"" ) == 0) ) { 
@@ -2535,16 +2545,19 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
             }
             free(localIndexString);
             localIndexString = NULL;
+            SeqNameValues_deleteWholeList(&loopArgsPtr);
+
+            dep->isInScope = isDepInScope;
          }
+
          /* verify status files and write waiting files */
-         if (isDepInScope) {
+         if (dep->isInScope) {
             SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() calling processDepStatus dep->exp=%s dep->name=%s dep->index=%s dep->datestamp=%s dep->status=%s\n", dep->exp, dep->node_name, dep->index, dep->datestamp, dep->status );
             isWaiting = processDepStatus( _nodeDataPtr, depScope, dep->node_name, dep->index, dep->datestamp, dep->status, dep->exp, dep->protocol, _flow);
          } else {
             SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() Skipping dependency, out of scope. dep->exp=%s dep->node_name=%s dep->index=%s dep->datestamp=%s dep->status=%s\n", dep->exp, dep->node_name, dep->index, dep->datestamp, dep->status );
          }
 
-         SeqNameValues_deleteWholeList(&loopArgsPtr);
       } else {
          SeqUtil_TRACE(TL_FULL_TRACE,"maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");
       }
