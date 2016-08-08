@@ -487,12 +487,11 @@ int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
 ********************************************************************************/
 LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
    LISTNODEPTR loopExtensions=NULL, prod=NULL, rhs=NULL;
-   SeqLoopsPtr loopPtr=NULL;
    SeqNameValuesPtr depArgs=NULL, arg=NULL;
 
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): Begin call\n");
 
-   SeqNode_printLoops(NULL,_nodeDataPtr);
+   SeqNode_showLoops(_nodeDataPtr->loops,TL_FULL_TRACE);
    SeqLoops_parseArgs(&depArgs,depIndex);
 
    for( arg = depArgs; arg != NULL; arg = arg->nextPtr){
