@@ -29,6 +29,7 @@
 #include "FlowVisitor.h"
 #include "SeqUtil.h"
 #include "SeqLoopsUtil.h"
+#include "SeqDatesUtil.h"
 #include "nodeinfo.h"
 #include "getopt.h"
 #include "SeqNode.h"
@@ -90,10 +91,37 @@ void header(const char * test){
 
 /* Define tests here */
 
+int test_nodeCensus(const char * seq_exp_home, const char * node, const char * datestamp)
+{
+   PathArgNodePtr nodeList = getNodeList(seq_exp_home,NULL);
+   PathArgNode_printList( nodeList , TL_FULL_TRACE );
+   PathArgNode_deleteList(&nodeList);
+   return 0;
+}
+
+int test_SeqUtil_padDate()
+{
+   char * date = "2016010203";
+   char dst[PADDED_DATE_LENGTH + 1];
+   SeqUtil_addPadding(dst,date,'A',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   SeqUtil_addPadding(dst,NULL,'B',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   SeqUtil_addPadding(NULL,date,'C',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   date = "LONGER_THAN_THE_LENGTH";
+   SeqUtil_addPadding(dst,date,'D',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   return 0;
+}
+
+
 
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
    /* Call the tests here */
+   test_nodeCensus(seq_exp_home,node,"20160102030000");
+   test_SeqUtil_padDate();
    return 0;
 }
 int main ( int argc, char * argv[] )

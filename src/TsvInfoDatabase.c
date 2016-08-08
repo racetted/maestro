@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "SeqNode.h"
 #include "SeqUtil.h"
@@ -26,12 +27,12 @@ void resource_keylist(SeqNodeDataPtr ndp, FILE * fp, int human_readable)
 
    if( human_readable ){
       fprintf(fp, "    .resources\n");
-      fprintf(fp, "%s.CATCHUP   = %d\n", doubleIndent, ndp->catchup);
-      fprintf(fp, "%s.CPU       = %s\n", doubleIndent, ndp->cpu);
-      fprintf(fp, "%s.QUEUE     = %s\n", doubleIndent, ndp->queue);
-      fprintf(fp, "%s.MPI       = %d\n", doubleIndent, ndp->mpi);
-      fprintf(fp, "%s.MEMORY    = %s\n", doubleIndent, ndp->memory);
-      fprintf(fp, "%s.WALLCLOCK = %d\n", doubleIndent, ndp->wallclock);
+      fprintf(fp, "%s.catchup   = %d\n", doubleIndent, ndp->catchup);
+      fprintf(fp, "%s.cpu       = %s\n", doubleIndent, ndp->cpu);
+      fprintf(fp, "%s.queue     = %s\n", doubleIndent, ndp->queue);
+      fprintf(fp, "%s.mpi       = %d\n", doubleIndent, ndp->mpi);
+      fprintf(fp, "%s.memory    = %s\n", doubleIndent, ndp->memory);
+      fprintf(fp, "%s.wallclock = %d\n", doubleIndent, ndp->wallclock);
    } else {
       /*
        * {resources {{CATCHUP 1} {CPU 8} ... {WALLCLOCK 5}}}
@@ -39,12 +40,14 @@ void resource_keylist(SeqNodeDataPtr ndp, FILE * fp, int human_readable)
       fprintf(fp,"{resources ");
 
       fprintf(fp, "{");
-      fprintf(fp, "{CATCHUP %d} ",ndp->catchup);
-      fprintf(fp, "{CPU %s} ",ndp->cpu);
-      fprintf(fp, "{QUEUE %s} ",ndp->queue);
-      fprintf(fp, "{MPI %d} ",ndp->mpi);
-      fprintf(fp, "{MEMORY %s} ",ndp->memory);
-      fprintf(fp, "{WALLCLOCK %d}",ndp->wallclock);
+      fprintf(fp, "{catchup %d} ",ndp->catchup);
+      fprintf(fp, "{cpu %s} ",ndp->cpu);
+      fprintf(fp, "{cpu_multiplier %s} ",ndp->cpu_multiplier);
+      fprintf(fp, "{queue %s} ",ndp->queue);
+      fprintf(fp, "{machine %s} ",ndp->machine);
+      fprintf(fp, "{mpi %d} ",ndp->mpi);
+      fprintf(fp, "{memory %s} ",ndp->memory);
+      fprintf(fp, "{wallclock %d}",ndp->wallclock);
       fprintf(fp, "}");
 
       fprintf(fp, "}");
@@ -71,12 +74,12 @@ void loop_keylist(SeqNodeDataPtr ndp, FILE *fp, int human_readable)
    if( human_readable ){
       fprintf(fp, "%s.loop\n",indent);
       if( expression == NULL ){
-         fprintf(fp, "%s.START = %s\n",doubleIndent, start);
-         fprintf(fp, "%s.END   = %s\n",doubleIndent, end);
-         fprintf(fp, "%s.STEP  = %s\n",doubleIndent, step);
-         fprintf(fp, "%s.SET   = %s\n",doubleIndent, set);
+         fprintf(fp, "%s.start = %s\n",doubleIndent, start);
+         fprintf(fp, "%s.end   = %s\n",doubleIndent, end);
+         fprintf(fp, "%s.step  = %s\n",doubleIndent, step);
+         fprintf(fp, "%s.set   = %s\n",doubleIndent, set);
       } else {
-         fprintf(fp, "%s.EXPRESSION = %s\n",doubleIndent, expression);
+         fprintf(fp, "%s.expression = %s\n",doubleIndent, expression);
       }
    } else {
       /*
@@ -88,19 +91,19 @@ void loop_keylist(SeqNodeDataPtr ndp, FILE *fp, int human_readable)
       fprintf(fp, "{loop {");
 #if OPTION == 1 || OPTION == 2
       if( expression == NULL ){
-         fprintf(fp, "{START %s} ", start );
-         fprintf(fp, "{END %s} ", end );
-         fprintf(fp, "{STEP %s} ", step );
-         fprintf(fp, "{SET %s}", set );
+         fprintf(fp, "{start %s} ", start );
+         fprintf(fp, "{end %s} ", end );
+         fprintf(fp, "{step %s} ", step );
+         fprintf(fp, "{set %s}", set );
       } else {
-         fprintf(fp, "{EXPRESSION %s}", expression );
+         fprintf(fp, "{expression %s}", expression );
       }
 #elif OPTION == 3 || OPTION == 4
-      fprintf(fp, "{START %s} ", start );
-      fprintf(fp, "{END %s} ", end );
-      fprintf(fp, "{STEP %s} ", step );
-      fprintf(fp, "{SET %s} ", set ); /* Notice the space that is not there in options 1 and 2 */
-      fprintf(fp, "{EXPRESSION %s}", expression );
+      fprintf(fp, "{start %s} ", start );
+      fprintf(fp, "{end %s} ", end );
+      fprintf(fp, "{step %s} ", step );
+      fprintf(fp, "{set %s} ", set ); /* notice the space that is not there in options 1 and 2 */
+      fprintf(fp, "{expression %s}", expression );
 #endif
       fprintf(fp, "}}");
 
@@ -196,12 +199,13 @@ enum {
  * Creates the tsv compatible and human readable files for storing info on nodes
  * of the experiment.
 ********************************************************************************/
-int write_db_file(const char *seq_exp_home, FILE *tsv_output_fp, FILE *hr_output_fp)
+int write_db_file(const char *seq_exp_home, const char *datestamp,
+                                       FILE *tsv_output_fp, FILE *hr_output_fp)
 {
    /*
     * Get list of nodes in experiment
     */
-   PathArgNodePtr nodeList = getNodeList(seq_exp_home);
+   PathArgNodePtr nodeList = getNodeList(seq_exp_home,datestamp);
    PathArgNode_printList( nodeList , TL_FULL_TRACE );
 
    /*
@@ -216,8 +220,9 @@ int write_db_file(const char *seq_exp_home, FILE *tsv_output_fp, FILE *hr_output
    SeqNodeDataPtr ndp = NULL;
    for_pap_list(itr,nodeList){
 
-      /* ndp = nodeinfo(itr->path, NI_RESOURCE_ONLY, NULL, seq_exp_home, NULL, NULL,itr->switch_args ); */
+      /* ndp = nodeinfo(itr->path, NI_RESOURCE_ONLY, NULL, seq_exp_home, NULL, datestamp,NULL ); */
       ndp = SeqNode_createNode(itr->path);
+      ndp->datestamp = strdup(datestamp);
       SeqNode_setSeqExpHome(ndp,seq_exp_home);
       ndp->type = itr->type;
       getNodeResources(ndp,seq_exp_home,itr->path);

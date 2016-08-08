@@ -36,10 +36,11 @@ int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const cha
  * switch_args : The branches of switches that must be taken to get to the node.
  * NOTE: The caller is responsible for deleting the list.
 ********************************************************************************/
-PathArgNodePtr getNodeList(const char * seq_exp_home)
+PathArgNodePtr getNodeList(const char * seq_exp_home, const char *datestamp)
 {
    PathArgNodePtr pap = NULL;
    FlowVisitorPtr fv = Flow_newVisitor(NULL,seq_exp_home,NULL);
+   fv->datestamp = datestamp;
 
    const char * basePath = (const char *) xmlGetProp(fv->context->node,
                                                       (const xmlChar *)"name");
@@ -141,6 +142,14 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
                                                       , fv->context);
    for_results( xmlNode, results ){
       xmlNodePtr previousNode = fv->context->node;
+      /*
+       * Just noticed some redundance in the code, we set
+       *    fv->context->node = xmlNode
+       * yet we pass the xmlNode to the functions.  For now, I want to get my
+       * thing working, but in the future, the extra parameter should be removed
+       * in favor of the more elegant way of using the visitor the way it was
+       * designed to be used.
+       */
       fv->context->node = xmlNode;
 
       if( strcmp(xmlNode->name, "TASK") == 0 || strcmp(xmlNode->name, "NPASS_TASK") == 0)
@@ -159,6 +168,23 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
       }
       else if( strcmp(xmlNode->name, "SWITCH_ITEM") == 0 )
       {
+         if( fv->datestamp != NULL ){
+            /*
+             * This because if a datestamp is set, gnl_container() should move
+             * the flow visitor into the correct switch item based on the
+             * datestamp.
+             *
+             * An extension to this would be to have a
+             * struct SwitchContext {
+             *    char * datestamp
+             *    char * color
+             *    char * mood
+             * }
+             * if we want to add properties that change the the switch branch
+             * that is taken. See comments at the top of FlowVisitor.c.
+             */
+            raiseError("ERROR: A datestamp was specified but getNodeList_internal reached a SWITCH_ITEM\n");
+         }
          gnl_switch_item(fv,pathArgList,basePath,baseSwitchArgs,depth,xmlNode);
       }
 
@@ -183,6 +209,26 @@ void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
     */
    sprintf( path, "%s/%s", basePath,container_name);
    PathArgNode_pushFront( pathArgList, path, baseSwitchArgs, type);
+
+   /*
+    * If a datestamp is specified, use it to enter the correct switch item
+    */
+   if( fv->datestamp != NULL && strcmp( xmlNode->name, "SWITCH" ) == 0){
+      /* Get the switch type */
+      const char *switch_type = Flow_findSwitchType(fv);
+      /* Get the switch answer */
+      SeqNodeData nd; /* Artificial node, because switchReturn takes a nodeDataPtr
+                       * and not a datestamp, so we pass it a datestamp through
+                       * this artificial SeqNodeData object */
+      SeqUtil_TRACE(TL_FULL_TRACE, "fv datestamp: %s\n",fv->datestamp);
+      nd.datestamp = fv->datestamp;
+      SeqUtil_TRACE(TL_FULL_TRACE, "Node datestamp: %s\n",(&nd)->datestamp);
+      const char *switch_value = switchReturn(&nd,switch_type);
+      if( Flow_findSwitchItem(fv,switch_value) == FLOW_FAILURE ){
+         SeqUtil_TRACE(TL_FULL_TRACE, "No switch branch matches value %s for switch %s and no default switch branch\n",switch_value, path);
+         goto out_free;
+      }
+   }
 
    /*
     * Continue recursion

@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include "getopt.h"
 #include "SeqUtil.h"
+#include "SeqDatesUtil.h"
 #include "TsvInfoDatabase.h"
 
 
@@ -41,7 +42,7 @@ DESCRIPTION: tsvinfo\n\
 \n\
 USAGE\n\
 \n\
-    tsvinfo -e SEQ_EXP_HOME [-t tsv-output-file -h human-readable-file]\n\
+    tsvinfo -e SEQ_EXP_HOME -d datestamp [-t tsv-output-file -h human-readable-file]\n\
 \n\
 OPTIONS\n\
 \n\
@@ -52,6 +53,9 @@ OPTIONS\n\
     -t, --tsv-file \n\
         Specify the filename for the tsv formatted output.  If no filename is\n\
         is specified, no output will be generated.\n\
+\n\
+    -d, --datestamp\n\
+        Specify the datestamp of relative to which to fetch the information\n\
 \n\
     -r, --readable-file \n\
         Specify the filename for the human readable output.  If no filename is\n\
@@ -105,7 +109,7 @@ FILE *open_filename( const char *filename)
 
 int main ( int argc, char * argv[] )
 {
-   char * short_opts = "e:t:r:vh";
+   char * short_opts = "d:e:t:r:vh";
 
    extern char *optarg;
    extern char *optarg;
@@ -114,6 +118,7 @@ int main ( int argc, char * argv[] )
    { /*  NAME        ,    has_arg       , flag  val(ID) */
 
       {"exp"            , required_argument,   0,     'e'},
+      {"datestamp"      , required_argument,   0,     'd'},
       {"tsv-file"       , required_argument,   0,     't'},
       {"readable-output", required_argument,   0,     'r'},
       {"verbose"        , no_argument      ,   0,     'v'},
@@ -122,7 +127,8 @@ int main ( int argc, char * argv[] )
    };
    int opt_index, c = 0;
 
-   char *seq_exp_home = NULL;
+   char *seq_exp_home = NULL,
+        *datestamp = NULL;
 
    FILE *human_output_fp = NULL,
         *tsv_output_fp = NULL;
@@ -131,6 +137,10 @@ int main ( int argc, char * argv[] )
       switch(c) {
          case 'e':
             seq_exp_home = strdup(optarg);
+            break;
+         case 'd':
+            datestamp = malloc(PADDED_DATE_LENGTH + 1);
+            SeqUtil_addPadding(datestamp,optarg,'0',PADDED_DATE_LENGTH);
             break;
          case 'r':
             human_output_fp = open_filename( optarg );
@@ -159,8 +169,14 @@ int main ( int argc, char * argv[] )
       }
    }
 
+   if( datestamp == NULL )
+   {
+      printUsage();
+      raiseError("Error: Datestamp must be set\n");
+   }
 
-   write_db_file(seq_exp_home, tsv_output_fp , human_output_fp);
+
+   write_db_file(seq_exp_home, datestamp, tsv_output_fp , human_output_fp);
 
    if( human_output_fp != NULL )
       fclose(human_output_fp);

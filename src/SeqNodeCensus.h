@@ -28,7 +28,7 @@ typedef PathArgNode *PathArgNodePtr;
  * switch_args : The branches of switches that must be taken to get to the node.
  * NOTE: The caller is responsible for deleting the list.
 ********************************************************************************/
-PathArgNodePtr getNodeList(const char * seq_exp_home);
+PathArgNodePtr getNodeList(const char * seq_exp_home, const char *datestamp);
 int PathArgNode_deleteList(PathArgNodePtr *list_head);
 void PathArgNode_printList(PathArgNodePtr list_head, int trace_level);
 #endif

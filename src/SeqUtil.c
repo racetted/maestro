@@ -68,6 +68,38 @@ static struct TraceFlags traceFlags = { TL_CRITICAL, TF_OFF, TF_OFF};
 static struct mappedFile mappedFiles[SEQ_MAXFILES];
 static int nbMappedFiles = 0;
 
+/********************************************************************************
+ * Copies src into dst with padding char up to the specified length.  Caller
+ * must allocate memory. If the input is longer than the specified lenght, it
+ * will be truncated in the output.
+ ********************************************************************************/
+void SeqUtil_addPadding( char *dst, const char *src, char c, int length)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() begin\n");
+   int i = 0;
+   if( dst == NULL ){
+      SeqUtil_TRACE(TL_MEDIUM, "    cannot have NULL dst parameter\n");
+      goto out;
+   }
+
+   if( src == NULL ) {
+      SeqUtil_TRACE(TL_MEDIUM, "    NULL input: setting dst to empty string\n");
+      dst[0] = '\0';
+      goto out;
+   }
+
+   for(;src[i] != '\0' && i < length; i++)
+      dst[i] = src[i];
+
+   for(;i < length; i++)
+      dst[i] = c;
+
+   dst[i] = '\0';
+out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() end\n");
+   return;
+}
+
 /******************************************************************************** 
  * Trace function.  Message will only be output if messageImportance is superior
  * or equal to the importance set by the environment or the caller of the
