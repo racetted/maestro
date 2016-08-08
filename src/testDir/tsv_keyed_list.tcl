@@ -4,11 +4,14 @@
 # - A path to a valid experiment
 # (unused at this point because I have not made an interface for the C
 # executable yet)
-set testExpPath /home/ops/afsi/phc/Documents/sample
+set testExpPath /home/binops/afsi/ops/.suites/geps/forecast
+# set testExpPath /home/ops/afsi/phc/Documents/sample
 # - A node path (with leading slash and no trailing slash)
-set testNode /sample_module/Different_Hosts/I.have.aperiod.in.my.name
+set testNode /geps_mod/anal_mod/to_sqlite/transfer
+#set testNode /sample_module/Different_Hosts/I.have.aperiod.in.my.name
 # - A node path to a loop node (with leading slash and no trailing slash)
-set testLoopNode /sample_module/Loop_Examples/outerloop/innerloop
+set testLoopNode /geps_mod/forecast_mod/gem_loop
+# set testLoopNode /sample_module/Loop_Examples/outerloop/innerloop
 #
 # Eventually, an experiment for testing should be packaged with the maestro
 # source.
@@ -32,20 +35,20 @@ package require Thread
 
 # The TCL portion expects to find a file with the data for a tsv keyed list.  It
 # will read this data into a keyed list using tsv::keylset.
-proc readNodeinfoDB { } {
+proc readNodeinfoDB { expHome } {
 
    # Normally, generating this info file would be done when quitting the GUI
    # after changing the experiment.  But for testing purposes, I do it here, and
    # the rest of the function is going to stay.
-   set expHome /home/ops/afsi/phc/Documents/Experiences/sample
-   exec ../tsvinfo -t nodeinfo_keyedlist.tsv -e $expHome
+   
+   set data_list [exec ../tsvinfo -t stdout -e $expHome]
 
    # Read the file (The file path will need to be constructed with the
    # experiment path, and a static path within the experiment). Something like
    # ${testExpPath}/resources/nodeinfo_keyed_list.tsv
-   set fp [open nodeinfo_keyedlist.tsv]
-   set data_list [read $fp]
-   close $fp
+   # set fp [open nodeinfo_keyedlist.tsv]
+   # set data_list [read $fp]
+   # close $fp
 
    # Temporary, show the content
    puts $data_list
@@ -88,7 +91,7 @@ proc getInfo { nodeName subkey } {
 # THE TEST ITSELF BEGINS HERE:
 
 # Read the file into the keyed list
-readNodeinfoDB
+readNodeinfoDB $testExpPath
 
 # Try out the syntax with a random node.
 puts "======= Trying the tsv::keylget syntax ====="
