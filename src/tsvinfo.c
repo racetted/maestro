@@ -222,7 +222,8 @@ int write_db_file(const char *seq_exp_home, const char *datestamp,
 
       /* ndp = nodeinfo(itr->path, NI_RESOURCE_ONLY, NULL, seq_exp_home, NULL, datestamp,NULL ); */
       ndp = SeqNode_createNode(itr->path);
-      ndp->datestamp = strdup(datestamp);
+      /* ndp->datestamp = strdup(datestamp); */
+      SeqNode_setDatestamp(ndp,datestamp);
       SeqNode_setSeqExpHome(ndp,seq_exp_home);
       ndp->type = itr->type;
       getNodeResources(ndp,seq_exp_home,itr->path);

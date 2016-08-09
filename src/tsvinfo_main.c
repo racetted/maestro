@@ -178,6 +178,8 @@ int main ( int argc, char * argv[] )
 
    write_db_file(seq_exp_home, datestamp, tsv_output_fp , human_output_fp);
 
+   free(datestamp);
+
    if( human_output_fp != NULL )
       fclose(human_output_fp);
 

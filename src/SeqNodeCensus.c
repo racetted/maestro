@@ -32,17 +32,16 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *lp,
                             const char * basePath, const char * baseSwitchArgs,
                                                                      int depth);
 void gnl_module(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode);
+                     const char *basePath,const char *baseSwitchArgs, int depth);
+
 void gnl_task(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode);
+                     const char *basePath,const char *baseSwitchArgs, int depth);
+
 void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode);
+                     const char *basePath,const char *baseSwitchArgs, int depth);
+
 void gnl_switch_item(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode);
+                     const char *basePath,const char *baseSwitchArgs, int depth);
 
 int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const char *switch_args, SeqNodeType type);
 
@@ -84,7 +83,8 @@ out_free:
  * Inserts a PathArgNodePtr at the front of the list pointed to by *list_head
  * and stores the address of the new element in list_head.
 ********************************************************************************/
-int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const char *switch_args,SeqNodeType type)
+int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path,
+                                       const char *switch_args,SeqNodeType type)
 {
    PathArgNodePtr newNode = NULL;
    if( (newNode = malloc(sizeof *newNode)) == NULL ){
@@ -172,17 +172,17 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
 
       if( strcmp(xmlNode->name, "TASK") == 0 || strcmp(xmlNode->name, "NPASS_TASK") == 0)
       {
-         gnl_task(fv,pathArgList,basePath,baseSwitchArgs,depth,xmlNode);
+         gnl_task(fv,pathArgList,basePath,baseSwitchArgs,depth);
       }
       else if( strcmp(xmlNode->name, "MODULE") == 0)
       {
-         gnl_module(fv,pathArgList,basePath,baseSwitchArgs,depth,xmlNode);
+         gnl_module(fv,pathArgList,basePath,baseSwitchArgs,depth);
       }
       else if(   strcmp(xmlNode->name, "LOOP") == 0
                 || strcmp(xmlNode->name, "FAMILY") == 0
                 || strcmp(xmlNode->name, "SWITCH") == 0)
       {
-         gnl_container(fv,pathArgList,basePath,baseSwitchArgs,depth,xmlNode);
+         gnl_container(fv,pathArgList,basePath,baseSwitchArgs,depth);
       }
       else if( strcmp(xmlNode->name, "SWITCH_ITEM") == 0 )
       {
@@ -203,7 +203,7 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
              */
             raiseError("ERROR: A datestamp was specified but getNodeList_internal reached a SWITCH_ITEM\n");
          }
-         gnl_switch_item(fv,pathArgList,basePath,baseSwitchArgs,depth,xmlNode);
+         gnl_switch_item(fv,pathArgList,basePath,baseSwitchArgs,depth);
       }
 
       fv->context->node = previousNode;
@@ -211,6 +211,32 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
 
    xmlXPathFreeObject(results);
 }
+
+/********************************************************************************
+ * Enter the right switch item based on the datestamp of the flow visitor.
+ * NOTE the use of a dummy SeqNodeData since we need it to pass a datestamp to
+ * SwitchReturn()
+********************************************************************************/
+static int gnl_enterSwitchItem(FlowVisitorPtr fv)
+{
+   int retval = FLOW_FAILURE;
+
+   /* Get the switch type */
+   const char *switch_type = Flow_findSwitchType(fv);
+
+   /* Get the switch answer */
+   SeqNodeData nd; nd.datestamp = fv->datestamp;
+   const char *switch_value = switchReturn(&nd,switch_type);
+
+   /* Enter the switch item corresponding to switch_value */
+   retval = Flow_findSwitchItem(fv,switch_value);
+
+out_free:
+   free((char *)switch_value);
+   free((char *)switch_type);
+   return retval;
+}
+
 /********************************************************************************
  * Recursion stop for container nodes (except modules).
  * NOTE: If the visitor has a datestamp set (and in the future, a struct
@@ -219,12 +245,11 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
  * already entered the SWITCH_ITEM and will query the children of that node.
 ********************************************************************************/
 void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode)
+                     const char *basePath,const char *baseSwitchArgs, int depth)
 {
    char path[SEQ_MAXFIELD];
-   const char * container_name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
-   SeqNodeType type = getNodeType(xmlNode->name);
+   const char * container_name = (const char *)xmlGetProp( fv->context->node, (const xmlChar *)"name");
+   SeqNodeType type = getNodeType(fv->context->node->name);
 
    /*
     * Append current node name to basePath and add list entry
@@ -235,23 +260,9 @@ void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
    /*
     * If a datestamp is specified, use it to enter the correct switch item
     */
-   if( fv->datestamp != NULL && strcmp( xmlNode->name, "SWITCH" ) == 0){
-      /* Get the switch type */
-      const char *switch_type = Flow_findSwitchType(fv);
-      /* Get the switch answer */
-      SeqNodeData nd; /* Artificial node, because switchReturn takes a nodeDataPtr
-                       * and not a datestamp, so we pass it a datestamp through
-                       * this artificial SeqNodeData object
-                       * A function like SwitchReturn should take a struct
-                       * SwitchContext and a switch_type and not need a
-                       * nodeDataPtr.
-                       */
-      SeqUtil_TRACE(TL_FULL_TRACE, "fv datestamp: %s\n",fv->datestamp);
-      nd.datestamp = fv->datestamp;
-      SeqUtil_TRACE(TL_FULL_TRACE, "Node datestamp: %s\n",(&nd)->datestamp);
-      const char *switch_value = switchReturn(&nd,switch_type);
-      if( Flow_findSwitchItem(fv,switch_value) == FLOW_FAILURE ){
-         SeqUtil_TRACE(TL_FULL_TRACE, "No switch branch matches value %s for switch %s and no default switch branch\n",switch_value, path);
+   if( fv->datestamp != NULL && strcmp( fv->context->node->name, "SWITCH" ) == 0){
+      if( gnl_enterSwitchItem(fv) == FLOW_FAILURE ){
+         /* If no switch item was found, stop recursion */
          goto out_free;
       }
    }
@@ -269,11 +280,10 @@ out_free:
  * Recursion step for modules
 ********************************************************************************/
 void gnl_module(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode)
+                     const char *basePath,const char *baseSwitchArgs, int depth)
 {
    char path[SEQ_MAXFIELD];
-   const char * module_name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
+   const char * module_name = (const char *)xmlGetProp( fv->context->node, (const xmlChar *)"name");
 
    /*
     * Append current node name to basePath and add list entry
@@ -296,12 +306,11 @@ out_free:
  * Recursion step for Task and NpassTask nodes.
 ********************************************************************************/
 void gnl_task(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode)
+                     const char *basePath,const char *baseSwitchArgs, int depth)
 {
    char path[SEQ_MAXFIELD];
-   const char * name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
-   SeqNodeType type = getNodeType(xmlNode->name);
+   const char * name = (const char *)xmlGetProp( fv->context->node, (const xmlChar *)"name");
+   SeqNodeType type = getNodeType(fv->context->node->name);
 
    /*
     * Append current node name to basePath and add list entry
@@ -323,11 +332,10 @@ void gnl_task(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
  * one.
 ********************************************************************************/
 void gnl_switch_item(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
-                        const char *basePath,const char *baseSwitchArgs,
-                        int depth,xmlNodePtr xmlNode)
+                     const char *basePath,const char *baseSwitchArgs, int depth)
 {
    char switch_args[SEQ_MAXFIELD];
-   const char * switch_item_name = (const char *)xmlGetProp(xmlNode, (const xmlChar *)"name");
+   const char * switch_item_name = (const char *)xmlGetProp(fv->context->node, (const xmlChar *)"name");
    const char * switch_name = SeqUtil_getPathLeaf(basePath);
 
    /*
