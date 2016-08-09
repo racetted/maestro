@@ -10,6 +10,24 @@
 #include "nodeinfo.h"
 
 #include "SeqNodeCensus.h"
+/********************************************************************************
+ * DOCUMENTATION: Implementation.
+ *
+ * The function getNodeList() retrieves the list of nodes of an experiment by
+ * using a FlowVisitor object to visit the Flow.xml files of an experiment in a
+ * depth first search manner using recursion.
+ *
+ * The base step of the recursion is to point the visitor on the root node of
+ * the entry module's Flow.xml file, and add it's path (just the name) to the
+ * new list.
+ *
+ * It then calls getNodeList_internal which obtains all the children of that
+ * node (except SUBMITS).  For each child, depending on the type, it calls the
+ * right subroutine (gnl_module, gnl_task, gnl_container, gnl_switch_item) which
+ * carry out the right recursion step depending on the type, then continue the
+ * recursion by calling getNodeList_internal.
+ *
+********************************************************************************/
 void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *lp,
                             const char * basePath, const char * baseSwitchArgs,
                                                                      int depth);
@@ -38,7 +56,7 @@ int PathArgNode_pushFront(PathArgNodePtr *list_head, const char *path, const cha
 ********************************************************************************/
 PathArgNodePtr getNodeList(const char * seq_exp_home, const char *datestamp)
 {
-   PathArgNodePtr pap = NULL;
+   PathArgNodePtr list_head = NULL;
    FlowVisitorPtr fv = Flow_newVisitor(NULL,seq_exp_home,NULL);
    fv->datestamp = datestamp;
 
@@ -48,18 +66,18 @@ PathArgNodePtr getNodeList(const char * seq_exp_home, const char *datestamp)
    /*
     * Base step of recursion
     */
-   PathArgNode_pushFront(&pap, fixedBasePath, "", Module );
+   PathArgNode_pushFront(&list_head, fixedBasePath, "", Module );
 
    /*
     * Start recursion
     */
-   getNodeList_internal(fv, &pap ,fixedBasePath,"", 0);
+   getNodeList_internal(fv, &list_head ,fixedBasePath,"", 0);
 
 out_free:
    free((char*)fixedBasePath);
    free((char*)basePath);
    Flow_deleteVisitor(fv);
-   return pap;
+   return list_head;
 }
 
 /********************************************************************************
@@ -194,7 +212,11 @@ void getNodeList_internal(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
    xmlXPathFreeObject(results);
 }
 /********************************************************************************
- * Recursion stop for container nodes (except modules)
+ * Recursion stop for container nodes (except modules).
+ * NOTE: If the visitor has a datestamp set (and in the future, a struct
+ * SwitchContext), then when we are on a switch, we want to use to find the
+ * right SWITCH_ITEM to enter.  At the next step in the recursion we will have
+ * already entered the SWITCH_ITEM and will query the children of that node.
 ********************************************************************************/
 void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
                         const char *basePath,const char *baseSwitchArgs,
@@ -219,7 +241,11 @@ void gnl_container(FlowVisitorPtr fv, PathArgNodePtr *pathArgList ,
       /* Get the switch answer */
       SeqNodeData nd; /* Artificial node, because switchReturn takes a nodeDataPtr
                        * and not a datestamp, so we pass it a datestamp through
-                       * this artificial SeqNodeData object */
+                       * this artificial SeqNodeData object
+                       * A function like SwitchReturn should take a struct
+                       * SwitchContext and a switch_type and not need a
+                       * nodeDataPtr.
+                       */
       SeqUtil_TRACE(TL_FULL_TRACE, "fv datestamp: %s\n",fv->datestamp);
       nd.datestamp = fv->datestamp;
       SeqUtil_TRACE(TL_FULL_TRACE, "Node datestamp: %s\n",(&nd)->datestamp);
@@ -267,7 +293,7 @@ out_free:
 }
 
 /********************************************************************************
- * Recursion step for Task and NpassTask nodes
+ * Recursion step for Task and NpassTask nodes.
 ********************************************************************************/
 void gnl_task(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
                         const char *basePath,const char *baseSwitchArgs,
@@ -290,7 +316,11 @@ void gnl_task(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
 }
 
 /********************************************************************************
- * Recursion step for switch items
+ * Recursion step for switch items.
+ * NOTE that The SWITCH_ITEM may have a name attribute like name="0,1,2" which
+ * contains three values that will cause the switch to direct flow through this
+ * switch item.  We only need one of these values, therefore we take the first
+ * one.
 ********************************************************************************/
 void gnl_switch_item(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
                         const char *basePath,const char *baseSwitchArgs,
@@ -301,10 +331,10 @@ void gnl_switch_item(FlowVisitorPtr fv, PathArgNodePtr *pathArgList,
    const char * switch_name = SeqUtil_getPathLeaf(basePath);
 
    /*
-    * Append current switch_item_name=first_switch_arg' to baseSwitchArgs
+    * Append current 'switch_item_name=first_switch_arg' to baseSwitchArgs
     */
    char * first_comma = strstr(switch_item_name,",");
-   if( first_comma != NULL ) *first_comma = 0;
+   if( first_comma != NULL ) *first_comma = '\0';
    sprintf( switch_args, "%s%s=%s,",baseSwitchArgs,switch_name,switch_item_name );
 
    /*
