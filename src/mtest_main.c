@@ -35,7 +35,7 @@
 #include "SeqNode.h"
 #include "XmlUtils.h"
 #include "SeqNodeCensus.h"
-#include "TsvInfoDatabase.h"
+#include "tsvinfo.h"
 
 static char * testDir = NULL;
 int MLLServerConnectionFid=0;

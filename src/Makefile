@@ -108,7 +108,7 @@ ResourceVisitor.o: ResourceVisitor.c ResourceVisitor.h nodeinfo.c nodeinfo.h
 SeqNodeCensus.o: SeqNodeCensus.c SeqNodeCensus.h FlowVisitor.h
 	$(CC) -c $< $(CFLAGS) $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR)
 
-TsvInfoDatabase.o: TsvInfoDatabase.c TsvInfoDatabase.h nodeinfo.o
+tsvinfo.o: tsvinfo.c tsvinfo.h nodeinfo.o
 	$(CC) -c $< $(CFLAGS) $(WERROR_FLAGS) -I $(INCDIR) -I $(XML_INCLUDE_DIR)
 
 nodeinfo.o:	nodeinfo.c nodeinfo.h FlowVisitor.h runcontrollib.h ResourceVisitor.c ResourceVisitor.h
@@ -225,19 +225,19 @@ madmin: $(L2D2AOBJECTS)
 	$(CC) $(L2D2AOBJECTS) $(LIB) $(LIBTH) -o madmin; \
 	cp madmin $(BINDIR);
 
-TSVINFO_OBJECTS = TsvInfoDatabase.o SeqNodeCensus.o nodeinfo.o SeqUtil.o       \
+TSVINFO_OBJECTS = tsvinfo.o SeqNodeCensus.o nodeinfo.o SeqUtil.o       \
 	SeqNode.o SeqNameValues.o SeqLoopsUtil.o SeqListNode.o FlowVisitor.o   \
 	ResourceVisitor.o XmlUtils.o SeqDatesUtil.o tictac.o l2d2_commun.o     \
 	QueryServer.o l2d2_socket.o SeqUtilServer.o getopt_long.o
 
-tsvinfo: TsvInfo_main.c $(TSVINFO_OBJECTS)
+tsvinfo: tsvinfo_main.c $(TSVINFO_OBJECTS)
 	$(CC) -g $^ $(WERROR_FLAGS) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
 	cp $@ $(BINDIR);
 
 TEST_OBJECTS = SeqUtil.o SeqNode.o XmlUtils.o SeqLoopsUtil.o l2d2_commun.o     \
 	QueryServer.o l2d2_socket.o SeqListNode.o SeqDatesUtil.o               \
 	SeqUtilServer.o tictac.o SeqNameValues.o nodeinfo.o getopt_long.o      \
-	FlowVisitor.o ResourceVisitor.o SeqNodeCensus.o TsvInfoDatabase.o
+	FlowVisitor.o ResourceVisitor.o SeqNodeCensus.o tsvinfo.o
 
 mtest:	mtest_main.c $(TEST_OBJECTS)
 	$(CC) $^ -g $(WERROR_FLAGS) -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
