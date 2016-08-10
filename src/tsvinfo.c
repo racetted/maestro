@@ -71,6 +71,18 @@ void loop_keylist(SeqNodeDataPtr ndp, FILE *fp, int human_readable)
         *set = SeqLoops_getLoopAttribute( ndp->data, "SET" ),
         *expression = SeqLoops_getLoopAttribute( ndp->data, "EXPRESSION" );
 
+   /*
+    * Default values should be set when parsing from the xmlFile.  I have a
+    * truly marvellous solution for this, which this margin is too narrow to
+    * contain.
+    */
+   if(expression == NULL) {
+      if(start == NULL ) start = DEFAULT_LOOP_START_STR;
+      if(end == NULL ) end = DEFAULT_LOOP_END_STR;
+      if(step == NULL ) step = DEFAULT_LOOP_STEP_STR;
+      if(set == NULL ) set = DEFAULT_LOOP_SET_STR;
+   }
+
    if( human_readable ){
       fprintf(fp, "%s.loop\n",indent);
       if( expression == NULL ){

@@ -302,7 +302,11 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
-   xmlChar *loopStart = strdup("0"), *loopStep = strdup("1"), *loopEnd = strdup("1"), *loopSet = strdup("1"), *loopExpression = strdup("");
+   xmlChar *loopStart = DEFAULT_LOOP_START_STR,
+           *loopStep = DEFAULT_LOOP_STEP_STR,
+           *loopEnd = DEFAULT_LOOP_END_STR,
+           *loopSet = DEFAULT_LOOP_SET_STR,
+           *loopExpression = strdup("");
    int i=0;
    
    if (_result) {
