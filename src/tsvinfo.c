@@ -85,11 +85,8 @@ void loop_keylist(SeqNodeDataPtr ndp, FILE *fp, int human_readable)
       /*
        * {loop {{START 8} {END 18} {STEP 2} {SET 2}}}
        */
-
-#define OPTION 4
-
       fprintf(fp, "{loop {");
-#if OPTION == 1 || OPTION == 2
+
       if( expression == NULL ){
          fprintf(fp, "{start %s} ", start );
          fprintf(fp, "{end %s} ", end );
@@ -98,15 +95,8 @@ void loop_keylist(SeqNodeDataPtr ndp, FILE *fp, int human_readable)
       } else {
          fprintf(fp, "{expression %s}", expression );
       }
-#elif OPTION == 3 || OPTION == 4
-      fprintf(fp, "{start %s} ", start );
-      fprintf(fp, "{end %s} ", end );
-      fprintf(fp, "{step %s} ", step );
-      fprintf(fp, "{set %s} ", set ); /* notice the space that is not there in options 1 and 2 */
-      fprintf(fp, "{expression %s}", expression );
-#endif
-      fprintf(fp, "}}");
 
+      fprintf(fp, "}}");
    }
 
    free(start);
@@ -172,19 +162,10 @@ void node_to_keylist(SeqNodeDataPtr ndp,FILE *fp, int human_readable)
        * dependency_keylist(ndp, fp,human_readable);
        */
 
-#if OPTION == 1 || OPTION == 4
       if( ndp->type == Loop ){
          fprintf(fp, " ");
          loop_keylist(ndp, fp, human_readable);
       }
-#elif OPTION == 2 || OPTION == 3
-      /* Always print, but put either {{START 1} {END 2} {STEP 2} {SET 1}} or
-       * {{expression 1:2:3:4}}(option2)  or both (option3) */
-      fprintf(fp, " ");
-      loop_keylist(ndp, fp, human_readable);
-#endif
-
-
 
       fprintf(fp,"}");
 
