@@ -2532,35 +2532,44 @@ Inputs:
 */
 
 static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *_flow ) {
+   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() begin\n");
    int isWaiting = 0;
-
    /* check dependencies */
    SeqDepNodePtr depsPtr = _nodeDataPtr->dependencies;
-   for(;depsPtr != NULL && isWaiting == 0; depsPtr = depsPtr->nextPtr){
-      SeqDepDataPtr dep = NULL;
-      dep = depsPtr->depData;
+   for(;depsPtr != NULL; depsPtr = depsPtr->nextPtr){
+      SeqDepDataPtr dep = depsPtr->depData;
 
-      if ( dep->type == NodeDependancy) {
+      /* if( validateSingleDep(_nodeDataPtr, dep) )
+       *    isWaiting = 1;
+       *    goto out;
+       */
+      {
+         int retval = 0;
+         if ( dep->type == NodeDependancy) {
 
-         if( dep->exp == NULL || strlen( dep->exp ) == 0 ) {
-            dep->exp = strdup(_nodeDataPtr->expHome);
-         }
-         setDepExpScope(_nodeDataPtr, dep);
-         setDepDatestamp(_nodeDataPtr, dep);
-         check_depIsInScope(_nodeDataPtr, dep);
+            if( dep->exp == NULL || strlen( dep->exp ) == 0 ) {
+               dep->exp = strdup(_nodeDataPtr->expHome);
+            }
+            setDepExpScope(_nodeDataPtr, dep);
+            setDepDatestamp(_nodeDataPtr, dep);
+            check_depIsInScope(_nodeDataPtr, dep);
 
-         SeqDep_printDep(TL_FULL_TRACE,dep);
-
-         /* verify status files and write waiting files */
-         if (dep->isInScope) {
-            isWaiting = processDepStatus( _nodeDataPtr, dep, _flow);
-         } else {
             SeqDep_printDep(TL_FULL_TRACE,dep);
-         }
 
-      } else {
-         SeqUtil_TRACE(TL_FULL_TRACE,"maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");
+            /* verify status files and write waiting files */
+            if (dep->isInScope) {
+               retval = processDepStatus( _nodeDataPtr, dep, _flow);
+            } else {
+               SeqDep_printDep(TL_FULL_TRACE,dep);
+            }
+
+         } else {
+            SeqUtil_TRACE(TL_FULL_TRACE,"maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");
+         }
+         isWaiting = retval
       }
+      if( isWaiting )
+         break;
    }
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() returning isWaiting=%d\n", isWaiting);
 
