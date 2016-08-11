@@ -35,8 +35,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "SeqUtil.h"
+#include "SeqDatesUtil.h"
 
-#define PADDED_DATE_LENGTH 14
 /*****************************************************************************
 * tictac:
 * Read or set the datestamp of a given experiment.

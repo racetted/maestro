@@ -797,7 +797,7 @@ static void processContainerBegin ( const SeqNodeDataPtr _nodeDataPtr, char *_fl
                  SeqUtil_TRACE(TL_FULL_TRACE, "maestro.processContainerBegin() getting sibling info: %s\n", tmp );
                  siblingDataPtr = nodeinfo( tmp, NI_SHOW_TYPE|NI_SHOW_RESOURCE, NULL,
                                              _nodeDataPtr->expHome, NULL,
-                                             _nodeDataPtr->datestamp );
+                                             _nodeDataPtr->datestamp,NULL );
                  if ( siblingDataPtr->catchup > catchup ) {
                      /*reset aborted since we're skipping this node*/
                      abortedSibling = 0;
@@ -1273,7 +1273,7 @@ static SeqNameValuesPtr processForEachTarget(const SeqNodeDataPtr _nodeDataPtr){
 
    /* Check type of target, LOOP or Switch vs NPT or FE */ 
    target_datestamp=SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp, 0, atoi(_nodeDataPtr->forEachTarget->hour), 0, 0);
-   targetNodeDataPtr = nodeinfo(_nodeDataPtr->forEachTarget->node , NI_SHOW_ALL, NULL,_nodeDataPtr->forEachTarget->exp, NULL, target_datestamp );
+   targetNodeDataPtr = nodeinfo(_nodeDataPtr->forEachTarget->node , NI_SHOW_ALL, NULL,_nodeDataPtr->forEachTarget->exp, NULL, target_datestamp,NULL );
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.processForEachTarget() called, targetting exp=%s, name=%s, index=%s, date=%s\n", _nodeDataPtr->forEachTarget->exp, _nodeDataPtr->forEachTarget->node, _nodeDataPtr->forEachTarget->index, target_datestamp );
    
    /* Check status of target node's iterations */
@@ -1545,7 +1545,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
                  SeqUtil_TRACE(TL_FULL_TRACE, "maestro.processContainerEnd() getting sibling info: %s\n", tmp );
                  siblingDataPtr = nodeinfo( tmp,NI_SHOW_TYPE|NI_SHOW_RESOURCE,
                                              NULL, _nodeDataPtr->expHome,
-                                             NULL, _nodeDataPtr->datestamp );
+                                             NULL, _nodeDataPtr->datestamp,NULL);
                  if (catchup != CatchupStop) {
                      if ( siblingDataPtr->catchup > catchup )  {
                          /*reset undoneChild since we're skipping this node*/
@@ -1735,7 +1735,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	         /*check if the running worker has not ended. If it has, launch another one.*/
             workerDataPtr =  nodeinfo( _nodeDataPtr->workerPath, NI_SHOW_ALL,
                                        _nodeDataPtr->loop_args, _nodeDataPtr->expHome,
-                                       NULL, _nodeDataPtr->datestamp );
+                                       NULL, _nodeDataPtr->datestamp,NULL );
             SeqLoops_validateLoopArgs( workerDataPtr, _nodeDataPtr->loop_args );        
             memset(workerEndFile,'\0',sizeof workerEndFile);
             memset(workerAbortFile,'\0',sizeof workerAbortFile);
@@ -2641,7 +2641,7 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDependsScope _dep_sc
               nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,_nodeDataPtr->datestamp, _nodeDataPtr->expHome); 
               return(0);
        }
-       depNodeDataPtr = nodeinfo( _dep_name, NI_SHOW_ALL, NULL, _dep_exp, NULL, _dep_datestamp );
+       depNodeDataPtr = nodeinfo( _dep_name, NI_SHOW_ALL, NULL, _dep_exp, NULL, _dep_datestamp,NULL );
        /* check catchup value of the node */
        SeqUtil_TRACE(TL_FULL_TRACE,"dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
        if (depNodeDataPtr->catchup == CatchupDiscretionary) {
@@ -2992,7 +2992,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    putenv("FROM_MAESTRO=yes");
 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro() using submit script=%s\n", submit_tool );
-   nodeDataPtr = nodeinfo( _node, NI_SHOW_ALL, _loops, _seq_exp_home , _extraArgs, _datestamp );
+   nodeDataPtr = nodeinfo( _node, NI_SHOW_ALL, _loops, _seq_exp_home , _extraArgs, _datestamp,NULL);
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro() nodeinfo done, loop_args=\n");
    SeqNameValues_printList(nodeDataPtr->loop_args);
    

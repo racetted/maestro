@@ -29,6 +29,39 @@
 #define FLOW_TRUE 1
 #define FLOW_FALSE 0
 
+/*
+ * IDEA FOR SWITCHES
+ *
+ * I recently had to find the right switch item to take based off a datestamp
+ * yet without having a nodeDataPtr.  This led to some slightly inelegant code
+ * with the generic switches coming up, I think I might need to do the
+ * following:
+ *
+ * Finding the correct switch item is only done with the datestamp, but a more
+ * general approach, if we want to add attributes that can decide what
+ * SWITCH_ITEM is taken would be to have a struct like this
+ *
+ * struct SwitchContext{
+ *    char *datestamp;
+ *    char *color;
+ *    char *mood;
+ * }switch_context;
+ *
+ * that we could put as an attribute of the FlowVisitor struct.
+ *
+ * Right now, functions like SwitchReturn() take a nodeDataPtr as an argument
+ * but in the context of SeqNodeCensus, we don't have a nodeDataPtr to give to
+ * SwitchReturn().  We have to create one, only for the sake of passing a
+ * datestamp to it:
+ *
+ * SeqNodeData nd;
+ * nd.datestamp = datestamp;
+ * switch_answer = SwitchReturn(&nd, switch_type);
+ * // forget about nd.
+ */
+
+
+
 /********************************************************************************
  * This structure contains information that is passed along through the various
  * functions used in getFlowInfo.  Since various parts of the code modify, add
@@ -37,9 +70,21 @@
  *
  * There is possibly more in here than is needed but this will be dealt with as
  * work progresses.
+ *
+ * Note on switch_args: Special purpose internal mechanism for controlling the
+ * behavior of the visitor when it encounters SWITCH_ITEMS.  The presence (when
+ * it is not null) of switch_args in the visitor will cause the visitor to
+ * ignore the context when choosing which SWITCH_ITEM to enter and instead, look
+ * in the switch_args string to decide.  This is so that the FlowVisitor can be
+ * used to create the nodeinfo database required by bug4869.  It is necessary to
+ * ignore the context in this situation because we must have all posssible
+ * nodes, and not just the ones that 'exist in the current context'.
 ********************************************************************************/
 typedef struct _FlowVisitor{
+   char * nodePath;
+   char * switch_args;
    const char * expHome;
+   const char * datestamp;
    char * currentFlowNode;
    char * taskPath;
    char * suiteName;
@@ -64,7 +109,8 @@ xmlXPathContextPtr Flow_previousContext(FlowVisitorPtr fv);
  * Initializes the flow_visitor to the entry module;
  * Caller should check if the return pointer is NULL.
 ********************************************************************************/
-FlowVisitorPtr Flow_newVisitor(const char * _seq_exp_home);
+FlowVisitorPtr Flow_newVisitor(const char *nodePath, const char *seq_exp_home,
+                                                     const char *switch_args);
 
 /********************************************************************************
  * Destructor for the flow_visitor object.
@@ -77,7 +123,8 @@ int Flow_deleteVisitor(FlowVisitorPtr _flow_visitor);
  * returns FLOW_SUCCESS if it is able to completely parse the path
  * returns FLOW_FAILURE otherwise.
 ********************************************************************************/
-int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr, const char * _nodePath);
+int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
+                                                        const char * _nodePath);
 
 /********************************************************************************
  * Tries to get to the node specified by nodePath.

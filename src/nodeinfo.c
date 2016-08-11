@@ -302,7 +302,11 @@ void parseLoopAttributes (xmlXPathObjectPtr _result, const char* _loop_node_path
    xmlNodeSetPtr nodeset;
    xmlNodePtr nodePtr;
    const xmlChar *nodeName = NULL;
-   xmlChar *loopStart = strdup("0"), *loopStep = strdup("1"), *loopEnd = strdup("1"), *loopSet = strdup("1"), *loopExpression = strdup("");
+   xmlChar *loopStart = DEFAULT_LOOP_START_STR,
+           *loopStep = DEFAULT_LOOP_STEP_STR,
+           *loopEnd = DEFAULT_LOOP_END_STR,
+           *loopSet = DEFAULT_LOOP_SET_STR,
+           *loopExpression = strdup("");
    int i=0;
    
    if (_result) {
@@ -597,10 +601,12 @@ void parseForEachTarget(xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr) 
  * Adds information to the SeqNodeData data structure about the the flow, such
  * as children, parent, siblings, submits and dependencies.
 *********************************************************************************/
-void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const char *_seq_exp_home, unsigned int filters)
+void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_seq_exp_home,
+                     const char *_nodePath,const char *switch_args, unsigned int filters)
 {
-   if (strcmp(_nodePath, "") == 0) raiseError("Calling getFlowInfo() with an empty path'\n");
-   FlowVisitorPtr flow_visitor = Flow_newVisitor(_seq_exp_home);
+   if (_nodePath == NULL || strcmp(_nodePath, "") == 0)
+      raiseError("Calling getFlowInfo() with an empty path'\n");
+   FlowVisitorPtr flow_visitor = Flow_newVisitor(_nodePath,_seq_exp_home,switch_args);
 
    if ( Flow_parsePath(flow_visitor,_nodeDataPtr, _nodePath) == FLOW_FAILURE )
       raiseError("Unable to get to the specified node %s\n",_nodePath);
@@ -627,7 +633,7 @@ void getFlowInfo ( SeqNodeDataPtr _nodeDataPtr, const char *_nodePath, const cha
 int doesNodeExist (const char *_nodePath, const char *_seq_exp_home , const char * _datestamp) {
 
    SeqUtil_TRACE(TL_FULL_TRACE, "doesNodeExist() begin\n");
-   FlowVisitorPtr flow_visitor = Flow_newVisitor( _seq_exp_home);
+   FlowVisitorPtr flow_visitor = Flow_newVisitor(_nodePath, _seq_exp_home, NULL);
    int nodeExists = FLOW_FALSE;
    char * newNode = (char*) SeqUtil_fixPath( _nodePath );
    SeqNodeDataPtr tempNode = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
@@ -645,8 +651,10 @@ int doesNodeExist (const char *_nodePath, const char *_seq_exp_home , const char
    return nodeExists;
 }
 
-SeqNodeDataPtr nodeinfo ( const char* node, unsigned int filters, SeqNameValuesPtr _loops, const char* _exp_home, char *extraArgs, char* datestamp ) {
-
+SeqNodeDataPtr nodeinfo ( const char* node, unsigned int filters,
+                              SeqNameValuesPtr _loops, const char* _exp_home,
+                              char *extraArgs, char* datestamp, const char * switch_args )
+{
    char *newNode = NULL,  *tmpfilters = NULL;
    char workdir[SEQ_MAXFIELD];
    SeqNodeDataPtr  nodeDataPtr = NULL;
@@ -655,7 +663,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, unsigned int filters, SeqNameValuesP
       raiseError("SEQ_EXP_HOME not set! (nodeinfo) \n");
    }
 
-   newNode = (char*) SeqUtil_fixPath( node );
+   newNode = (const char*) SeqUtil_fixPath( node );
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodeinfo() trying to create node %s, exp %s\n", newNode, _exp_home );
    nodeDataPtr = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
    SeqNode_setSeqExpHome(nodeDataPtr,_exp_home); 
@@ -674,12 +682,12 @@ SeqNodeDataPtr nodeinfo ( const char* node, unsigned int filters, SeqNameValuesP
    } else {
       /* add loop arg list to node */
       SeqNode_setLoopArgs( nodeDataPtr,_loops);
-      getFlowInfo ( nodeDataPtr, (char*) newNode, _exp_home,filters);
+      getFlowInfo ( nodeDataPtr, _exp_home, newNode,switch_args,filters);
       getNodeResources(nodeDataPtr,_exp_home, newNode);
 
    }
 
-   free(newNode);
+   free((char*)newNode);
    free((char*) newDatestamp);
    free( tmpfilters );
    return nodeDataPtr;

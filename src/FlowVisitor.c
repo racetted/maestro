@@ -36,17 +36,13 @@
 #include "FlowVisitor.h"
 #include "ResourceVisitor.h"
 
-extern char * switchReturn( SeqNodeDataPtr _nodeDataPtr, const char* switchType );
-
-const char * XmlUtils_firstResultName(xmlXPathObjectPtr queryResult){
-   return (const char *) queryResult->nodesetval->nodeTab[0]->children->content;
-};
 
 /********************************************************************************
  * Initializes the flow_visitor to the entry module;
  * Caller should check if the return pointer is NULL.
 ********************************************************************************/
-FlowVisitorPtr Flow_newVisitor(const char * _seq_exp_home)
+FlowVisitorPtr Flow_newVisitor(const char *nodePath, const char *seq_exp_home,
+                                                     const char *switch_args)
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_newVisitor() begin\n");
    FlowVisitorPtr new_flow_visitor = (FlowVisitorPtr) malloc(sizeof(FlowVisitor));
@@ -55,14 +51,17 @@ FlowVisitorPtr Flow_newVisitor(const char * _seq_exp_home)
 
    {
       char * postfix = "/EntryModule/flow.xml";
-      char * xmlFilename = (char *) malloc ( strlen(_seq_exp_home) + strlen(postfix) + 1 );
-      sprintf(xmlFilename, "%s%s", _seq_exp_home,postfix);
+      char * xmlFilename = (char *) malloc ( strlen(seq_exp_home) + strlen(postfix) + 1 );
+      sprintf(xmlFilename, "%s%s", seq_exp_home,postfix);
       xmlDocPtr doc = XmlUtils_getdoc(xmlFilename);
       new_flow_visitor->context = xmlXPathNewContext(doc);
       free(xmlFilename);
    }
 
-   new_flow_visitor->expHome = _seq_exp_home;
+   new_flow_visitor->nodePath = (nodePath ? strdup(nodePath) : NULL );
+   new_flow_visitor->expHome = seq_exp_home;
+   new_flow_visitor->datestamp = NULL;
+   new_flow_visitor->switch_args = (switch_args && strlen(switch_args) ? strdup(switch_args): NULL);
 
 
    new_flow_visitor->context->node = new_flow_visitor->context->doc->children;
@@ -82,7 +81,7 @@ out:
    return new_flow_visitor;
 }
 
-void _freeStack(FlowVisitorPtr fv)
+static void _freeStack(FlowVisitorPtr fv)
 {
    xmlXPathContextPtr context;
    while ( (context = _popContext(fv)) != NULL){
@@ -104,11 +103,19 @@ int Flow_deleteVisitor(FlowVisitorPtr _flow_visitor)
 
    _freeStack(_flow_visitor);
 
+   /*
+    * Same as with exp_home, I don't copy the string, so the memory for
+    * datestamp belongs to the caller of Flow_newVisitor(), so I don't free it
+    * here.
+    */
+
    free(_flow_visitor->currentFlowNode);
    free(_flow_visitor->taskPath);
    free(_flow_visitor->module);
    free(_flow_visitor->intramodulePath);
    free(_flow_visitor->suiteName);
+   free(_flow_visitor->nodePath);
+   free(_flow_visitor->switch_args);
 
    free(_flow_visitor);
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_deleteVisitor() end\n");
@@ -181,7 +188,7 @@ int Flow_walkPath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_walkPath() begin\n");
    int count = 0;
-   int totalCount = SeqUtil_tokenCount(nodePath,"/");
+   int totalCount = SeqUtil_tokenCount(nodePath,"/") - 1 ;
    int retval = FLOW_SUCCESS;
    for_tokens(pathToken, nodePath , "/", sp){
       if( Flow_doNodeQuery(_flow_visitor, pathToken, count == 0) == FLOW_FAILURE ){
@@ -190,6 +197,9 @@ int Flow_walkPath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
       }
 
       if( count == totalCount ){
+         SeqUtil_TRACE(TL_FULL_TRACE,"Flow_walkPath setting node %s to type %d\n",
+                                          nodePath,_flow_visitor->currentNodeType);
+         _nodeDataPtr->type = _flow_visitor->currentNodeType;
          retval = FLOW_SUCCESS;
          goto out;
       }
@@ -412,12 +422,37 @@ int Flow_updatePaths(FlowVisitorPtr _flow_visitor, const char * pathToken, const
    return FLOW_SUCCESS;
 }
 
+char *Flow_findSwitchArg(FlowVisitorPtr fv)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_findSwitchArg() begin,fv->nodePath:%s fv->switch_args=%s\n",fv->nodePath,fv->switch_args);
+   char *retval = NULL;
+
+   char *switchName = SeqUtil_getPathLeaf(fv->currentFlowNode);
+   for_tokens(token_pair,fv->switch_args,",",sp1){
+      SeqUtil_TRACE(TL_FULL_TRACE,"token_pair:%s\n",token_pair);
+      char *tok_name = token_pair;
+      char *tok_value;
+      tok_value = strstr(token_pair,"=");
+      *tok_value++ = '\0';
+      SeqUtil_TRACE(TL_FULL_TRACE,"tok_name=%s, tok_value=%s\n",tok_name, tok_value);
+      /* getchar(); */
+      if(strcmp(tok_name,switchName)==0){
+         retval = strdup(tok_value);
+         goto out_free;
+      }
+   }
+
+out_free:
+   free(switchName);
+   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_findSwitchArg() end\n");
+   return retval;
+}
 /********************************************************************************
  * Parses the attributes of a switch node into the nodeDataPtr.
  * Returns FLOW_SUCCESS if the right switch item (or default) is found.
  * Returns FLOW_FAILURE otherwise.
 ********************************************************************************/
-int Flow_parseSwitchAttributes(FlowVisitorPtr _flow_visitor,
+int Flow_parseSwitchAttributes(FlowVisitorPtr fv,
                                  SeqNodeDataPtr _nodeDataPtr, int isLast )
 {
 
@@ -427,14 +462,31 @@ int Flow_parseSwitchAttributes(FlowVisitorPtr _flow_visitor,
 
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_parseSwitchAttributes(): begin\n");
 
-   if( (switchType = Flow_findSwitchType(_flow_visitor)) == NULL )
+   if( (switchType = Flow_findSwitchType(fv)) == NULL )
       raiseError("Flow_parseSwitchAttributes(): switchType not found\n");
 
-   switchValue = switchReturn(_nodeDataPtr, switchType);
-   char * fixedSwitchPath = SeqUtil_fixPath( _flow_visitor->currentFlowNode );
+   /*
+    * Switch args are here to allow us to select a SWITCH_ITEM by simply
+    * specifying it in the special switch_args string instead of relying on the
+    * context
+    */
+   if( fv->switch_args == NULL || isLast){
+      switchValue = switchReturn(_nodeDataPtr, switchType);
+   } else {
+      switchValue = Flow_findSwitchArg(fv);
+   }
+
+   /*
+    * Insert the switch_path=switchValue key-value pair into the node's switch
+    * answers list.
+    */
+   char * fixedSwitchPath = SeqUtil_fixPath( fv->currentFlowNode );
    SeqNameValues_insertItem(&(_nodeDataPtr->switchAnswers), fixedSwitchPath , switchValue );
 
-   if( Flow_findSwitchItem(_flow_visitor, switchValue) == FLOW_FAILURE ){
+   /*
+    * Enter the correct switch item
+    */
+   if( Flow_findSwitchItem(fv, switchValue) == FLOW_FAILURE ){
       SeqUtil_TRACE(TL_FULL_TRACE,"Flow_parseSwitchAttributes(): no SWITCH_ITEM found containing value=%s and no SWITCH_ITEM found containing value=%s\n", switchValue);
       retval = FLOW_FAILURE;
       goto out_free;
@@ -461,20 +513,11 @@ out_free:
  * This function returns the switch type of the current node in the XML XPath
  * context
 ********************************************************************************/
-const char * Flow_findSwitchType(const FlowVisitorPtr _flow_visitor ){
+const char * Flow_findSwitchType(const FlowVisitorPtr fv ){
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_findSwitchType() begin\n");
-   xmlXPathObjectPtr attributesResult = NULL;
-   const char * switchType = NULL;
-
-   if( (attributesResult = XmlUtils_getnodeset( "(@type)" , _flow_visitor->context)) == NULL )
-      goto out;
-
-   switchType = XmlUtils_firstResultName(attributesResult);
-
-out_free:
-   xmlXPathFreeObject(attributesResult);
+   const char * switchType = xmlGetProp(fv->context->node,"type");
 out:
-   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_findSwitchType() end\n");
+   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_findSwitchType() end, returning %s\n",switchType);
    return switchType;
 }
 

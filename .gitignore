@@ -29,3 +29,4 @@ submitTests.sh
 # NFS files
 .nfs*
 mtest
+tsvinfo

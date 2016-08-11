@@ -24,6 +24,26 @@
 #include "SeqNode.h"
 
 
+/*
+ * The attributes should be set to a default value when they are read from the
+ * xml but this will do.
+ */
+#define DEFAULT_LOOP_START 0
+#define DEFAULT_LOOP_START_STR strdup("0")
+
+#define DEFAULT_LOOP_END 1
+#define DEFAULT_LOOP_END_STR   strdup("1")
+
+#define DEFAULT_LOOP_STEP 1
+#define DEFAULT_LOOP_STEP_STR  strdup("1")
+
+#define DEFAULT_LOOP_SET 1
+#define DEFAULT_LOOP_SET_STR   strdup("1")
+
+
+
+
+
 void SeqLoops_setLoopAttribute( SeqNameValuesPtr* loop_attr_ptr, char* attr_name, char* attr_value );
 int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args );
 char* SeqLoops_getLoopAttribute( SeqNameValuesPtr loop_attr_ptr, char* attr_name );

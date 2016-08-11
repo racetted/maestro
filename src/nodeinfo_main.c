@@ -160,7 +160,7 @@ int main ( int argc, char * argv[] )
 
    if ( seq_exp_home == NULL) {
       if ((seq_exp_home = getenv("SEQ_EXP_HOME")) == NULL){
-         fprintf(stderr , "nodelogger_main.c : SEQ_EXP_HOME must be set either with '-e' option or through the environment variable SEQ_EXP_HOME \n");
+         fprintf(stderr , "nodeinfo_main.c : SEQ_EXP_HOME must be set either with '-e' option or through the environment variable SEQ_EXP_HOME \n");
          printUsage();
          exit(1);
       }
@@ -187,7 +187,7 @@ int main ( int argc, char * argv[] )
       exit(1);
    }
 
-   nodeDataPtr = nodeinfo( node, filters, loopsArgs, seq_exp_home, NULL, datestamp );
+   nodeDataPtr = nodeinfo( node, filters, loopsArgs, seq_exp_home, NULL, datestamp,NULL );
 
    if (gotLoops){
       SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgs );

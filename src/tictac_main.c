@@ -125,7 +125,7 @@ main (int argc, char * argv [])
                break;
             case 's':
                dateValue = malloc( PADDED_DATE_LENGTH + 1 );
-               strcpy(dateValue,optarg);
+               SeqUtil_addPadding(dateValue,optarg,PADDED_DATE_LENGTH,'0');
                break;
             case 'd':
                dateValue = malloc( PADDED_DATE_LENGTH + 1 );
@@ -149,14 +149,6 @@ main (int argc, char * argv [])
                printUsage();
                exit(1);
          }
-      }
-      
-      if ( dateValue != NULL ) {
-         i = strlen(dateValue);
-         while ( i < PADDED_DATE_LENGTH ){
-            dateValue[i++] = '0';
-         }
-         dateValue[PADDED_DATE_LENGTH] = '\0';
       }
 
       if (expHome == NULL){

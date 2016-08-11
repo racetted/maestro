@@ -28,10 +28,14 @@
 #include "ResourceVisitor.h"
 #include "FlowVisitor.h"
 #include "SeqUtil.h"
+#include "SeqLoopsUtil.h"
+#include "SeqDatesUtil.h"
 #include "nodeinfo.h"
 #include "getopt.h"
 #include "SeqNode.h"
 #include "XmlUtils.h"
+#include "SeqNodeCensus.h"
+#include "tsvinfo.h"
 
 static char * testDir = NULL;
 int MLLServerConnectionFid=0;
@@ -85,127 +89,39 @@ void header(const char * test){
    SeqUtil_TRACE(TL_CRITICAL, "\n=================== UNIT TEST FOR %s ===================\n",test);
 }
 
-void printListWithLinefeed(LISTNODEPTR list_head, int trace_level){
-   for_list(itr,list_head){
-      SeqUtil_TRACE(trace_level, "%s\n", itr->data);
-   }
-}
+/* Define tests here */
 
-
-/*
- * SOME NOTES ABOUT THIS TEST:
- * This test was made in another commit to develop an algorithm for getting the
- * list of all the nodes in an experiment.  I include it here as a means to test
- * the Flow_changeModule() function that uses a stack of xmlXPathContextPtr.
- *
- * This algorithm was going to be used for bug4689 but I ended up having to do
- * too many hackish things for my liking.  Therefore I'm going to wait until
- * Dominic gets back from vacation and discuss things like changing the desired
- * behavior so that it can be implemented with good design/coding practices.
- *
- * The root of the hackishness is switches, and the starting hack is to put
- * switch item names in square brackets.  As I worked on generic switches
- * (bug7312) I noticed that I hadn't thought about using loop_args.  So maybe
- * instead of weird hackish paths, we could use a (path,loop_args) pair as
- * entries in our 'node census'.
- */
-void parseFlowTree_internal(FlowVisitorPtr fv, LISTNODEPTR * list_head,
-                                    const char * basePath, int depth);
-
-LISTNODEPTR parseFlowTree(const char * seq_exp_home)
+int test_nodeCensus(const char * seq_exp_home, const char * node, const char * datestamp)
 {
-   LISTNODEPTR list_head = NULL;
-   FlowVisitorPtr fv = Flow_newVisitor(seq_exp_home);
-
-   const char * basePath = (const char *) xmlGetProp(fv->context->node,
-                                                      (const xmlChar *)"name");
-   SeqListNode_pushFront(&list_head, basePath);
-
-   parseFlowTree_internal(fv, &list_head,basePath, 0);
-
-   free((char*)basePath);
-   Flow_deleteVisitor(fv);
-   return list_head;
-
+   PathArgNodePtr nodeList = getNodeList(seq_exp_home,NULL);
+   PathArgNode_printList( nodeList , TL_FULL_TRACE );
+   PathArgNode_deleteList(&nodeList);
+   return 0;
 }
 
-void indent(int depth)
+int test_SeqUtil_padDate()
 {
-   int i;
-   for(i = depth; i--;)
-      fprintf(stderr, "    ");
+   char * date = "2016010203";
+   char dst[PADDED_DATE_LENGTH + 1];
+   SeqUtil_addPadding(dst,date,'A',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   SeqUtil_addPadding(dst,NULL,'B',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   SeqUtil_addPadding(NULL,date,'C',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   date = "LONGER_THAN_THE_LENGTH";
+   SeqUtil_addPadding(dst,date,'D',PADDED_DATE_LENGTH);
+   SeqUtil_TRACE(TL_FULL_TRACE,"Original %s, Padded %s\n",date,dst);
+   return 0;
 }
 
-void parseFlowTree_internal(FlowVisitorPtr fv, LISTNODEPTR * list_head,
-                                    const char * basePath, int depth)
-{
-   /*
-    * Oh heavenly Father, I pray to thee to forgive me for this inelegant query
-    * which amounts to saying "all children except SUBMITS".  There has to be a
-    * way of saying something like child::!SUBMITS or something.
-    */
-   xmlXPathObjectPtr results = XmlUtils_getnodeset("(child::FAMILY|child::TASK\
-                                                     |child::SWITCH|child::SWITCH_ITEM\
-                                                     |child::MODULE|child::LOOP\
-                                                     |child::NPASS_TASK|child::FOR_EACH)"
-                                                      , fv->context);
 
-   for_results( xmlNode, results ){
-      const char * name = (const char *)xmlGetProp( xmlNode, (const xmlChar *)"name");
-      xmlNodePtr node = xmlNode;
-
-      if( strcmp(node->name, "TASK") == 0 || strcmp(node->name, "NPASS_TASK") == 0){
-         char path[SEQ_MAXFIELD] = {0};
-         sprintf( path, "%s/%s", basePath,name);
-         SeqListNode_pushFront(list_head, path);
-      } else if( strcmp(node->name, "MODULE") == 0){
-         char path[SEQ_MAXFIELD] = {0};
-         sprintf( path, "%s/%s", basePath,name);
-         SeqListNode_pushFront(list_head, path);
-         Flow_changeModule(fv, (const char *) name);
-         parseFlowTree_internal(fv, list_head,path, depth+1);
-         Flow_restoreContext(fv);
-      } else if( strcmp(node->name, "LOOP") == 0
-          || strcmp(node->name, "FAMILY") == 0
-          || strcmp(node->name, "SWITCH") == 0){
-         char path[SEQ_MAXFIELD] = {0};
-         sprintf( path, "%s/%s", basePath,name);
-         SeqListNode_pushFront(list_head, path);
-         xmlNodePtr previousNode = fv->context->node;
-         fv->context->node = node;
-         parseFlowTree_internal(fv, list_head,path,depth+1);
-         fv->context->node = previousNode;
-      } else if( strcmp(node->name, "SWITCH_ITEM") == 0 ){
-         char path[SEQ_MAXFIELD] = {0};
-         const char * switch_item_name = xmlGetProp(xmlNode, (const xmlChar *)"name");
-         sprintf( path, "%s[%s]", basePath,switch_item_name);
-         xmlNodePtr previousNode = fv->context->node;
-         fv->context->node = node;
-         parseFlowTree_internal(fv, list_head,path, depth+1);
-         fv->context->node = previousNode;
-         free((char*)switch_item_name);
-      }
-      free((char *)name);
-   }
-   xmlXPathFreeObject(results);
-}
 
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
-
-   SeqUtil_setTraceFlag(TRACE_LEVEL, TL_CRITICAL);
-   LISTNODEPTR list_head = parseFlowTree(seq_exp_home);
-
-   SeqUtil_setTraceFlag(TRACE_LEVEL, TL_FULL_TRACE);
-   SeqUtil_TRACE(TL_FULL_TRACE, "===============================================================\nNote that this test is dependent on an experiment that is not in the test directory.\n\n");
-   SeqUtil_setTraceFlag(TRACE_LEVEL, TL_FULL_TRACE);
-   SeqListNode_reverseList(&list_head);
-   printListWithLinefeed(list_head,TL_FULL_TRACE);
-
-
-
-   SeqListNode_deleteWholeList(&list_head);
-   SeqUtil_TRACE(TL_CRITICAL, "============== ALL TESTS HAVE PASSED =====================\n");
+   /* Call the tests here */
+   test_nodeCensus(seq_exp_home,node,"20160102030000");
+   test_SeqUtil_padDate();
    return 0;
 }
 int main ( int argc, char * argv[] )
@@ -254,6 +170,7 @@ int main ( int argc, char * argv[] )
    const char * p = PWD;
    while(*p++ != 0 );
    while(*(p-1) != '/') --p;
+
    if( strcmp(p,"maestro") != 0 ){
       SeqUtil_TRACE(TL_FULL_TRACE, "\
 Main function for doing tests, please run this from the maestro directory so\n\
@@ -270,8 +187,10 @@ from the maestro directory.\n");
    sprintf( testDir, "%s%s" , PWD, suffix);
 
    puts ( testDir );
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/"); */
    seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/sample/");
-
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/HelloWorldPhil/"); */
+   /* seq_exp_home = strdup("/home/ops/afsi/phc/Documents/Experiences/bug6268_switch"); */
    runTests(seq_exp_home,node,datestamp);
 
    free(node);

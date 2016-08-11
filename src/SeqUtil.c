@@ -68,6 +68,38 @@ static struct TraceFlags traceFlags = { TL_CRITICAL, TF_OFF, TF_OFF};
 static struct mappedFile mappedFiles[SEQ_MAXFILES];
 static int nbMappedFiles = 0;
 
+/********************************************************************************
+ * Copies src into dst with padding char up to the specified length.  Caller
+ * must allocate memory. If the input is longer than the specified lenght, it
+ * will be truncated in the output.
+ ********************************************************************************/
+void SeqUtil_addPadding( char *dst, const char *src, char c, int length)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() begin\n");
+   int i = 0;
+   if( dst == NULL ){
+      SeqUtil_TRACE(TL_MEDIUM, "    cannot have NULL dst parameter\n");
+      goto out;
+   }
+
+   if( src == NULL ) {
+      SeqUtil_TRACE(TL_MEDIUM, "    NULL input: setting dst to empty string\n");
+      dst[0] = '\0';
+      goto out;
+   }
+
+   for(;src[i] != '\0' && i < length; i++)
+      dst[i] = src[i];
+
+   for(;i < length; i++)
+      dst[i] = c;
+
+   dst[i] = '\0';
+out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() end\n");
+   return;
+}
+
 /******************************************************************************** 
  * Trace function.  Message will only be output if messageImportance is superior
  * or equal to the importance set by the environment or the caller of the
@@ -333,8 +365,11 @@ int isFileExists_nfs( const char* lockfile, const char *caller, const char * _se
 FILE * fopen_nfs (const char *path, int sock )
 {
     FILE *fp;
-    if ( (fp=fopen (path, "r")) != NULL )  return(fp);
+    if ( (fp=fopen (path, "r")) != NULL )
+       return(fp);
+
     raiseError("fopen_nfs Cannot open waited file, aborting.");
+    return NULL; /* to remove compiler warning. */
 }
 
 
@@ -714,8 +749,7 @@ char* SeqUtil_getdef( const char* filename, const char* key , const char* _seq_e
 ********************************************************************************/
 int SeqUtil_getmappedfile(const char *filename, char ** filestart , char** fileend){
   extern struct mappedFile mappedFiles[SEQ_MAXFILES];
-  extern nbMappedFiles;
-  int status = 0;
+  extern int nbMappedFiles;
 
   /* Find the file if it is mapped */
   int i;
@@ -810,7 +844,6 @@ int readline(char *line, int size, char* source)
 ********************************************************************************/
 char* SeqUtil_parsedef( const char* filename, const char* key ) {
   char *retval=NULL;
-  unsigned long int iterator=0;
   char line[SEQ_MAXFIELD],defkey[SEQ_MAXFIELD],defval[SEQ_MAXFIELD];
   char *filestart;
   char *fileend;
@@ -861,15 +894,18 @@ char* SeqUtil_parsedef( const char* filename, const char* key ) {
    causes the resolver to search in the environment for the key definition.  If 
    _srcfile is NULL, information about the str source is not printed in case of an error.*/
 char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfile ,const char* _seq_exp_home) {
-  char *strtmp=NULL,*substr=NULL,*var=NULL,*env=NULL,*post=NULL,*source=NULL;
+  char *strtmp=NULL,*substr=NULL,*var_name=NULL,*var_value=NULL,*post=NULL,*source=NULL;
   char *saveptr1,*saveptr2;
   static char newstr[SEQ_MAXFIELD];
   int start,isvar;
+  int getFromEnv;
 
   if (_deffile == NULL){
-    SeqUtil_stringAppend( &source, "environment" );}
-  else{
-    SeqUtil_stringAppend( &source, "definition" );
+     getFromEnv = 1;
+     source = "environment";
+  } else{
+     getFromEnv = 0;
+     source = "definition";
   }
   SeqUtil_TRACE(TL_FULL_TRACE,"XmlUtils_resolve(): performing %s replacements in string \"%s\"\n",source, _str);
 
@@ -879,25 +915,25 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
   start=0;
   while (substr != NULL){
     isvar = (strstr(substr,"}") == NULL) ? 0 : 1;
-    var = strtok_r(substr,"}",&saveptr2);
-    if (strcmp(source,"environment") == 0){
-      env = getenv(var);}
+    var_name = strtok_r(substr,"}",&saveptr2);
+    if (getFromEnv){
+      var_value = getenv(var_name);}
     else{
-      env = SeqUtil_getdef(_deffile,var,_seq_exp_home);
+      var_value = SeqUtil_getdef(_deffile,var_name,_seq_exp_home);
     }
     post = strtok_r(NULL,"\0",&saveptr2);
-    if (env == NULL){
+    if (var_value == NULL){
       if (isvar > 0){
-	      raiseError("Variable %s referenced by %s but is not set in %s\n",var,_srcfile,source);}
+	      raiseError("Variable %s referenced by %s but is not set in %s\n",var_name,_srcfile,source);}
       else{
-	      strncpy(newstr+start,var,strlen(var));
-	      start += strlen(var);
+	      strncpy(newstr+start,var_name,strlen(var_name));
+	      start += strlen(var_name);
       }
     }
     else {
-      SeqUtil_TRACE(TL_FULL_TRACE,"XmlUtils_resolve(): replacing %s with %s value \"%s\"\n",var,source,env);
-      strncpy(newstr+start,env,strlen(env));
-      start += strlen(env);
+      SeqUtil_TRACE(TL_FULL_TRACE,"XmlUtils_resolve(): replacing %s with %s value \"%s\"\n",var_name,source,var_value);
+      strncpy(newstr+start,var_value,strlen(var_value));
+      start += strlen(var_value);
     }
     if (post != NULL){
       strncpy(newstr+start,post,strlen(post));
@@ -905,8 +941,9 @@ char* SeqUtil_keysub( const char* _str, const char* _deffile, const char* _srcfi
     }
     newstr[start]=0;
     substr = strtok_r(NULL,"${",&saveptr1);
+    if(!getFromEnv)
+       free(var_value);
   }
-  free(source);
   free(strtmp);
   return newstr;
 }  

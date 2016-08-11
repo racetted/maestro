@@ -29,8 +29,8 @@
       )
 
 struct listNode {
-    char *data;
     struct listNode *nextPtr;
+    char *data;
   };
 
 typedef struct listNode LISTNODE;

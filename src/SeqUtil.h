@@ -61,6 +61,7 @@
    strcpy(tmpString,string);\
    for( token = strtok_r(tmpString,delimiters, &sp); token != NULL; token = strtok_r(NULL,delimiters,&sp))
 
+void SeqUtil_addPadding( char *dst, const char *datestamp, char c, int length);
 void  raiseError(const char* fmt, ... );
 void  SeqUtil_TRACE( int level,const char * fmt, ...);
 void  SeqUtil_setTraceLevel (int _trace) ;
