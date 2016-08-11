@@ -62,7 +62,7 @@ static char submit_tool[256];
 char *CurrentNode;
 
 /* external Function declarations */
-extern int get_Inode (const char * );
+extern size_t get_Inode (const char * );
 
 /* Function declarations */
 static int go_abort(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPtr);
@@ -2469,7 +2469,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
    SeqDependenciesPtr depsPtr = NULL;
    SeqNameValuesPtr nameValuesPtr = NULL, loopArgsPtr = NULL;
    SeqDependsScope depScope = IntraSuite;
-   int thisInode, rcInode; /* seq_exp_home vs xp given in resource */
+   size_t thisInode, rcInode; /* seq_exp_home vs xp given in resource */
 
    memset(filename,'\0',sizeof filename);
    memset(seqPath,'\0',sizeof seqPath);

@@ -24,7 +24,7 @@
 #include <openssl/md5.h>
 
 void get_time (char * , int  );
-int  get_Inode ( const char *pathname );
+size_t  get_Inode ( const char *pathname );
 void* xmalloc (size_t size);
 char* xstrdup (const char* s);
 void* xrealloc (void* ptr, size_t size);

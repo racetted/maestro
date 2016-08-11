@@ -74,7 +74,7 @@ void get_time (char *btime , int mode )
  *  Author      : R.Lahlou , cmoi 2012
  *  Description : get the inode of a path , file , ...
  */ 
-int get_Inode ( const char *pathname )
+size_t get_Inode ( const char *pathname )
 {
      char *path_status=NULL;
      char resolved[MAXPATHLEN];
