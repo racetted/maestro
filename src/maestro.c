@@ -2448,28 +2448,31 @@ char* formatWaitingMsg( SeqDependsScope _dep_scope, const char* _dep_exp,
  * Sets the experiment scope to IntraSuite, IntraUser, InterUser based on some
  * the use of _access() and some Inode checks
 ********************************************************************************/
-void setDepExpScope(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep)
+void setDepExpScope(SeqNodeDataPtr ndp, SeqDepDataPtr dep)
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "setDepExpScope() begin\n");
+
    char seqPath[SEQ_MAXFIELD];
-   int thisInode, rcInode; /* seq_exp_home vs xp given in resource */
-   /* memset(seqPath,'\0',sizeof seqPath);
-    * the only reason the string would not be nul terminated by sprintf is if it
-    * has lenght equal or grater than SEQ_MAXFIELD. in that case even putting
-    * seqPath[SEQ_MAXFIELD] = '\0' won't help because sprintf will ovewrite it.*/
    sprintf(seqPath,"%s/sequencing/status",dep->exp);
-   if (_access(seqPath,W_OK, _nodeDataPtr->expHome) == 0) {
-      thisInode=get_Inode (_nodeDataPtr->expHome);
-      rcInode=get_Inode(dep->exp);
-      if ( thisInode == rcInode ){ 
-         dep->exp_scope = IntraSuite;  /* yes -> intraSuite ,will write under ...../status/depends/ */
+
+   if (_access(seqPath,W_OK, ndp->expHome) == 0) {
+
+      if(get_Inode(ndp->expHome) == get_Inode(dep->exp) ){
+
+         dep->exp_scope = IntraSuite;  /* yes -> intraSuite
+                                        * will write under ...../status/depends/
+                                        */
       } else {
-         dep->exp_scope = IntraUser;   /* no  -> intraUser  ,will write under ...../status/remote_depends/ */
+         dep->exp_scope = IntraUser;   /* no  -> intraUser
+                                        * will write under ...../status/remote_depends/
+                                        */
       }
    } else {
       dep->exp_scope = InterUser;
    }
-   SeqUtil_TRACE(TL_FULL_TRACE, "setDepExpScope() end set dep->exp_scope to %d (IntraSuite:%d,IntraUser:%d,InterUser:%d)\n",dep->exp_scope,IntraSuite,IntraUser,InterUser);
+   SeqUtil_TRACE(TL_FULL_TRACE, "setDepExpScope() end set dep->exp_scope to %d\
+      (IntraSuite:%d,IntraUser:%d,InterUser:%d)\n", dep->exp_scope,
+      IntraSuite,IntraUser,InterUser);
 }
 
 /********************************************************************************
@@ -2479,16 +2482,21 @@ void setDepExpScope(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep)
  * If a time_delta s specified, then the hour field is ignored.  If none are
  * specified, then the nodeDataPtr's datestamp is simply copied.
 ********************************************************************************/
-void setDepDatestamp(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep)
+void setDepDatestamp(SeqNodeDataPtr ndp, SeqDepDataPtr dep)
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "setDepDatestamp() begin\n");
    if( dep->time_delta != NULL && strlen(dep->time_delta) > 0 ){
-      dep->datestamp = SeqDatesUtil_addTimeDelta( _nodeDataPtr->datestamp, dep->time_delta);
+
+      dep->datestamp = SeqDatesUtil_addTimeDelta( ndp->datestamp,
+                                                              dep->time_delta);
    } else if( dep->hour != NULL && strlen(dep->hour) > 0 ) {
       /* calculate relative datestamp based on the current one */
-      dep->datestamp = SeqDatesUtil_getPrintableDate( _nodeDataPtr->datestamp,0, atoi(dep->hour),0,0 );
+      dep->datestamp = SeqDatesUtil_getPrintableDate( ndp->datestamp,
+                                                      0, atoi(dep->hour),0,0 );
    } else {
-      dep->datestamp = strdup( _nodeDataPtr->datestamp );
+
+      dep->datestamp = strdup( ndp->datestamp );
+
    }
    SeqUtil_TRACE(TL_FULL_TRACE, "setDepDatestamp() end\n");
 }
@@ -2497,81 +2505,127 @@ void setDepDatestamp(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep)
  * Check that the dependency is in scope by comparing the extension with the
  * nodeDataPtr's extension, then comparing the nodedataPtr's datestamp against
  * the dependency's valid_dow and valid_hour fields.
+ * As soon as a check fails, we return 0, and if all checks pass we return 1.
+ *
+ * Return value is passed into the dep->isInScope field.
 ********************************************************************************/
-void check_depIsInScope(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep)
+void check_depIsInScope(SeqNodeDataPtr ndp, SeqDepDataPtr dep)
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "check_depIsInScope() begin\n");
    int isDepInScope = 0;
 
-   /* if I'm a loop iteration, process it */
+   /* Calculate extension */
    dep->local_ext = SeqLoops_indexToExt(dep->local_index);
 
-   /* does this dependency apply to the current situation? */
-   if(    strcmp(dep->local_ext, _nodeDataPtr->extension) == 0
-       || strcmp(dep->local_ext,"") == 0 ){
-      isDepInScope=1;
-      isDepInScope = isDepInScope && (strlen(dep->valid_hour) > 0 ? SeqDatesUtil_isDepHourValid(_nodeDataPtr->datestamp,dep->valid_hour) : 1);
-      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() Checked valid hour %s on datestamp %s, isDepInScope=%d\n", dep->valid_hour,_nodeDataPtr->datestamp,isDepInScope);
-      isDepInScope = isDepInScope && (strlen(dep->valid_dow) > 0 ? SeqDatesUtil_isDepDOWValid(_nodeDataPtr->datestamp,dep->valid_dow) : 1);
-      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() Checked Day Of Week %s on datestamp %s, isDepInScope=%d\n", dep->valid_dow,_nodeDataPtr->datestamp,isDepInScope);
-   } else {
-      isDepInScope=0;
-   }
-   dep->isInScope = isDepInScope;
-   SeqUtil_TRACE(TL_FULL_TRACE, "check_depIsInScope() end set dep->isInScope to %d\n",dep->isInScope);
-}
-static int validateSingleDep(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *_flow)
-{
-   int wait = 0;
-   if ( dep->type == NodeDependancy) {
-
-      if( dep->exp == NULL || strlen( dep->exp ) == 0 ) {
-         dep->exp = strdup(_nodeDataPtr->expHome);
+   /* if extension is specified */
+   if( strlen(dep->local_ext) > 0 ){
+      /* It must match the ndp's extension */
+      if( strcmp(dep->local_ext, ndp->extension) != 0){
+         isDepInScope = 0;
+         goto out;
       }
-      setDepExpScope(_nodeDataPtr, dep);
-      setDepDatestamp(_nodeDataPtr, dep);
-      check_depIsInScope(_nodeDataPtr, dep);
+   }
+
+   /* if valid_hour is specified */
+   if( strlen(dep->valid_hour) > 0){
+      /* check valid hour */
+      if(!SeqDatesUtil_isDepHourValid(ndp->datestamp, dep->valid_hour)){
+         isDepInScope = 0;
+         goto out;
+      }
+   }
+
+   /* If valid_dow is specified */
+   if( strlen(dep->valid_dow) > 0){
+      if(!SeqDatesUtil_isDepDOWValid(ndp->datestamp,dep->valid_hour)){
+         isDepInScope = 0;
+         goto out;
+      }
+   }
+
+   /* If all checks pass, the dep is in scope */
+   isDepInScope = 1;
+
+out:
+   dep->isInScope = isDepInScope;
+   SeqUtil_TRACE(TL_FULL_TRACE,"check_depIsInScope() end : dep->isInScope = %d\n",
+                                                               dep->isInScope);
+}
+
+
+/********************************************************************************
+ * Checks, for a single dependency, if it is satisfied.  The function calculates
+ * or sets certain properties of the dependency first:
+ *    - exp
+ *    - exp_scope
+ *    - datestamp
+ *    - isInScope
+ * and calls processDepStatus to check the status files to know if the dep is
+ * satisfied.
+********************************************************************************/
+static
+int validateSingleDep(SeqNodeDataPtr ndp, SeqDepDataPtr dep, const char *_flow)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "validateSingleDep() begin\n");
+
+   int wait = 0;
+   switch(dep->type){
+    case NodeDependancy:
+      /*
+       * Futur: the inside of this case goes into the function validateNodeDep.
+       * Since there is only one type, it's not needed, but if you add a type,
+       * do it righ away before it gets out of control, or split off what
+       * depends on the type and what doesn't.
+       */
+
+      /* I would like to put this part about dep->exp in the parseDepends module */
+      if( dep->exp == NULL || strlen( dep->exp ) == 0 ) {
+         dep->exp = strdup(ndp->expHome);
+      }
+
+      setDepExpScope(ndp, dep);
+      setDepDatestamp(ndp, dep);
+      check_depIsInScope(ndp, dep);
 
       SeqDep_printDep(TL_FULL_TRACE,dep);
 
       /* verify status files and write waiting files */
       if (dep->isInScope) {
-         wait = processDepStatus( _nodeDataPtr, dep, _flow);
+         wait = processDepStatus( ndp, dep, _flow);
       } else {
          SeqDep_printDep(TL_FULL_TRACE,dep);
       }
 
-   } else {
-      SeqUtil_TRACE(TL_FULL_TRACE,"maestro.validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");
+    default:
+      SeqUtil_TRACE(TL_FULL_TRACE,
+         "validateDependencies() unprocessed nodeinfo_depend_type=%d depsPtr->type\n");
    }
+   SeqUtil_TRACE(TL_FULL_TRACE, "validateSingleDep() end\n");
    return wait;
 }
 
-/* 
-validateDependencies
-
-Checks if the dependencies are satisfied for a given node. 
-
-Inputs:
-  _nodeDataPtr - pointer to the node targetted by the execution
-  _flow         - continue | stop 
-
-*/
-
-static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *_flow ) {
+/********************************************************************************
+ * Checks if the dependencies are satisfied for a given node.  Goes through each
+ * dependency of the node until it finds one that is not satisfied.
+ * Returns 1 if the node must continue waiting (found an unsatisfied dependency)
+ * Returns 0 if the node can begin (all deps are satisified).
+********************************************************************************/
+static
+int validateDependencies(SeqNodeDataPtr ndp, const char *_flow ) {
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() begin\n");
    int isWaiting = 0;
 
-   SeqDepNodePtr depNode = _nodeDataPtr->dependencies;
+   SeqDepNodePtr depNode = ndp->dependencies;
    for(;depNode != NULL; depNode = depNode->nextPtr){
-      if( validateSingleDep(_nodeDataPtr, depNode->depData,_flow) ){
+      if( validateSingleDep(ndp, depNode->depData,_flow) ){
          isWaiting = 1;
          goto out;
       }
    }
 
 out:
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() returning isWaiting=%d\n", isWaiting);
+   SeqUtil_TRACE(TL_FULL_TRACE,
+         "validateDependencies() returning isWaiting=%d\n", isWaiting);
    return isWaiting;
 }
 
