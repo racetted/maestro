@@ -2651,7 +2651,7 @@ out:
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow ) {
    char statusFile[SEQ_MAXFIELD];
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
-   char *waitingMsg = NULL, *depExtension = NULL, *extString = NULL, *currentIndexPtr = NULL;
+   char *waitingMsg = NULL, *depExtension = NULL, *currentIndexPtr = NULL;
    char msg[1024];
    /* ocm related */
    char dhour[3];
@@ -2667,25 +2667,17 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
    SeqNameValuesPtr loopArgsPtr = NULL;
 
    /* if I'm dependant on a loop iteration, need to process it */
-   if( dep->index != NULL && strlen( dep->index ) > 0 ) {
-       SeqUtil_TRACE(TL_FULL_TRACE, "maestro.processDepStatus() depIndex=%s length:%d\n", dep->index, strlen(dep->index) );
-       SeqLoops_parseArgs(&loopArgsPtr, dep->index);
-       extString = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
-       if( strstr( extString, "+*" ) != NULL ) {
-           depWildcard  = 1;
-       }
-   } else {
-          SeqUtil_stringAppend( &extString, "" );
-   }
+   dep->ext = SeqLoops_indexToExt(dep->index);
+   depWildcard = ( strstr(dep->ext,"+*") != NULL);
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus dep->node_name=%s _extString=%s dep->datestamp=%s dep->status=%s dep->exp=%s dep->exp_scope=%d dep->protocol=%s \n", 
-       dep->node_name, extString, dep->datestamp, dep->status, dep->exp, dep->exp_scope , dep->protocol ); 
+   SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus dep->node_name=%s dep->ext=%s dep->datestamp=%s dep->status=%s dep->exp=%s dep->exp_scope=%d dep->protocol=%s \n", 
+       dep->node_name, dep->ext, dep->datestamp, dep->status, dep->exp, dep->exp_scope , dep->protocol ); 
 
    if( dep->index == NULL || strlen( dep->index ) == 0 ) {
       SeqUtil_stringAppend( &depExtension, "" );
    } else {
       SeqUtil_stringAppend( &depExtension, "." );
-      SeqUtil_stringAppend( &depExtension, strdup( extString ) ); 
+      SeqUtil_stringAppend( &depExtension, strdup( dep->ext) ); 
    }
 
    memset( statusFile, '\0', sizeof statusFile);
@@ -2839,7 +2831,6 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
 
    SeqListNode_deleteWholeList(&extensions);
    free( waitingMsg );
-   free( extString );
    free( depExtension);
 
    return isWaiting;
