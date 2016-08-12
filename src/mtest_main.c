@@ -512,6 +512,8 @@ int test_SeqLoops_getNodeLoopContainersExtensionsInReverse()
 
    extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=1,inner_loop=2,END=3");
    SeqListNode_deleteWholeList(extensions);
+   extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"");
+   SeqListNode_deleteWholeList(extensions);
    return 0;
 }
 

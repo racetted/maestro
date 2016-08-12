@@ -491,6 +491,12 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
 
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): Begin call\n");
 
+   if( depIndex == NULL || strlen(depIndex) == 0){
+      SeqListNode_pushFront(&loopExtensions, "");
+      SeqUtil_TRACE(TL_FULL_TRACE, "No extension, returning 1 elem list containing empty string");
+      goto out;
+   }
+
    SeqNode_showLoops(_nodeDataPtr->loops,TL_FULL_TRACE);
    SeqLoops_parseArgs(&depArgs,depIndex);
 
@@ -507,6 +513,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
          loopExtensions = prod;
       }
    }
+out:
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): returning list:   \n");
    SeqListNode_printList(loopExtensions); SeqUtil_TRACE(TL_FULL_TRACE,"\n");
    return loopExtensions;
