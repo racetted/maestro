@@ -2649,41 +2649,32 @@ out:
  * _flow    : the server will submit with -f flow
  */
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow ) {
-   char statusFile[SEQ_MAXFIELD];
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
    char *waitingMsg = NULL, *depExtension = NULL, *currentIndexPtr = NULL;
-   char msg[1024];
-   /* ocm related */
-   char dhour[3];
-   char c[10];
-   char ocm_datestamp[11];
-   char env[128];
-   char job[128];
-   FILE *catchupFile=NULL;
-   int loop_start, loop_total, loop_set, loop_trotte;
-
-   SeqNodeDataPtr depNodeDataPtr = NULL;
-   LISTNODEPTR extensions = NULL;
-   SeqNameValuesPtr loopArgsPtr = NULL;
 
    /* if I'm dependant on a loop iteration, need to process it */
    dep->ext = SeqLoops_indexToExt(dep->index);
    depWildcard = ( strstr(dep->ext,"+*") != NULL);
 
    SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus dep->node_name=%s dep->ext=%s dep->datestamp=%s dep->status=%s dep->exp=%s dep->exp_scope=%d dep->protocol=%s \n", 
-       dep->node_name, dep->ext, dep->datestamp, dep->status, dep->exp, dep->exp_scope , dep->protocol ); 
+       dep->node_name,dep->ext, dep->datestamp, dep->status, dep->exp, dep->exp_scope , dep->protocol ); 
 
    if( dep->index == NULL || strlen( dep->index ) == 0 ) {
       SeqUtil_stringAppend( &depExtension, "" );
    } else {
       SeqUtil_stringAppend( &depExtension, "." );
-      SeqUtil_stringAppend( &depExtension, strdup( dep->ext) ); 
+      SeqUtil_stringAppend( &depExtension, strdup(dep->ext ) ); 
    }
 
-   memset( statusFile, '\0', sizeof statusFile);
 
 
    if (strncmp(dep->protocol,"ocm",3) != 0 ) {
+      SeqNodeDataPtr depNodeDataPtr = NULL;
+      LISTNODEPTR extensions = NULL;
+      SeqNameValuesPtr loopArgsPtr = NULL;
+      char msg[1024];
+      char statusFile[SEQ_MAXFIELD];
+      memset( statusFile, '\0', sizeof statusFile);
     /* maestro stuff */
        if  (! doesNodeExist(dep->node_name, dep->exp, dep->datestamp)) {
               snprintf(msg,sizeof(msg),"Dependency on node:%s of exp: %s which does not exist in the given context, dependency ignored.",dep->node_name, dep->exp);
@@ -2747,9 +2738,21 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
               ret=_unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
            }
        }
+      SeqListNode_deleteWholeList(&extensions);
 
    } else {
 
+      /* Both */
+      char statusFile[SEQ_MAXFIELD];
+      char msg[1024];
+      memset( statusFile, '\0', sizeof statusFile);
+      /* ocm related */
+      char dhour[3];
+      char c[10];
+      char ocm_datestamp[11];
+      char env[128];
+      char job[128];
+      int loop_start, loop_total, loop_set, loop_trotte;
       /* check catchup value of the ocm node */
       memset(dhour,'\0',sizeof(dhour));
       memset(ocm_datestamp,'\0',sizeof(ocm_datestamp));
@@ -2829,7 +2832,6 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
       setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
    }
 
-   SeqListNode_deleteWholeList(&extensions);
    free( waitingMsg );
    free( depExtension);
 
