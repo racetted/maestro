@@ -161,12 +161,18 @@ int SeqListNode_isListEmpty(LISTNODEPTR sPtr)
 void SeqListNode_printList(LISTNODEPTR list_head)
 {
    LISTNODEPTR current = NULL;
+   if( list_head == NULL ){
+      SeqUtil_TRACE(TL_FULL_TRACE,"List pointer is NULL\n");
+      return;
+   }
+
    if (SeqListNode_isListEmpty(list_head)) {
       SeqUtil_TRACE(TL_FULL_TRACE,"List is empty.\n");
-   } else {
-      for ( current = list_head; current != NULL; current = current->nextPtr)
-         SeqUtil_TRACE(TL_FULL_TRACE," %s", current->data);
+      return;
    }
+
+   for ( current = list_head; current != NULL; current = current->nextPtr)
+      SeqUtil_TRACE(TL_FULL_TRACE," %s", current->data);
 }
 
 /********************************************************************************
