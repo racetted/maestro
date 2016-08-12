@@ -27,6 +27,7 @@
 #include <libxml/xpathInternals.h>
 #include "ResourceVisitor.h"
 #include "SeqDatesUtil.h"
+#include "SeqLoopsUtil.h"
 #include "SeqUtil.h"
 #include "nodeinfo.h"
 #include "getopt.h"
@@ -499,7 +500,20 @@ int test_Resource_parseWorkerPath()
 }
 
 
+int test_SeqLoops_getNodeLoopContainersExtensionsInReverse()
+{
+   const char * exp = "/home/ops/afsi/phc/Documents/Experiences/sample-loops_bug";
+   const char * node = "/sample_1.4.3/BadNames/outer_loop/inner_loop/END/SET";
+   SeqNodeDataPtr ndp = nodeinfo (node, NI_SHOW_ALL ,NULL ,exp,
+                                 NULL, "20160102030000",NULL );
+   SeqNode_printNode(ndp, NI_SHOW_ALL,NULL);
+   LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=*,inner_loop=*,END=*");
+   SeqListNode_deleteWholeList(extensions);
 
+   extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=1,inner_loop=2,END=3");
+   SeqListNode_deleteWholeList(extensions);
+   return 0;
+}
 
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
@@ -513,6 +527,7 @@ int runTests(const char * seq_exp_home, const char * node, const char * datestam
    test_Resource_getLoopAttributes();
    test_parseNodeDFS();
    test_Resource_parseWorkerPath();
+   test_SeqLoops_getNodeLoopContainersExtensionsInReverse();
 
 
 
