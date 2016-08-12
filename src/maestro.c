@@ -2659,12 +2659,6 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
 
 int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
 {
-   SeqNodeDataPtr depNodeDataPtr = NULL;
-   LISTNODEPTR extensions = NULL;
-   SeqNameValuesPtr loopArgsPtr = NULL;
-   char msg[1024];
-   char statusFile[SEQ_MAXFIELD];
-   memset( statusFile, '\0', sizeof statusFile);
 
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
    char *waitingMsg = NULL, *depExtension = NULL, *currentIndexPtr = NULL;
@@ -2683,10 +2677,13 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
    }
    /* maestro stuff */
    if  (! doesNodeExist(dep->node_name, dep->exp, dep->datestamp)) {
+      char msg[1024];
       snprintf(msg,sizeof(msg),"Dependency on node:%s of exp: %s which does not exist in the given context, dependency ignored.",dep->node_name, dep->exp);
       nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,_nodeDataPtr->datestamp, _nodeDataPtr->expHome); 
       return(0);
    }
+
+   SeqNodeDataPtr depNodeDataPtr = NULL;
    depNodeDataPtr = nodeinfo( dep->node_name, NI_SHOW_ALL, NULL, dep->exp, NULL, dep->datestamp,NULL );
    /* check catchup value of the node */
    SeqUtil_TRACE(TL_FULL_TRACE,"dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
@@ -2696,6 +2693,8 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
    }
    SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): depWildcard=%d\n",depWildcard);
    if( ! depWildcard ) {
+      char statusFile[SEQ_MAXFIELD];
+      memset( statusFile, '\0', sizeof statusFile);
       /* no wilcard, we check only one iteration */
       if( dep->exp != NULL ) { 
          sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", dep->exp, dep->datestamp,  dep->node_name, depExtension, dep->status );
@@ -2718,10 +2717,13 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
       /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
       /* get all the node extensions to be checked */
       SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): calling SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep_index)\n");
+      LISTNODEPTR extensions = NULL;
       extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep->index );
 
       /* loop iterations until we find one that is not satisfied */
       while( extensions != NULL && undoneIteration == 0 ) {
+         char statusFile[SEQ_MAXFIELD];
+         memset( statusFile, '\0', sizeof statusFile);
          if( dep->exp != NULL ) { 
             sprintf(statusFile,"%s/sequencing/status/%s/%s.%s.%s", dep->exp, dep->datestamp, dep->node_name, extensions->data, dep->status );
          } else {
@@ -2743,8 +2745,8 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
          }
          ret=_unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
       }
+      SeqListNode_deleteWholeList(&extensions);
    }
-   SeqListNode_deleteWholeList(&extensions);
 
    if( undoneIteration ) {
       isWaiting = 1;
