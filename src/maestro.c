@@ -2698,12 +2698,11 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
 int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
 {
 
-   int undoneIteration = 0, retval = 0, depWildcard=0, ret=0;
+   int undoneIteration = 0, retval = 0;
    int writeStatus = 0;
    char *currentIndexPtr = NULL;
 
    dep->ext = SeqLoops_indexToExt(dep->index);
-   depWildcard = ( strstr(dep->ext,"+*") != NULL);
 
    SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus dep->node_name=%s dep->ext=%s dep->datestamp=%s dep->status=%s dep->exp=%s dep->exp_scope=%d dep->protocol=%s \n", 
          dep->node_name,dep->ext, dep->datestamp, dep->status, dep->exp, dep->exp_scope , dep->protocol ); 
@@ -2724,93 +2723,61 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
       SeqUtil_TRACE(TL_FULL_TRACE,"dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
       return(0);
    }
-   SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): depWildcard=%d\n",depWildcard);
-   if( ! depWildcard ) {
+
+   /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
+   /* get all the node extensions to be checked */
+   SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): calling SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep_index)\n");
+   LISTNODEPTR extensions = NULL;
+   extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep->index );
+
+   /* loop iterations until we find one that is not satisfied */
+   while( extensions != NULL && undoneIteration == 0 ) {
+      currentIndexPtr = extensions->data;
+      /* checkDepIteration(_nodeDataPtr, dep, ext, &writeStatus) */
       {
+         char *ext = extensions->data; /* Going to be an argument */
+         int *ws = &writeStatus; /* going to be an argument */
+         int itrIsUndone = 0;
          char statusFile[SEQ_MAXFIELD];
-         /* no wilcard, we check only one iteration */
          if( dep->exp != NULL ) { 
-            /* sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", dep->exp, dep->datestamp,  dep->node_name, depExtension, dep->status ); */
             SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
-                                          dep->datestamp, dep->ext, dep->status);
+                                          dep->datestamp, extensions->data, dep->status);
          } else {
-            /* CAN'T HAPPEN: ValidateDependencies is the only caller of this
-             * function and it sets dep->exp to a non-null value */
-            /* sprintf(statusFile,"%s/sequencing/status/%s/%s%s.%s", _nodeDataPtr->workdir, dep->datestamp, dep->node_name, depExtension, dep->status ); */
             SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
                                           dep->datestamp, dep->ext, dep->status);
          }
 
-         SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): statusFile=%s\n",statusFile);
-         ret=_lock( statusFile ,_nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
-         if ( (undoneIteration=! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome)) ) {
+         SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): Iterating over extensions list: current=%s, filename=%s\n",extensions->data,statusFile);
+
+         _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+         itrIsUndone = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome);
+         if( itrIsUndone ){
             if( dep->exp_scope == InterUser ) {
-               writeStatus = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name, dep->index, dep->ext, dep->datestamp, dep->status, dep->exp, dep->protocol, statusFile, _flow);
+               *ws = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name, dep->index, currentIndexPtr, dep->datestamp, dep->status, dep->exp, dep->protocol, statusFile, _flow);
             } else {
-               writeStatus = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name, dep->status, dep->ext, dep->datestamp, dep->exp_scope, statusFile);
+               *ws = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name, dep->status, currentIndexPtr, dep->datestamp, dep->exp_scope, statusFile);
             }
          }
-         SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): After checking calling Write...WaitedFile(), writeStatus=%d\n",writeStatus);
-         ret=_unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
+         _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+         undoneIteration = itrIsUndone; /* going to be a return statement */
       }
-   } else {
-      /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
-      /* get all the node extensions to be checked */
-      SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): calling SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep_index)\n");
-      LISTNODEPTR extensions = NULL;
-      extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep->index );
 
-      /* loop iterations until we find one that is not satisfied */
-      while( extensions != NULL && undoneIteration == 0 ) {
-         currentIndexPtr = extensions->data;
-         /* checkDepIteration(_nodeDataPtr, dep, ext, &writeStatus) */
-         {
-            char *ext = extensions->data; /* Going to be an argument */
-            int *ws = &writeStatus; /* going to be an argument */
-            int itrIsUndone = 0;
-            char statusFile[SEQ_MAXFIELD];
-            if( dep->exp != NULL ) { 
-               SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
-                                             dep->datestamp, extensions->data, dep->status);
-            } else {
-               SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
-                                             dep->datestamp, dep->ext, dep->status);
-            }
+      /* if( depIterationUndone( _nodeDataPtr, dep, extensions->data, &writeStatus) */
+      if (undoneIteration)
+         break;
 
-            SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): Iterating over extensions list: current=%s, filename=%s\n",extensions->data,statusFile);
-
-            ret=_lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
-            itrIsUndone = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome);
-            if( itrIsUndone ){
-               if( dep->exp_scope == InterUser ) {
-                  *ws = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name, dep->index, currentIndexPtr, dep->datestamp, dep->status, dep->exp, dep->protocol, statusFile, _flow);
-               } else {
-                  *ws = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name, dep->status, currentIndexPtr, dep->datestamp, dep->exp_scope, statusFile);
-               }
-            }
-            ret=_unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
-            undoneIteration = itrIsUndone; /* going to be a return statement */
-         }
-
-         /* if( depIterationUndone( _nodeDataPtr, dep, extensions->data, &writeStatus) */
-         if (undoneIteration)
-            break;
-
-         extensions = extensions->nextPtr;
-      }
-      SeqListNode_deleteWholeList(&extensions);
+      extensions = extensions->nextPtr;
    }
+   SeqListNode_deleteWholeList(&extensions);
 
    if( undoneIteration ) {
       char *waitingMsg = NULL;
-      /* Take this next line out */
+
       retval = SEQ_DEP_WAIT;
-      if ( depWildcard ) {
-         waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name, currentIndexPtr, dep->datestamp ); 
-      } else {
-         waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name, dep->ext, dep->datestamp ); 
-      }
+
+      waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name, currentIndexPtr, dep->datestamp ); 
       setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
+
       free( waitingMsg );
    } else if ( writeStatus != 0 ){
       retval = SEQ_DEP_WAIT;
