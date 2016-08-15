@@ -2730,58 +2730,63 @@ int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
 #define SEQ_DEP_GO 0
 int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
 {
+   SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus_MAESTRO() begin\n");
 
    int retval = SEQ_DEP_GO;
-   char *currentIndexPtr = NULL;
 
-   dep->ext = SeqLoops_indexToExt(dep->index);
-
-   SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus dep->node_name=%s dep->ext=%s dep->datestamp=%s dep->status=%s dep->exp=%s dep->exp_scope=%d dep->protocol=%s \n", 
-         dep->node_name,dep->ext, dep->datestamp, dep->status, dep->exp, dep->exp_scope , dep->protocol ); 
-
-   /* maestro stuff */
    if  (! doesNodeExist(dep->node_name, dep->exp, dep->datestamp)) {
       char msg[1024];
-      snprintf(msg,sizeof(msg),"Dependency on node:%s of exp: %s which does not exist in the given context, dependency ignored.",dep->node_name, dep->exp);
-      nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,_nodeDataPtr->datestamp, _nodeDataPtr->expHome); 
-      return(0);
+      snprintf(msg,sizeof(msg),
+         "Ignoring dependency on node:%s, exp:%s (out of scope)",
+                                                   dep->node_name, dep->exp);
+      nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,
+                              _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
+      retval = SEQ_DEP_GO;
+      goto out;
    }
 
-   SeqNodeDataPtr depNodeDataPtr = NULL;
-   depNodeDataPtr = nodeinfo( dep->node_name, NI_SHOW_ALL, NULL, dep->exp, NULL, dep->datestamp,NULL );
+   SeqNodeDataPtr depNodeDataPtr = nodeinfo( dep->node_name, NI_SHOW_ALL, NULL,
+                                          dep->exp, NULL, dep->datestamp,NULL );
    /* check catchup value of the node */
-   SeqUtil_TRACE(TL_FULL_TRACE,"dependant node catchup= %d discretionary catchup = %d  \n",depNodeDataPtr->catchup, CatchupDiscretionary );
    if (depNodeDataPtr->catchup == CatchupDiscretionary) {
-      SeqUtil_TRACE(TL_FULL_TRACE,"dependant node catchup (%d) is discretionary (%d), skipping dependency \n",depNodeDataPtr->catchup);  
-      return(0);
+      SeqUtil_TRACE(TL_FULL_TRACE,"Node catchup is discretionnary\n");
+      retval = SEQ_DEP_GO;
+      goto out_free;
    }
 
    /* loop iterations until we find one that is not satisfied */
-   LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep->index );
-   int undoneIteration = 0, writeStatus = 0;
-   LISTNODEPTR itr;
-   for(itr = extensions; itr != NULL; itr = itr->nextPtr){
-      currentIndexPtr = itr->data;
-      if(checkDepIteration(_nodeDataPtr, dep, _flow, itr->data, &writeStatus) == SEQ_DEP_WAIT ){
-         undoneIteration = 1;
-         break;
+   {
+      char *currentIndexPtr = NULL;
+      int undoneIteration = 0, writeStatus = 0;
+      LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(
+                                                  depNodeDataPtr, dep->index );
+      LISTNODEPTR itr;
+      for(itr = extensions; itr != NULL; itr = itr->nextPtr){
+         currentIndexPtr = itr->data;
+         if(checkDepIteration(_nodeDataPtr, dep, _flow, itr->data, &writeStatus)
+                                                               == SEQ_DEP_WAIT ){
+            undoneIteration = 1;
+            break;
+         }
+      }
+      SeqListNode_deleteWholeList(&extensions);
+
+      if( undoneIteration ) {
+         char *waitingMsg = NULL;
+         retval = SEQ_DEP_WAIT;
+         waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name,
+                                                currentIndexPtr, dep->datestamp );
+         setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
+         free( waitingMsg );
+      } else if ( writeStatus != 0 ){
+         retval = SEQ_DEP_WAIT;
       }
    }
-   SeqListNode_deleteWholeList(&extensions);
-
-   if( undoneIteration ) {
-      char *waitingMsg = NULL;
-
-      retval = SEQ_DEP_WAIT;
-
-      waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name, currentIndexPtr, dep->datestamp ); 
-      setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
-
-      free( waitingMsg );
-   } else if ( writeStatus != 0 ){
-      retval = SEQ_DEP_WAIT;
-   }
-
+out_free:
+   SeqNode_freeNode(depNodeDataPtr);
+out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus_MAESTRO() end, returning %d\n",
+                                                                        retval);
    return retval;
 }
 
