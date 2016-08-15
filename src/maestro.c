@@ -2760,7 +2760,10 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
       /* loop iterations until we find one that is not satisfied */
       while( extensions != NULL && undoneIteration == 0 ) {
          currentIndexPtr = extensions->data;
+         /* checkDepIteration(_nodeDataPtr, dep, ext, &writeStatus) */
          {
+            char *ext = extensions->data; /* Going to be an argument */
+            int itrIsUndone = 0;
             char statusFile[SEQ_MAXFIELD];
             if( dep->exp != NULL ) { 
                SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
@@ -2773,9 +2776,8 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
             SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): Iterating over extensions list: current=%s, filename=%s\n",extensions->data,statusFile);
 
             ret=_lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
-            if( ! (undoneIteration = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome))) {
-               extensions = extensions->nextPtr; /* the iteration status file exists, go to next */
-            } else {
+            itrIsUndone = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome);
+            if( itrIsUndone ){
                if( dep->exp_scope == InterUser ) {
                   isWaiting = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name, dep->index, currentIndexPtr, dep->datestamp, dep->status, dep->exp, dep->protocol, statusFile, _flow);
                } else {
@@ -2783,12 +2785,20 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
                }
             }
             ret=_unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome ); 
+            undoneIteration = itrIsUndone; /* going to be a return statement */
          }
+
+         /* if( depIterationUndone( _nodeDataPtr, dep, extensions->data, &writeStatus) */
+         if (undoneIteration)
+            break;
+
+         extensions = extensions->nextPtr;
       }
       SeqListNode_deleteWholeList(&extensions);
    }
 
    if( undoneIteration ) {
+      /* Take this next line out */
       isWaiting = 1;
       if ( depWildcard ) {
          waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name, currentIndexPtr, dep->datestamp ); 
@@ -2797,6 +2807,12 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
       }
       setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
    }
+
+   /* if( undoneIteration || writeStatus != 0 )
+    *    retval = 1;
+    * else
+    *    retval = 0;
+    */
 
    free( waitingMsg );
 
