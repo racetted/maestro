@@ -2697,7 +2697,7 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
 {
 
    int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
-   char *waitingMsg = NULL, *currentIndexPtr = NULL;
+   char *currentIndexPtr = NULL;
 
    dep->ext = SeqLoops_indexToExt(dep->index);
    depWildcard = ( strstr(dep->ext,"+*") != NULL);
@@ -2798,6 +2798,7 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
    }
 
    if( undoneIteration ) {
+      char *waitingMsg = NULL;
       /* Take this next line out */
       isWaiting = 1;
       if ( depWildcard ) {
@@ -2806,6 +2807,7 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
          waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name, dep->ext, dep->datestamp ); 
       }
       setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
+      free( waitingMsg );
    }
 
    /* if( undoneIteration || writeStatus != 0 )
@@ -2814,7 +2816,6 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
     *    retval = 0;
     */
 
-   free( waitingMsg );
 
    return isWaiting;
 }
