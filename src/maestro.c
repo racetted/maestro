@@ -2693,13 +2693,45 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
    }
 }
 
+
+int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
+                      const char *_flow, const char *extension, int *writeStatus)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() begin checking extension %s\n",
+                                                                     extension);
+   int itrIsUndone = 0;
+   char statusFile[SEQ_MAXFIELD];
+   if( dep->exp != NULL ) { 
+      SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
+            dep->datestamp, extension, dep->status);
+   } else {
+      SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
+            dep->datestamp, extension, dep->status);
+   }
+
+   _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+   itrIsUndone = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome);
+   if( itrIsUndone ){
+      if( dep->exp_scope == InterUser ) {
+         *writeStatus = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name,
+                           dep->index, extension, dep->datestamp, dep->status,
+                           dep->exp, dep->protocol, statusFile, _flow);
+      } else {
+         *writeStatus = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name,
+                           dep->status, extension, dep->datestamp, dep->exp_scope,
+                           statusFile);
+      }
+   }
+   _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() end\n");
+   return itrIsUndone;
+}
 #define SEQ_DEP_WAIT 1
 #define SEQ_DEP_GO 0
 int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
 {
 
-   int undoneIteration = 0, retval = 0;
-   int writeStatus = 0;
+   int retval = SEQ_DEP_GO;
    char *currentIndexPtr = NULL;
 
    dep->ext = SeqLoops_indexToExt(dep->index);
@@ -2724,49 +2756,16 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
       return(0);
    }
 
-   /* wildcard, we need to check for all iterations and stop on the first iteration that is not done */
-   /* get all the node extensions to be checked */
-   SeqUtil_TRACE(TL_FULL_TRACE,"processDepStatus(): calling SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep_index)\n");
-   LISTNODEPTR extensions = NULL;
-   extensions = (LISTNODEPTR) SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep->index );
-
    /* loop iterations until we find one that is not satisfied */
-   while( extensions != NULL && undoneIteration == 0 ) {
-      currentIndexPtr = extensions->data;
-      /* checkDepIteration(_nodeDataPtr, dep, ext, &writeStatus) */
-      {
-         char *ext = extensions->data; /* Going to be an argument */
-         int *ws = &writeStatus; /* going to be an argument */
-         int itrIsUndone = 0;
-         char statusFile[SEQ_MAXFIELD];
-         if( dep->exp != NULL ) { 
-            SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
-                                          dep->datestamp, extensions->data, dep->status);
-         } else {
-            SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
-                                          dep->datestamp, dep->ext, dep->status);
-         }
-
-         SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus(): Iterating over extensions list: current=%s, filename=%s\n",extensions->data,statusFile);
-
-         _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
-         itrIsUndone = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome);
-         if( itrIsUndone ){
-            if( dep->exp_scope == InterUser ) {
-               *ws = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name, dep->index, currentIndexPtr, dep->datestamp, dep->status, dep->exp, dep->protocol, statusFile, _flow);
-            } else {
-               *ws = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name, dep->status, currentIndexPtr, dep->datestamp, dep->exp_scope, statusFile);
-            }
-         }
-         _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
-         undoneIteration = itrIsUndone; /* going to be a return statement */
-      }
-
-      /* if( depIterationUndone( _nodeDataPtr, dep, extensions->data, &writeStatus) */
-      if (undoneIteration)
+   LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse( depNodeDataPtr, dep->index );
+   int undoneIteration = 0, writeStatus = 0;
+   LISTNODEPTR itr;
+   for(itr = extensions; itr != NULL; itr = itr->nextPtr){
+      currentIndexPtr = itr->data;
+      if(checkDepIteration(_nodeDataPtr, dep, _flow, itr->data, &writeStatus) == SEQ_DEP_WAIT ){
+         undoneIteration = 1;
          break;
-
-      extensions = extensions->nextPtr;
+      }
    }
    SeqListNode_deleteWholeList(&extensions);
 
