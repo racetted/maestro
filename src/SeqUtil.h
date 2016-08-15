@@ -108,4 +108,5 @@ int   SeqUtil_compareInt (const void * a, const void * b);
 char* SeqUtil_normpath(char *out, const char *in); 
 const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home);
 char *SeqUtil_getTraceLevelString();
+int SeqUtil_sprintStatusFile(char *dst,const char * exp_home, const char *node_name, const char *datestamp, const char * extension, const char *status);
 #endif
