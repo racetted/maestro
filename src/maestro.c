@@ -32,7 +32,12 @@
 #include <sys/stat.h> 
 #include <sys/wait.h>
 #include <fcntl.h> 
+#include <sys/time.h>
 
+#include "maestro.h"
+#include "nodelogger.h"
+#include "l2d2_commun.h"
+#include "runcontrollib.h"
 #include "SeqUtil.h"
 #include "nodeinfo.h"
 #include "SeqNameValues.h"
@@ -106,6 +111,7 @@ static int validateDependencies (const SeqNodeDataPtr _nodeDataPtr, const char *
 char* formatWaitingMsg( SeqDependsScope _dep_scope, const char* _dep_exp, 
                        const char *_dep_node, const char *_dep_index, const char *_dep_datestamp );
  int prepFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state, char * _target_datestamp); 
+int prepInterUserFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state, char * _target_datestamp);
 
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *_flow );
 
@@ -341,7 +347,19 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
          memset(tmpString, '\0', sizeof tmpString);
 	      sprintf(tmpString,"BOMBED: it has been resubmitted. job_ID=%s", jobID);
          SeqUtil_TRACE(TL_ERROR, "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
-         nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,tmpString,_nodeDataPtr->datestamp, jobID, _nodeDataPtr->expHome);
+         /*
+          * PHIL: Erroneous call to nodelogger.  The following call is the
+          * original.  It has too many arguments.  At least it's not as bad as
+          * having too few.
+          * nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,
+          *          tmpString,_nodeDataPtr->datestamp, jobID, _nodeDataPtr->expHome);
+          * The declaration is
+          * void nodelogger(const char *job, const char *type, const char* loop_ext,
+          *      const char *message, const char *datestamp, const char* _seq_exp_home);
+          * Notice there is no "jobID" between the datestamp and exp_home
+          * arguments
+          */
+         nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,tmpString,_nodeDataPtr->datestamp, _nodeDataPtr->expHome);
          go_submit( "submit", _flow , _nodeDataPtr, 1 );
       }
    } else if (strcmp(current_action,"cont") == 0) {
@@ -405,7 +423,7 @@ static void processContainerAbort ( const SeqNodeDataPtr _nodeDataPtr) {
        SeqUtil_TRACE(TL_FULL_TRACE, "********** processContainerAbort() calling maestro -s abortx -n %s with loop args=%s\n", _nodeDataPtr->container, SeqLoops_getLoopArgs(newArgs)  );
        maestro ( _nodeDataPtr->container, "abortx", "stop", newArgs, 0, NULL, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
    }
-   SeqNode_freeNameValues(newArgs); 
+   SeqNameValues_deleteWholeList(&newArgs); 
 }
 
 
@@ -1057,7 +1075,7 @@ static void clearAllOtherStates (const SeqNodeDataPtr _nodeDataPtr, char * fullN
                 SeqUtil_TRACE(TL_FULL_TRACE, "maestro.clearAllOtherStates() %s removed lockfile %s\n", originator, filename);
                 ret=_removeFile(filename, _nodeDataPtr->expHome);
             } 
-            SeqNode_freeNameValues(newArgs); 
+            SeqNameValues_deleteWholeList(&newArgs); 
             free( extension);
             free( tmpExt);
         }
@@ -1569,7 +1587,7 @@ static void processContainerEnd ( const SeqNodeDataPtr _nodeDataPtr, char *_flow
           maestro ( _nodeDataPtr->container, "endx", _flow, newArgs, 0, NULL, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
        }
     }
-   SeqNode_freeNameValues(newArgs); 
+   SeqNameValues_deleteWholeList(&newArgs);
    free( extension);
    free( extWrite );
 }
@@ -1757,7 +1775,18 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
             if ( (_access(workerEndFile, R_OK, _nodeDataPtr->expHome) == 0) || 
                   (_access(workerAbortFile, R_OK, _nodeDataPtr->expHome) == 0  ) ) {
                SeqUtil_TRACE(TL_FULL_TRACE," Running maestro -s submit on %s\n", _nodeDataPtr->workerPath); 
-               maestro ( _nodeDataPtr->workerPath, "submit", "continue" , workerDataPtr->loop_args , 0, NULL, _nodeDataPtr->expHome);
+               /*
+                * Erroneous call to maestro:
+                * maestro ( _nodeDataPtr->workerPath, "submit", "continue" , workerDataPtr->loop_args , 0, NULL, _nodeDataPtr->expHome);
+                * Incorrect number of arguments
+                * int maestro( char* _node, char* _sign, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char * _extraArgs, char *_datestamp, char* _seq_exp_home);
+                * IgnoreAllDeps is 0, extraArgs is NULL, and no datestamp is
+                * specified.  It was missing an argument before Phil added the
+                * ndp->expHome argument at the end, thinking the call was
+                * already correct.  Anyway, I'll put ndp->datestamp because
+                * that's what is in the other go_something functions.
+                */
+               maestro ( _nodeDataPtr->workerPath, "submit", "continue" , workerDataPtr->loop_args , 0, NULL, _nodeDataPtr->datestamp,_nodeDataPtr->expHome);
             }
             SeqNode_freeNode( workerDataPtr );
         
@@ -2648,6 +2677,8 @@ out:
  * _dep_prot:      the way we remote depend
  * _flow    : the server will submit with -f flow
  */
+int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow );
+int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow );
 int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
 {
    if (strncmp(dep->protocol,"ocm",3) != 0 ) {

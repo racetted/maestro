@@ -121,7 +121,7 @@ logreader.o:	logreader.c logreader.h logreader_main.c
 	$(CC) $(CFLAGS) -c logreader.c
 
 maestro.o:	maestro.c QueryServer.h maestro.h nodeinfo.h runcontrollib.h nodelogger.h tictac.h SeqUtil.h
-	$(CC) $(CFLAGS) -c maestro.c -I $(XML_INCLUDE_DIR)
+	$(CC) $(CFLAGS) -Werror=implicit-function-declaration -c maestro.c -I $(XML_INCLUDE_DIR)
 
 ocmjinfo.o:	ocmjinfo.c ocmjinfo.h 
 	$(CC) $(CFLAGS) -c ocmjinfo.c

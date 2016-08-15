@@ -194,6 +194,7 @@ void SeqNode_printPathInfo(FILE *file, SeqNodeDataPtr node_ptr);
 void SeqNode_printNode ( SeqNodeDataPtr node_ptr, unsigned int filters, const char * filename );
 
 void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDepDataPtr dep);
+void SeqNode_setSubmitOrigin( SeqNodeDataPtr node_ptr, const char* submitOrigin);
 
 extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename );
 extern char * SeqNode_extension (const SeqNodeDataPtr _nodeDataPtr);

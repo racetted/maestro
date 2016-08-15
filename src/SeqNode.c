@@ -986,26 +986,6 @@ SeqNodeDataPtr SeqNode_createNode ( char* name ) {
    return nodeDataPtr;
 }
 
-void SeqNode_freeNameValues ( SeqNameValuesPtr _nameValuesPtr ) {
-   SeqNameValuesPtr nameValuesNextPtr = NULL;
-   /* free a link-list of name-value pairs */
-   while (_nameValuesPtr != NULL ) {
-      /*SeqUtil_TRACE(TL_FULL_TRACE,"   SeqNode_freeNameValues %s=%s\n", _nameValuesPtr->name, _nameValuesPtr->value ); */
-
-      /* load a copy of the next to be freed */
-      nameValuesNextPtr = _nameValuesPtr->nextPtr;
-
-      /* free the current node */
-      free( _nameValuesPtr->name );
-      free( _nameValuesPtr->value );
-      free( _nameValuesPtr );
-
-      /* go to the next to be freed */ 
-      _nameValuesPtr = nameValuesNextPtr;
-   }
-}
-
-
 void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
 
    if ( seqNodeDataPtr != NULL ) {
