@@ -2677,8 +2677,13 @@ out:
  * _dep_prot:      the way we remote depend
  * _flow    : the server will submit with -f flow
  */
+#define SEQ_DEP_WAIT 1
+#define SEQ_DEP_GO 0
 int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow );
 int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow );
+int checkTargetedIterations(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr depNodeDataPtr, SeqDepDataPtr dep, const char *_flow);
+int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *_flow, const char *extension, int *writeStatus);
+int writeWaitedFile( SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *extension, const char *_flow, const char *statusFile);
 
 /********************************************************************************
  * Switch function to direct flow through the maestro function or the OCM
@@ -2693,42 +2698,14 @@ int processDepStatus( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, cons
    }
 }
 
-
-int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
-                      const char *_flow, const char *extension, int *writeStatus)
-{
-   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() begin checking extension %s\n",
-                                                                     extension);
-   int itrIsUndone = 0;
-   char statusFile[SEQ_MAXFIELD];
-   if( dep->exp != NULL ) { 
-      SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
-            dep->datestamp, extension, dep->status);
-   } else {
-      SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
-            dep->datestamp, extension, dep->status);
-   }
-
-   _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
-   itrIsUndone = ! _isFileExists( statusFile, "maestro.processDepStatus()", _nodeDataPtr->expHome);
-   if( itrIsUndone ){
-      if( dep->exp_scope == InterUser ) {
-         *writeStatus = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name,
-                           dep->index, extension, dep->datestamp, dep->status,
-                           dep->exp, dep->protocol, statusFile, _flow);
-      } else {
-         *writeStatus = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name,
-                           dep->status, extension, dep->datestamp, dep->exp_scope,
-                           statusFile);
-      }
-   }
-   _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
-   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() end\n");
-   return itrIsUndone;
-}
-#define SEQ_DEP_WAIT 1
-#define SEQ_DEP_GO 0
-int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
+/********************************************************************************
+ * Maestro version of processDepStatus.  Checks if target node exists, checks
+ * catchup, and checks all iterations targeted by the dependency.  When we find
+ * a targeted iteration that is not done, we write ourself into the node's
+ * waited_XXX file.
+********************************************************************************/
+int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
+                                                               const char * _flow )
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "processDepStatus_MAESTRO() begin\n");
 
@@ -2736,8 +2713,7 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
 
    if  (! doesNodeExist(dep->node_name, dep->exp, dep->datestamp)) {
       char msg[1024];
-      snprintf(msg,sizeof(msg),
-         "Ignoring dependency on node:%s, exp:%s (out of scope)",
+      snprintf(msg,sizeof(msg), "Ignoring dependency on node:%s, exp:%s (out of scope)",
                                                    dep->node_name, dep->exp);
       nodelogger( _nodeDataPtr->name, "info", _nodeDataPtr->extension, msg ,
                               _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
@@ -2754,34 +2730,9 @@ int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr d
       goto out_free;
    }
 
-   /* loop iterations until we find one that is not satisfied */
-   {
-      char *currentIndexPtr = NULL;
-      int undoneIteration = 0, writeStatus = 0;
-      LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(
-                                                  depNodeDataPtr, dep->index );
-      LISTNODEPTR itr;
-      for(itr = extensions; itr != NULL; itr = itr->nextPtr){
-         currentIndexPtr = itr->data;
-         if(checkDepIteration(_nodeDataPtr, dep, _flow, itr->data, &writeStatus)
-                                                               == SEQ_DEP_WAIT ){
-            undoneIteration = 1;
-            break;
-         }
-      }
-      SeqListNode_deleteWholeList(&extensions);
+   retval = checkTargetedIterations(_nodeDataPtr, depNodeDataPtr, dep, _flow);
 
-      if( undoneIteration ) {
-         char *waitingMsg = NULL;
-         retval = SEQ_DEP_WAIT;
-         waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name,
-                                                currentIndexPtr, dep->datestamp );
-         setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
-         free( waitingMsg );
-      } else if ( writeStatus != 0 ){
-         retval = SEQ_DEP_WAIT;
-      }
-   }
+   /* loop iterations until we find one that is not satisfied */
 out_free:
    SeqNode_freeNode(depNodeDataPtr);
 out:
@@ -2790,6 +2741,139 @@ out:
    return retval;
 }
 
+/********************************************************************************
+ * Checks all the iterations of the dependency targeted by dep->index.
+ * When we find one of the targeted iterations that is not done, we write an
+ * entry in the depNode's waited_XXX file.
+ * And we also write a message.
+********************************************************************************/
+int checkTargetedIterations(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr depNodeDataPtr,
+                                          SeqDepDataPtr dep, const char *_flow)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "checkTargetedIterations() begin\n");
+   int retval = SEQ_DEP_GO;
+   char *lastCheckedIndex = NULL;
+   int undoneIteration = 0, writeStatus = 0;
+   LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(
+         depNodeDataPtr, dep->index );
+   LISTNODEPTR itr;
+
+   /*
+    * Check iterations until an undone one is found or until they are all done.
+    */
+   for(itr = extensions; itr != NULL; itr = itr->nextPtr){
+      lastCheckedIndex = itr->data;
+      if(checkDepIteration(_nodeDataPtr, dep, _flow, itr->data, &writeStatus)
+                                                               == SEQ_DEP_WAIT ){
+         /* Record the reason for exiting */
+         undoneIteration = 1;
+         break;
+      }
+   }
+
+   /*
+    * Post-treatement: If*/
+   if( undoneIteration ) {
+      char *waitingMsg = NULL;
+      retval =  SEQ_DEP_WAIT;
+      waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name,
+            lastCheckedIndex, dep->datestamp );
+      setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
+      free( waitingMsg );
+   } else if ( writeStatus != 0 ){
+      retval =  SEQ_DEP_WAIT;
+   }
+out_free:
+   SeqListNode_deleteWholeList(&extensions);
+   SeqUtil_TRACE(TL_FULL_TRACE, "checkTargetedIterations() end\n");
+   return retval;
+}
+
+/********************************************************************************
+ * Verifies the status of a single iteration of a dependency and writes the
+ * current SeqNode into the appropriate waited_XXX file if that particular
+ * iteration is not done.
+ * The input is an iteration of a node specified by dep and extension,
+ * the output is itrIsUndone, which tells the caller that this iteration is not
+ * complete, and writeStatus, which is used to inform the caller of the status
+ * of the write to the waited_XXX file.
+********************************************************************************/
+int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
+                      const char *_flow, const char *extension, int *writeStatus)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() begin checking extension %s\n",
+                                                                     extension);
+   int itrIsUndone = 0;
+   char statusFile[SEQ_MAXFIELD];
+   if( dep->exp != NULL ) {
+      SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
+                                       dep->datestamp, extension, dep->status);
+   } else {
+      /* CAN'T HAPPEN: validateDependencies sets dep->exp to a non-null value,
+       * (specifically, the function validateSingleDep */
+      SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
+                                       dep->datestamp, extension, dep->status);
+   }
+
+   _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+   if(!_isFileExists(statusFile,"maestro.processDepStatus()", _nodeDataPtr->expHome)){
+      itrIsUndone = 1;
+      *writeStatus = writeWaitedFile(_nodeDataPtr, dep, extension, _flow, statusFile);
+   }
+   _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+
+out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() end\n");
+   return itrIsUndone;
+}
+
+
+/********************************************************************************
+ * Writes in the waited file for the dependency and the current extension.
+ * NOTE: See version of processDepStatus, and notice that the extension passed
+ * to the writeXYZ() functions included a dot "." when there were no wildcards
+ * but did not include the dot in the code for wildcards.  It would seem that
+ * including the dot or not was OK because the writeXYZ() functions do their own
+ * check for the dot and add it if necessary.  This is true of the
+ * writeInterUserWaitedFile
+********************************************************************************/
+int writeWaitedFile( SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
+               const char *extension, const char *_flow, const char *statusFile)
+{
+   int writeStatus = 0;
+   if( dep->exp_scope == InterUser ) {
+      writeStatus = writeInterUserNodeWaitedFile( _nodeDataPtr, dep->node_name,
+            dep->index, extension, dep->datestamp, dep->status,
+            dep->exp, dep->protocol, statusFile, _flow);
+   } else {
+      writeStatus = writeNodeWaitedFile( _nodeDataPtr, dep->exp, dep->node_name,
+            dep->status, extension, dep->datestamp, dep->exp_scope,
+            statusFile);
+   }
+   return writeStatus;
+}
+
+/********************************************************************************
+ * OCM Part of the old processDepStatus.
+ *
+ * Originally, we had
+ * <CHUNK A>
+ * if( maestro ){
+ *    <CHUNK B>
+ * } else {
+ *    <CHUNK C>
+ * }
+ * <CHUNK D>
+ *
+ * This function is
+ *
+ * <CHUNK A>
+ * <CHUNK C>
+ * <CHUNK D>
+ *
+ * This was done to de-couple the maestro function from this one so that the
+ * maestro one could be refactored.
+********************************************************************************/
 int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow )
 {
    /* Both */
