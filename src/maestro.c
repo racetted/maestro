@@ -1866,10 +1866,11 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit() ord return status: %d \n",error_status);
       }
       if ( strlen( loopArgs ) > 0 ) {
-         sprintf(nodetracercmd, "%s/nodetracer -n %s -l %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
+         sprintf(nodetracercmd, "export SEQ_EXP_HOME=%s;%s/nodetracer -n %s -l %s -d %s -type submission -i %s",_nodeDataPtr->expHome, getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, loopArgs, _nodeDataPtr->datestamp, submissionDir);
       } else {
-         sprintf(nodetracercmd, "%s/nodetracer -n %s -d %s -type submission -i %s", getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
+         sprintf(nodetracercmd, "export SEQ_EXP_HOME=%s;%s/nodetracer -n %s -d %s -type submission -i %s", _nodeDataPtr->expHome,getenv("SEQ_UTILS_BIN"), _nodeDataPtr->name, _nodeDataPtr->datestamp, submissionDir);
       }
+      SeqUtil_TRACE(TL_FULL_TRACE, "Making call to nodetracer:\n   %s\n",nodetracercmd);
       nodetracer_status = system(nodetracercmd);
       if ( nodetracer_status ) {
          SeqUtil_TRACE(TL_CRITICAL,"Problem with nodetracer call, listing may not be available in the listings directory, possibly in $SEQ_EXP_HOME/sequencing/output.\n");

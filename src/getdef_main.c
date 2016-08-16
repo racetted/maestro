@@ -71,6 +71,12 @@ int main ( int argc, char * argv[] )
       printUsage();
       exit(1);
    }
+   fprintf(stderr, "getdef call made:\n  ");
+   int i = 0;
+   for(i = 0; i < argc ; i++)
+      fprintf(stderr,"%s ",argv[i]);
+   fprintf(stderr,"\n");
+
    file=argc-2; key=argc-1;
    while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index)) != -1) {
      switch(c) {
@@ -88,6 +94,8 @@ int main ( int argc, char * argv[] )
             break;
      }
    }
+   if(seq_exp_home == NULL)
+      seq_exp_home = strdup(getenv("SEQ_EXP_HOME"));
 
    if (strcmp(argv[file],"resources") == 0){
       if (seq_exp_home == NULL){
@@ -101,6 +109,7 @@ int main ( int argc, char * argv[] )
       deffile = (char *) malloc(strlen(argv[file])+1);
       strcpy(deffile,argv[file]);
    }
+   fprintf(stderr,"getdef_main(): SEQ_EXP_HOME=%s\n",seq_exp_home);
    if ( (value = SeqUtil_getdef( deffile, argv[key],seq_exp_home )) == NULL ){
      raiseError("ERROR: Unable to find key %s in %s\n", argv[key], argv[file]);}
    else{

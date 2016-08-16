@@ -716,7 +716,7 @@ char* SeqUtil_getdef( const char* filename, const char* key , const char* _seq_e
 
   /* Use ownership of the suite to determine path to overrides.def */
   if (stat(_seq_exp_home,&fileStat) < 0){
-     raiseError("SeqUtil_getdef unable to stat SEQ_EXP_HOME\n");
+     raiseError("SeqUtil_getdef unable to stat SEQ_EXP_HOME=%s\n",_seq_exp_home);
   }
 
   passwdEnt = getpwuid(fileStat.st_uid);

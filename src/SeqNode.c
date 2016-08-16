@@ -693,12 +693,12 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
 }
 void SeqNode_showLoops(SeqLoopsPtr loopsPtr,int trace_level){
    SeqLoopsPtr current;
-   SeqUtil_TRACE(trace_level,"SeqNode_printLoops():\n");
+   SeqUtil_TRACE(trace_level,"SeqNode_ShowLoops():\n");
    for(current = loopsPtr; current != NULL; current = current->nextPtr){
       SeqUtil_TRACE(trace_level, "====loop_name=%s, type=%d, values:\n", current->loop_name, current->type);
       SeqNameValues_printList(current->values);
    }
-   SeqUtil_TRACE(TL_FULL_TRACE,"SeqNode_printLoops() end\n");
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqNode_ShowLoops() end\n");
 }
 
 void SeqNode_printForEachTargets(FILE *file, SeqNodeDataPtr node_ptr)
