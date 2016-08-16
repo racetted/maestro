@@ -448,6 +448,27 @@ out_free:
    return retval;
 }
 /********************************************************************************
+ * Finds the value of the switch, based on the switch type, the context from the
+ * nodeDataPtr's datestamp, and in the futur, based on the evaluation of a
+ * script.
+********************************************************************************/
+char *Flow_getSwitchValue(FlowVisitorPtr fv, SeqNodeDataPtr ndp,
+                                             const char *switchType, int isLast)
+{
+   char * switchValue = NULL;
+   /*
+    * Switch args are here to allow us to select a SWITCH_ITEM by simply
+    * specifying it in the special switch_args string instead of relying on the
+    * context.
+    */
+   if( fv->switch_args == NULL || isLast){
+      switchValue = switchReturn(ndp, switchType);
+   } else {
+      switchValue = Flow_findSwitchArg(fv);
+   }
+   return switchValue;
+}
+/********************************************************************************
  * Parses the attributes of a switch node into the nodeDataPtr.
  * Returns FLOW_SUCCESS if the right switch item (or default) is found.
  * Returns FLOW_FAILURE otherwise.
@@ -455,26 +476,15 @@ out_free:
 int Flow_parseSwitchAttributes(FlowVisitorPtr fv,
                                  SeqNodeDataPtr _nodeDataPtr, int isLast )
 {
-
-   const char * switchType = NULL;
-   char * switchValue = NULL;
+   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_parseSwitchAttributes(): begin\n");
    int retval = FLOW_SUCCESS;
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_parseSwitchAttributes(): begin\n");
 
-   if( (switchType = Flow_findSwitchType(fv)) == NULL )
+   const char * switchType = Flow_findSwitchType(fv);
+   if( switchType == NULL )
       raiseError("Flow_parseSwitchAttributes(): switchType not found\n");
 
-   /*
-    * Switch args are here to allow us to select a SWITCH_ITEM by simply
-    * specifying it in the special switch_args string instead of relying on the
-    * context
-    */
-   if( fv->switch_args == NULL || isLast){
-      switchValue = switchReturn(_nodeDataPtr, switchType);
-   } else {
-      switchValue = Flow_findSwitchArg(fv);
-   }
+   char * switchValue = Flow_getSwitchValue(fv,_nodeDataPtr, switchType,isLast);
 
    /*
     * Insert the switch_path=switchValue key-value pair into the node's switch
@@ -492,8 +502,6 @@ int Flow_parseSwitchAttributes(FlowVisitorPtr fv,
       goto out_free;
    }
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_parseSwitchAttributes(): end\n");
-
    if(isLast){
       SeqNode_addSpecificData(_nodeDataPtr, "VALUE", switchValue);
       /* PHIL: do this outside of the while instead of using isLast */
@@ -504,6 +512,7 @@ int Flow_parseSwitchAttributes(FlowVisitorPtr fv,
    }
 
 out_free:
+   SeqUtil_TRACE(TL_FULL_TRACE, "Flow_parseSwitchAttributes(): end\n");
    free(switchValue);
    free(fixedSwitchPath);
    return retval;
