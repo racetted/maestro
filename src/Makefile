@@ -242,7 +242,14 @@ TEST_OBJECTS = SeqUtil.o SeqNode.o XmlUtils.o SeqLoopsUtil.o l2d2_commun.o \
 	tictac.o SeqNameValues.o nodeinfo.o getopt_long.o FlowVisitor.o \
 	ResourceVisitor.o SeqDepends.o tsvinfo.o SeqNodeCensus.o
 
-mtest:	mtest_main.c $(TEST_OBJECTS)
-	$(CC) $^ -g $(WERROR_FLAGS) -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
+TEST_FILES = testDir/genSwitchUnitTests.c testDir/validityUnitTests.c
+
+mtest:	mtest_main.c $(TEST_OBJECTS) $(TEST_FILES)
+	$(CC) $< $(TEST_OBJECTS) -g $(WERROR_FLAGS) -I $(XML_INCLUDE_DIR) -L $(XML_LIB_DIR) -lxml2 $(LIB) -o $@
 	cp $@ $(BINDIR)
+	# give mtest_main.c as an argument, and the TEST_OBJECTS to link with
+	# and the TEST_FILES are just source code that is included in
+	# mtest_main.c by the preprocessor.  They are listed in the dependencies
+	# so that a change to them causes re-compilation of mtest_main.c, but
+	# they are not given as arguments to $(CC).
 

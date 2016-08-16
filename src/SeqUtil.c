@@ -1465,3 +1465,139 @@ int SeqUtil_sprintStatusFile(char *dst,const char * exp_home, const char *node_n
                         * not null-terminated
                         */
 }
+
+/********************************************************************************
+ * Gets the container.tsk of the specified container node.
+********************************************************************************/
+int SeqUtil_sprintContainerTaskPath(char *dst, const char *exp_home, const char *node_path)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() begin\n",__func__);
+   sprintf(dst,"%s/%s/container.tsk",exp_home,node_path);
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() end returning \n",__func__,dst);
+   return strlen(dst); /* Strlen is super fast due to 'Magic' performed by the
+                        * crafty wizards that implemented it in glibc so it's
+                        * not adding much work to call it here on a small string
+                        * and anyway, this function will get call very few
+                        * times. */
+}
+
+/********************************************************************************
+ * Reference http://www.microhowto.info/howto/capture_the_output_of_a_child_process_in_c.html#idp146944
+ * This function captures the stdout of the script given by script_path and puts
+ * it in a buffer whose size is given in the buffer_size argument.  The buffer
+ * is allocated on the stack, but the function returns strdup(buffer).  So the
+ * memory chunk pointed to by the return value may be smaller than the supplied
+ * buffer_size.
+********************************************************************************/
+char * SeqUtil_getScriptOutput(const char *script_path, size_t buffer_size)
+{
+   /* Maybe check that we have permission to run the script befor continuing */
+
+   /* Create a pipe */
+   int switch_script_fd[2];
+   if(pipe(switch_script_fd) == -1){
+      perror("pipe");
+      raiseError("get_script_output() could not create pipe\n");
+   }
+
+   /* Fork the process */
+   pid_t pid = fork();
+   if (pid == -1){
+      perror("fork");
+      raiseError("get_script_output() could not create fork\n");
+   }
+
+   /* Code for the child : change STDOUT to the pipe entrance */
+   if (pid == 0){
+      /*
+       * Copy the file descriptor switch_script_fd[1] into STDOUT_FILENO.
+       * Note that we could also redirect STDERR to the pipe by doing the same
+       * kind of thing
+       */
+      while ((dup2(switch_script_fd[1], STDOUT_FILENO) == -1) && (errno == EINTR));
+      /*
+       * As I understand it, there is a file descriptor table fd_table not
+       * unlike an array that has pointers to opaque data structures that hold
+       * the actual information.  fd_table[STDOUT_FILENO] points to this
+       * structure for STDOUT.  When we call dup2, the data of the pipe entry is
+       * copied at the location pointed to by fd_table[STDOUT_FILENO].
+       * Something like that; I would need to re-read that section of the Linux
+       * Programming Interface
+       *
+       * We can then close the pipe entrance fd because we have copied it.
+       */
+
+
+      /* Now, stuff sent to SDTOUT will go to the pipe, so we don't need the
+       * pipe entrance fd */
+      close(switch_script_fd[1]);
+
+      /* Since we're in the child, we also don't need the pipe exit fd */
+      close(switch_script_fd[0]);
+
+      system(script_path);
+      exit(0);
+   }
+
+   /* Parent process : capture the output into a buffer */
+   close(switch_script_fd[1]);
+   char buffer[buffer_size];
+   ssize_t totalCount = 0;
+   while(1){
+      ssize_t count = read(switch_script_fd[0],&(buffer[totalCount]),sizeof(buffer) - totalCount);
+      if( count == -1 ){
+         if( errno == EINTR){
+            continue;
+         }else{
+            perror("read");
+            raiseError("get_script_output() : parent : Error reading from pipe\n");
+         }
+      } else if (count == 0) {
+         break;
+      } else {
+         totalCount += count;
+         buffer[totalCount] = 0;
+      }
+   }
+   close(switch_script_fd[0]);
+   wait(0);
+
+   return strdup(buffer);
+}
+
+
+/********************************************************************************
+ * Same thing but with popen. Same reference.  The reference recommends to use
+ * the other one because we have more control over what happens and he says that
+ * it's worth the extra code, which is already written anyway.
+********************************************************************************/
+const char *SeqUtil_popenGetScriptOutput(const char * script_path, size_t buffer_size)
+{
+   FILE *fp;
+   int status;
+   char buffer[buffer_size];
+   int count = 0, totalCount = 0;
+
+   fp = popen(script_path, "r");
+   if( fp == NULL )
+      goto err;
+
+   while (fgets( &(buffer[totalCount]), buffer_size - totalCount, fp) != NULL){
+      /* The one where I explicitely create the pipe seems like it's better
+       * since I get the byte count for each read, instead of having to
+       * redundantly call strlen(); */
+      totalCount = strlen(buffer);
+   }
+
+   status = pclose(fp);
+   if( status == -1 ){
+      goto err;
+   } else {
+      ;/* should inspect status according to the documentation */
+   }
+
+   return strdup(buffer);
+
+err:
+   return NULL;
+}

@@ -1,0 +1,10 @@
+<MODULE name="my_module">
+   <SWITCH name="my_gen_switch" type="generic">
+      <SWITCH_ITEM name="Hillary">
+         <TASK name="No_problem"/>
+      </SWITCH_ITEM>
+      <SWITCH_ITEM name="Trump">
+         <TASK name="Move_to_Canada"/>
+      </SWITCH_ITEM>
+   </SWITCH>
+</MODULE>

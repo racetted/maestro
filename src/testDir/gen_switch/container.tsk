@@ -1,0 +1,20 @@
+
+#  <MODULE name="my_module">
+#     <SWITCH name="my_gen_switch" type="generic">
+#        <SWITCH_ITEM name="Hillary">
+#           <TASK name="No_problem"/>
+#        </SWITCH_ITEM>
+#        <SWITCH_ITEM name="Trump">
+#           <TASK name="Move_to_Canada"/>
+#        </SWITCH_ITEM>
+#     </SWITCH>
+#  </MODULE>
+
+if [ $(expr $RANDOM % 2) = 1 ] ; then
+   echo -n Hillary
+else
+   echo -n Trump
+fi
+# sleep 1
+
+# echo -n  "some text, I have a longer bit of text, and I wonder what is going to happen if I work like this.  what if the child process puts shit in the pipe in a slower manner than how it is consumed in the parent process.  Will it cause multiple reads?"
