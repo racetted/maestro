@@ -116,11 +116,14 @@ int test_getVarName()
    return 0;
 }
 
+#define TEST_FAILED raiseError("TEST FAILED %s()[%s:%d]\n",__func__,__FILE__,__LINE__)
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
       /* From testDir/validityUnitTests.c */
 #include "testDir/validityUnitTests.c"
 
+   /* THis test depends on an experiment */
+#include "testDir/SeqLoopsUtil_unitTest.c"
 
    test_getVarName();
 

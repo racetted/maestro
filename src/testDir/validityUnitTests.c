@@ -411,22 +411,6 @@ int test_Resource_parseWorkerPath()
 }
 
 
-int test_SeqLoops_getNodeLoopContainersExtensionsInReverse()
-{
-   const char * exp = "/home/ops/afsi/phc/Documents/Experiences/sample-loops_bug";
-   const char * node = "/sample_1.4.3/BadNames/outer_loop/inner_loop/END/SET";
-   SeqNodeDataPtr ndp = nodeinfo (node, NI_SHOW_ALL ,NULL ,exp,
-                                 NULL, "20160102030000",NULL );
-   SeqNode_printNode(ndp, NI_SHOW_ALL,NULL);
-   LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=*,inner_loop=*,END=*");
-   SeqListNode_deleteWholeList(extensions);
-
-   extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=1,inner_loop=2,END=3");
-   SeqListNode_deleteWholeList(extensions);
-   extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"");
-   SeqListNode_deleteWholeList(extensions);
-   return 0;
-}
 
    test_xml_fallback();
    test_getIncrementedDatestamp();
@@ -438,4 +422,3 @@ int test_SeqLoops_getNodeLoopContainersExtensionsInReverse()
    test_Resource_getLoopAttributes();
    test_parseNodeDFS();
    test_Resource_parseWorkerPath();
-   test_SeqLoops_getNodeLoopContainersExtensionsInReverse();
