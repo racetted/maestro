@@ -141,6 +141,8 @@ typedef struct _SeqNodeData {
 
    int error;
    char* errormsg;
+
+   char *switchType; /* TEMPORARY PHIL EXPERIMENTATION BUG7312 */
 } SeqNodeData;
 
 typedef SeqNodeData *SeqNodeDataPtr;

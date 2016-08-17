@@ -627,6 +627,7 @@ void SeqNode_setForEachTarget(SeqNodeDataPtr nodePtr, const char * t_node,  cons
 
 void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->type = Task;
+   nodePtr->switchType = NULL;
    nodePtr->name = NULL;
    nodePtr->nodeName = NULL;
    nodePtr->container = NULL;
@@ -990,6 +991,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
 
    if ( seqNodeDataPtr != NULL ) {
       free( seqNodeDataPtr->name ) ;
+      free( seqNodeDataPtr->switchType );
       free( seqNodeDataPtr->expHome );
       free( seqNodeDataPtr->nodeName );
       free( seqNodeDataPtr->container ) ;
