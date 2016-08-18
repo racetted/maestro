@@ -517,6 +517,24 @@ int test_SeqLoops_getNodeLoopContainersExtensionsInReverse()
    return 0;
 }
 
+const char* getVarName(const char *, const char*,const char *);
+int test_getVarName()
+{
+   header("getVarName()");
+   char *input = "$((varname))";
+   char * output = getVarName(input, "$((", "))");
+   fprintf(stderr, "%s -> %s\n",input,output);
+   if(strcmp(output,"varname") != 0)
+      raiseError("TEST_FAILED:%s()[%s:%d]\n",__func__,__FILE__,__LINE__);
+
+   input = "DominicvarnameRacette";
+   output = getVarName(input, "Dominic", "Racette");
+   fprintf(stderr, "%s -> %s\n",input,output);
+   if(strcmp(output,"varname") != 0)
+      raiseError("TEST_FAILED:%s()[%s:%d]\n",__func__,__FILE__,__LINE__);
+   return 0;
+}
+
 int runTests(const char * seq_exp_home, const char * node, const char * datestamp)
 {
    test_xml_fallback();
@@ -532,6 +550,7 @@ int runTests(const char * seq_exp_home, const char * node, const char * datestam
    test_SeqLoops_getNodeLoopContainersExtensionsInReverse();
 
 
+   test_getVarName();
 
    SeqUtil_TRACE(TL_CRITICAL, "============== ALL TESTS HAVE PASSED =====================\n");
    return 0;
