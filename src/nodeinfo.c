@@ -122,7 +122,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
 
 /********************************************************************************
  * Takes a string of the form "...$((var_name))..." and returns the string
- * "var_name". Non-reentrant
+ * "var_name". Non-reentrant see file var_name_extract.c for testing of this
+ * function.
 ********************************************************************************/
 const char* getVarName(const char *src, const char *startDelim,
                                         const char *endDelim)
@@ -148,6 +149,10 @@ const char* getVarName(const char *src, const char *startDelim,
    return var_name;
 }
 
+/********************************************************************************
+ * Copies values from nodeDataPtr->loop_args corresponding to the loops found in
+ * nodeDataPtr->loops into depArgs and localArgs.
+********************************************************************************/
 int nodeToDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr *depArgs, SeqNameValuesPtr *localArgs)
 {
    SeqLoopsPtr loopsPtr = NULL;
@@ -158,8 +163,10 @@ int nodeToDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr *depArgs, SeqNam
          SeqUtil_TRACE(TL_FULL_TRACE, "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
          char *hasValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName);
          if (hasValue) {
-            SeqNameValues_insertItem( depArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
-            SeqNameValues_insertItem( localArgs, tmpLoopName, SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName));
+            char *value = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName);
+            SeqNameValues_insertItem( depArgs, tmpLoopName, value );
+            SeqNameValues_insertItem( localArgs, tmpLoopName, value );
+            free(value);
          }
          free(hasValue);
          free(tmpLoopName);
@@ -168,6 +175,18 @@ int nodeToDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr *depArgs, SeqNam
    }
    return 0;
 }
+
+/********************************************************************************
+ * Parses dep->local_index into localArgs, (adding to what was put there by
+ * nodeToDepArgs) then:
+ *
+ * For itr iterating over localArgs:
+ * Substitutes CURRENT_INDEX for the value of itr->name found in ndp->loop_args
+ * For $((tok_name)) arguments, sets itr->name to the value of itr->name from
+ * ndp->loop_args,
+ * and inserts the key-value pair tok_name=tok_value into tokenValues for
+ * substitution later.
+********************************************************************************/
 int validateDepLocalArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr  dep,
                      SeqNameValuesPtr *localArgs, SeqNameValuesPtr *tokenValues)
 {
@@ -183,11 +202,14 @@ int validateDepLocalArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr  dep,
                free(tmpValue);
             }
          } else if (strstr(itr->value, "$((") != NULL) {
-            const char *tok_name = getVarName(itr->value, "$((","))");
             char *tok_value=NULL;
             if ((tok_value=SeqNameValues_getValue(_nodeDataPtr->loop_args, itr->name)) != NULL) {
+
                SeqNameValues_setValue( localArgs, itr->name, tok_value);
+
+               const char *tok_name = getVarName(itr->value, "$((","))");
                SeqNameValues_insertItem( &tokenValues, tok_name, tok_value);
+
                SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() inserting token=%s value=%s\n", tok_name, tok_value);
             }
             free(tok_value);
@@ -199,6 +221,15 @@ int validateDepLocalArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr  dep,
    return 0;
 }
 
+/********************************************************************************
+ * Parses dep->index into depArgs, (adding to what was put there by
+ * nodeToDepArgs) then:
+ *
+ * For each itr iterating over depArgs:
+ * Substitutes CURRENT_INDEX for the value of itr->name found in ndp->loop_args
+ * Sets the value of itr->name to the value of tok_name found in tokenValues
+ * (this value was set in validateDepLocalArgs).
+********************************************************************************/
 int validateDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
                      SeqNameValuesPtr *depArgs, SeqNameValuesPtr *tokenValues)
 {
@@ -214,7 +245,7 @@ int validateDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
                free(tmpValue);
                /* raiseError( "parseDepends(): Error -- CURRENT_INDEX keyword used in a non-loop context, or does not match current loop arguments. \n" ); */
             }
-         } else if (strstr(itr->value, "$((") != NULL) { 
+         } else if (strstr(itr->value, "$((") != NULL) {
             const char *tok_name = getVarName(itr->value, "$((","))");
             char *tok_value=NULL;
             SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() looking for token=%s\n", tok_name);
@@ -223,7 +254,7 @@ int validateDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
             }
             free(tok_value);
          }
-      }   
+      }
    } else {
       raiseError( "%s()[%s:%d: dependency index format error\n",__func__,__FILE__,__LINE__);
    }
