@@ -61,6 +61,13 @@
    strcpy(tmpString,string);\
    for( token = strtok_r(tmpString,delimiters, &sp); token != NULL; token = strtok_r(NULL,delimiters,&sp))
 
+#define LOCATE SeqUtil_TRACE(TL_FULL_TRACE,"%s():[%s:%d]",__func__,__FILE__,__LINE__)
+#define FUNCBEGIN \
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() BEGIN (%s,%d)\n", __func__,__FILE__,__LINE__);
+
+#define FUNCEND \
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() END (%s,%d)\n", __func__,__FILE__,__LINE__);
+
 void SeqUtil_addPadding( char *dst, const char *datestamp, char c, int length);
 void  raiseError(const char* fmt, ... );
 void  SeqUtil_TRACE( int level,const char * fmt, ...);
