@@ -599,9 +599,87 @@ Inputs:
   _nodeDataPtr - pointer to the node targetted by the execution
 
 */
+/********************************************************************************
+ * Evaluates the switch by checking against the nodeDataPtr's datestamp or by
+ * running the script based on the switch being a datestamp_hour/datestamp_DOW
+ * or a generic switch.
+********************************************************************************/
+char *evaluateSwitch(SeqNodeDataPtr ndp)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() begin\n",__func__);
+   char* switchValue;
+   if( strcmp(ndp->switchType, "generic") != 0){
+      switchValue = switchReturn(ndp,ndp->switchType);
+   } else {
+      SeqUtil_TRACE(TL_FULL_TRACE, "For the futur\n");
+   }
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() end switchValue:%s\n",__func__,switchValue);
+   return switchValue;
+}
+
+/********************************************************************************
+ * If the node is the switch S (as opposed to S[i]), we evaluate the switch and
+ * submit S[i].
+********************************************************************************/
+static int evaluateAndSubmit(SeqNodeDataPtr _nodeDataPtr)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() begin\n",__func__);
+
+   SeqNameValuesPtr containerArgs = NULL, newArgs = NULL;
+   containerArgs = SeqLoops_getContainerArgs( _nodeDataPtr, _nodeDataPtr->loop_args );
+   /* first get the parent container loop arguments */
+   if( containerArgs != NULL ) {
+      newArgs = SeqNameValues_clone( containerArgs );
+   }
+   /* then add the current loop argument */
+   SeqNameValues_printList(_nodeDataPtr->switchAnswers);
+   SeqNameValues_insertItem( &newArgs, _nodeDataPtr->nodeName, SeqNameValues_getValue(_nodeDataPtr->switchAnswers,_nodeDataPtr->name ));
+   /*now submit the child nodes */
+   SeqUtil_TRACE(TL_FULL_TRACE, "go_begin calling maestro -n %s -s submit -l %s -f continue\n", _nodeDataPtr->name, SeqLoops_getLoopArgs( newArgs ));
+   maestro ( _nodeDataPtr->name, "submit", "continue" , newArgs, 0, NULL,
+                              _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
+
+out_free:
+   SeqNameValues_deleteWholeList( &containerArgs );
+   SeqNameValues_deleteWholeList( &newArgs );
+out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() end\n",__func__);
+   return 0;
+}
+
+/********************************************************************************
+ * Determines if a node is S or S[i].  If the node has a loop_arg to it's name,
+ * then it is S[i] otherwise it is S.
+********************************************************************************/
+int switchIsEvaluated(SeqNodeDataPtr _nodeDataPtr)
+{
+   char *switchArg = SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName );
+   int retval;
+   if( switchArg != NULL ){
+      retval = 1;
+   } else {
+      retval = 0;
+   }
+   free(switchArg);
+   return retval;
+}
+
+static int go_begin_switch(SeqNodeDataPtr _nodeDataPtr)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() begin\n",__func__);
+   /* S evaluates itself and submits S(i), S(i) just submits its submits */
+   if(switchIsEvaluated(_nodeDataPtr)) { 
+      submitNodeList(_nodeDataPtr);
+   } else {
+      evaluateAndSubmit(_nodeDataPtr);
+   }
+
+out:
+   SeqUtil_TRACE(TL_FULL_TRACE, "%s() end\n",__func__);
+   return 0;
+}
 
 static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPtr) {
-   SeqNameValuesPtr loopArgs = NULL, loopSetArgs = NULL;
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.go_begin() node=%s signal=%s flow=%s loopargs=%s\n", _nodeDataPtr->name, _signal, _flow, SeqLoops_getLoopArgs(_nodeDataPtr->loop_args));
 
    actions( _signal, _flow ,_nodeDataPtr->name );
@@ -620,6 +698,7 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
       /* containers will submit their direct submits in begin */
       /* Check if it is with or without own loop argument -> L,FE or L(i),FE(i) */
       if( _nodeDataPtr->type == Loop || _nodeDataPtr->type == ForEach  ) {
+         SeqNameValuesPtr loopArgs = NULL, loopSetArgs = NULL;
           /* L submits first set of loops, L(i) just submits its submits */
          if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) { 
             submitNodeList(_nodeDataPtr);
@@ -641,24 +720,7 @@ static int go_begin(char *_signal, char *_flow, const SeqNodeDataPtr _nodeDataPt
          }
       }
       if ( _nodeDataPtr->type == Switch ) {   
-               /* S submits S(i), S(i) just submits its submits */
-         if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) { 
-            submitNodeList(_nodeDataPtr);
-         } else {
-             loopArgs = (SeqNameValuesPtr) SeqLoops_getContainerArgs( _nodeDataPtr, _nodeDataPtr->loop_args );
-             /* first get the parent container loop arguments */
-             if( loopArgs != NULL ) {
-                loopSetArgs = SeqNameValues_clone( loopArgs );
-             }
-                /* then add the current loop argument */
-             SeqNameValues_printList(_nodeDataPtr->switchAnswers);
-             SeqNameValues_insertItem( &loopSetArgs, _nodeDataPtr->nodeName, SeqNameValues_getValue(_nodeDataPtr->switchAnswers,_nodeDataPtr->name ));
-             /*now submit the child nodes */
-             SeqUtil_TRACE(TL_FULL_TRACE, "go_begin calling maestro -n %s -s submit -l %s -f continue\n", _nodeDataPtr->name, SeqLoops_getLoopArgs( loopSetArgs ));
-             maestro ( _nodeDataPtr->name, "submit", "continue" , loopSetArgs, 0, NULL, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
-             SeqNameValues_deleteWholeList( &loopArgs );
-             SeqNameValues_deleteWholeList( &loopSetArgs );
-         }
+         go_begin_switch(_nodeDataPtr);
       }
 
       /* non-interative containers */
