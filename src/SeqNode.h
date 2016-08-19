@@ -19,22 +19,14 @@
  */
 
 
-#include "SeqListNode.h"
-#include "SeqNameValues.h"
-#include <stdio.h>
 #ifndef _SEQ_NODE
 #define _SEQ_NODE
 
-typedef enum _SeqDependsType {
-   NodeDependancy,
-   DateDependancy
-} SeqDependsType;
+#include "SeqListNode.h"
+#include "SeqNameValues.h"
+#include "SeqDepends.h"
+#include <stdio.h>
 
-typedef enum _SeqDependsScope {
-   IntraSuite,
-   IntraUser,
-   InterUser,
-} SeqDependsScope;
 
 typedef enum _SeqNodeType {
    Family,
@@ -45,16 +37,6 @@ typedef enum _SeqNodeType {
    Switch,
    ForEach,
 } SeqNodeType;
-
-typedef struct _SeqDependencies {
-   SeqNameValuesPtr dependencyItem;
-   /* the type is a discriminant to
-   process the generic name-value structure */
-   SeqDependsType type;
-   struct _SeqDependencies *nextPtr;
-} SeqDependencies;
-
-typedef SeqDependencies *SeqDependenciesPtr;
 
 typedef struct _SeqForEachTarget {
    char* index;
@@ -131,7 +113,7 @@ typedef struct _SeqNodeData {
    SeqForEachTargetPtr forEachTarget; 
 
    /* list of dependencies */
-   SeqDependenciesPtr depends;
+   SeqDepNodePtr dependencies;
 
    /* next nodes to submit */
    LISTNODEPTR submits;
@@ -171,8 +153,6 @@ void SeqNode_setMachine ( SeqNodeDataPtr node_ptr, const char* machine );
 void SeqNode_setQueue ( SeqNodeDataPtr node_ptr, const char* queue );
 void SeqNode_setMemory ( SeqNodeDataPtr node_ptr, const char* memory );
 void SeqNode_setShell ( SeqNodeDataPtr node_ptr, const char* shell );
-void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDependsType type, char* dep_node_name, char* dep_node_path,
-                         char* dep_exp, char* dep_status, char* dep_index, char* local_index, char* dep_hour, char * dep_TimeDelta, char* dep_Prot, char* dep_ValidHour, char* dep_ValidDOW);
 void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end, char* expression );
 void SeqNode_addSubmit ( SeqNodeDataPtr node_ptr, char* data );
 void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath );
@@ -212,6 +192,9 @@ void SeqNode_printResourcePath(FILE *file, SeqNodeDataPtr node_ptr);
 void SeqNode_printBatchResources(FILE *file, SeqNodeDataPtr node_ptr);
 void SeqNode_printPathInfo(FILE *file, SeqNodeDataPtr node_ptr);
 void SeqNode_printNode ( SeqNodeDataPtr node_ptr, unsigned int filters, const char * filename );
+
+void SeqNode_addNodeDependency ( SeqNodeDataPtr node_ptr, SeqDepDataPtr dep);
+void SeqNode_setSubmitOrigin( SeqNodeDataPtr node_ptr, const char* submitOrigin);
 
 extern void SeqNode_generateConfig (const SeqNodeDataPtr _nodeDataPtr, const char* flow, const char * filename );
 extern char * SeqNode_extension (const SeqNodeDataPtr _nodeDataPtr);

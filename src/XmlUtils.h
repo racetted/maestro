@@ -51,6 +51,7 @@ xmlDocPtr XmlUtils_getdoc (const char *_docname);
 xmlXPathObjectPtr
 XmlUtils_getnodeset (const xmlChar *_xpathQuery, xmlXPathContextPtr _context);
 
+char * XmlUtils_getProp_ES(xmlNodePtr nodePtr, const char *name);
 void XmlUtils_resolve (const char *_docname, xmlXPathContextPtr _context, const char *_deffile, const char* _seq_exp_home);
 
 #endif

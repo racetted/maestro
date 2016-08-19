@@ -50,6 +50,26 @@ XmlUtils_getnodeset (const xmlChar *_xpathQuery, xmlXPathContextPtr _context) {
    return result;
 }
 
+
+/********************************************************************************
+ * Wrapper around xmlGetProp that returns empty string if the property is not
+ * found.
+ *
+ * This is used for objects use an empty string to mark a property that is not
+ * defined.
+ *
+ * Note that the empty string is dynamically allocated because objects like
+ * SeqDepData have a free routine that frees all of it's fields.
+********************************************************************************/
+char * XmlUtils_getProp_ES(xmlNodePtr nodePtr, const char *name)
+{
+   char * value = (char *) xmlGetProp( nodePtr, name );
+   if( value == NULL )
+      return strdup("");
+   else
+      return value;
+}
+
 /* Resolve keywords in xml files.  To use a definition file (format defined by
    SeqUtils_getdef(), provide the _deffile name; a NULL value passed to _deffile 
    causes the resolver to search in the environment for the key definition.*/

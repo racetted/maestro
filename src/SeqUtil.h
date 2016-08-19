@@ -67,6 +67,8 @@ void  SeqUtil_TRACE( int level,const char * fmt, ...);
 void  SeqUtil_setTraceLevel (int _trace) ;
 int   SeqUtil_getTraceLevel () ;
 void SeqUtil_setTraceFlag(int flag, int value);
+void SeqUtil_setTraceEnv();
+void SeqUtil_showTraceInfo();
 void  SeqUtil_checkExpHome (char * _expHome) ;
 void  actions(char *signal, char* flow, char *node) ;
 void  actionsEnd(char *signal, char* flow, char* node) ;
@@ -106,4 +108,5 @@ int   SeqUtil_compareInt (const void * a, const void * b);
 char* SeqUtil_normpath(char *out, const char *in); 
 const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home);
 char *SeqUtil_getTraceLevelString();
+int SeqUtil_sprintStatusFile(char *dst,const char * exp_home, const char *node_name, const char *datestamp, const char * extension, const char *status);
 #endif

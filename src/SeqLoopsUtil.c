@@ -26,6 +26,7 @@
 #include "SeqNameValues.h"
 #include "SeqNode.h"
 #include "SeqUtil.h"
+#include "SeqLoopsUtil.h"
 #include <string.h>
 
 #define DEF_START 0
@@ -48,13 +49,20 @@ static LISTNODEPTR def_to_reverse_extension_list( int start, int end, int step);
 LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr );
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex );
 
-/* function to parse the loop arguments
-   returns 0 if succeeds
-   returns -1 if the function fais with an error
-   cmd_args must be in the form "loop_name=value,loop_namex=valuex"
-*/
+/********************************************************************************
+ * Returns extension associated to an index.
+ * For example
+ * "loop1=2,switch=00,loop2=8" -> "+2+00+8"
+********************************************************************************/
 char * SeqLoops_indexToExt(const char * index)
 {
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_indexToExt() begin. Index:%s\n",index);
+#if 0
+   /*
+    * returns NULL if index == NULL,
+    * returns empty string if index is empty string.
+    * Undefined behavior if index is not valid input.
+    */
    if( index == NULL ) return NULL;
    const char * src = index;
    char ext[strlen(index)];
@@ -71,9 +79,47 @@ char * SeqLoops_indexToExt(const char * index)
       while( *src != ',' && *src != '\0') *dst++ = *src++;
    }
    *dst = '\0';
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_indexToExt() end. Returning %s\n",retval);
    return strdup(ext);
+
+#else
+  /*
+   * Based on this snippet of code:
+   *     SeqUtil_stringAppend( &localIndexString, "" );
+   *     if( localIndex != NULL && strlen( localIndex ) > 0 ) {
+   *        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.validateDependencies() localIndex=%s\n", localIndex );
+   *        SeqLoops_parseArgs(&loopArgsPtr, localIndex);
+   *        tmpExt = (char*) SeqLoops_getExtFromLoopArgs(loopArgsPtr);
+   *        SeqUtil_stringAppend( &localIndexString, tmpExt );
+   *        free(tmpExt);
+   *     }
+   *
+   *  This version is better for code maintainability since it reduces
+   *  the number of modifications to make if we decide to change how
+   *  the index system works.  Also note, SeqLoops_getExtFromLoopArgs()
+   *  returns a dynamically allocated string.  So to be consistent with
+   *  that, we return a dynamically allocated empty string in the else.
+   */
+   char * retval = NULL;
+   SeqNameValuesPtr loopArgsPtr = NULL;
+   if( index != NULL && strlen(index) > 0 ){
+      SeqLoops_parseArgs(&loopArgsPtr,index);
+      retval = SeqLoops_getExtFromLoopArgs(loopArgsPtr);
+   } else {
+      retval = strdup("");
+   }
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_indexToExt() end. Returning %s\n",retval);
+   SeqNameValues_deleteWholeList(&loopArgsPtr);
+   return retval;
+#endif
+
 }
 
+/* function to parse the loop arguments
+   returns 0 if succeeds
+   returns -1 if the function fais with an error
+   cmd_args must be in the form "loop_name=value,loop_namex=valuex"
+*/
 int SeqLoops_parseArgs( SeqNameValuesPtr* nameValuesPtr, const char* cmd_args ) {
    char *tmpstrtok = NULL, *tmp_args = NULL;
    char loopName[100], loopValue[50];
@@ -441,12 +487,17 @@ int SeqLoops_isParentLoopContainer ( const SeqNodeDataPtr _nodeDataPtr ) {
 ********************************************************************************/
 LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
    LISTNODEPTR loopExtensions=NULL, prod=NULL, rhs=NULL;
-   SeqLoopsPtr loopPtr=NULL;
    SeqNameValuesPtr depArgs=NULL, arg=NULL;
 
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): Begin call\n");
 
-   SeqNode_printLoops(NULL,_nodeDataPtr);
+   if( depIndex == NULL || strlen(depIndex) == 0){
+      SeqListNode_pushFront(&loopExtensions, "");
+      SeqUtil_TRACE(TL_FULL_TRACE, "No extension, returning 1 elem list containing empty string");
+      goto out;
+   }
+
+   SeqNode_showLoops(_nodeDataPtr->loops,TL_FULL_TRACE);
    SeqLoops_parseArgs(&depArgs,depIndex);
 
    for( arg = depArgs; arg != NULL; arg = arg->nextPtr){
@@ -462,6 +513,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensionsInReverse( SeqNodeDataPtr _nodeDa
          loopExtensions = prod;
       }
    }
+out:
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_getLoopContainerExtensionsInReverse(): returning list:   \n");
    SeqListNode_printList(loopExtensions); SeqUtil_TRACE(TL_FULL_TRACE,"\n");
    return loopExtensions;

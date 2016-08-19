@@ -1445,3 +1445,23 @@ const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home)
 }
 
 
+
+/********************************************************************************
+ * Constructs the status file filename in the dst argument.
+********************************************************************************/
+int SeqUtil_sprintStatusFile(char *dst,const char * exp_home, const char *node_name,
+            const char *datestamp, const char * extension, const char *status)
+{
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_sprintStatusFile() begin\n");
+   if( extension != NULL && strlen(extension) > 0){
+      sprintf(dst,"%s/sequencing/status/%s/%s.%s.%s",
+                        exp_home, datestamp, node_name, extension, status );
+   } else {
+      sprintf(dst,"%s/sequencing/status/%s/%s.%s",
+                        exp_home, datestamp, node_name, status );
+   }
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_sprintStatusFile() end constructed filename:\n   %s\n",dst);
+   return strlen(dst); /* Catch errors by possibly crashing if string is
+                        * not null-terminated
+                        */
+}
