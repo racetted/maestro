@@ -48,7 +48,6 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
    char *dateFileName = NULL;
    char *job="TICTAC";
    char *tmpfromaestro=getenv("FROM_MAESTRO");
-   int ret,sock;
    SeqUtil_TRACE( TL_FULL_TRACE, "maestro.tictac_setDate( %s, %s ) called \n", _expHome, datestamp);
  
    _touch = touch_svr;
@@ -100,10 +99,9 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    int i = 0;
    char *dateFileName = NULL, *tmpstrtok = NULL, *tmpLatestFile=NULL;
    char statePattern[SEQ_MAXFIELD] = {'\0'};
-   char dateValue[128] = {'\0'}, cmd[128] = {'\0'};
+   char dateValue[128] = {'\0'};
    char* returnDate = NULL;
-   size_t counter=0, returnValue=0;
-   FILE *dateFile = NULL;
+   size_t counter=0;
    glob_t glob_logs; 
    struct stat *statbuf = NULL; 
    time_t latest = 0;

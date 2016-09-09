@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <time.h>
 #include <fcntl.h>
@@ -39,6 +40,10 @@
 #include <sys/dir.h>
 #include <sys/param.h>
 #include "l2d2_socket.h" 
+
+
+
+
 
 extern char * str2md5(const char *, int );
 

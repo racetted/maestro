@@ -230,21 +230,15 @@ int OpenConnectionToMLLServer (const char * node ,const char *signal , const cha
     unsigned int pid;
 
     int sock;
-    int bytes_sent,bytes_read,ret;
+    int ret;
     int port;
 
-    struct stat fileStat;
     struct passwd *passwdEnt = getpwuid(getuid());
 
-    char buffer[1024],buf_id[1024];
-    char username[50];
     static char ipserver[20];
     static char htserver[20];
     static char thisHost[100];
-    char resolved[MAXPATHLEN];
 
-    char *path_status=NULL;
-    char *seq_date=NULL;
     char *Auth_token=NULL;
     char *mversion=NULL;
     char *m5sum=NULL;

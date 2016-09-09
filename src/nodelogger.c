@@ -81,20 +81,11 @@ _FromWhere FromWhere;
  
 void nodelogger(const char *job, const char* type, const char* loop_ext, const char *message, const char* datestamp, const char* _seq_exp_home)
 {
-   int i, sock=-1,ret, write_ret;
-   int send_success = 0;
-   char *tmphost=NULL;
-   char *tmpenv = NULL;
-   char *tmpusername = NULL;
+   int sock=-1,ret, write_ret;
    char *tmpfrommaestro = NULL;
-   char cmcnodelogger[25];
    char tmp[10];
-   struct stat stbuf;
    char *basec = NULL;
    struct passwd *p, *p2;
-   int gid = 0;
-   char *experience;
-   char line[1024];
    struct sigaction sa;
    char *logtocreate = NULL;
    int pathcounter=0;
@@ -114,7 +105,6 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
       fprintf(stderr,"nodelogger: getpwuid() error" );
       return;
    } else {
-      gid = (int) p->pw_gid;
       /* example: pw_name = afsipat */
       strcpy(username, p->pw_name);
    }
@@ -135,7 +125,6 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    /* make a duplicate of seq_exp_home because basename may return pointers */
    /* to statically allocated memory which may be overwritten by subsequent calls.*/
    basec = (char *) strdup(_seq_exp_home);
-   experience = (char *) basename(basec);
 
     /* setup an alarm so that if the logging is stuck
      * it will timeout after 60 seconds. This will prevent the
@@ -305,8 +294,6 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     time_t time();
     time_t timval;
 
-    int i;
-    int joblength;
     char nodepath[100];
     int c_month, c_day, c_hour, c_min, c_sec, c_year;
 
@@ -324,9 +311,6 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
     c_hour  = tmptr->tm_hour;
     c_min   = tmptr->tm_min;
     c_sec   = tmptr->tm_sec;
-
-    joblength=strlen(node);
-    /* if ( joblength > 14 ) joblength = 14; */
 
     memset(nodepath, '\0', sizeof nodepath);
 
@@ -372,25 +356,21 @@ static void gen_message (const char *node,const char *type,const char* loop_ext,
 static int sync_nodelog_over_nfs (const char *node, const char * type, const char * loop_ext, const char * message, const char * datestamp, const char *logtype, const char * _seq_exp_home)
 {
     FILE *fd;
-    struct passwd *ppass;
     struct stat fileStat;
-    struct sigaction sa;
-    int fileid,topfileid,num,nb,my_turn,ret,len,status=0;
+    int fileid,num,nb,my_turn,ret,status=0;
     int success=0, loop=0;
     unsigned int pid;
-    struct timeval tv;
-    struct tm* ptm;
     struct stat st;
     static DIR *dp = NULL;
     struct dirent *d;
     time_t now;
-    char *truehost=NULL, *path_status=NULL, *mversion=NULL, *tmp_log_path=NULL;
+    char *truehost=NULL, *path_status=NULL, *mversion=NULL;
     char resolved[MAXPATHLEN];
-    char host[128], lock[1024],flock[1024],lpath[1024],buf[1024];
-    char time_string[40],Stime[40],Etime[40],Atime[40];
+    char host[128], lock[1024],flock[1024],lpath[1024];
+    char Stime[40],Etime[40],Atime[40];
     char ffilename[1024],filename[256];
     char host_pid[64],TokenHostPid[256],underline[2];
-    double Tokendate,date,modiftime,actualtime;
+    double Tokendate,date;
     double diff_t;
 
     SeqUtil_TRACE(TL_FULL_TRACE,"sync_nodelog_over_nfs(): Called\n");
@@ -402,7 +382,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     }
     
     /* get user parameters */
-    if (  (ppass=getpwnam(username)) == NULL ) {
+    if (  (getpwnam(username)) == NULL ) {
         fprintf(stderr, " Nodelogger::Cannot get user:%s passwd parameters\n",username);
         return (1); 
     }

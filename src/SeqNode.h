@@ -175,6 +175,7 @@ void SeqNode_setSuiteName ( SeqNodeDataPtr node_ptr, const char* suiteName );
 void SeqNode_setInternalPath ( SeqNodeDataPtr node_ptr, const char* path );
 void SeqNode_setModule ( SeqNodeDataPtr node_ptr, const char* module );
 void SeqNode_addSwitch ( SeqNodeDataPtr _nodeDataPtr, const char* switchName, const char* switchType, const char* returnValue);
+void SeqNode_showLoops(SeqLoopsPtr loopsPtr,int trace_level);
 
 const char *SeqNode_getCfgPath( SeqNodeDataPtr node_ptr);
 const char *SeqNode_getTaskPath(SeqNodeDataPtr node_ptr);

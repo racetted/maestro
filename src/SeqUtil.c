@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <glob.h>
+#include <utime.h> 
 #include <errno.h>        /* errno */
 #include "SeqUtil.h"
 #include <time.h>  /*nsleep*/
@@ -1000,7 +1001,6 @@ void SeqUtil_stripSubstring( char ** string, char * substring) {
 char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) { 
 
    char *returnString = NULL, *tmpString=NULL, *tmpstrtok=NULL, *prevPtr=NULL; 
-   int count=0;
 
    if (path == NULL) return NULL; 
    if (strstr(path, "..") != NULL || strstr(path, "./") != NULL) {
@@ -1018,9 +1018,7 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
 	    }
 	    
        } else if ((tmpString=strstr(path, "..")) !=NULL) {
-            /*count the number of containers to go up*/
-            count=SeqUtil_tokenCount( path, ".." ); 
-	         returnString=strdup(_nodeDataPtr->container);
+	        returnString=strdup(_nodeDataPtr->container);
             tmpString = (char*) malloc( strlen( path ) + 1 );
             strcpy( tmpString, path );
             tmpstrtok = (char*) strtok( tmpString, ".." );
@@ -1075,7 +1073,7 @@ int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const 
     char tmp_line[SEQ_MAXFIELD];
     char line[SEQ_MAXFIELD];
     char Lexp[256],Lnode[256],Ldatestamp[25],LloopArgs[128];
-    int n,found=0;
+    int found=0;
     size_t num, inode, Linode;
  
     fprintf(stderr,"maestro.writeNodeWaitedFile(): Using WriteNodeWaitedFile_nfs routine\n");
@@ -1190,7 +1188,7 @@ int WriteForEachFile_nfs ( const char* _exp, const char* _node, const char* _dat
     char tmp_line[SEQ_MAXFIELD];
     char line[SEQ_MAXFIELD];
     char Lexp[256],Lnode[256],Ldatestamp[25],LloopArgs[128], Lindex[128];
-    int n,found=0;
+    int found=0;
     size_t inode, Linode, num;
  
     SeqUtil_TRACE(TL_FULL_TRACE,"WriteNodeWaitedFile(): Using WriteForEachFileFile_nfs routine\n");

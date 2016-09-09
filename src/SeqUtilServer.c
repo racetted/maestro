@@ -220,7 +220,7 @@ FILE * fopen_svr ( const char * filename , int sock )
   char tmp[1024];
   char csize[11];
   int  size;
-  int  bytes_sent,bytes_read,error=0;
+  int  bytes_sent,bytes_read;
 
   unsigned int pid=getpid();
 
