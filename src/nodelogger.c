@@ -565,7 +565,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     if ( success == 1 ) { 
        fprintf(stderr,"Nodelogger NFS_SYNC::Started at:%s Grabbed at:%s Ended at:%s tries=%d\n",Stime,Atime,Etime,loop);
     } else  {
-       fprintf(stderr,"Nodelogger NFS_SYNC DID NOT GET the lock Started at:%s Ended at:%s tries=%d\n",Stime,Atime,loop);
+       fprintf(stderr,"Nodelogger NFS_SYNC DID NOT GET the lock Started at:%s Ended at:%s tries=%d\n",Stime,Etime,loop);
        /* erase the lock  will lower load on the remaining clients */
        ret=unlink(flock);
     }

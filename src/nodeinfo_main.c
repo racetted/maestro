@@ -182,7 +182,7 @@ int main ( int argc, char * argv[] )
       else raiseError("Unrecognized filter %s\n", filter_token);
    }
 
-   if ( nodeFound == 0 && (filters & NI_SHOW_ROOT_ONLY) ) {
+   if ( (nodeFound == 0) && ( (filters & NI_SHOW_ROOT_ONLY) != NI_SHOW_ROOT_ONLY ) ) {
       printUsage();
       exit(1);
    }
