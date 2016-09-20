@@ -543,7 +543,6 @@ static void setInitState(const SeqNodeDataPtr _nodeDataPtr) {
 
    char *extName = NULL;
    char *tmpString = NULL; 
-   char filename[SEQ_MAXFIELD];
    LISTNODEPTR nodeList = NULL;
 
    /* delete the lock files for the current loop, it is stored in it's container */
@@ -850,8 +849,6 @@ Inputs:
 */
 
 static int go_end(char *_signal,char *_flow , const SeqNodeDataPtr _nodeDataPtr) {
-	SeqNodeDataPtr newNodeDataPtr = NULL;
-	char filename[SEQ_MAXFIELD];
 	SeqNameValuesPtr newArgs = NULL, loopSetArgs = NULL, containerArgs = NULL;
 	int isEndCnt=1;
 	int newDefNumber = 0;
@@ -925,9 +922,7 @@ static int setEndState(const char* _signal, const SeqNodeDataPtr _nodeDataPtr) {
 
    char filename[SEQ_MAXFIELD], filename1[SEQ_MAXFIELD];
    char *extName = NULL,*nptExt = NULL, *containerLoopExt = NULL;
-   SeqNodeDataPtr NodePtr = NULL;
    int ret=0, isEndContainerExist=1;
-   char Time[40];
 
    SeqNameValuesPtr newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
    extName = (char *)SeqNode_extension( _nodeDataPtr );
@@ -1182,7 +1177,6 @@ Inputs
 
 static int isNpassComplete ( const SeqNodeDataPtr _nodeDataPtr ) {
    char statePattern[SEQ_MAXFIELD];
-   char filename[SEQ_MAXFIELD];
    int undoneIteration = 0;
    SeqNameValuesPtr containerLoopArgsList = NULL;
    char *extension=NULL;
@@ -1611,7 +1605,6 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char tmpfile[SEQ_MAXFIELD], noendwrap[12],immediateMode[11], nodeFullPath[SEQ_MAXFIELD], workerEndFile[SEQ_MAXFIELD], workerAbortFile[SEQ_MAXFIELD], submissionDir[SEQ_MAXFIELD];
    char listingDir[SEQ_MAXFIELD], defFile[SEQ_MAXFIELD], nodetracercmd[SEQ_MAXFIELD];
    char cmd[SEQ_MAXFIELD];
-   char tmpDate[5];
    char pidbuf[100];
    char *cpu = NULL, *tmpdir=NULL;
    char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL;
@@ -2066,7 +2059,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char depExp[256] = {'\0'}, depNode[256] = {'\0'}, depArgs[SEQ_MAXFIELD] = {'\0'}, depDatestamp[20] = {'\0'};
    char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'}, statusFile[SEQ_MAXFIELD] = {'\0'};
    char *extName = NULL, * depExtension = NULL, *tmpValue=NULL, *tmpExt=NULL;
-   int submitCode = 0, submitErrors = 0, count = 0, line_count=0, ret;
+   int submitCode = 0, count = 0, line_count=0, ret;
    LISTNODEPTR submittedList = NULL, dependencyLines = NULL, current_dep_line = NULL;
 #ifdef SEQ_USE_SYSTEM_CALLS_FOR_DEPS
    char * submitDepArgs = NULL;
@@ -2878,7 +2871,6 @@ int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, 
 {
    /* Both */
    char statusFile[SEQ_MAXFIELD];
-   char msg[1024];
    memset( statusFile, '\0', sizeof statusFile);
    /* ocm related */
    char dhour[3];
@@ -3117,10 +3109,8 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    char *seq_soumet = NULL, *tmp = NULL, *logMech=NULL, *defFile=NULL, *windowAverage = NULL, *runStats = NULL ;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL, *tmpFullOrigin=NULL, *tmpLoopExt=NULL, *tmpJobID=NULL, *tmpNodeOrigin=NULL, *tmpHost=NULL, *fixedPath;
    SeqNodeDataPtr nodeDataPtr = NULL;
-   FILE *file;
-   int status = 1, traceLevel=0; /* starting with error condition */
-   int r,wstate;
-   int USE_SERVER=0;
+   int status = 1; /* starting with error condition */
+   int r;
    struct sigaction alrm, pipe;
    DIR *dirp = NULL;
    

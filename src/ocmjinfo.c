@@ -126,7 +126,6 @@
  */
 
 extern char *__loc1; /* needed for regex */
-static FILE *jinfo_su;
 
 static char jinfo_spma[JINFO_MAXLINE];
 static char JINFO_MASTERTABLE[JINFO_MAXLINE];
@@ -163,8 +162,6 @@ static int JINFO_OFFSET, JINFO_FLAG_LOOPS;
 
 static FILE  *jinfo_master, *jinfo_mastertable, *jinfo_aliastable;
 
-static void message (char *msg1,char *msg2,char *var);
-static int convert_tmphour(char plusorminus,char tmphour[5],char final_tmphour[5]);
 static int getmaster(char *controlDir,char *suite,char *run,char **masterfile);
 static void check4alias(char *job);
 static int splitfield(char *var,char *field,char *result);
@@ -1005,43 +1002,19 @@ char var[JINFO_MAX_FIELD];
 char field[JINFO_MAX_FIELD];
 char result[JINFO_MAX_FIELD];
 {
- int i, t=0,pos,tmp_set,tmp_step;
- int invalidextension=0;
- int minus_int;
+ int i, t=0,tmp_set,tmp_step;
  int loop_limit,set,start;
- unsigned short done = 0;
- unsigned short counter = 9;
- unsigned short tmphourCounter = 0;
  char tmp[JINFO_MAX_TMP];
  char tmpfield[JINFO_MAX_TMP];
  char tmpjob[JINFO_MAX_TMP];
- char tmp_depend[JINFO_MAX_TMP];
- char tmphour[5];
- char final_tmphour[5];
- char plusorminus;
  char fmt_s_term[JINFO_MAX_FMT];
  char fmt_term[JINFO_MAX_FMT];
  char fmt_s8_term[JINFO_MAX_FMT];
  char fmt_s8[JINFO_MAX_FMT];
  char fmt_s[JINFO_MAX_FMT];
  char tmp_result[JINFO_MAX_FIELD];
- char branches[JINFO_MAX_FIELD];
  char tempo[JINFO_MAX_TMP];
- char minus_str[10];
- char loop_str[10];
- char end_job[10];
- char run[3];
- char filter[JINFO_MAXLINE];
- char filter2[JINFO_MAXLINE];
- char user[JINFO_MAX_TMP];
- char controlDir[JINFO_MAX_TMP];
- char suite[JINFO_MAX_TMP];
- struct passwd *pw=NULL;
- char remote_job[JINFO_MAX_TMP];
- char between_suite[JINFO_MAX_TMP];
  char *tmpstrtok = NULL;
- char *ocmpath = NULL;
- char *ocmpath2 = NULL;
 
  memset(result,'\0', sizeof result);
  memset(tmp_result, '\0', sizeof tmp_result);
@@ -1367,75 +1340,4 @@ static int getJobLoopInfos(char *controlDir, char *suite, char *job,int *loop_li
   fclose(fmaster);
   return(1);
 }
-
-/*****************************************************************************
-* NAME: convert_tmphour
-* PURPOSE: add "$plusorminus$tmphour" to $JINFO_HOUR and put result into 'final_tmphour'
-* INPUT: plusorminus - '-' or '+'
-*        tmphour - '00', '06', '12' or '18'
-*       
-* OUTPUT: return 0 if successful and put result into 'final_tmphour'
-* example: convert_tmphour('+',"06",final_tmphour);
-*******************************************************************************/
-static int convert_tmphour(char plusorminus,char tmphour[5],char final_tmphour[5])
-{
- int status = 1;
- int numer, denom = 24 , answer;
- div_t ans;
-
- if ( plusorminus == '+' ) {
-    status=0;
-    numer = atoi(tmphour) + atoi(JINFO_HOUR);
-    ans = div(numer,denom);
-    sprintf(final_tmphour,"%02d",ans.rem); 
- }
- if ( plusorminus == '-' ) {
-    status=0;
-    numer = atoi(tmphour);
-    ans = div(numer,denom);
-    answer = 24 + atoi(JINFO_HOUR) - ans.rem;
-    ans = div(answer,denom);
-    sprintf(final_tmphour,"%02d", ans.rem);
- }
- return(status);
-}
-
-/**********************************************************************
-***S/R		message                                                   
-*
-*AUTHOR		W. Hodgins                                               
-*
-*REVISION	Version 3.0 Apr 9 1990                                  
-*
-*LANGUAGE	C                                                       
-*
-*OBJECT		Display a message in english or french (depending  
-*		on environment variable CMCLNG)
-*
-*USAGE		message(msg1,msg2,var)                                 
-*
-*ARGUMENTS	msg1 - english text to be displayed
-*		msg2 - french text to be displayed
-*		var  - string of characters to be displayed
-*
-*        
-**********************************************************************/
-static void message (msg1,msg2,var)
-char msg1[100],msg2[100],var[100];
-{
- int eng = 1;
- char *str = NULL;
-
- str = getenv("CMCLNG");
-
- if (str != NULL) {
-    if(!strcmp(str,"francais"))eng = 0;
- }
- if (eng) fprintf(stderr,"%s%s\n",msg1,var);
- else fprintf(stderr,"%s%s\n",msg2,var);
-
-}
-
-
-
 

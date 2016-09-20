@@ -84,7 +84,6 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    int sock=-1,ret, write_ret;
    char *tmpfrommaestro = NULL;
    char tmp[10];
-   char *basec = NULL;
    struct passwd *p, *p2;
    struct sigaction sa;
    char *logtocreate = NULL;
@@ -121,10 +120,6 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    snprintf(LOG_PATH,sizeof(LOG_PATH),"%s/logs/%s_nodelog",_seq_exp_home,datestamp);
    snprintf(TMP_LOG_PATH,sizeof(TMP_LOG_PATH),"%s/sequencing/sync/%s",_seq_exp_home,datestamp);
    snprintf(TOP_LOG_PATH,sizeof(TOP_LOG_PATH),"%s/logs/%s_toplog",_seq_exp_home,datestamp);
-
-   /* make a duplicate of seq_exp_home because basename may return pointers */
-   /* to statically allocated memory which may be overwritten by subsequent calls.*/
-   basec = (char *) strdup(_seq_exp_home);
 
     /* setup an alarm so that if the logging is stuck
      * it will timeout after 60 seconds. This will prevent the

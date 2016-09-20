@@ -149,10 +149,8 @@ void nodeabort(const char *_signal, const SeqNodeDataPtr _nodeDataPtr, const cha
 {
    static char aborted[] = "ABORTED";
    static char runc[]    = ": run continues";
-   static char joba[]    = "JOB ABORT:";
    static char abortnb[] = "job aborted: ";
    static char jobc[]    = "next job(s) submitted";
-   static char jobo[]    = "JOB OF";
    static char jobs[]    = "job stopped ";
    static char rerun[]   = "job has been resubmitted";
    static char xxjob[]   = "XXJOB ABORT";

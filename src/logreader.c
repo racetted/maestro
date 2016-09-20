@@ -51,7 +51,7 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 
       char ComposedNode[512];
       struct _ListNodes     *ptr_lhead,  *ptr_Ltrotte, *ptr_Lpreced;
-      struct _ListListNodes *ptr_llhead, *ptr_LLtrotte, *ptr_LLpreced;
+      struct _ListListNodes *ptr_LLtrotte, *ptr_LLpreced;
       int found_len=0 , found_node=0, len=0; 
        
       /*if init state clean statuses of the branch*/
@@ -287,11 +287,10 @@ void insert_node(char S, char *node, char *loop, char *stime, char *btime, char 
 
 void read_file (char *base)
 {
-   char *ptr, *q, *qq, *pp;
-   char string[1024];
+   char *ptr, *qq, *pp;
    char dstamp[18];
    char node[128], signal[16],loop[32], waitmsg[256];
-   int n,len,size=0;
+   int size=0;
    for ( ptr = base ; ptr < &base[pt.st_size]; ptr++) {
       memset(dstamp,'\0',sizeof(dstamp));
       memset(node,'\0',sizeof(node));
@@ -364,15 +363,15 @@ void print_LListe ( struct _ListListNodes MyListListNodes, FILE *outputFile)
 {
       struct _ListNodes      *ptr_Ltrotte;
       struct _ListListNodes  *ptr_LLtrotte, *ptr_shortest_LLNode;
-      struct _NodeLoopList  *ptr_NLoopHead, *ptr_NLHtrotte, *ptr_NLHpreced;
+      struct _NodeLoopList  *ptr_NLHtrotte, *ptr_NLHpreced;
       struct _LoopExt       *ptr_LEXHead,   *ptr_LXHtrotte, *ptr_LXHpreced ;
       struct tm ti;
       time_t Sepoch,Bepoch,Eepoch,TopNodeSubmitTime;
       time_t ExeTime, SubDelay, RelativeEnd;
-      int n, found_loopNode, i, j, shortestLength=256, submit_time_found=0, begin_time_found=0, end_time_found=0 ;
-      static char sbuffer[10],ebuffer[10], rbuffer[10], wbuffer[300];
+      int n, found_loopNode, shortestLength=256, submit_time_found=0, begin_time_found=0, end_time_found=0 ;
+      static char sbuffer[10],ebuffer[10], rbuffer[10];
       char *stats_output = NULL, *tmp_output, *tmp_statstring =NULL;
-      char output_buffer[256], tmp_line[256];
+      char output_buffer[256];
 
       /* Traverse the list to find the top node (shortest nodelength) to get its submit time to do the relative end time calculation */ 
       for ( ptr_LLtrotte = &MyListListNodes; ptr_LLtrotte != NULL ; ptr_LLtrotte = ptr_LLtrotte->next) {
@@ -677,7 +676,6 @@ int printAverage() {
    StatsNode *node_tmpptr=rootStatsNode;
    PastTimes *time_tmpptr;
    char * output_line = NULL, *prev_node=NULL;
-   int new_node=0;
 
    if(rootStatsNode == NULL ) {
       fprintf(stdout,"\n");
@@ -737,7 +735,6 @@ int printAverage() {
 
 /*outputs a node-specific line formatted to fit in the tsv structure for logreader.tcl*/
 char *getNodeAverageLine(char *node, char *member){
-   char line[256];
    char * tmp_statstring; 
    StatsNode *node_tmpptr;
    PastTimes *time_tmpptr;

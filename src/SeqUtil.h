@@ -106,6 +106,7 @@ void  SeqUtil_printOrWrite( FILE * filename, char * text, ...);
 int   SeqUtil_basicTruncatedAverage(int *unsorted_int_array, int elements, int removal_quantity); 
 int   SeqUtil_compareInt (const void * a, const void * b);
 char* SeqUtil_normpath(char *out, const char *in); 
+int SeqUtil_basicTruncatedMean(int *unsorted_int_array, int elements, int removal_quantity);
 const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home);
 char *SeqUtil_getTraceLevelString();
 int SeqUtil_sprintStatusFile(char *dst,const char * exp_home, const char *node_name, const char *datestamp, const char * extension, const char *status);

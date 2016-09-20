@@ -378,7 +378,7 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
 LISTNODEPTR SeqLoops_childExtensions( SeqNodeDataPtr _nodeDataPtr ) {
    SeqNameValuesPtr nodeSpecPtr = NULL;
    char tmp[20], *baseExtension;
-   int expressionArray[256], i, startIndex=0, endIndex=1, stepIndex=2, setIndex=3, detectedEnd=0;
+   int expressionArray[256], i, startIndex=0, endIndex=1, stepIndex=2, detectedEnd=0;
    char *tmpExpression = NULL, *tmpArrayValue = NULL, *tmpAttributeValue = NULL;
    int loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0, breakFlag, firstFlag=1;
    LISTNODEPTR loopExtensions = NULL;
@@ -561,7 +561,6 @@ static LISTNODEPTR loopArg_to_reverse_extension_list( SeqNodeDataPtr _nodeDataPt
 SeqLoopsPtr SeqLoops_findLoopByName( SeqLoopsPtr loopsPtr, char * name)
 {
    SeqLoopsPtr current = loopsPtr;
-   SeqNameValuesPtr loopData = NULL;
    SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_findLoopByName(): Looking for loop matching name=%s\n",name);
    for (current = loopsPtr; current != NULL; current = current->nextPtr ){
       if ( strcmp( SeqUtil_getPathLeaf(current->loop_name), name) == 0 ){
@@ -716,9 +715,8 @@ static LISTNODEPTR def_to_reverse_extension_list( int start, int end, int step){
  * the iterations of a node that is a child of a loop container
  */
 LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, const char * depIndex ) {
-   SeqNameValuesPtr nodeSpecPtr = NULL;
-   char tmp[100], *baseExtension = NULL;
-   int expressionArray[256], i, j, startIndex=0, endIndex=1, stepIndex=2, setIndex=3, detectedEnd=0, breakFlag=0, firstFlag=1, detectedStart;
+   char tmp[100];
+   int expressionArray[256], i, j, startIndex=0, endIndex=1, stepIndex=2, detectedEnd=0, breakFlag=0, firstFlag=1, detectedStart;
    char *tmpExpression = NULL, *tmpArrayValue = NULL;
    int foundIt = 0, loopStart = 0, loopStep = 1, loopEnd = 0, loopCount = 0;
    LISTNODEPTR loopExtensions = NULL, tmpLoopExts = NULL;
@@ -888,7 +886,7 @@ LISTNODEPTR SeqLoops_getLoopContainerExtensions( SeqNodeDataPtr _nodeDataPtr, co
 
         /* re-init loop values */
         loopCount = 0; loopStep = 1; loopStart = 0; loopEnd = 0; breakFlag = 0; firstFlag = 1;
-	detectedEnd = 0; startIndex=0; endIndex=1; stepIndex=2; setIndex=3;
+	detectedEnd = 0; startIndex=0; endIndex=1; stepIndex=2; 
 	tmpExpression = NULL; tmpArrayValue = NULL;
         /* get next loop argument */
         depArgs = depArgs->nextPtr;
@@ -1033,9 +1031,9 @@ int lastDefIter( int start, int end, int step){
 int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr _loop_args ) {
 	SeqNameValuesPtr nodeSpecPtr = NULL;
 	char tmp[20];
-	char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL, *loopSetStr = NULL;
+	char *loopCurrentStr = NULL, *loopStepStr = NULL, *loopEndStr = NULL;
 	char *tmpExpression = NULL, *tmpArrayValue = NULL;
-	int loopCurrent = 0, loopStep = 1, loopSet = 1, loopTotal = 0, _i, expressionArray[256];
+	int loopCurrent = 0, loopStep = 1, loopTotal = 0, _i, expressionArray[256];
 	int isLast = 0;
 	int* lastDef;
 	memset( tmp, '\0', sizeof(tmp) );
@@ -1303,7 +1301,7 @@ SeqNameValuesPtr SeqLoops_getLoopSetArgs( const SeqNodeDataPtr _nodeDataPtr, Seq
 	char tmp[20];
 	int loopStart = 0, loopEnd= 0, loopSet = 1, loopStep = 1, loopCount = 0, loopSetCount = 0;
 	char *tmpExpression=NULL, *tmpArrayValue=NULL;
-	int _i, expressionArray[256], detectedEnd=0, endIndex=1, startIndex=0, detectedStart;
+	int _i, expressionArray[256];
 	memset( tmp, '\0', sizeof(tmp) );
 	int foundExt = 0;
 	int* currentDef = NULL;
