@@ -106,10 +106,6 @@ main (int argc, char * argv [])
    };
    int opt_index, c = 0;
    int i = 0;
-   fprintf(stderr, "System command: ");
-   for (; i < argc; ++i) {
-      fprintf(stderr, "%s ", argv[i]);
-   }fprintf( stderr, "\n");
 
    char *dateValue = NULL, *expHome = NULL, *format=NULL;
    int returnDate=0, r, padding;
