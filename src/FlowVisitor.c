@@ -723,7 +723,7 @@ int Flow_parseSiblings(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr
       context = _flow_visitor->context;
 
    sprintf( query, "(%spreceding-sibling::*[@name])", switchPrefix);
-   result =  XmlUtils_getnodeset (query, _flow_visitor->context);
+   result =  XmlUtils_getnodeset (query, context);
    if (result) {
       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** preceding siblings found**********\n");
    }
@@ -731,7 +731,7 @@ int Flow_parseSiblings(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr
    xmlXPathFreeObject (result);
 
    sprintf( query, "(%sfollowing-sibling::*[@name])", switchPrefix);
-   result =  XmlUtils_getnodeset (query, _flow_visitor->context);
+   result =  XmlUtils_getnodeset (query, context);
    if (result) {
       SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.getFlowInfo() *********** following siblings found**********\n");
    }
