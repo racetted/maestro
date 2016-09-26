@@ -481,78 +481,80 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
           snprintf(filename,sizeof(filename),"%s",d->d_name);
  
           if ( stat(ffilename,&st) != 0 ) { continue; }
-	  if ( ( st.st_mode & S_IFMT ) == S_IFREG ) {
- 	     /* skip hidden files */
- 	     if ( filename[0] == '.' ) continue;
-             nb = sscanf(filename,"%lf%1[_]%s",&date,underline,host_pid);
-             if ( nb == 3 ) {
-                if (  strcmp(TokenHostPid,host_pid) == 0 ) {
-                   my_turn = 1;
-                   continue;
-                }
-                if ( Tokendate > date ) {
-                   /* modif time should  be less than 2 sec */
-                   if ( (stat(ffilename,&st)) < 0 ) {
- 	              continue;
- 	           }
- 		   if ( (diff_t=difftime(now,st.st_mtime)) > 2 ) {
- 		      ret=unlink(ffilename); /* token file should be removed */
- 		   }
- 		   my_turn = 0;
- 		   break;
- 		} else {
- 		   my_turn = 1;
- 		}
-            }
+	      if ( ( st.st_mode & S_IFMT ) == S_IFREG ) {
+ 	       /* skip hidden files */
+ 	          if ( filename[0] == '.' ) continue;
+              nb = sscanf(filename,"%lf%1[_]%s",&date,underline,host_pid);
+              if ( nb == 3 ) {
+                  if (  strcmp(TokenHostPid,host_pid) == 0 ) {
+                      my_turn = 1;
+                      continue;
+                  }
+                  if ( Tokendate > date ) {
+                     /* modif time should  be less than 2 sec */
+                     if ( (stat(ffilename,&st)) < 0 ) {
+ 	                    continue;
+ 	                 }
+ 		             if ( (diff_t=difftime(now,st.st_mtime)) > 2 ) {
+						SeqUtil_TRACE(TL_FULL_TRACE, "Removed old token file %s \n",ffilename);
+ 		                ret=unlink(ffilename); /* token file should be removed */
+ 		             }
+ 		             my_turn = 0;
+ 		             break;
+ 		          } else {
+ 		             my_turn = 1;
+ 	 	          }
+              }
          }
       } /* first while */
       
       if ( my_turn == 1 ) {
           if ( (status=link(flock,lock)) == -1 ) {
           /*  have to examine the life of the lock to see if it's belong to a living process */
-             if ( (lstat(lock,&st)) < 0 ) {
+            if ( (lstat(lock,&st)) < 0 ) {
  	        continue;
-             } else if ( (diff_t=difftime(now,st.st_mtime)) > 2 ) {
- 			ret=unlink(lock); /* lock file removed */
- 	     }
-          } else {
- 	     get_time(Atime,3);
+            } else if ( (diff_t=difftime(now,st.st_mtime)) > 2 ) {
+               SeqUtil_TRACE(TL_FULL_TRACE, "Removed old lock file %s \n",lock);
+ 			   ret=unlink(lock); /* lock file removed */
+            }
+         } else {
+ 	         get_time(Atime,3);
              if ( (status=stat(flock,&st)) == 0 ) {
                 if ( st.st_nlink == 2 ) {
-		  if ( logtype == "toplog" ) {
-		    if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                        fprintf(stderr,"Nodelogger::could not open toplog:%s\n",TOP_LOG_PATH);
-                    } else {
- 	                off_t s_seek=lseek(fileid, 0, SEEK_END);
-		        num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
-		        fsync(fileid);
-		        close(fileid);
- 	                ret=unlink(lock);
- 	                ret=unlink(flock);
-                        closedir(dp);
-		        success=1;
-		        break;
-                    }
-		  } else {
-                     if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                        fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
-                     } else {
- 	                off_t s_seek=lseek(fileid, 0, SEEK_END);
-		        num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
-		        fsync(fileid);
-		        close(fileid);
- 	                ret=unlink(lock);
- 	                ret=unlink(flock);
-                        closedir(dp);
- 	                success=1;
-		        break;
-                     }
+                   if ( logtype == "toplog" ) {
+                       if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                       fprintf(stderr,"Nodelogger::could not open toplog:%s\n",TOP_LOG_PATH);
+                       } else {
+ 	                      off_t s_seek=lseek(fileid, 0, SEEK_END);
+		                  num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
+		                  fsync(fileid);
+		                  close(fileid);
+ 	                      ret=unlink(lock);
+ 	                      ret=unlink(flock);
+                          closedir(dp);
+		                  success=1;
+		                  break;
+                       }
+		           } else {
+                       if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                          fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
+                       } else {
+ 	                      off_t s_seek=lseek(fileid, 0, SEEK_END);
+		                  num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
+		                  fsync(fileid);
+		                  close(fileid);
+ 	                      ret=unlink(lock);
+ 	                      ret=unlink(flock);
+                          closedir(dp);
+ 	                      success=1;
+		                  break;
+                       }
                   }
-		}else {
-                   fprintf(stderr,"Nodelogger::Number of link not equal to 2\n");
-                }
-             } 
-          }
+		      }else {
+                  fprintf(stderr,"Nodelogger::Number of link not equal to 2\n");
+              }
+           } 
+        }
       } else {
          /* update own modif time to signal other that still active */
          ret=utime(flock,NULL);
