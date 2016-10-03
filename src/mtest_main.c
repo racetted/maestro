@@ -508,12 +508,12 @@ int test_SeqLoops_getNodeLoopContainersExtensionsInReverse()
                                  NULL, "20160102030000",NULL );
    SeqNode_printNode(ndp, NI_SHOW_ALL,NULL);
    LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=*,inner_loop=*,END=*");
-   SeqListNode_deleteWholeList(extensions);
+   SeqListNode_deleteWholeList(&extensions);
 
    extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"outer_loop=1,inner_loop=2,END=3");
-   SeqListNode_deleteWholeList(extensions);
+   SeqListNode_deleteWholeList(&extensions);
    extensions = SeqLoops_getLoopContainerExtensionsInReverse(ndp,"");
-   SeqListNode_deleteWholeList(extensions);
+   SeqListNode_deleteWholeList(&extensions);
    return 0;
 }
 

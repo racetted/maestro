@@ -128,11 +128,13 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
 const char* getVarName(const char *src, const char *startDelim,
                                         const char *endDelim)
 {
+
    static char var_name[256];
 
    char *start = NULL;
    char *end = NULL;
    size_t len = 0;
+   SeqUtil_TRACE(TL_FULL_TRACE,"getVarName() inputs: src=%s startDelim=%s endDelim=%s\n", src, startDelim, endDelim);
 
    if(start = strstr(src,startDelim))
       start += strlen(startDelim);
@@ -191,7 +193,7 @@ int validateDepLocalArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr  dep,
                      SeqNameValuesPtr *localArgs, SeqNameValuesPtr *tokenValues)
 {
    if( SeqLoops_parseArgs( localArgs, dep->local_index ) != -1 ) {
-      SeqNameValuesPtr itr = *localArgs;
+      SeqNameValuesPtr itr;
       for(itr = *localArgs; itr != NULL; itr = itr->nextPtr){
          SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() itr->value=%s \n", itr->value);
          /*checks for current index keyword*/
@@ -203,14 +205,12 @@ int validateDepLocalArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr  dep,
             }
          } else if (strstr(itr->value, "$((") != NULL) {
             char *tok_value=NULL;
+            SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() itr->name=%s \n", itr->name);
             if ((tok_value=SeqNameValues_getValue(_nodeDataPtr->loop_args, itr->name)) != NULL) {
-
-               SeqNameValues_setValue( localArgs, itr->name, tok_value);
-
                const char *tok_name = getVarName(itr->value, "$((","))");
-               SeqNameValues_insertItem( &tokenValues, tok_name, tok_value);
-
+               SeqNameValues_setValue( localArgs, itr->name, tok_value);
                SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() inserting token=%s value=%s\n", tok_name, tok_value);
+               SeqNameValues_insertItem( tokenValues, tok_name, tok_value);
             }
             free(tok_value);
          }
@@ -249,7 +249,8 @@ int validateDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
             const char *tok_name = getVarName(itr->value, "$((","))");
             char *tok_value=NULL;
             SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() looking for token=%s\n", tok_name);
-            if ((tok_value=SeqNameValues_getValue(tokenValues, tok_name)) != NULL) {
+            SeqNameValues_printList( *tokenValues);
+            if ((tok_value=SeqNameValues_getValue(*tokenValues, tok_name)) != NULL) {
                SeqNameValues_setValue( depArgs, itr->name, tok_value);
             }
             free(tok_value);

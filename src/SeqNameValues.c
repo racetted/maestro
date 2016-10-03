@@ -24,39 +24,39 @@
 #include <string.h>
 #include "SeqNameValues.h"
 #include "SeqUtil.h"
+
 /********************************************************************************
 * SeqListNode_insertItem: Inserts an Item into the list
 ********************************************************************************/
-void SeqNameValues_insertItem(SeqNameValuesPtr *listPtrPtr, char *name, char* value)
+void SeqNameValues_insertItem(SeqNameValuesPtr *listPtrPtr, char *name, char *value)
 {
  SeqNameValuesPtr newPtr=NULL, previousPtr=NULL, currentPtr=NULL;
 
    newPtr = malloc(sizeof(SeqNameValues));
-
-   if (newPtr != NULL) { /* is space available */
-      newPtr->value = NULL;
-      newPtr->name = NULL;
-      newPtr->name = (char *) malloc(strlen(name)+1);
-      newPtr->value = (char *) malloc(strlen(value)+1);
-      strcpy(newPtr->name,name);
-      strcpy(newPtr->value,value);
+   if (newPtr != NULL) { 
+      newPtr->name=strdup(name);
+      newPtr->value=strdup(value);
       newPtr->nextPtr = NULL;
       
-      previousPtr = NULL;
-      currentPtr = *listPtrPtr;
-   
-      /* position ourselve at end of list */
-      while (currentPtr != NULL) {
-         previousPtr = currentPtr; 
-         currentPtr = currentPtr->nextPtr;
-      }
-      
-      if (previousPtr == NULL) {
-         newPtr->nextPtr=*listPtrPtr;
+      if (*listPtrPtr == NULL) { 
          *listPtrPtr = newPtr;
-      } else {
-         previousPtr->nextPtr=newPtr;
-         newPtr->nextPtr=currentPtr;
+      } else { 
+ 
+         currentPtr = *listPtrPtr;
+   
+         /* position ourselve at end of list */
+         while (currentPtr != NULL) {
+            previousPtr = currentPtr; 
+            currentPtr = currentPtr->nextPtr;
+         }
+      
+         if (previousPtr == NULL) {
+            newPtr->nextPtr=*listPtrPtr;
+            *listPtrPtr = newPtr;
+         } else {
+            previousPtr->nextPtr=newPtr;
+            newPtr->nextPtr=currentPtr;
+         }
       }
    } else {
          SeqUtil_TRACE(TL_CRITICAL,"SeqNameValues_insertItem() No memory available.\n");
@@ -134,9 +134,11 @@ char* SeqNameValues_getValue( SeqNameValuesPtr ptr, char* attr_name ) {
 /* changes the value of a specific attribute from the attribute list
    if not found, it will ADD it to the list
  */
-void SeqNameValues_setValue( SeqNameValuesPtr* ptr, char* attr_name, char* attr_value ) {
+void SeqNameValues_setValue( SeqNameValuesPtr *ptr, char* attr_name, char* attr_value ) {
    int found = 0;
    SeqNameValuesPtr thisPtr = *ptr;
+
+   SeqUtil_TRACE(TL_FULL_TRACE,"SeqNameValues_setValue adding name=%s value=%s:\n", attr_name, attr_value );
 
    while ( thisPtr != NULL ) {
       if( strcmp( thisPtr->name, attr_name ) == 0 ) {
@@ -149,7 +151,7 @@ void SeqNameValues_setValue( SeqNameValuesPtr* ptr, char* attr_name, char* attr_
       thisPtr = thisPtr->nextPtr;
    }
    if( !found ) {
-      SeqNameValues_insertItem( &thisPtr, attr_name, attr_value );
+      SeqNameValues_insertItem( ptr, attr_name, attr_value );
    }
 }
 

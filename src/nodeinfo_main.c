@@ -102,8 +102,6 @@ int main ( int argc, char * argv[] )
    };
    int opt_index, c = 0;
 
-
-
    char * loops = NULL; 
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
