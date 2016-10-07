@@ -494,41 +494,35 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
             }
          } else {
  	         get_time(Atime,3);
-             if ( (status=stat(flock,&st)) == 0 ) {
-                if ( st.st_nlink == 2 ) {
-                   if ( logtype == "toplog" ) {
-                       if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                       fprintf(stderr,"Nodelogger::could not open toplog:%s\n",TOP_LOG_PATH);
-                       } else {
- 	                      off_t s_seek=lseek(fileid, 0, SEEK_END);
-		                  num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
-		                  fsync(fileid);
-		                  close(fileid);
- 	                      ret=unlink(lock);
- 	                      ret=unlink(flock);
-                          closedir(dp);
-		                  success=1;
-		                  break;
-                       }
-		           } else {
-                       if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                          fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
-                       } else {
- 	                      off_t s_seek=lseek(fileid, 0, SEEK_END);
-		                  num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
-		                  fsync(fileid);
-		                  close(fileid);
- 	                      ret=unlink(lock);
- 	                      ret=unlink(flock);
-                          closedir(dp);
- 	                      success=1;
-		                  break;
-                       }
-                  }
-		      }else {
-                  fprintf(stderr,"Nodelogger::Number of link not equal to 2\n");
-              }
-           } 
+             if ( logtype == "toplog" ) {
+                 if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                    fprintf(stderr,"Nodelogger::could not open toplog:%s\n",TOP_LOG_PATH);
+                 } else {
+ 	                off_t s_seek=lseek(fileid, 0, SEEK_END);
+		            num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
+		            fsync(fileid);
+		            close(fileid);
+ 	                ret=unlink(lock);
+ 	                ret=unlink(flock);
+                    closedir(dp);
+		            success=1;
+		            break;
+                 }
+		     } else {
+                if ( (fileid = open(LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
+                    fprintf(stderr,"Nodelogger::could not open filename:%s\n",LOG_PATH);
+                } else {
+ 	                off_t s_seek=lseek(fileid, 0, SEEK_END);
+		            num = write(fileid, nodelogger_buf_short, strlen(nodelogger_buf_short));
+		            fsync(fileid);
+		            close(fileid);
+ 	                ret=unlink(lock);
+ 	                ret=unlink(flock);
+                    closedir(dp);
+ 	                success=1;
+		            break;
+                }
+            }
         }
       } else {
          /* update own modif time to signal other that still active */
@@ -542,9 +536,9 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
     if ( success == 1 ) { 
        fprintf(stderr,"Nodelogger NFS_SYNC::Started at:%s Grabbed at:%s Ended at:%s tries=%d\n",Stime,Atime,Etime,loop);
     } else  {
-       fprintf(stderr,"Nodelogger NFS_SYNC DID NOT GET the lock Started at:%s Ended at:%s tries=%d\n",Stime,Etime,loop);
        /* erase the lock  will lower load on the remaining clients */
        ret=unlink(flock);
+       fprintf(stderr,"Nodelogger NFS_SYNC DID NOT GET the lock Started at:%s Ended at:%s tries=%d\n",Stime,Etime,loop);
     }
     /* Notify user if server not running  here we are at the level of root node so
        Only one task (root Node) is running
