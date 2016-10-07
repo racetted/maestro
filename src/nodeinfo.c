@@ -971,7 +971,7 @@ int doesNodeExist (const char *_nodePath, const char *_seq_exp_home , const char
    int nodeExists = FLOW_FALSE;
    char * newNode = (char*) SeqUtil_fixPath( _nodePath );
    SeqNodeDataPtr tempNode = (SeqNodeDataPtr) SeqNode_createNode ( newNode );
-   SeqNode_setDatestamp( tempNode, (const char *) tictac_getDate(_seq_exp_home,"",_datestamp) );
+   SeqNode_setDatestamp( tempNode, (const char *) tictac_getDate(_seq_exp_home,NULL,_datestamp) );
 
    if ( Flow_walkPath(flow_visitor,tempNode,_nodePath) == FLOW_SUCCESS )
       nodeExists = FLOW_TRUE;
@@ -1015,7 +1015,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, const char* filters, SeqNameValuesPt
    SeqNode_setWorkdir( nodeDataPtr, workdir );
 
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
-   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(_exp_home,"",datestamp) );
+   SeqNode_setDatestamp( nodeDataPtr, (const char *) tictac_getDate(_exp_home,NULL,datestamp) );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);
 

@@ -107,7 +107,7 @@ main (int argc, char * argv [])
    int opt_index, c = 0;
    int i = 0;
 
-   char *dateValue = NULL, *expHome = NULL, *format=NULL;
+   char *dateValue = NULL, *expHome = NULL, *format=NULL, *tmpDate = NULL;
    int returnDate=0, r, padding;
    struct sigaction act;
 
@@ -146,7 +146,12 @@ main (int argc, char * argv [])
                exit(1);
          }
       }
+     
       
+      if  (( dateValue == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+          dateValue = malloc( PADDED_DATE_LENGTH + 1 );
+          strcpy(dateValue,tmpDate);
+      }
       if ( dateValue != NULL ) {
          i = strlen(dateValue);
          while ( i < PADDED_DATE_LENGTH ){
