@@ -539,9 +539,15 @@ void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start,
       SeqLoops_validateNumLoopExpression(tmpExpression);
    }
 
-   loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
-   loopsPtr->type = Numerical;
-   loopsPtr->loop_name = strdup( loop_name );
+   if ( (loopsPtr = SeqLoops_findLoopByName(node_ptr->loops, SeqUtil_getPathLeaf(loop_name))) == NULL) { 
+      /* entry not found, creating new one or placing at end of existing list */
+      loopsPtr = SeqNode_allocateLoopsEntry( node_ptr );
+      loopsPtr->type = Numerical;
+      loopsPtr->loop_name = strdup( loop_name );
+   } else {
+      /* entry found, delete values, they'll be overwritten) */
+      SeqNameValues_deleteWholeList(&loopsPtr->values); 
+   }
    SeqNameValues_insertItem( &loopsPtr->values, "TYPE", "Default");
    SeqNameValues_insertItem( &loopsPtr->values, "START", tmpStart );
    SeqNameValues_insertItem( &loopsPtr->values, "STEP", tmpStep );

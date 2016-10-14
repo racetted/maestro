@@ -38,7 +38,6 @@ static char* EXT_TOKEN = "+";
 
 static int hasWildCard(SeqNameValuesPtr depArg);
 static LISTNODEPTR loopArg_to_reverse_extension_list( SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr arg);
-SeqLoopsPtr SeqLoops_findLoopByName( SeqLoopsPtr loopsPtr, char * name);
 static LISTNODEPTR loop_to_reverse_extension_list(SeqLoopsPtr loopPtr);
 static LISTNODEPTR switch_to_extension_list(SeqLoopsPtr loopPtr);
 static LISTNODEPTR SeqNodeData_to_reverse_extension_list( SeqNodeDataPtr _nodeDataPtr);
