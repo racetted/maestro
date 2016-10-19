@@ -106,7 +106,7 @@ int main ( int argc, char * argv[] )
 
    SeqNodeDataPtr  nodeDataPtr = NULL;
    SeqNameValuesPtr loopsArgs = NULL;
-   char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL,
+   char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL, *tmpDate=NULL, 
         *filters_str = strdup("all");
    int errflg = 0, nodeFound = 0;
    int gotLoops=0, showRootOnly = 0;
@@ -185,6 +185,10 @@ int main ( int argc, char * argv[] )
       exit(1);
    }
 
+   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+      datestamp = malloc( strlen(tmpDate) + 1 );
+      strcpy(datestamp,tmpDate);
+   }
    nodeDataPtr = nodeinfo( node, filters, loopsArgs, seq_exp_home, NULL, datestamp,NULL );
 
    if (gotLoops){
