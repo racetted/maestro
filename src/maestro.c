@@ -2055,7 +2055,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char line[512];
    char nodelogger_msg[SEQ_MAXFIELD];
    FILE* waitedFilePtr = NULL;
-   SeqNameValuesPtr loopArgsPtr = NULL;
+   SeqNameValuesPtr loopArgsPtr = NULL, depNVArgs = NULL;
    char depExp[256] = {'\0'}, depNode[256] = {'\0'}, depArgs[SEQ_MAXFIELD] = {'\0'}, depDatestamp[20] = {'\0'};
    char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'}, statusFile[SEQ_MAXFIELD] = {'\0'};
    char *extName = NULL, * depExtension = NULL, *tmpValue=NULL, *tmpExt=NULL;
@@ -2174,19 +2174,18 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             } else {
                /* Flow is not "continue" : Simply emit a nodelogger messge for every line in the file */
                while ( fgets( line, sizeof(line), waitedFilePtr ) != NULL ) {
-                  sscanf( line, "exp=%s node=%s datestamp=%s args=%s", 
+                  sscanf( line, "exp=%s node=%s datestamp=%s args=%s",
                      depExp, depNode, depDatestamp, depArgs );
-                  sprintf(nodelogger_msg, "Node %s will not be submitted because %s ended with flow != continue",depNode,_nodeDataPtr->nodeName);
-                  nodelogger(_nodeDataPtr->name, "info", _nodeDataPtr->extension, nodelogger_msg, _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
-                  /* For cross-experiment dependencies, emit nodelogger message adressed to the other experiment */
-                  if ( strcmp( depExp , _nodeDataPtr->expHome ) != 0 ){
-                     sprintf(nodelogger_msg, "Node %s was waiting on %s of experiment %s which ended with flow != continue: remaining in waiting state.",depNode,_nodeDataPtr->nodeName,_nodeDataPtr->expHome);
-                     depExtension = SeqLoops_getExtFromLoopArgs(depArgs);
-                     nodelogger(depNode, "info",depExtension, nodelogger_msg,depDatestamp,depExp);
-                     free(depExtension);
-                     depExtension = NULL;
+                  SeqUtil_TRACE(TL_FULL_TRACE, "maestro.submitDependencies() read in line exp=%s node=%s datestamp=%s args=%s \n", depExp, depNode, depDatestamp,depArgs);
+                  if ((depArgs != NULL) && (strlen(depArgs) > 0) && ( SeqLoops_parseArgs( &depNVArgs, depArgs) != -1))  {
+                      depExtension = SeqLoops_getExtFromLoopArgs(depNVArgs);
+                      SeqNameValues_deleteWholeList(&depNVArgs);
                   }
-               }
+                  sprintf(nodelogger_msg, "Node was waiting on node %s%s of experiment %s which ended with flow set to stop : remaining in waiting state.",_nodeDataPtr->name,_nodeDataPtr->extension, _nodeDataPtr->expHome);
+                  nodelogger(depNode, "info",depExtension, nodelogger_msg,depDatestamp,depExp);
+                  free(depExtension);
+                  depExtension = NULL;
+               }  
                fclose(waitedFilePtr);
             }
          } else {

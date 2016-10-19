@@ -49,21 +49,16 @@ extern void tictac_setDate( char* _expHome, char* datestamp ) {
    char *job="TICTAC";
    char *tmpfromaestro=getenv("FROM_MAESTRO");
    SeqUtil_TRACE( TL_FULL_TRACE, "maestro.tictac_setDate( %s, %s ) called \n", _expHome, datestamp);
- 
    _touch = touch_svr;
    if  ( tmpfromaestro == NULL ) {
       if ( (MLLServerConnectionFid=OpenConnectionToMLLServer( _expHome , job , _expHome)) < 0 ) {
          _touch = touch_nfs;
-         SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() (NFS) setting date to=%s\n", datestamp); 
       } else {
          _touch = touch_svr;
-         SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() (server) setting date to=%s\n", datestamp); 
       }
    } 
 
    SeqUtil_checkExpHome(_expHome);
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
-
    checkValidDatestamp(datestamp); 
    SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_setDate() setting date to=%s\n", datestamp); 
    fprintf(stderr,"Warning: use of tictac -s $datestamp is deprecated. Please use SEQ_DATE environment variable or a -d $datestamp argument to maestro or expbegin calls.\n"); 
