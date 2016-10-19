@@ -113,15 +113,14 @@ int checkValidity(SeqNodeDataPtr _nodeDataPtr, ValidityDataPtr val )
    SeqUtil_TRACE(TL_FULL_TRACE, "checkValidity() begin\n");
    printValidityData(val);
    int retval = RESOURCE_TRUE;
+   char * localArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
 
-   char * local_ext = SeqLoops_indexToExt(val->local_index);
 
    const char * incrementedDatestamp = SeqDatesUtil_getIncrementedDatestamp( _nodeDataPtr->datestamp, val->hour, val->time_delta);
 
    /* Check local_index */
-   if ( local_ext != NULL && strcmp ( local_ext, _nodeDataPtr->extension ) != 0
-         && strcmp(local_ext, "") != 0){
-      SeqUtil_TRACE(TL_FULL_TRACE,"checkValidity(): extension mismatch:local_index=%s, local_ext=%s, ndp->extension=%s\n", val->local_index, local_ext, _nodeDataPtr->extension);
+   if ( val->local_index != NULL && localArgs != NULL && strcmp ( val->local_index, localArgs ) != 0) {
+      SeqUtil_TRACE(TL_FULL_TRACE,"checkValidity(): local_args mismatch:local_index=%s, ndp->loop_args=%s\n", val->local_index, localArgs );
       retval = RESOURCE_FALSE;
       goto out_free;
    }
@@ -141,8 +140,8 @@ int checkValidity(SeqNodeDataPtr _nodeDataPtr, ValidityDataPtr val )
    }
 
 out_free:
-   free(local_ext);
    free((char *)incrementedDatestamp);
+   free(localArgs);
    SeqUtil_TRACE(TL_FULL_TRACE, "checkValidity() end. Returning %d\n", retval);
    return retval;
 }
