@@ -114,9 +114,9 @@ int main (int argc, char * argv[])
    int opt_index, c = 0;
 
 
-   char *node = NULL, *signal = NULL , *message = NULL, *loops = NULL, *datestamp = NULL, *validDate=NULL, *seq_exp_home = NULL;
+   char *node = NULL, *signal = NULL , *message = NULL, *loops = NULL, *datestamp = NULL, *seq_exp_home = NULL, *tmpDate=NULL;
    int errflg = 0, hasSignal = 0, hasNode = 0, hasDate = 0, hasLoops=0, dateSize=14; 
-   int r;
+   int r,i;
  
    struct sigaction act;
    memset (&act, '\0', sizeof(act));
@@ -156,9 +156,8 @@ int main (int argc, char * argv[])
                break;
             case 'd':
                hasDate=1;
-               datestamp = malloc( strlen( optarg ) + 1 ); 
+               datestamp = malloc( PADDED_DATE_LENGTH + 1 );
                strcpy(datestamp,optarg);
-               printf("Datestamp = %s \n", datestamp);
                break;
             case 'e':
                seq_exp_home = strdup ( optarg );
@@ -178,7 +177,7 @@ int main (int argc, char * argv[])
       SeqUtil_checkExpHome(seq_exp_home);
 
       if ( hasNode == 0 || hasSignal == 0 ) {
-         printf ("Node and signal must be provided!\n");
+         fprintf (stderr,"Node and signal must be provided!\n");
          errflg++;
       }
       if (errflg) {
@@ -188,7 +187,6 @@ int main (int argc, char * argv[])
           free(loops);
           free(signal);
           free(datestamp);
-          free(validDate);
           exit(1);
       }
 
@@ -199,29 +197,29 @@ int main (int argc, char * argv[])
       r = sigaction (SIGALRM, &act, NULL);
       if (r < 0) perror (__func__);
 
-      validDate=malloc(dateSize+1); 
-      if ( hasDate == 0) {
-           /* getting the experiment date */
-           strcpy(validDate,(char *)tictac_getDate(seq_exp_home,"", NULL));
-      }
-      else {
-           checkValidDatestamp(datestamp);
-           strcpy(validDate,datestamp); 
+      if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+          datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+          strcpy(datestamp,tmpDate);
       }
 
-      printf("validDate = %s \n", validDate);
+      if ( datestamp != NULL ) {
+         i = strlen(datestamp);
+         while ( i < PADDED_DATE_LENGTH ){
+            datestamp[i++] = '0';
+         }
+         datestamp[PADDED_DATE_LENGTH] = '\0';
+      }
 
-      nodeDataPtr = nodeinfo( node, NI_SHOW_ALL, loopsArgsPtr, seq_exp_home, NULL, validDate,NULL );
+      nodeDataPtr = nodeinfo( node, NI_SHOW_ALL, loopsArgsPtr, seq_exp_home, NULL, datestamp,NULL );
       if (hasLoops){
           SeqLoops_validateLoopArgs( nodeDataPtr, loopsArgsPtr );
       }
 
-      nodelogger(nodeDataPtr->name,signal,nodeDataPtr->extension,message,validDate,seq_exp_home);
+      nodelogger(nodeDataPtr->name,signal,nodeDataPtr->extension,message,nodeDataPtr->datestamp,seq_exp_home);
       free(node);
       free(message);
       free(loops);
       free(signal);
-      free(validDate);
       free(datestamp);
       SeqNode_freeNode( nodeDataPtr );
 

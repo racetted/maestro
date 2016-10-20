@@ -76,7 +76,7 @@ static int nbMappedFiles = 0;
  ********************************************************************************/
 void SeqUtil_addPadding( char *dst, const char *src, char c, int length)
 {
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() begin\n");
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() begin. src=%s\n", src, dst );
    int i = 0;
    if( dst == NULL ){
       SeqUtil_TRACE(TL_MEDIUM, "    cannot have NULL dst parameter\n");
@@ -97,7 +97,7 @@ void SeqUtil_addPadding( char *dst, const char *src, char c, int length)
 
    dst[i] = '\0';
 out:
-   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() end\n");
+   SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_addPadding() end. dst=%s\n", dst);
    return;
 }
 

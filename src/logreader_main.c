@@ -28,6 +28,7 @@
 #include <errno.h>
 #include "SeqUtil.h"
 #include "getopt.h"
+#include "SeqDatesUtil.h"
 
 static void printUsage()
 {
@@ -90,8 +91,8 @@ EXAMPLES:\n\
 
 int main ( int argc, char * argv[] )
 {
-   char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL; 
-   int stats_days=7, clobberFile=1; 
+   char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL, *tmpDate=NULL, *tmpExp=NULL; 
+   int stats_days=7, clobberFile=1, i; 
    char * short_opts = "i:t:n:o:d:e:vch";
 
    extern char *optarg;
@@ -131,7 +132,8 @@ int main ( int argc, char * argv[] )
 	      outputFile = strdup(optarg);
 	      break;
 	   case 'd':
-	      datestamp = strdup(optarg); 
+          datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+          strcpy(datestamp,optarg);
 	      break;
 	   case 'e':
 	      exp = strdup(optarg);
@@ -154,27 +156,35 @@ int main ( int argc, char * argv[] )
 
    }
 
-   if (datestamp == NULL) { 
-      if (getenv("SEQ_DATE") == NULL) {
-         raiseError("-d or SEQ_DATE must be defined.\n");
-      } else {
-         datestamp=strdup(getenv("SEQ_DATE")); 
+   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+      datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+      strcpy(datestamp,tmpDate);
+   }
+
+   if ( datestamp != NULL ) {
+      i = strlen(datestamp);
+      while ( i < PADDED_DATE_LENGTH ){
+         datestamp[i++] = '0';
       }
+      datestamp[PADDED_DATE_LENGTH] = '\0';
+   } else {
+      raiseError("-d or SEQ_DATE must be defined.\n");
    }
 
    if (exp == NULL) {
-      if ((exp = getenv("SEQ_EXP_HOME")) == NULL) {
+      if ((tmpExp = getenv("SEQ_EXP_HOME")) == NULL) {
          raiseError("nodelogger_main(): -e or SEQ_EXP_HOME must be defined.\n");
       }
+      exp=strdup(tmpExp);
    }
    
    logreader(inputFile,outputFile,exp,datestamp,type,stats_days,clobberFile);
 
-   if ( type != NULL) free(type); 
-   if ( exp != NULL) free(exp); 
-   if ( datestamp != NULL) free(datestamp); 
-   if ( inputFile != NULL ) free(inputFile);
-   if ( outputFile != NULL ) free(outputFile);
+   free(type); 
+   free(exp); 
+   free(datestamp); 
+   free(inputFile);
+   free(outputFile);
 
    exit (0);
 }

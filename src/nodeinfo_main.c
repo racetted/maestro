@@ -28,6 +28,7 @@
 #include "SeqLoopsUtil.h"
 #include "SeqNameValues.h"
 #include "getopt.h"
+#include "SeqDatesUtil.h"
 
 int MLLServerConnectionFid=0;
 
@@ -108,7 +109,7 @@ int main ( int argc, char * argv[] )
    SeqNameValuesPtr loopsArgs = NULL;
    char *node = NULL, *seq_exp_home = NULL, *outputFile=NULL, *datestamp=NULL, *tmpDate=NULL, 
         *filters_str = strdup("all");
-   int errflg = 0, nodeFound = 0;
+   int errflg = 0, nodeFound = 0, i;
    int gotLoops=0, showRootOnly = 0;
    if ( argc == 1 || argc == 2) {
       printUsage();
@@ -122,7 +123,7 @@ int main ( int argc, char * argv[] )
             nodeFound = 1;
             break;
          case 'd':
-            datestamp = malloc( strlen( optarg ) + 1 );
+            datestamp = malloc( PADDED_DATE_LENGTH + 1 );
             strcpy(datestamp,optarg);
             break;
          case 'f':
@@ -164,6 +165,18 @@ int main ( int argc, char * argv[] )
       }
    }
 
+   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+        datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+        strcpy(datestamp,tmpDate);
+   }
+
+   if ( datestamp != NULL ) {
+      i = strlen(datestamp);
+      while ( i < PADDED_DATE_LENGTH ){
+         datestamp[i++] = '0';
+      }
+      datestamp[PADDED_DATE_LENGTH] = '\0';
+   } 
 
    unsigned int filters = 0;
    for_tokens(filter_token,filters_str,",",sp){
@@ -185,10 +198,6 @@ int main ( int argc, char * argv[] )
       exit(1);
    }
 
-   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
-      datestamp = malloc( strlen(tmpDate) + 1 );
-      strcpy(datestamp,tmpDate);
-   }
    nodeDataPtr = nodeinfo( node, filters, loopsArgs, seq_exp_home, NULL, datestamp,NULL );
 
    if (gotLoops){

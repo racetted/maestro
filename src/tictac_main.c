@@ -107,8 +107,8 @@ main (int argc, char * argv [])
    int opt_index, c = 0;
    int i = 0;
 
-   char *dateValue = NULL, *expHome = NULL, *format=NULL, *tmpDate = NULL;
-   int returnDate=0, r, padding;
+   char *datestamp = NULL, *expHome = NULL, *format=NULL, *tmpDate = NULL;
+   int setDate=0, r, padding;
    struct sigaction act;
 
    memset (&act, '\0', sizeof(act));
@@ -120,21 +120,22 @@ main (int argc, char * argv [])
                expHome = strdup( optarg );
                break;
             case 's':
-               dateValue = malloc( PADDED_DATE_LENGTH + 1 );
+               datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+               strcpy(datestamp,optarg);
+               setDate=1;
                break;
             case 'd':
-               dateValue = malloc( PADDED_DATE_LENGTH + 1 );
-               strcpy(dateValue,optarg);
+               datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+               strcpy(datestamp,optarg);
                break;
             case 'f':
                format = malloc( strlen( optarg ) + 1 );
                strcpy(format,optarg);
-               returnDate=1;
                break;
-	         case 'v':
-					SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
-					SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
-	            break; 
+            case 'v':
+               SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
+               SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
+               break; 
             case 'h':
                printUsage();
                exit(0); 
@@ -145,30 +146,30 @@ main (int argc, char * argv [])
                exit(1);
          }
       }
+      if (format == NULL){
+          format = strdup("%Y%M%D%H%Min%S"); 
+      }
       
-      if  (( dateValue == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
-          dateValue = malloc( PADDED_DATE_LENGTH + 1 );
-          strcpy(dateValue,tmpDate);
-      }
-      if ( dateValue != NULL ) {
-         i = strlen(dateValue);
-         while ( i < PADDED_DATE_LENGTH ){
-            dateValue[i++] = '0';
-         }
-         dateValue[PADDED_DATE_LENGTH] = '\0';
-      }
-
       if (expHome == NULL){
          if ( (expHome = getenv("SEQ_EXP_HOME")) == NULL ) {
             fprintf( stderr , "SEQ_EXP_HOME must be set either through the environment or with -e (--exp)\n");
             exit(1);
          }
       }
+      if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+          datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+          strcpy(datestamp,tmpDate);
+      }
 
-      if (returnDate) {
-          tictac_getDate( expHome,format,dateValue);
-      } else {
+      if ( datestamp != NULL ) {
+         i = strlen(datestamp);
+         while ( i < PADDED_DATE_LENGTH ){
+            datestamp[i++] = '0';
+         }
+         datestamp[PADDED_DATE_LENGTH] = '\0';
+      }
 
+      if (setDate) {
         /* register SIGALRM signal */
         act.sa_handler = &alarm_handler;
         act.sa_flags = 0;
@@ -176,21 +177,22 @@ main (int argc, char * argv [])
         r = sigaction (SIGALRM, &act, NULL);
         if (r < 0) perror (__func__);
       
-        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_main() setting date to=%s\n", dateValue); 
-        tictac_setDate( expHome,dateValue);
+        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.tictac_main() setting date to=%s\n", datestamp); 
+        tictac_setDate( expHome,datestamp);
         /* remove installed SIGALRM handler */
         act.sa_handler = SIG_DFL;
         act.sa_flags = 0;
         sigemptyset (&act.sa_mask);
         r = sigaction (SIGALRM, &act, NULL);
         if (r < 0) perror (__func__);
-      }
-
+      } else {
+          tictac_getDate( expHome,format,datestamp);
+      }         
    } else {
       printUsage();
       exit(1);
    }
-   free(dateValue);
+   free(datestamp);
    free(format);
    exit(0);
 }

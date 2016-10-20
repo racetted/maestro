@@ -559,7 +559,7 @@ int runTests(const char * seq_exp_home, const char * node, const char * datestam
 int main ( int argc, char * argv[] )
 {
    char * short_opts = "n:f:l:o:d:e:v";
-   char *node = NULL, *seq_exp_home = NULL, *datestamp=NULL ;
+   char *node = NULL, *seq_exp_home = NULL, *datestamp=NULL, *tmpDate=NULL ;
    extern char *optarg;
 
    extern char *optarg;
@@ -576,7 +576,7 @@ int main ( int argc, char * argv[] )
       {"verbose"     , no_argument      ,   0,     'v'},
       {NULL,0,0,0} /* End indicator */
    };
-   int opt_index, c = 0;
+   int opt_index, c = 0, i;
 
    while ((c = getopt_long(argc, argv, short_opts, long_opts, &opt_index )) != -1) {
       switch(c) {
@@ -587,7 +587,8 @@ int main ( int argc, char * argv[] )
             seq_exp_home = strdup(optarg);
             break;
          case 'd':
-            datestamp = strdup(optarg);
+            datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+            strcpy(datestamp,optarg);
             break;
          case '?':
             exit(1);
@@ -618,6 +619,19 @@ from the maestro directory.\n");
    sprintf( testDir, "%s%s" , PWD, suffix);
 
    puts ( testDir );
+
+   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+       datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+       strcpy(datestamp,tmpDate);
+   }
+
+   if ( datestamp != NULL ) {
+      i = strlen(datestamp);
+      while ( i < PADDED_DATE_LENGTH ){
+         datestamp[i++] = '0';
+      }
+      datestamp[PADDED_DATE_LENGTH] = '\0';
+   }
 
    runTests(seq_exp_home,node,datestamp);
 

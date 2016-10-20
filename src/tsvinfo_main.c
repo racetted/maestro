@@ -125,10 +125,11 @@ int main ( int argc, char * argv[] )
       {"help"           , no_argument      ,   0,     'h'},
       {NULL,0,0,0} /* End indicator */
    };
-   int opt_index, c = 0;
+   int opt_index, c = 0, i;
 
    char *seq_exp_home = NULL,
-        *datestamp = NULL;
+        *datestamp = NULL,
+        *tmpDate=NULL;
 
    FILE *human_output_fp = NULL,
         *tsv_output_fp = NULL;
@@ -140,7 +141,7 @@ int main ( int argc, char * argv[] )
             break;
          case 'd':
             datestamp = malloc(PADDED_DATE_LENGTH + 1);
-            SeqUtil_addPadding(datestamp,optarg,'0',PADDED_DATE_LENGTH);
+            strcpy(datestamp,optarg);
             break;
          case 'r':
             human_output_fp = open_filename( optarg );
@@ -169,16 +170,23 @@ int main ( int argc, char * argv[] )
       }
    }
 
-   if( datestamp == NULL )
-   {
+   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+       datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+       strcpy(datestamp,tmpDate);
+   }
+
+   if ( datestamp != NULL ) {
+      i = strlen(datestamp);
+      while ( i < PADDED_DATE_LENGTH ){
+         datestamp[i++] = '0';
+      }
+      datestamp[PADDED_DATE_LENGTH] = '\0';
+   } else { 
       printUsage();
       raiseError("Error: Datestamp must be set\n");
    }
 
-
    write_db_file(seq_exp_home, datestamp, tsv_output_fp , human_output_fp);
-
-   free(datestamp);
 
    if( human_output_fp != NULL )
       fclose(human_output_fp);
@@ -186,7 +194,7 @@ int main ( int argc, char * argv[] )
    if( tsv_output_fp != NULL )
       fclose(tsv_output_fp);
 
-
+   free(datestamp);
    free(seq_exp_home);
    return 0;
 }

@@ -26,6 +26,7 @@
 #include "SeqListNode.h"
 #include "SeqUtil.h"
 #include "SeqNameValues.h"
+#include "SeqDatesUtil.h"
 #include "getopt.h"
 /***********************************************************************************
 * name: maestro
@@ -116,8 +117,8 @@ int main (int argc, char * argv [])
    };
    int opt_index, c = 0;
 
-   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL, *seq_exp_home= NULL;
-   int errflg = 0, status = 0;
+   char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL, *seq_exp_home= NULL, *tmpDate=NULL;
+   int errflg = 0, status = 0, i;
    int ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
 	SeqNameValuesPtr loopsArgs = NULL;
@@ -188,14 +189,20 @@ int main (int argc, char * argv [])
    }
    if (seq_exp_home == NULL){
       seq_exp_home = getenv("SEQ_EXP_HOME");
-      fprintf(stderr, "maestro_main looking for SEQ_EXP_HOME in environment: %s\n",seq_exp_home);
    }
-   if (datestamp == NULL){
-      datestamp = getenv("SEQ_DATE");
-      fprintf(stderr, "maestro_main looking for SEQ_DATE in environment: %s\n",datestamp);
+   if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
+          datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+          strcpy(datestamp,tmpDate);
    }
-   fprintf(stderr, "maestro_main calling maestro with SEQ_EXP_HOME=%s\n",seq_exp_home);
-   /* printf( "node=%s signal=%s\n", node, sign ); */
+
+   if ( datestamp != NULL ) {
+      i = strlen(datestamp);
+      while ( i < PADDED_DATE_LENGTH ){
+         datestamp[i++] = '0';
+      }
+      datestamp[PADDED_DATE_LENGTH] = '\0';
+   }
+
    status = maestro( node, sign, flow, loopsArgs, ignoreAllDeps, extraArgs, datestamp,seq_exp_home );
 
    free(flow);

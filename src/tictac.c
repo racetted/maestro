@@ -94,8 +94,8 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    int i = 0;
    char *dateFileName = NULL, *tmpstrtok = NULL, *tmpLatestFile=NULL;
    char statePattern[SEQ_MAXFIELD] = {'\0'};
-   char dateValue[128] = {'\0'};
-   char* returnDate = NULL;
+   char dateValue[PADDED_DATE_LENGTH] = {'\0'};
+   char* returnDate = NULL, *envDate=NULL;
    size_t counter=0;
    glob_t glob_logs; 
    struct stat *statbuf = NULL; 
@@ -105,9 +105,10 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
 
 
    SeqUtil_checkExpHome (_expHome);
-   /* first get from env variable if exists */
    if( datestamp != NULL) {
-         strcpy( dateValue, datestamp );
+        strncpy(dateValue,datestamp,PADDED_DATE_LENGTH);
+   } else if ((envDate = getenv("SEQ_DATE")) != NULL ) {
+        strncpy(dateValue,envDate,PADDED_DATE_LENGTH);
    } else {
       glob(statePattern, GLOB_NOSORT,0 ,&glob_logs);
       if (glob_logs.gl_pathc==0) {
@@ -133,6 +134,13 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
       }
    }
 
+   /* pad to PADDED_DATE_LENGTH */
+   i = strlen(dateValue);
+   while ( i < PADDED_DATE_LENGTH ){
+      dateValue[i++] = '0';
+   }
+   dateValue[PADDED_DATE_LENGTH] = '\0';
+
    SeqUtil_TRACE(TL_FULL_TRACE,"tictac_getDate() checking validity of dateValue ... \n");
    checkValidDatestamp(dateValue);
 
@@ -151,16 +159,6 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
       if (strcmp(tmpstrtok,"S")==0)
          printf("%.*s", 2, &dateValue[12] );
       tmpstrtok = (char*) strtok(NULL,"%");
-   }
-
-   if ( format == NULL ) {
-      SeqUtil_TRACE ( TL_FULL_TRACE , "tictac_getDate() : format == NULL: padding date to 14 characters\n");
-      i = strlen(dateValue);
-      while ( i < PADDED_DATE_LENGTH ){
-         dateValue[i++] = '0';
-      }
-      dateValue[PADDED_DATE_LENGTH] = '\0';
-      SeqUtil_TRACE ( TL_FULL_TRACE , "tictac_getDate() : padded date %s:\n", dateValue );
    }
 
    if (returnDate = malloc( strlen(dateValue) + 1 )) {
@@ -197,7 +195,6 @@ extern void checkValidDatestamp(char *datestamp){
    if ( dateLength < 8 || dateLength > 14 ) 
       raiseError("ERROR: Datestamp must contain between 8 and 14 characters (YYYYMMDD[HHMMSS]).\n"); 
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.checkValidDatestamp() setting date to=%s\n", datestamp); 
    if (tmpDateString= (char*) malloc(5)) {
       sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
       validationInt = atoi(tmpDateString);
@@ -207,7 +204,6 @@ extern void checkValidDatestamp(char *datestamp){
    if (validationInt < 0  || validationInt > 9999)
      raiseError("ERROR: Year %d outside set bounds of [0,9999].\n", validationInt); 
 
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.checkValidDatestamp() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
    if (tmpDateString= (char*) malloc(3)) {
@@ -218,8 +214,6 @@ extern void checkValidDatestamp(char *datestamp){
    }
    if (validationInt < 0  || validationInt > 12)
       raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
-
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.checkValidDatestamp() setting date to=%s\n", datestamp); 
    free(tmpDateString);
 
    if (tmpDateString= (char*) malloc(3)) {
@@ -231,8 +225,6 @@ extern void checkValidDatestamp(char *datestamp){
 
    if (validationInt < 0  || validationInt > 31)
       raiseError("ERROR: Day %d outside set bounds of [0,31].\n", validationInt); 
-   SeqUtil_TRACE(TL_FULL_TRACE, "maestro.checkValidDatestamp() setting date to=%s\n", datestamp); 
-
    free(tmpDateString);
 
    if ( dateLength >= 10) {
@@ -246,7 +238,6 @@ extern void checkValidDatestamp(char *datestamp){
       if (validationInt < 0  || validationInt > 23)
         raiseError("ERROR: Hour %d outside set bounds of [0,23].\n", validationInt); 
 
-      SeqUtil_TRACE(TL_FULL_TRACE, "maestro.checkValidDatestamp() setting date to=%s\n", datestamp); 
       free(tmpDateString);
    }
 
