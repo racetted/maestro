@@ -319,10 +319,10 @@ xmlXPathContextPtr Resource_createContext(SeqNodeDataPtr _nodeDataPtr, const cha
 
    context = xmlXPathNewContext(doc);
 
-   if( strcmp((const char *) context->doc->children->name, NODE_RES_XML_ROOT_NAME ) != 0 ){
-      raiseError( "Root node of xmlFile %s must be %s\n",xmlFile, NODE_RES_XML_ROOT_NAME);
+  /* if( strcmp((const char *) context->doc->children->name, NODE_RES_XML_ROOT_NAME ) != 0 ) {
+      raiseError( "Root node of xmlFile %s must be %s (currently is %s) \n",xmlFile, NODE_RES_XML_ROOT_NAME, context->doc->children->name );
    }
-
+   */
    if ( defFile != NULL )
       XmlUtils_resolve(xmlFile,context,defFile,_nodeDataPtr->expHome);
 

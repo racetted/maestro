@@ -3105,7 +3105,7 @@ Inputs:
 int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, int ignoreAllDeps, char* _extraArgs, char *_datestamp, char* _seq_exp_home ) {
    char buffer[SEQ_MAXFIELD] = {'\0'};
    char tmpdir[256];
-   char *seq_soumet = NULL, *tmp = NULL, *logMech=NULL, *defFile=NULL, *windowAverage = NULL, *runStats = NULL ;
+   char *seq_soumet = NULL, *tmp = NULL, *logMech=NULL, *defFile=NULL, *windowAverage = NULL, *runStats = NULL, *shortcut=NULL ;
    char *loopExtension = NULL, *nodeExtension = NULL, *extension = NULL, *tmpFullOrigin=NULL, *tmpLoopExt=NULL, *tmpJobID=NULL, *tmpNodeOrigin=NULL, *tmpHost=NULL, *fixedPath;
    SeqNodeDataPtr nodeDataPtr = NULL;
    int status = 1; /* starting with error condition */
@@ -3299,6 +3299,11 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
 
    if ( strcmp(_signal,"submit") == 0 ) {
       SeqUtil_TRACE(TL_FULL_TRACE, "maestro() ignoreAllDepso2=%d \n",ignoreAllDeps );
+      shortcut = getenv("SEQ_MAESTRO_SHORTCUT");
+      if ( shortcut == NULL ) {
+          raiseError("SEQ_MAESTRO_SHORTCUT environment variable not set but required for submissions. Please load the maestro package properly.\n");
+      }
+
       /*get origin of the submission*/
       if ((tmpJobID=getenv("JOB_ID")) == NULL) {
          tmpJobID=getenv("LOADL_STEP_ID");
