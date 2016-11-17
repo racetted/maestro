@@ -1,5 +1,16 @@
 # error code 24 = soft limit wallclock
-trap 'trap "" 24 ERR EXIT; printf "\n#____________________________________________________________#\n"; printf "\nCODE ABORTS\nCheck lines before trap statement for error.\n"; ${SEQ_BIN}/maestro -s abort -f continue -n ${SEQ_NODE} ${SEQ_LOOP_ARGS}; ${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -type abort -i $jobout; eval ${SelfJobRemove}; rm -f ${jobout} ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}; exit 1' 24 ERR EXIT
+
+function maestro_trap
+{
+  printf "CODE ABORTS -- Check lines before trap statement for error.\n"
+  ${SEQ_BIN}/maestro -s abort -f continue -n ${SEQ_NODE} ${SEQ_LOOP_ARGS}
+  ${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -type abort -i $jobout
+  eval ${SelfJobRemove}
+  rm -f ${jobout} ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}
+  exit 1
+}
+
+trap 'trap "" 24 ERR EXIT; maestro_trap; exit 1' 24 ERR EXIT
 (
 date 
 if [[ "$LOADL_STEP_TYPE" = "PARALLEL" ]]; then
