@@ -3170,7 +3170,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    if ( seq_soumet != NULL ) {
       strcpy(submit_tool,seq_soumet);
    } else {
-      strcpy(submit_tool,"ord_soumet");
+      strcpy(submit_tool,"m.ord_soumet");
    }
 
    /* need to tell nodelogger that we are running from maestro

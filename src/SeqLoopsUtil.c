@@ -1269,10 +1269,12 @@ SeqNameValuesPtr SeqLoops_getContainerArgs (const SeqNodeDataPtr _nodeDataPtr, S
    token = strtok(path,"/");
    while ( token != NULL && current != NULL ){
       if( strcmp( token, current->name ) == 0 ) {
-         /* If the token matches the key, add that to the container args */
-         SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  current->name, current->value);
-         SeqNameValues_insertItem( &containerArgs, current->name, current->value);
-         /* And move on to the next loop_arg */
+         /* Issue when token is duplicated and the final token is an npasstask. Ex: /path/to/node/node and the last node is an npasstask */ 
+         if ( ! ( _nodeDataPtr -> type == NpassTask && strcmp ( token, _nodeDataPtr -> nodeName) == 0 )) {
+            SeqUtil_TRACE(TL_FULL_TRACE, "SeqLoops_getContainerArgs adding loop item %s of value %s \n",  current->name, current->value);
+            SeqNameValues_insertItem( &containerArgs, current->name, current->value);
+            /* And move on to the next loop_arg */
+         }
          current = current->nextPtr;
       }
       token = strtok(NULL,"/");

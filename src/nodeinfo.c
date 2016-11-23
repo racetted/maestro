@@ -162,15 +162,13 @@ int nodeToDepArgs(SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPtr *depArgs, SeqNam
    while( loopsPtr != NULL ) {
       if( strstr(  _nodeDataPtr->pathToModule ,loopsPtr->loop_name ) != NULL ) {
          char *tmpLoopName = SeqUtil_getPathLeaf( loopsPtr->loop_name );
-         SeqUtil_TRACE(TL_FULL_TRACE, "Nodeinfo_parseDepends() adding loop argument to dependency for name = %s\n", tmpLoopName );
-         char *hasValue = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName);
-         if (hasValue) {
-            char *value = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName);
+         char *value = SeqNameValues_getValue(_nodeDataPtr->loop_args, tmpLoopName);
+         SeqUtil_TRACE(TL_FULL_TRACE, "Nodeinfo_nodeToDepArgs() adding loop argument %s=%s\n", tmpLoopName, value );
+         if (value) {
             SeqNameValues_insertItem( depArgs, tmpLoopName, value );
             SeqNameValues_insertItem( localArgs, tmpLoopName, value );
-            free(value);
          }
-         free(hasValue);
+         free(value);
          free(tmpLoopName);
       }
       loopsPtr  = loopsPtr->nextPtr;
@@ -271,7 +269,7 @@ void validateDepIndices(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, int isIn
    SeqUtil_TRACE(TL_FULL_TRACE,"Nodeinfo_parseDepends() dep->local_index = %s\n",dep->local_index );
    SeqNameValuesPtr depArgs = NULL, localArgs = NULL, tokenValues = NULL;
    if (isIntraDep) {
-      nodeToDepArgs(_nodeDataPtr, depArgs, localArgs);
+      nodeToDepArgs(_nodeDataPtr, &depArgs, &localArgs);
    }
 
    if( dep->local_index != NULL ) {

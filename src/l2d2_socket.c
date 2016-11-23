@@ -392,12 +392,13 @@ int connect_to_host_port_by_ip (char *hostip, int portno )
      server.sin_family = AF_INET;
      server.sin_port = htons(portno);
      server.sin_addr.s_addr = inet_addr(hostip); 
-
+     alarm(3);
      if (connect(fserver, (struct  sockaddr *)&server, sizeof(server)) < 0) {
 	    fprintf(stderr,"Connection to Server Failed, the server may be down! \n");
+        alarm(0);
 	    return(-1);
      }
-
+     alarm(0);
      return (fserver);
 }
 
