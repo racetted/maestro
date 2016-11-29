@@ -1790,7 +1790,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          SeqUtil_TRACE(TL_FULL_TRACE,"Temporarily sending submission output to %s\n", submissionDir );
          strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
-         SeqUtil_TRACE(TL_FULL_TRACE,"Task type node submit command: %s\n", cmd );
+         fprintf(stderr,"Task type node submit command: %s\n", cmd );
          error_status = WEXITSTATUS(system(cmd));
 
          SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit() ord return status: %d \n",error_status);
@@ -1853,7 +1853,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 
          }
          strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
-         SeqUtil_TRACE(TL_CRITICAL,"Container submit command: %s\n", cmd );
+         fprintf(stderr,"Container submit command: %s\n", cmd );
          error_status=system(cmd);
 
          SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit() ord return status: %d \n",error_status);
