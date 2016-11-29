@@ -365,6 +365,7 @@ void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath ) {
    }
 }
 
+
 void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
    if ( soumetArgs != NULL ) {
       free( node_ptr->soumetArgs );
@@ -372,6 +373,17 @@ void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
           strcpy( node_ptr->soumetArgs, soumetArgs );
       } else {
           raiseError("OutOfMemory exception in SeqNode_setSoumetArgs()\n");
+      }
+   }
+}
+
+void SeqNode_setWorkq ( SeqNodeDataPtr node_ptr, char* workq ) {
+   if ( workq != NULL ) {
+      free( node_ptr->workq );
+      if (node_ptr->workq = malloc( strlen(workq) + 1 )){
+          strcpy( node_ptr->workq, workq );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setWorkq()\n");
       }
    }
 }
@@ -786,6 +798,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
    nodePtr->soumetArgs = NULL;
+   nodePtr->workq = NULL;
    nodePtr->depends = NULL;
    nodePtr->submits = NULL;
    nodePtr->abort_actions = NULL;
@@ -817,6 +830,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setMemory( nodePtr, "500M" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
+   SeqNode_setWorkq( nodePtr, "" );
    SeqNode_setWorkerPath( nodePtr, "");
    SeqNode_setSubmitOrigin( nodePtr, "");
    SeqNode_setAlias( nodePtr, "" );
@@ -906,6 +920,7 @@ void SeqNode_printNode ( SeqNodeDataPtr node_ptr, const char* filters, const cha
       SeqUtil_printOrWrite(tmpFile,"node.memory=%s\n", node_ptr->memory );
       SeqUtil_printOrWrite(tmpFile,"node.workerPath=%s\n", node_ptr->workerPath );
       SeqUtil_printOrWrite(tmpFile,"node.soumetArgs=%s\n", node_ptr->soumetArgs );
+      SeqUtil_printOrWrite(tmpFile,"node.workq=%s\n", node_ptr->workq );
    }
    if( showAll || showCfgPath ) {
       if( node_ptr->type == Task || node_ptr->type == NpassTask ) {
@@ -1085,6 +1100,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->alias ) ;
       free( seqNodeDataPtr->args ) ;
       free( seqNodeDataPtr->soumetArgs ) ;
+      free( seqNodeDataPtr->workq ) ;
       free( seqNodeDataPtr->errormsg ) ;
       free( seqNodeDataPtr->cpu ) ;
       free( seqNodeDataPtr->npex ) ;
