@@ -1377,7 +1377,7 @@ int main ( int argc , char * argv[] )
   snprintf(L2D2.auth,sizeof(L2D2.auth),"%s/.suites/%s",passwdEnt->pw_dir,authorization_file);
   Auth_token=get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   if ( Auth_token != NULL) {
-      fprintf(stderr, "maestro_server(): Found mserver process information file %s: removing and replacing with new one.\n",authorization_file);
+      fprintf(stderr, "maestro_server(): Found mserver process information file %s: removing and replacing with new one.\n", L2D2.auth);
       status=unlink(L2D2.auth);
       free(Auth_token);
       free(m5sum);
@@ -1397,7 +1397,7 @@ int main ( int argc , char * argv[] )
 
   /* detach from current terminal */
   if ( fork() > 0 ) {
-      fprintf(stderr, "maestro_server(), exiting from parent process \n");
+      usleep(250000);
       exit(0);  /* parent exits now */
   }
 
@@ -1434,7 +1434,7 @@ int main ( int argc , char * argv[] )
   strcpy(L2D2.ip,ip);
 
   /* create local common tmp directory where to synchronize locks */
-  fprintf(stderr, "Host ip=%s Server port=%d user=%s pid=%d\n", ip, server_port, L2D2.user, L2D2.pid);
+  fprintf(stderr, "Server host ip=%s port=%d user=%s pid=%d\n", ip, server_port, L2D2.user, L2D2.pid);
   sprintf(buf,"/tmp/%s/%d",L2D2.user,L2D2.pid);
   if ( (ret=r_mkdir(buf,1,stderr)) != 0 ) {
           fprintf(stderr,"Cannot create server working tmpdir directory:%s ... exiting\n",buf);
@@ -1453,7 +1453,6 @@ int main ( int argc , char * argv[] )
   set_Authorization (mypid,hostname,ip,server_port,authorization_file,passwdEnt->pw_name,&L2D2.m5sum);
   Auth_token = get_Authorization (authorization_file, passwdEnt->pw_name, &m5sum);
   sscanf(Auth_token, "seqpid=%u seqhost=%s seqip=%s seqport=%d", &pidTken, hostTken, ipTken, &portTken);
-  fprintf(stderr, "Set maestro_server pid key to:%u file md5=%s\n",pidTken,L2D2.m5sum);
   snprintf(buf,sizeof(buf),"%s/.suites/.maestro_server_%s",passwdEnt->pw_dir,L2D2.mversion);
   strcpy(L2D2.lock_server_pid_file,buf);
   free(Auth_token);
