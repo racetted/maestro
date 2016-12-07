@@ -377,6 +377,17 @@ void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs ) {
    }
 }
 
+void SeqNode_setWorkq ( SeqNodeDataPtr node_ptr, char* workq ) {
+   if ( workq != NULL ) {
+      free( node_ptr->workq );
+      if (node_ptr->workq = malloc( strlen(workq) + 1 )){
+          strcpy( node_ptr->workq, workq );
+      } else {
+          raiseError("OutOfMemory exception in SeqNode_setWorkq()\n");
+      }
+   }
+}
+
 void SeqNode_setLoopArgs ( SeqNodeDataPtr node_ptr, SeqNameValuesPtr _loop_args ) {
    if ( _loop_args != NULL ) {
       SeqNameValues_deleteWholeList( &(node_ptr->loop_args) );
@@ -655,6 +666,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    nodePtr->alias = NULL;
    nodePtr->args = NULL;
    nodePtr->soumetArgs = NULL;
+   nodePtr->workq = NULL;
    nodePtr->dependencies = NULL;
    nodePtr->submits = NULL;
    nodePtr->abort_actions = NULL;
@@ -686,6 +698,7 @@ void SeqNode_init ( SeqNodeDataPtr nodePtr ) {
    SeqNode_setMemory( nodePtr, "500M" );
    SeqNode_setArgs( nodePtr, "" );
    SeqNode_setSoumetArgs( nodePtr, "" );
+   SeqNode_setWorkq( nodePtr, "" );
    SeqNode_setWorkerPath( nodePtr, "");
    SeqNode_setSubmitOrigin( nodePtr, "");
    SeqNode_setAlias( nodePtr, "" );
@@ -841,6 +854,7 @@ void SeqNode_printBatchResources(FILE *file, SeqNodeDataPtr node_ptr)
    SeqUtil_printOrWrite(file,"node.memory=%s\n", node_ptr->memory );
    SeqUtil_printOrWrite(file,"node.workerPath=%s\n", node_ptr->workerPath );
    SeqUtil_printOrWrite(file,"node.soumetArgs=%s\n", node_ptr->soumetArgs );
+   SeqUtil_printOrWrite(file,"node.workq=%s\n", node_ptr->workq );
 }
 void SeqNode_printPathInfo(FILE *file, SeqNodeDataPtr node_ptr)
 {
@@ -1004,6 +1018,7 @@ void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr ) {
       free( seqNodeDataPtr->alias ) ;
       free( seqNodeDataPtr->args ) ;
       free( seqNodeDataPtr->soumetArgs ) ;
+      free( seqNodeDataPtr->workq ) ;
       free( seqNodeDataPtr->errormsg ) ;
       free( seqNodeDataPtr->cpu ) ;
       free( seqNodeDataPtr->npex ) ;

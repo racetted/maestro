@@ -97,6 +97,7 @@ typedef struct _SeqNodeData {
    char* omp;
    /*extra soumet arguments provided via command-line, resource file or interface*/
    char* soumetArgs;
+   char* workq;
    char* workerPath;
    char* alias;
    char* args;
@@ -156,6 +157,7 @@ void SeqNode_setShell ( SeqNodeDataPtr node_ptr, const char* shell );
 void SeqNode_addNumLoop ( SeqNodeDataPtr node_ptr, char* loop_name, char* start, char* step, char* set, char* end, char* expression );
 void SeqNode_addSubmit ( SeqNodeDataPtr node_ptr, char* data );
 void SeqNode_setWorkerPath ( SeqNodeDataPtr node_ptr, const char* workerPath );
+void SeqNode_setWorkq ( SeqNodeDataPtr node_ptr, char* workq );
 void SeqNode_addAbortAction ( SeqNodeDataPtr node_ptr, char* data );
 char* SeqNode_getTypeString( SeqNodeType _node_type );
 void SeqNode_addSpecificData ( SeqNodeDataPtr node_ptr, const char* name, const char* value );

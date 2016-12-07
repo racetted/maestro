@@ -24,8 +24,9 @@ MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 include ../config/config.mk
 
 WERROR_FLAGS= -Wall -Werror=implicit-function-declaration -Werror=return-type -Werror=unused-but-set-variable -Werror=unused-variable -Werror=strict-aliasing=3
-CFLAGS = -g -Wall
-LIB=-lc -lcrypto 
+
+CFLAGS = -g -Wall -Wimplicit-function-declaration -Wl,--allow-multiple-definition
+LIB=-lc -lcrypto -lz -ldl 
 LIBTH=-lpthread
 CFLAGS1 = -g
 CFLAGS2 = -lefence -g -I../inc -DREENTRANT -Wall -Wextra -Wno-unused -D__DEBUG -DIGNORE_EMPTY_TEXT_NODES

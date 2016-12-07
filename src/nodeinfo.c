@@ -104,6 +104,8 @@ void parseBatchResources (xmlXPathObjectPtr _result, SeqNodeDataPtr _nodeDataPtr
              SeqUtil_stringAppend( &tmpString, _nodeDataPtr->soumetArgs );
              SeqNode_setSoumetArgs( _nodeDataPtr, tmpString);
              free(tmpString);
+         } else if ( strcmp( nodeName, "workq" ) == 0 ) {
+             SeqNode_setWorkq( _nodeDataPtr, nodePtr->children->content );
          } else if ( strcmp( nodeName, "wallclock" ) == 0 ) {
              _nodeDataPtr->wallclock = atoi( nodePtr->children->content );
          } else if ( strcmp( nodeName, "immediate" ) == 0 ) {
@@ -804,7 +806,7 @@ SeqNodeDataPtr nodeinfo ( const char* node, unsigned int filters,
    SeqNode_setWorkdir( nodeDataPtr, workdir );
 
    SeqUtil_TRACE(TL_FULL_TRACE, "nodeinfo.nodefinfo() argument datestamp %s. If (null), will run tictac to find value.\n", datestamp );
-   const char * newDatestamp = tictac_getDate(_exp_home,"",datestamp);
+   const char * newDatestamp = tictac_getDate(_exp_home,NULL,datestamp);
    SeqNode_setDatestamp( nodeDataPtr, newDatestamp );
    /*pass the content of the command-line (or interface) extra soumet args to the node*/
    SeqNode_setSoumetArgs(nodeDataPtr,extraArgs);

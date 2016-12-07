@@ -191,7 +191,7 @@ static void useNFSlocking()
   _fopen = fopen_nfs;
   _lock  = lock_nfs;
   _unlock  = unlock_nfs;
-  fprintf(stderr,"@@@@@@@@@@@@@@@@@@@@@@ Using serverless locking mecanism @@@@@@@@@@@@@@@@@@@@@@\n"); 
+  fprintf(stderr,"Serverless mode selected\n"); 
 }
  
 static void useSVRlocking()
@@ -214,7 +214,7 @@ static void useSVRlocking()
  _fopen = fopen_svr;
  _lock  = lock_svr;
  _unlock  = unlock_svr;
-  fprintf(stderr,"@@@@@@@@@@@@@@@@@@@@@@ Using mserver locking mecanism @@@@@@@@@@@@@@@@@@@@@@\n"); 
+  fprintf(stderr,"mserver mode selected\n"); 
 }
 
 /**
@@ -228,14 +228,14 @@ static void alarm_handler()
    MLLServerConnectionFid = 0;
    ServerConnectionStatus = 1;
    useNFSlocking();
-   fprintf(stderr,"@@@@@@@@@@ TIMEOUT: connection to mserver killed by SIGALRM @@@@@@@@ \n");
+   fprintf(stderr,"@@@@ TIMEOUT: connection to mserver killed by SIGALRM @@@@ \n");
 }
 /**
  *
  */
 static void pipe_handler() 
 { 
-   fprintf(stderr,"@@@@@@@@@ SIGPIPE received: the mserver has probably shutdown!  @@@@@@@@@@ \n");
+   fprintf(stderr,"@@@@ SIGPIPE received: the mserver has probably shutdown!  @@@@ \n");
 }
 
 /* 
@@ -497,7 +497,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.go_initialize() deleting end lockfiles starting at node=%s\n", _nodeDataPtr->name);
        sprintf(cmd, "find %s/%s/%s/%s -name \"*%s.end\" -type f -print -delete -o -name \"*%s.begin\"  -type f -print -delete  -o -name \"*%s.abort.*\"  -type f -print -delete -o -name \"*%s.submit\" -type f -print -delete -o -name \"*%s.waiting*\" -type f -print -delete",_nodeDataPtr->workdir, _nodeDataPtr->datestamp ,_nodeDataPtr->container, _nodeDataPtr->nodeName, extName,extName,extName,extName,extName);
        SeqUtil_TRACE(TL_FULL_TRACE,"cmd=%s\n",cmd); 
-       printf("Following status files are being deleted: \n");
+       fprintf(stderr,"Following status files are being deleted: \n");
        returnValue=system(cmd);
 
     /* for npass tasks  */
@@ -512,7 +512,7 @@ static int go_initialize(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeD
        SeqUtil_TRACE(TL_FULL_TRACE, "maestro.go_initialize() deleting waiting.InterUser lockfiles starting for node=%s\n", _nodeDataPtr->name); 
        sprintf(cmd, "find %s%s%s%s -name \"*.waiting*\" -type f -print -delete",_nodeDataPtr->expHome, INTER_DEPENDS_DIR, _nodeDataPtr->datestamp, _nodeDataPtr->container);
        SeqUtil_TRACE(TL_FULL_TRACE,"cmd=%s\n",cmd); 
-       printf("Following status files are being deleted: \n");
+       fprintf(stderr,"Following status files are being deleted: \n");
        returnValue=system(cmd);
    }
 
@@ -1607,7 +1607,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    char cmd[SEQ_MAXFIELD];
    char pidbuf[100];
    char *cpu = NULL, *tmpdir=NULL;
-   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL;
+   char *tmpCfgFile = NULL, *tmpTarPath=NULL, *tarFile=NULL, *movedTmpName=NULL, *movedTarFile=NULL, *readyFile=NULL, *prefix=NULL, *jobName=NULL, *workq=NULL;
    char *loopArgs = NULL, *extName = NULL, *fullExtName = NULL, *containerMethod = NULL;
    int catchup = CatchupNormal;
    int error_status = 0, nodetracer_status=0, ret;
@@ -1688,6 +1688,16 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
       } else {
           jobName=strdup(extName);
       }
+
+      /* for cosched and possibly container */
+      if ( (_nodeDataPtr->workq !=NULL ) && strlen(_nodeDataPtr->workq) != 0 ) {
+          SeqUtil_stringAppend( &workq, "-workqueue ");
+          SeqUtil_stringAppend( &workq, _nodeDataPtr->expHome );
+          SeqUtil_stringAppend( &workq, "/sequencing/tmpfile/" );
+          SeqUtil_stringAppend( &workq, _nodeDataPtr->datestamp );
+          SeqUtil_stringAppend( &workq, _nodeDataPtr->workq );
+          _SeqUtil_mkdir(workq,1, _nodeDataPtr->expHome); 
+      } else SeqUtil_stringAppend( &workq,"");
       
       /* get mpi flag for the ord_soumet call */
       if ( _nodeDataPtr->mpi == 1 )
@@ -1740,7 +1750,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	         ret=_removeFile(movedTarFile, _nodeDataPtr->expHome); 
 	         ret=_removeFile(readyFile, _nodeDataPtr->expHome); 
 
-	         sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s %s -args \"%s\" %s",submit_tool,getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+             sprintf(cmd,"%s %s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -nosubmit -step work_unit -jobtar %s -altcfgdir %s %s -args \"%s\" %s",submit_tool,workq ,getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, tmpCfgFile, movedTmpName, getenv("SEQ_BIN"), immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
 
 	         /*check if the running worker has not ended. If it has, launch another one.*/
             workerDataPtr =  nodeinfo( _nodeDataPtr->workerPath, NI_SHOW_ALL,
@@ -1785,13 +1795,14 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
         
          } else {
              /* normal task submission */
-	         sprintf(cmd,"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, tmpCfgFile, getenv("SEQ_BIN"),immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
+             sprintf(cmd,"%s %s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -jobcfg %s -altcfgdir %s %s -args \"%s\" %s",submit_tool,workq , getenv("SEQ_MAESTRO_VERSION"), nodeFullPath, _nodeDataPtr->name, jobName,_nodeDataPtr->machine,_nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, tmpCfgFile, getenv("SEQ_BIN"),immediateMode, _nodeDataPtr->args, _nodeDataPtr->soumetArgs);
          }
 
          SeqUtil_TRACE(TL_FULL_TRACE,"Temporarily sending submission output to %s\n", submissionDir );
          strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
          fprintf(stderr,"Task type node submit command: %s\n", cmd );
-         error_status = WEXITSTATUS(system(cmd));
+         error_status = system(cmd);
+         error_status = WEXITSTATUS(error_status);
 
          SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit() ord return status: %d \n",error_status);
          if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
@@ -1837,19 +1848,19 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
          if ( (containerMethod == NULL) || (strcmp(containerMethod,"immediate") == 0)) {
 
             /* use immediate for containers on TRUE_HOST */
-	         snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	         snprintf(cmd,sizeof(cmd),"%s %s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool,workq , getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+
 
          } else if (strcmp(containerMethod,"submit") == 0) {
             /* submit containers on designated queue */
-	         snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, _nodeDataPtr->machine, _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	         snprintf(cmd,sizeof(cmd),"%s %s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool,workq , getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, _nodeDataPtr->machine, _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
 
          } else if (strcmp(containerMethod,"exec") == 0) {
             /* execute containers on current host, not supported yet */
-	         snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
-
+	         snprintf(cmd,sizeof(cmd),"%s %s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool,workq , getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
          } else {
          /* default: use immediate for containers on TRUE_HOST */
-	         snprintf(cmd,sizeof(cmd),"%s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool, getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
+	         snprintf(cmd,sizeof(cmd),"%s %s -sys maestro_%s -jobfile %s -node %s -jn %s -d %s -q %s %s -c %s -shell %s -m %s -w %d -v -listing %s -wrapdir %s/sequencing -immediate %s -jobcfg %s -altcfgdir %s -args \"%s\" %s",submit_tool,workq , getenv("SEQ_MAESTRO_VERSION"), tmpfile,_nodeDataPtr->name, jobName, getenv("TRUE_HOST"), _nodeDataPtr->queue,mpi_flag,cpu,_nodeDataPtr->shell,_nodeDataPtr->memory,_nodeDataPtr->wallclock, listingDir, _nodeDataPtr->expHome, noendwrap, tmpCfgFile, getenv("SEQ_BIN"),  _nodeDataPtr->args,_nodeDataPtr->soumetArgs);
 
          }
          strcat(cmd, " > \""); strcat (cmd, submissionDir); strcat (cmd, "\" 2>&1");
@@ -1882,6 +1893,7 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
    free( extName );
    free( jobName );
    free( prefix );
+   free( workq );
    free( containerMethod );
    SeqUtil_TRACE(TL_FULL_TRACE,"maestro.go_submit returning %d\n", error_status);
    return(error_status);
@@ -2135,9 +2147,10 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                      }
                      SeqUtil_stringAppend( &submitDepArgs, depArgs );
                      sprintf( submitCmd, "maestro -e %s -d %s -s submit -f continue -n %s %s",
-                           depExp, depDatestamp, depNode, submitDepArgs );
+                           depExp, depDatestamp, depNode, submitDepArgs ); 
                      SeqUtil_TRACE(TL_FULL_TRACE, "submitDependencies(): Running system command: %s\n", submitCmd);
-                     submitCode = WEXITSTATUS(system ( submitCmd ));
+                     submitCode = system ( submitCmd );
+                     submitCode = WEXITSTATUS(submitCode); 
                      free(submitDepArgs);
                      submitDepArgs = NULL;
 #else
@@ -3113,13 +3126,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    struct sigaction alrm, pipe;
    DIR *dirp = NULL;
    
-   if (getenv("SEQ_TRACE_LEVEL") != NULL){
-		 SeqUtil_setTraceEnv();
-		 SeqUtil_showTraceInfo();
-   }
-
-   printf( "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" );
-   printf( "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s expHome=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs, _seq_exp_home);
+   fprintf( stderr, "maestro: node=%s signal=%s flow=%s loop_args=%s extraArgs=%s expHome=%s\n", _node, _signal, _flow, SeqLoops_getLoopArgs(_loops), _extraArgs, _seq_exp_home);
 
    if ( _loops != NULL ) {
        SeqUtil_stringAppend(&tmp, " -l ");
@@ -3204,7 +3211,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
 
    /* inform only at beginning of tasks */
    if ( strcmp(_signal,"begin") == 0 ) {
-          fprintf(stdout,"logging mechanism set to:%s\n",logMech);
+          fprintf(stderr,"logging mechanism set to:%s\n",logMech);
    }
 
 
@@ -3232,7 +3239,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
           MLLServerConnectionFid = OpenConnectionToMLLServer(_node, _signal,_seq_exp_home);
           if ( MLLServerConnectionFid > 0 ) {
              ServerConnectionStatus = 0;
-             fprintf(stdout,"#########Server Connection Open And Login Accepted Signal:%s #########\n",_signal);
+             SeqUtil_TRACE(TL_CRITICAL,"##Server Connection Open And Login Accepted Signal:%s ##\n",_signal);
              useSVRlocking();
           } else {
              switch (MLLServerConnectionFid) {
@@ -3335,7 +3342,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
    if ( ServerConnectionStatus == 0 ) {
       if ( QueDeqConnection == 0 ) {
          CloseConnectionWithMLLServer (MLLServerConnectionFid);
-         fprintf(stdout,"#########Server Connection Closed Signal:%s #########\n",_signal);
+         SeqUtil_TRACE(TL_CRITICAL,"##Server Connection Closed Signal:%s ##\n",_signal);
       }
    }
  
