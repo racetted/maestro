@@ -301,6 +301,8 @@ xmlXPathContextPtr Resource_createContext(SeqNodeDataPtr _nodeDataPtr, const cha
    SeqUtil_TRACE(TL_FULL_TRACE, "Resource_createContext() begin\n");
    xmlXPathContextPtr context = NULL;
    xmlDocPtr doc = NULL;
+   xmlNodePtr currentNodePtr = NULL, nodeToDelete=NULL;
+   int found=0; 
 
    if ( access(xmlFile, R_OK ) != 0 ){
       if ( nodeType == Loop || nodeType == ForEach ){
@@ -319,10 +321,24 @@ xmlXPathContextPtr Resource_createContext(SeqNodeDataPtr _nodeDataPtr, const cha
 
    context = xmlXPathNewContext(doc);
 
-  /* if( strcmp((const char *) context->doc->children->name, NODE_RES_XML_ROOT_NAME ) != 0 ) {
-      raiseError( "Root node of xmlFile %s must be %s (currently is %s) \n",xmlFile, NODE_RES_XML_ROOT_NAME, context->doc->children->name );
-   }
-   */
+   /* place self at NODE_RES_XML_ROOT_NAME */ 
+   currentNodePtr =  context->doc->children ; 
+   while ( found==0 && currentNodePtr != NULL ) { 
+      SeqUtil_TRACE(TL_FULL_TRACE, "Resource_createContext() current node: %s\n", currentNodePtr->name );
+      if( strcmp((const char *) currentNodePtr->name, NODE_RES_XML_ROOT_NAME ) == 0 ) {
+         found=1; 
+         context->node=currentNodePtr; 
+         SeqUtil_TRACE(TL_FULL_TRACE, "Resource_createContext() found node: %s\n", NODE_RES_XML_ROOT_NAME );
+      } else { 
+         /* Delete preceeding nodes from document so that further queries are accurate */
+         nodeToDelete = currentNodePtr; 
+         currentNodePtr = currentNodePtr -> next; 
+         xmlUnlinkNode(nodeToDelete); 
+         xmlFreeNode(nodeToDelete); 
+         if( (currentNodePtr ) == NULL ) raiseError( "xml file %s must contain tag %s \n",xmlFile, NODE_RES_XML_ROOT_NAME );
+      }
+   } 
+   
    if ( defFile != NULL )
       XmlUtils_resolve(xmlFile,context,defFile,_nodeDataPtr->expHome);
 

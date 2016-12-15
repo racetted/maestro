@@ -355,6 +355,9 @@ LISTNODEPTR SeqLoops_childExtensionsInReverse( SeqNodeDataPtr _nodeDataPtr ) {
       }
       if(( tmpAttributeValue =  SeqLoops_getLoopAttribute( nodeSpecPtr, "END" )) != NULL ) {
          loopEnd = atoi(tmpAttributeValue);
+         /* real end will be loopStart + loopStep * somevalue */ 
+         int multiplier = ( loopEnd - loopStart ) / loopStep; 
+         loopEnd = loopStart + loopStep * multiplier; 
       }
       SeqUtil_TRACE(TL_FULL_TRACE,"SeqLoops_childExtensionsInReverse extension:%s baseExtension:%s START:%d END:%d\n",_nodeDataPtr->extension, baseExtension, loopEnd, loopStart );
       loopCount = loopEnd;
@@ -1071,7 +1074,7 @@ int SeqLoops_isLastIteration( const SeqNodeDataPtr _nodeDataPtr, SeqNameValuesPt
 		if( ( loopEndStr = SeqLoops_getLoopAttribute( nodeSpecPtr, "END" ) ) != NULL )
 			loopTotal = atoi(loopEndStr);
 
-		fprintf(stdout,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
+		SeqUtil_TRACE(TL_MEDIUM,"SeqLoops_isLastIteration() loopCurrent:%d loopStep:%d loopTotal:%d\n", loopCurrent, loopStep, loopTotal);
 
 		if( (loopCurrent + loopStep) > loopTotal ) {
 			isLast = 1;
