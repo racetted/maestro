@@ -93,7 +93,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
    if ( loop_ext == NULL ) { loop_ext=strdup(""); }
    if ( message  == NULL ) { message=strdup(""); }
     
-   SeqUtil_TRACE(TL_FULL_TRACE, "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s\n", job, type, message, loop_ext, datestamp);
+   SeqUtil_TRACE(TL_FULL_TRACE, "nodelogger job:%s signal:%s message:%s loop_ext:%s datestamp:%s exp:%s\n", job, type, message, loop_ext, datestamp, _seq_exp_home);
 
    memset(LOG_PATH,'\0',sizeof LOG_PATH);
    memset(TMP_LOG_PATH,'\0',sizeof TMP_LOG_PATH);
@@ -254,7 +254,7 @@ static int write_line(int sock, int top, const char* type)
    } else {
      /* create tolog file */
      if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
-                        fprintf(stderr,"Nodelogger::could not create toplog:%s\n",TOP_LOG_PATH);
+                        fprintf(stderr,"Nodelogger: could not create toplog:%s\n",TOP_LOG_PATH);
 			/* return something */
      }
 

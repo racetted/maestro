@@ -347,18 +347,6 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
          memset(tmpString, '\0', sizeof tmpString);
 	      sprintf(tmpString,"BOMBED: it has been resubmitted. job_ID=%s", jobID);
          SeqUtil_TRACE(TL_ERROR, "nodelogger: %s X \"BOMBED: it has been resubmitted\"\n", _nodeDataPtr->name );
-         /*
-          * PHIL: Erroneous call to nodelogger.  The following call is the
-          * original.  It has too many arguments.  At least it's not as bad as
-          * having too few.
-          * nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,
-          *          tmpString,_nodeDataPtr->datestamp, jobID, _nodeDataPtr->expHome);
-          * The declaration is
-          * void nodelogger(const char *job, const char *type, const char* loop_ext,
-          *      const char *message, const char *datestamp, const char* _seq_exp_home);
-          * Notice there is no "jobID" between the datestamp and exp_home
-          * arguments
-          */
          nodelogger(_nodeDataPtr->name,"info",_nodeDataPtr->extension,tmpString,_nodeDataPtr->datestamp, _nodeDataPtr->expHome);
          go_submit( "submit", _flow , _nodeDataPtr, 1 );
       }
@@ -1057,13 +1045,17 @@ static void clearAllOtherStates (const SeqNodeDataPtr _nodeDataPtr, char * fullN
 
    if (_nodeDataPtr->type == NpassTask) {
        if((char*) SeqLoops_getLoopAttribute( _nodeDataPtr->loop_args, _nodeDataPtr->nodeName ) != NULL) {
+            SeqUtil_TRACE(TL_FULL_TRACE, "maestro.clearAllOtherStates() NPASS(i) deleting NPASS.end \n", originator, filename);
             newArgs = SeqNameValues_clone(_nodeDataPtr->loop_args);
             SeqNameValues_deleteItem(&newArgs, _nodeDataPtr->nodeName );
             tmpExt = (char *) SeqLoops_getExtFromLoopArgs(newArgs); 
             if (tmpExt != NULL) {
                 SeqUtil_stringAppend( &extension, "." );
+                SeqUtil_stringAppend( &extension, tmpExt );
+            } else {
+                SeqUtil_stringAppend( &extension, "" );
             }
-            SeqUtil_stringAppend( &extension, tmpExt );
+
             memset(filename,'\0',sizeof filename);
             sprintf(filename,"%s/%s/%s%s.end",_nodeDataPtr->workdir, _nodeDataPtr->datestamp, _nodeDataPtr->name, extension); 
             if ( _access(filename, R_OK, _nodeDataPtr->expHome) == 0 && strcmp( current_state, "end" ) != 0 ) {
