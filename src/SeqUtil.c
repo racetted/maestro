@@ -149,8 +149,8 @@ void SeqUtil_setTraceEnv(){
 	traceFlags.timeStamp = TF_OFF;
 
 	/* Obtenir et copier la variable d'environnement */
-	char seq_trace_level[SEQ_MAXFIELD];
-	strcpy(seq_trace_level, getenv("SEQ_TRACE_LEVEL"));
+	char * seq_trace_level;
+	seq_trace_level=getenv("SEQ_TRACE_LEVEL");
 	if( seq_trace_level == NULL ){
 		SeqUtil_TRACE( TL_FULL_TRACE, "SeqUtil_setTraceEnv(): Unable to find SEQ_TRACE_LEVEL environment variable \n" );
 		return;
