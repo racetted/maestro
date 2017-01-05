@@ -177,6 +177,7 @@ int main (int argc, char * argv [])
       printSeqUsage();
       exit(1);
    }
+   SeqUtil_setTraceEnv();
    if ( gotLoops ) {
 		/*
       SeqListNode_printList( loopsArgs ); */
