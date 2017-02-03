@@ -5,9 +5,9 @@ function maestro_trap
   set -x
   printf "CODE ABORTS -- Check lines before trap statement for error.\n"
   ${SEQ_BIN}/maestro -s abort -f continue -n ${SEQ_NODE} ${SEQ_LOOP_ARGS}
-  ${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -type abort -i $jobout
+  ${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} ${SEQ_LOOP_ARGS} -d ${SEQ_DATE} -type abort -i $jobout -c 
   eval ${SelfJobRemove}
-  rm -f ${jobout} ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}
+  rm -f ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}
   exit 1
 }
 

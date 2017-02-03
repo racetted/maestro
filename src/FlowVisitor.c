@@ -88,6 +88,7 @@ static void _freeStack(FlowVisitorPtr fv)
       xmlFreeDoc(context->doc);
       xmlXPathFreeContext(context);
    }
+   xmlCleanupParser();
 }
 
 /********************************************************************************
@@ -153,6 +154,7 @@ int Flow_parsePath(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr,
       Flow_updatePaths(_flow_visitor, pathToken, count != totalCount );
 
       /* retrieve node specific attributes */
+
       if(    _flow_visitor->currentNodeType != Task
           && _flow_visitor->currentNodeType != NpassTask )
          Flow_checkWorkUnit(_flow_visitor, _nodeDataPtr);
@@ -281,6 +283,11 @@ int Flow_changeModule(FlowVisitorPtr _flow_visitor, const char * module)
    char xmlFilename[strlen(_flow_visitor->expHome) + strlen(infix)
                                   + strlen(module) + strlen(postfix) + 1];
    sprintf( xmlFilename, "%s%s%s%s", _flow_visitor->expHome, infix, module, postfix);
+
+   if( _flow_visitor->intramodulePath != NULL ){
+      free(_flow_visitor->intramodulePath);
+      _flow_visitor->intramodulePath = NULL;
+   }
 
    if (Flow_changeXmlFile(_flow_visitor,  xmlFilename ) == FLOW_FAILURE){
       retval = FLOW_FAILURE;
@@ -665,8 +672,15 @@ int Flow_checkWorkUnit(FlowVisitorPtr _flow_visitor, SeqNodeDataPtr _nodeDataPtr
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_checkWorkUnit begin\n");
    int retval = FLOW_SUCCESS;
    xmlXPathObjectPtr attributesResult = NULL;
+   xmlXPathContextPtr context = NULL;
 
-   if ( (attributesResult = XmlUtils_getnodeset( "(@work_unit)", _flow_visitor->context) ) == NULL ){
+   if (_flow_visitor->currentNodeType == Module){
+      context = Flow_previousContext(_flow_visitor);
+   } else {
+      context = _flow_visitor->context;
+   }
+
+   if ( (attributesResult = XmlUtils_getnodeset( "(@work_unit)", context) ) == NULL ){
       goto out;
    } else {
       SeqUtil_TRACE(TL_FULL_TRACE, "Attribute 'work_unit' found\n");

@@ -1,7 +1,7 @@
 
 ) 
-echo "nodetracer -n ${SEQ_NODE} -d ${SEQ_DATE} ${SEQ_LOOP_ARGS} -i ${jobout} " 
-${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} -d ${SEQ_DATE} ${SEQ_LOOP_ARGS} -i $jobout
+echo "nodetracer -n ${SEQ_NODE} -d ${SEQ_DATE} ${SEQ_LOOP_ARGS} -i ${jobout} -c" 
+${SEQ_UTILS_BIN}/nodetracer -n ${SEQ_NODE} -d ${SEQ_DATE} ${SEQ_LOOP_ARGS} -i $jobout -c
 eval ${SelfJobRemove}
-rm -f ${jobout} ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}
+rm -f ${SEQ_TMP_CFG}.complete ${SEQ_TMP_CFG}
 trap "" ERR EXIT 
