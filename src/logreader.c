@@ -289,7 +289,7 @@ void read_file (char *base)
 {
    char *ptr, *qq, *pp;
    char dstamp[18];
-   char node[128], signal[16],loop[32], waitmsg[256];
+   char node[256], signal[16],loop[32], waitmsg[256];
    int size=0;
    for ( ptr = base ; ptr < &base[pt.st_size]; ptr++) {
       memset(dstamp,'\0',sizeof(dstamp));
