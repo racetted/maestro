@@ -22,6 +22,13 @@
 #ifndef LOGREADER_H
 #define LOGREADER_H
 
+#define LR_SHOW_ALL       0
+#define LR_SHOW_STATUS    1
+#define LR_SHOW_STATS     2
+#define LR_SHOW_AVG       3
+#define LR_CALC_AVG       4  
+
+
 typedef struct  _Node_prm {
    char Node[256];
    char TNode[256];
@@ -121,6 +128,6 @@ extern char * previousDay(char today[9]);
 extern char * sconcat(char *ptr1,char *ptr2);
 extern void delete_node(struct _ListNodes *node, struct _ListListNodes *list);
 
-void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow, int clobberFile); 
+void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, int type, int statWindow, int clobberFile); 
 
 #endif

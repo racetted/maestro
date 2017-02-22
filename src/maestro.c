@@ -2074,7 +2074,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'}, statusFile[SEQ_MAXFIELD] = {'\0'};
    char *extName = NULL, * depExtension = NULL, *tmpValue=NULL, *tmpExt=NULL;
    int submitCode = 0, count = 0, line_count=0, ret;
-   LISTNODEPTR submittedList = NULL, dependencyLines = NULL, current_dep_line = NULL;
+   LISTNODEPTR dependencyLines = NULL, current_dep_line = NULL;
 #ifdef SEQ_USE_SYSTEM_CALLS_FOR_DEPS
    char * submitDepArgs = NULL;
    SeqUtil_TRACE(TL_FULL_TRACE,"submitDependencies() in system call mode\n");
@@ -2138,9 +2138,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                       goto next;
                   }
 
-                  /* Do the submit or send nodelogger message based on flow.  Avoid double submitting */
-                  if ( ! SeqListNode_isItemExists( submittedList, depNode ) ) {
-                     SeqListNode_insertItem( &submittedList, depNode );
                      /* Attempt to submit dependant node */
 #ifdef SEQ_USE_SYSTEM_CALLS_FOR_DEPS
                      SeqUtil_TRACE(TL_FULL_TRACE,"submitDependencies(): Using system calls to submit %s\n",depNode);
@@ -2177,7 +2174,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
                         nodelogger(_nodeDataPtr->name, "info", _nodeDataPtr->extension, nodelogger_msg,
                               _nodeDataPtr->datestamp, _nodeDataPtr->expHome);
                      }
-                  }
                next:
                   depExp[0] = '\0'; depNode[0] = '\0'; depDatestamp[0] = '\0'; depArgs[0] = '\0';
                   line_count++;
@@ -2208,7 +2204,6 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
          } /* if ((waitedFilePtr = _fopen(waited_filename, MLLServerConnectionFid)) != NULL ) */
       } /* if ( _access(waited_filename, R_OK, _nodeDataPtr->expHome) == 0 ) */
    } /* for( count=0; count < 2; count++ ) */
-   SeqListNode_deleteWholeList( &submittedList );
    free(extName);
    free(tmpExt);
    free(tmpValue);
@@ -3276,10 +3271,10 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
          }     
          if ( (runStats=SeqUtil_getdef( defFile, "SEQ_RUN_STATS_ON", nodeDataPtr->expHome )) != NULL ) {
             SeqUtil_TRACE(TL_FULL_TRACE, "maestro() running job statictics.\n");
-            logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, "stats", 0,0); 
+            logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, LR_SHOW_STATS, 0,0); 
             if ( (windowAverage=SeqUtil_getdef( defFile, "SEQ_AVERAGE_WINDOW", nodeDataPtr->expHome )) != NULL ) {
                SeqUtil_TRACE(TL_FULL_TRACE, "maestro() running averaging.\n");
-               logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, "avg", atoi(windowAverage),0); 
+               logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, LR_CALC_AVG, atoi(windowAverage),0); 
             } 
          }
          free(defFile);
