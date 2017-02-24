@@ -121,12 +121,12 @@ main (int argc, char * argv [])
                break;
             case 's':
                datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-               strcpy(datestamp,optarg);
+               strncpy(datestamp,optarg,PADDED_DATE_LENGTH);
                setDate=1;
                break;
             case 'd':
                datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-               strcpy(datestamp,optarg);
+               strncpy(datestamp,optarg,PADDED_DATE_LENGTH);
                break;
             case 'f':
                format = malloc( strlen( optarg ) + 1 );
@@ -158,7 +158,7 @@ main (int argc, char * argv [])
       }
       if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
           datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-          strcpy(datestamp,tmpDate);
+          strncpy(datestamp,tmpDate,PADDED_DATE_LENGTH);
       }
 
       if ( datestamp != NULL ) {

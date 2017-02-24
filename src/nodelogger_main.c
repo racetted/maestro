@@ -157,7 +157,7 @@ int main (int argc, char * argv[])
             case 'd':
                hasDate=1;
                datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-               strcpy(datestamp,optarg);
+               strncpy(datestamp,optarg,PADDED_DATE_LENGTH);
                break;
             case 'e':
                seq_exp_home = strdup ( optarg );
@@ -199,7 +199,7 @@ int main (int argc, char * argv[])
 
       if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
           datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-          strcpy(datestamp,tmpDate);
+          strncpy(datestamp,tmpDate,PADDED_DATE_LENGTH);
       }
 
       if ( datestamp != NULL ) {

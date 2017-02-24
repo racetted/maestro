@@ -81,14 +81,13 @@ _FromWhere FromWhere;
  
 void nodelogger(const char *job, const char* type, const char* loop_ext, const char *message, const char* datestamp, const char* _seq_exp_home)
 {
-   int sock=-1,ret, write_ret;
+   int sock=-1, write_ret;
    char *tmpfrommaestro = NULL;
-   char tmp[10];
    struct passwd *p, *p2;
    struct sigaction sa;
    char *logtocreate = NULL;
-   int pathcounter=0;
-   char *pathelement=NULL, *tmpbuf=NULL;
+   int pathcounter=0, ret;
+   char *pathelement=NULL, *tmpbuf=NULL, *startOfTmp=NULL;
 
    if ( loop_ext == NULL ) { loop_ext=strdup(""); }
    if ( message  == NULL ) { message=strdup(""); }
@@ -137,6 +136,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
     
     pathcounter = 0;
     tmpbuf=strdup(NODELOG_JOB);
+    startOfTmp=tmpbuf;
     pathelement = strtok(tmpbuf, "/");
     while (pathelement != NULL) {
        if (strcmp(pathelement, "") != 0) {
@@ -144,6 +144,7 @@ void nodelogger(const char *job, const char* type, const char* loop_ext, const c
        }
        pathelement=strtok(NULL, "/");
     }
+    free (startOfTmp);
 
     /* if called inside maestro, a connection is already open  */
     tmpfrommaestro = getenv("FROM_MAESTRO");
@@ -370,7 +371,12 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
 
     SeqUtil_TRACE(TL_FULL_TRACE,"sync_nodelog_over_nfs(): Called\n");
 
-    if (logtype == "both") {
+    if (logtype == NULL)  {
+       fprintf(stderr,"sync_nodelog_over_nfs logtype = NULL\n");
+       return (-1);
+    }
+
+    if (strcmp(logtype, "both") == 0 ) { 
        sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"nodelog", _seq_exp_home);
        sync_nodelog_over_nfs(node,type,loop_ext,message,datestamp,"toplog", _seq_exp_home);
        return(0);
@@ -494,7 +500,7 @@ static int sync_nodelog_over_nfs (const char *node, const char * type, const cha
             }
          } else {
  	         get_time(Atime,3);
-             if ( logtype == "toplog" ) {
+             if ( strcmp(logtype, "toplog") == 0 ) {
                  if ((fileid = open(TOP_LOG_PATH,O_WRONLY|O_CREAT,0755)) < 1 ) {
                     fprintf(stderr,"Nodelogger::could not open toplog:%s\n",TOP_LOG_PATH);
                  } else {

@@ -142,6 +142,7 @@ char* str2md5 (const char *str, int length)
      MD5_CTX c;
      unsigned char digest[16];
      char *out = (char*)xmalloc(33);
+     memset(out, '\0', strlen(out)); 
 
      MD5_Init(&c);
 

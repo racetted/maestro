@@ -274,7 +274,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
    if (strcmp(_signal,"abort")==0 && strcmp(_flow, "continue") == 0 ){
       tempPtr = _nodeDataPtr->abort_actions;
       while ( tempPtr != NULL ) {
-         if (current_action = (char *) malloc(strlen(tempPtr->data)+1)){
+         if ((current_action = (char *) malloc(strlen(tempPtr->data)+1)) != NULL) {
              strcpy(current_action,tempPtr->data);
          } else {
              raiseError("OutOfMemory exception in go_abort()\n");
@@ -288,7 +288,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
             free(current_action);
             current_action = NULL;
             if ( tempPtr != NULL ) {
-                if (current_action = (char *) malloc(strlen(tempPtr->data)+1)){
+                if ((current_action = (char *) malloc(strlen(tempPtr->data)+1)) != NULL ){
                     strcpy(current_action,tempPtr->data);
                 } else {
                     raiseError("OutOfMemory exception in go_abort()\n");
@@ -299,7 +299,7 @@ static int go_abort(char *_signal, char *_flow ,const SeqNodeDataPtr _nodeDataPt
          } else if ( tempPtr->nextPtr == NULL ) {
             /* no file was found, and we've reached the end of the list, so we must do the first action */
             tempPtr = _nodeDataPtr->abort_actions;
-            if (current_action = (char *) malloc(strlen(tempPtr->data)+1)){
+            if ((current_action = (char *) malloc(strlen(tempPtr->data)+1)) != NULL ) {
                 strcpy(current_action,tempPtr->data);
             } else {
                 raiseError("OutOfMemory exception in go_abort()\n");
@@ -1395,7 +1395,6 @@ int prepInterUserFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state
    char *maestro_version=NULL , *maestro_shortcut=NULL;
    struct timeval tv;
    struct tm* ptm;
-   time_t current_time;
    int ret;
    loopArgs = (char*) SeqLoops_getLoopArgs( _nodeDataPtr->loop_args );
 
@@ -1418,7 +1417,6 @@ int prepInterUserFEFile( const SeqNodeDataPtr _nodeDataPtr, char * _target_state
              
    /* Format the date and time, down to a single second.*/
    gettimeofday (&tv, NULL); 
-   current_time = time(NULL);
 
    ptm = gmtime (&tv.tv_sec); 
    strftime (registration_time, sizeof (registration_time), "%Y%m%d-%H:%M:%S", ptm); 
@@ -1718,30 +1716,30 @@ static int go_submit(const char *_signal, char *_flow , const SeqNodeDataPtr _no
 	     /* check if it's work_unit SEQ_WORKER_PATH is not 0 -> immediate mode in ord_soumet (with jobtar option) else it's normal submission  */
 	     if (strcmp(_nodeDataPtr->workerPath, "") != 0) {
 	     /* create tar of the job in the worker's path */
-	         if (tmpTarPath=malloc(strlen(_nodeDataPtr->expHome) + strlen("/sequencing/tmpfile/") + strlen(_nodeDataPtr->datestamp) + strlen("/work_unit_depot/") + 
-                                  strlen(_nodeDataPtr->workerPath) + strlen("/") + strlen(_nodeDataPtr->container) +1)) {
+	         if ((tmpTarPath=malloc(strlen(_nodeDataPtr->expHome) + strlen("/sequencing/tmpfile/") + strlen(_nodeDataPtr->datestamp) + strlen("/work_unit_depot/") + 
+                                  strlen(_nodeDataPtr->workerPath) + strlen("/") + strlen(_nodeDataPtr->container) +1)) != NULL ) {
 	            sprintf(tmpTarPath, "%s/sequencing/tmpfile/%s/work_unit_depot/%s/%s",_nodeDataPtr->expHome, _nodeDataPtr->datestamp ,_nodeDataPtr->workerPath,_nodeDataPtr->container ); 
             } else {
                raiseError("OutOfMemory exception in maestro.go_submit()\n");
             }
 	         _SeqUtil_mkdir(tmpTarPath,1, _nodeDataPtr->expHome); 
 	         /*clean up tar file in case it's there*/
-            if (tarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tar")+1)){
+            if ((tarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tar")+1)) != NULL){
 	            sprintf(tarFile, "%s/%s.tar", tmpTarPath, extName);
             } else {
                raiseError("OutOfMemory exception in maestro.go_submit()\n");
             }
-            if ( movedTarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+ strlen(".tar")+1)) {
+            if (( movedTarFile=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+ strlen(".tar")+1))!= NULL)  {
 	            sprintf(movedTarFile, "%s/%s.tmp.tar", tmpTarPath, extName);
             } else {
                raiseError("OutOfMemory exception in maestro.go_submit()\n");
             }
-            if ( movedTmpName=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+1)) {
+            if (( movedTmpName=malloc(strlen(tmpTarPath) + strlen("/") + strlen(extName) + strlen(".tmp")+1)) != NULL)  {
 	            sprintf(movedTmpName, "%s/%s.tmp", tmpTarPath, extName);
             } else {
                raiseError("OutOfMemory exception in maestro.go_submit()\n");
             }
-	         if ( readyFile=malloc(strlen(tmpTarPath) +strlen("/") + strlen(extName) + strlen(".tar.ready") + 1 )) {
+	         if (( readyFile=malloc(strlen(tmpTarPath) +strlen("/") + strlen(extName) + strlen(".tar.ready") + 1 )) != NULL)  {
     	         sprintf(readyFile,"%s/%s.tar.ready", tmpTarPath, extName);
             } else {
                raiseError("OutOfMemory exception in maestro.go_submit()\n");
@@ -2073,7 +2071,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
    char depExp[256] = {'\0'}, depNode[256] = {'\0'}, depArgs[SEQ_MAXFIELD] = {'\0'}, depDatestamp[20] = {'\0'};
    char waited_filename[SEQ_MAXFIELD] = {'\0'}, submitCmd[SEQ_MAXFIELD] = {'\0'}, statusFile[SEQ_MAXFIELD] = {'\0'};
    char *extName = NULL, * depExtension = NULL, *tmpValue=NULL, *tmpExt=NULL;
-   int submitCode = 0, count = 0, line_count=0, ret;
+   int submitCode = 0, count = 0, line_count=0;
    LISTNODEPTR dependencyLines = NULL, current_dep_line = NULL;
 #ifdef SEQ_USE_SYSTEM_CALLS_FOR_DEPS
    char * submitDepArgs = NULL;
@@ -2887,12 +2885,12 @@ int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, 
    char ocm_datestamp[11];
    char env[128];
    char job[128];
-   int loop_start, loop_total, loop_set, loop_trotte;
+   int loop_start, loop_total, loop_trotte;
    /* check catchup value of the ocm node */
    memset(dhour,'\0',sizeof(dhour));
    memset(ocm_datestamp,'\0',sizeof(ocm_datestamp));
 
-   int undoneIteration = 0, isWaiting = 0, depWildcard=0, ret=0;
+   int undoneIteration = 0, isWaiting = 0, depWildcard=0;
    char *waitingMsg = NULL, *depExtension = NULL, *currentIndexPtr = NULL;
 
    dep->ext = SeqLoops_indexToExt(dep->index);
@@ -2938,7 +2936,6 @@ int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, 
    if ( strncmp(ocmjinfo_res->loop_reference,"REG",3) != 0) { /* loop job */
       loop_start=atoi(ocmjinfo_res->loop_start);
       loop_total=atoi(ocmjinfo_res->loop_total);
-      loop_set=atoi(ocmjinfo_res->loop_set);
       loop_trotte=loop_start;
    }
 
@@ -3188,7 +3185,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
 
    /* Deciding on locking mecanism: the decision will be based on acquiring 
     * SEQ_LOGGING_MECH string value in .maestrorc file */
-   if (defFile = malloc ( strlen (getenv("HOME")) + strlen("/.maestrorc") + 2 )) {
+   if ((defFile = malloc ( strlen (getenv("HOME")) + strlen("/.maestrorc") + 2 )) != NULL)  {
       sprintf( defFile, "%s/.maestrorc", getenv("HOME"));
    } else {
       raiseError("OutOfMemory exception in maestro()\n");
@@ -3264,7 +3261,7 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
       status=go_end( _signal, _flow, nodeDataPtr );
       /* run stats and averaging if topnode and user requested it */ 
       if (strcmp(nodeDataPtr->container,"") == 0 ) {
-         if (defFile = malloc ( strlen ( nodeDataPtr->expHome ) + strlen("/resources/resources.def") + 1 )) {
+         if ((defFile = malloc ( strlen ( nodeDataPtr->expHome ) + strlen("/resources/resources.def") + 1 )) != NULL) {
             sprintf( defFile, "%s/resources/resources.def", nodeDataPtr->expHome );
          } else {
             raiseError("OutOfMemory exception in maestro()\n");

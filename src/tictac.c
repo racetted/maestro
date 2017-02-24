@@ -144,7 +144,7 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    SeqUtil_TRACE(TL_FULL_TRACE,"tictac_getDate() checking validity of dateValue ... \n");
    checkValidDatestamp(dateValue);
 
-   tmpstrtok = (char*) strtok( format, "%" );
+   if (format != NULL) tmpstrtok = (char*) strtok( format, "%" );
    while ( tmpstrtok != NULL ) {
       if (strcmp(tmpstrtok,"Y")==0)
          printf("%.*s", 4, &dateValue[0] );
@@ -161,7 +161,7 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
       tmpstrtok = (char*) strtok(NULL,"%");
    }
 
-   if (returnDate = malloc( strlen(dateValue) + 1 )) {
+   if ((returnDate = malloc( strlen(dateValue) + 1 )) != NULL ) {
       strcpy( returnDate, dateValue );
    } else {
       raiseError("ERROR: Unable to allocate memory in tictac_getDate()\n"); 
@@ -195,7 +195,7 @@ extern void checkValidDatestamp(char *datestamp){
    if ( dateLength < 8 || dateLength > 14 ) 
       raiseError("ERROR: Datestamp must contain between 8 and 14 characters (YYYYMMDD[HHMMSS]).\n"); 
 
-   if (tmpDateString= (char*) malloc(5)) {
+   if ((tmpDateString= (char*) malloc(5)) != NULL ) {
       sprintf(tmpDateString, "%.*s",4,&datestamp[0]);
       validationInt = atoi(tmpDateString);
    } else {
@@ -206,7 +206,7 @@ extern void checkValidDatestamp(char *datestamp){
 
    free(tmpDateString);
 
-   if (tmpDateString= (char*) malloc(3)) {
+   if ((tmpDateString= (char*) malloc(3)) != NULL ) {
       sprintf(tmpDateString, "%.*s",2,&datestamp[4]);
       validationInt = atoi(tmpDateString);
    } else {
@@ -216,7 +216,7 @@ extern void checkValidDatestamp(char *datestamp){
       raiseError("ERROR: Month %d outside set bounds of [0,12].\n", validationInt); 
    free(tmpDateString);
 
-   if (tmpDateString= (char*) malloc(3)) {
+   if ((tmpDateString= (char*) malloc(3)) != NULL ) {
       sprintf(tmpDateString, "%.*s",2,&datestamp[6]);
       validationInt = atoi(tmpDateString);
    } else {
@@ -228,7 +228,7 @@ extern void checkValidDatestamp(char *datestamp){
    free(tmpDateString);
 
    if ( dateLength >= 10) {
-      if (tmpDateString= (char*) malloc(3)){
+      if ((tmpDateString= (char*) malloc(3))!= NULL ){
          sprintf(tmpDateString, "%.*s",2,&datestamp[8]);
          validationInt = atoi(tmpDateString);
       } else {
@@ -243,7 +243,7 @@ extern void checkValidDatestamp(char *datestamp){
 
    if ( dateLength >= 12) {
 
-      if (tmpDateString= (char*) malloc(3)){
+      if ((tmpDateString= (char*) malloc(3)) != NULL ){
          sprintf(tmpDateString, "%.*s",2,&datestamp[10]);
          validationInt = atoi(tmpDateString);
       } else {
@@ -257,7 +257,7 @@ extern void checkValidDatestamp(char *datestamp){
    }
 
    if ( dateLength == 14) {
-      if (tmpDateString= (char*) malloc(3)){
+      if ((tmpDateString= (char*) malloc(3)) != NULL) {
          sprintf(tmpDateString, "%.*s",2,&datestamp[12]);
          validationInt = atoi(tmpDateString);
       } else {

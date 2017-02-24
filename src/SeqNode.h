@@ -166,6 +166,7 @@ void SeqNode_setName ( SeqNodeDataPtr node_ptr, const char* name );
 void SeqNode_setSoumetArgs ( SeqNodeDataPtr node_ptr, char* soumetArgs );
 void SeqNode_setForEachTarget(SeqNodeDataPtr nodePtr, const char * t_node,  const char * t_index,  const char * t_exp,  const char * t_hour);
 void SeqNode_setArgs ( SeqNodeDataPtr node_ptr, const char* args );
+void SeqNode_setExtension ( SeqNodeDataPtr node_ptr, const char* extension ) ; 
 void SeqNode_freeNode ( SeqNodeDataPtr seqNodeDataPtr );
 void SeqNode_setDatestamp( SeqNodeDataPtr node_ptr, const char* datestamp);
 void SeqNode_setSeqExpHome ( SeqNodeDataPtr node_ptr, const char* expHome );
