@@ -132,7 +132,7 @@ void set_Authorization (unsigned int pid ,char * hostn , char * hip, int port , 
      snprintf(buf, sizeof(buf), "%s/.suites/%s", ppass->pw_dir,filename);
      
      if ((fd = open(buf, O_WRONLY + O_CREAT, 0600)) == -1) {
-	 fprintf(stderr,"set_Authorization: Can't open Parameters file:%s\n",filename);
+	 fprintf(stderr,"set_Authorization: Can't open parameters file:%s\n",filename);
 	 free(ppass);
 	 exit(1);
      }

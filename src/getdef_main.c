@@ -45,9 +45,12 @@ OPTIONS:\n\
     -h, --help\n\
         Show this help screen\n\
 \n\
+\n\ file can be the special shortcut keyword resources which will be replaced by ${SEQ_EXP_HOME}/resources/resources.def \n\
 EXAMPLES:\n\
 \n\
-    getdef ${SEQ_EXP_HOME}/resources/resources.def loop_max\n";
+    getdef -e ${SEQ_EXP_HOME} resources some_variable\n\
+    getdef resources some_other_variable   ($SEQ_EXP_HOME must be defined) \n\
+    getdef some_file yet_another_variable \n"; 
    puts(usage);
 }
 
@@ -98,9 +101,15 @@ int main ( int argc, char * argv[] )
      deffile = (char *) malloc(strlen(seq_exp_home)+strlen("/resources/resources.def")+2);
      sprintf(deffile,"%s/resources/resources.def",seq_exp_home);
    }else{
+      if (seq_exp_home == NULL){
+        if ((seq_exp_home=getenv("SEQ_EXP_HOME")) == NULL){
+            seq_exp_home=getenv("HOME"); 
+        }
+      }
       deffile = (char *) malloc(strlen(argv[file])+1);
       strcpy(deffile,argv[file]);
    }
+   
    if ( (value = SeqUtil_getdef( deffile, argv[key],seq_exp_home )) == NULL ){
      raiseError("ERROR: Unable to find key %s in %s\n", argv[key], argv[file]);}
    else{
@@ -108,5 +117,6 @@ int main ( int argc, char * argv[] )
    }
    free(value);
    free(deffile);
+   SeqUtil_unmapfiles();
    exit(0);
 }

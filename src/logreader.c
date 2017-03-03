@@ -32,11 +32,6 @@
 #include "logreader.h"
 #include "SeqUtil.h"
 #include "SeqDatesUtil.h" 
-#define LR_SHOW_ALL 0
-#define LR_SHOW_STATUS 1
-#define LR_SHOW_STATS 2
-#define LR_SHOW_AVG 3
-#define LR_CALC_AVG 4
 
 /* global */
 struct _ListListNodes MyListListNodes = { -1 , NULL , NULL };
@@ -289,7 +284,7 @@ void read_file (char *base)
 {
    char *ptr, *qq, *pp;
    char dstamp[18];
-   char node[128], signal[16],loop[32], waitmsg[256];
+   char node[256], signal[16],loop[32], waitmsg[256];
    int size=0;
    for ( ptr = base ; ptr < &base[pt.st_size]; ptr++) {
       memset(dstamp,'\0',sizeof(dstamp));
@@ -1165,7 +1160,7 @@ void delete_node(struct _ListNodes *node, struct _ListListNodes *list) {
 *  clobberFile -- is there a filecheck before writing to the output. 0 = don't clobber 
 *
 */ 
-void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, char * type, int statWindow, int clobberFile ) {
+void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * datestamp, int type, int statWindow, int clobberFile ) {
 
    FILE *output_file = NULL;
    char * base; 
@@ -1195,27 +1190,7 @@ void logreader(char * inputFilePath, char * outputFilePath, char * exp, char * d
 
    rootStatsNode = NULL;
    
-   if (type != NULL) {
-      if(strcmp(type, "log") == 0) {
-         read_type=LR_SHOW_ALL;
-      } else if(strcmp(type, "statuses") == 0) {
-	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: statuses\n");
-	      read_type=LR_SHOW_STATUS;
-      } else if (strcmp(type, "stats") == 0){
-	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: stats\n"); 
-	      read_type=LR_SHOW_STATS;
-      } else if (strcmp(type, "avg") == 0) {  
-         SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: show averages\n");
-         read_type=LR_SHOW_AVG;
-      } else if (strcmp(type, "compute_avg") == 0) {
-	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: compute averages\n");
-	      read_type=LR_CALC_AVG;
-      } else {
-         fprintf ( stderr, "Unsupported type (-t argument).\n");
-         exit(EXIT_FAILURE);
-      }
-      
-   }
+   read_type=type; 
    
    if (read_type == LR_SHOW_STATS) {
       if (outputFilePath == NULL){

@@ -26,6 +26,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -262,6 +263,7 @@ void raiseError(const char* fmt, ... ) {
    vfprintf (stderr, fmt, ap);
    va_end (ap);
    printf( "Program exiting with status 1!\n" );
+   SeqUtil_unmapfiles();
 
    exit(1);
 }
@@ -961,7 +963,6 @@ char* SeqUtil_striplast( const char* str ) {
   noLast = malloc( stringLength+1 ); 
   memset( noLast,'\0', stringLength+1 );
   strncpy( noLast, str, stringLength ); 
-  SeqUtil_stringAppend( &noLast, "" );
   return( noLast );
 }
 
@@ -1000,7 +1001,7 @@ void SeqUtil_stripSubstring( char ** string, char * substring) {
 
 char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) { 
 
-   char *returnString = NULL, *tmpString=NULL, *tmpstrtok=NULL, *prevPtr=NULL; 
+   char *returnString = NULL, *tmpString=NULL, *tmpstrtok=NULL, *prevPtr=NULL, *newString=NULL ; 
 
    if (path == NULL) return NULL; 
    if (strstr(path, "..") != NULL || strstr(path, "./") != NULL) {
@@ -1023,7 +1024,9 @@ char* SeqUtil_relativePathEvaluation( char* path, SeqNodeDataPtr _nodeDataPtr) {
             strcpy( tmpString, path );
             tmpstrtok = (char*) strtok( tmpString, ".." );
 	         while (tmpstrtok != NULL ) {
- 		          returnString=SeqUtil_getPathBase(returnString);
+ 		        newString=SeqUtil_getPathBase(returnString);
+                free(returnString); 
+                returnString=newString; 
                 prevPtr=tmpstrtok; 
                 tmpstrtok = (char*) strtok( NULL, ".." );
 	         }

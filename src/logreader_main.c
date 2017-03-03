@@ -92,7 +92,7 @@ EXAMPLES:\n\
 int main ( int argc, char * argv[] )
 {
    char *type=NULL, *inputFile=NULL, *outputFile=NULL, *exp=NULL, *datestamp=NULL, *tmpDate=NULL, *tmpExp=NULL; 
-   int stats_days=7, clobberFile=1, i; 
+   int stats_days=7, clobberFile=1, i, read_type=0; 
    char * short_opts = "i:t:n:o:d:e:vch";
 
    extern char *optarg;
@@ -133,7 +133,7 @@ int main ( int argc, char * argv[] )
 	      break;
 	   case 'd':
           datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-          strcpy(datestamp,optarg);
+          strncpy(datestamp,optarg,PADDED_DATE_LENGTH);
 	      break;
 	   case 'e':
 	      exp = strdup(optarg);
@@ -158,7 +158,7 @@ int main ( int argc, char * argv[] )
 
    if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
       datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-      strcpy(datestamp,tmpDate);
+      strncpy(datestamp,tmpDate,PADDED_DATE_LENGTH);
    }
 
    if ( datestamp != NULL ) {
@@ -177,8 +177,30 @@ int main ( int argc, char * argv[] )
       }
       exp=strdup(tmpExp);
    }
-   
-   logreader(inputFile,outputFile,exp,datestamp,type,stats_days,clobberFile);
+
+   if (type != NULL) {
+      if(strcmp(type, "log") == 0) {
+         read_type=LR_SHOW_ALL;
+      } else if(strcmp(type, "statuses") == 0) {
+	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: statuses\n");
+	      read_type=LR_SHOW_STATUS;
+      } else if (strcmp(type, "stats") == 0){
+	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: stats\n"); 
+	      read_type=LR_SHOW_STATS;
+      } else if (strcmp(type, "avg") == 0) {  
+         SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: show averages\n");
+         read_type=LR_SHOW_AVG;
+      } else if (strcmp(type, "compute_avg") == 0) {
+	      SeqUtil_TRACE(TL_FULL_TRACE,"logreader type: compute averages\n");
+	      read_type=LR_CALC_AVG;
+      } else {
+         fprintf ( stderr, "Unsupported type (-t argument).\n");
+         exit(EXIT_FAILURE);
+      }
+      
+   }
+
+   logreader(inputFile,outputFile,exp,datestamp,read_type,stats_days,clobberFile);
 
    free(type); 
    free(exp); 

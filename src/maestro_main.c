@@ -118,7 +118,7 @@ int main (int argc, char * argv [])
    int opt_index, c = 0;
 
    char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL, *seq_exp_home= NULL, *tmpDate=NULL;
-   int errflg = 0, status = 0, i;
+   int errflg = 0, status = 0, i=0, vset=0;
    int ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
 	SeqNameValuesPtr loopsArgs = NULL;
@@ -142,8 +142,8 @@ int main (int argc, char * argv [])
             gotSignal = 1;
             break;
          case 'd':
-            datestamp = malloc( strlen( optarg ) + 1 );
-            strcpy(datestamp,optarg);
+            datestamp = malloc( PADDED_DATE_LENGTH + 1 );
+            strncpy(datestamp,optarg, PADDED_DATE_LENGTH );
             break;
          case 'f':
             strcpy(flow,optarg);
@@ -157,6 +157,7 @@ int main (int argc, char * argv [])
          case 'v':
 				SeqUtil_setTraceFlag( TRACE_LEVEL , TL_FULL_TRACE );
 				SeqUtil_setTraceFlag( TF_TIMESTAMP , TF_ON );
+                vset=1;
             break;
 	      case 'i':
 	         ignoreAllDeps=1;
@@ -177,7 +178,7 @@ int main (int argc, char * argv [])
       printSeqUsage();
       exit(1);
    }
-   SeqUtil_setTraceEnv();
+   if (vset == 0) SeqUtil_setTraceEnv();
    if ( gotLoops ) {
 		/*
       SeqListNode_printList( loopsArgs ); */
@@ -193,7 +194,7 @@ int main (int argc, char * argv [])
    }
    if  (( datestamp == NULL ) && ( (tmpDate = getenv("SEQ_DATE")) != NULL ))  {
           datestamp = malloc( PADDED_DATE_LENGTH + 1 );
-          strcpy(datestamp,tmpDate);
+          strncpy(datestamp,tmpDate, PADDED_DATE_LENGTH);
    }
 
    if ( datestamp != NULL ) {
@@ -211,6 +212,8 @@ int main (int argc, char * argv [])
    free(sign);
    free(extraArgs);
    fprintf(stderr, "maestro_main exiting with code %d\n", status );
+   SeqUtil_unmapfiles();
+   xmlCleanupParser();
    exit(status);
 }
 
