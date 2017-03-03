@@ -222,6 +222,7 @@ int main (int argc, char * argv[])
       free(signal);
       free(datestamp);
       SeqNode_freeNode( nodeDataPtr );
+      SeqUtil_unmapfiles();
 
   } else {
       printUsage();

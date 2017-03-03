@@ -196,6 +196,8 @@ int main ( int argc, char * argv[] )
 
    free(datestamp);
    free(seq_exp_home);
+   SeqUtil_unmapfiles();
+   
    return 0;
 }
 

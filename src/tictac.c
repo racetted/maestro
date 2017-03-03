@@ -101,6 +101,8 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    struct stat *statbuf = NULL; 
    time_t latest = 0;
    memset( statePattern, '\0', sizeof statePattern );
+   memset( dateValue, '\0', sizeof dateValue );
+
    sprintf( statePattern,"%s/logs/*_nodelog", _expHome);
 
 

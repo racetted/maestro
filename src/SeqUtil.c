@@ -263,6 +263,7 @@ void raiseError(const char* fmt, ... ) {
    vfprintf (stderr, fmt, ap);
    va_end (ap);
    printf( "Program exiting with status 1!\n" );
+   SeqUtil_unmapfiles();
 
    exit(1);
 }

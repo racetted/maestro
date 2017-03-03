@@ -2115,7 +2115,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             if ( strcmp( _flow, "continue" ) == 0 ){
                /* Read file into linked list of lines, delete file */
                while( fgets( line , sizeof(line), waitedFilePtr ) != NULL ){
-                  SeqListNode_insertItem( &dependencyLines, strdup(line) );
+                  SeqListNode_insertItem( &dependencyLines, line );
                }
                fclose(waitedFilePtr);
                _removeFile(waited_filename, _nodeDataPtr->expHome);
@@ -2202,9 +2202,12 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
          } /* if ((waitedFilePtr = _fopen(waited_filename, MLLServerConnectionFid)) != NULL ) */
       } /* if ( _access(waited_filename, R_OK, _nodeDataPtr->expHome) == 0 ) */
    } /* for( count=0; count < 2; count++ ) */
+   
    free(extName);
    free(tmpExt);
    free(tmpValue);
+   SeqListNode_deleteWholeList( &dependencyLines);
+
 }
 
 

@@ -118,7 +118,7 @@ int main (int argc, char * argv [])
    int opt_index, c = 0;
 
    char* node = NULL, *sign = NULL, *loops = NULL, *flow = NULL, *extraArgs = NULL, *datestamp =NULL, *seq_exp_home= NULL, *tmpDate=NULL;
-   int errflg = 0, status = 0, i, vset=0;
+   int errflg = 0, status = 0, i=0, vset=0;
    int ignoreAllDeps = 0;
    int gotNode = 0, gotSignal = 0, gotLoops = 0;
 	SeqNameValuesPtr loopsArgs = NULL;
@@ -212,6 +212,8 @@ int main (int argc, char * argv [])
    free(sign);
    free(extraArgs);
    fprintf(stderr, "maestro_main exiting with code %d\n", status );
+   SeqUtil_unmapfiles();
+   xmlCleanupParser();
    exit(status);
 }
 

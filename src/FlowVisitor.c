@@ -49,23 +49,22 @@ FlowVisitorPtr Flow_newVisitor(const char *nodePath, const char *seq_exp_home,
    if( new_flow_visitor == NULL )
       goto out;
 
-   {
-      char * postfix = "/EntryModule/flow.xml";
-      char * xmlFilename = (char *) malloc ( strlen(seq_exp_home) + strlen(postfix) + 1 );
-      sprintf(xmlFilename, "%s%s", seq_exp_home,postfix);
-      xmlDocPtr doc = XmlUtils_getdoc(xmlFilename);
-      new_flow_visitor->context = xmlXPathNewContext(doc);
-      free(xmlFilename);
+   char postfix[] = "/EntryModule/flow.xml";
+   char * xmlFilename = (char *) malloc ( strlen(seq_exp_home) + strlen(postfix) + 1 );
+   if (xmlFilename == NULL) {
+        raiseError("Flow_newVisitor(): out of memory\n");
    }
+
+   sprintf(xmlFilename, "%s%s", seq_exp_home,postfix);
+   xmlDocPtr doc = XmlUtils_getdoc(xmlFilename);
+   new_flow_visitor->context = xmlXPathNewContext(doc);
+   free(xmlFilename);
 
    new_flow_visitor->nodePath = (nodePath ? strdup(nodePath) : NULL );
    new_flow_visitor->expHome = seq_exp_home;
    new_flow_visitor->datestamp = NULL;
    new_flow_visitor->switch_args = (switch_args && strlen(switch_args) ? strdup(switch_args): NULL);
-
-
    new_flow_visitor->context->node = new_flow_visitor->context->doc->children;
-
    new_flow_visitor->currentFlowNode = NULL;
    new_flow_visitor->suiteName = NULL;
    new_flow_visitor->taskPath = NULL;
@@ -88,7 +87,6 @@ static void _freeStack(FlowVisitorPtr fv)
       xmlFreeDoc(context->doc);
       xmlXPathFreeContext(context);
    }
-   xmlCleanupParser();
 }
 
 /********************************************************************************
@@ -117,8 +115,10 @@ int Flow_deleteVisitor(FlowVisitorPtr _flow_visitor)
    free(_flow_visitor->suiteName);
    free(_flow_visitor->nodePath);
    free(_flow_visitor->switch_args);
-
    free(_flow_visitor);
+
+   xmlCleanupParser();
+
    SeqUtil_TRACE(TL_FULL_TRACE, "Flow_deleteVisitor() end\n");
    return FLOW_SUCCESS;
 }

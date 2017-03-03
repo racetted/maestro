@@ -210,5 +210,9 @@ int main ( int argc, char * argv[] )
    free(outputFile);
    free(datestamp);
    free(filters_str);
+   SeqUtil_unmapfiles();
+   xmlCleanupParser();
+    
+  
    exit(0);
 }
