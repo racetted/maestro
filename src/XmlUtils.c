@@ -25,10 +25,11 @@
 
 xmlDocPtr XmlUtils_getdoc (const char *_docname) {
    xmlDocPtr doc;
+   if ( _docname == NULL ) return NULL;
    doc = xmlParseFile(_docname);
    
    if (doc == NULL ) {
-      fprintf(stderr,"Document not parsed successfully. \n");
+      fprintf(stderr,"Document %s not parsed successfully. \n", _docname );
       return NULL;
    }
 

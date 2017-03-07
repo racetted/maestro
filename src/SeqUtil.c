@@ -1453,6 +1453,11 @@ const char * SeqUtil_resourceDefFilename(const char * _seq_exp_home)
 int SeqUtil_sprintStatusFile(char *dst,const char * exp_home, const char *node_name,
             const char *datestamp, const char * extension, const char *status)
 {
+
+   if (( exp_home == NULL ) || ( datestamp == NULL ) || ( status ) == NULL || (dst == NULL ))  {
+      raiseError("SeqUtil_sprintStatusFile() input arguments (status, exp_home, datestamp or dst) containing NULL\n");
+   }
+ 
    SeqUtil_TRACE(TL_FULL_TRACE, "SeqUtil_sprintStatusFile() begin\n");
    if( extension != NULL && strlen(extension) > 0){
       sprintf(dst,"%s/sequencing/status/%s/%s.%s.%s",

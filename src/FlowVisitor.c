@@ -57,6 +57,10 @@ FlowVisitorPtr Flow_newVisitor(const char *nodePath, const char *seq_exp_home,
 
    sprintf(xmlFilename, "%s%s", seq_exp_home,postfix);
    xmlDocPtr doc = XmlUtils_getdoc(xmlFilename);
+   if (doc == NULL) {
+        raiseError("Flow_newVisitor(): file %s not found or unreadable\n", xmlFilename);
+   }
+
    new_flow_visitor->context = xmlXPathNewContext(doc);
    free(xmlFilename);
 
