@@ -2685,7 +2685,7 @@ out:
 int processDepStatus_OCM( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow );
 int processDepStatus_MAESTRO( const SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char * _flow );
 int checkTargetedIterations(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr depNodeDataPtr, SeqDepDataPtr dep, const char *_flow);
-int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *_flow, const char *extension, int *writeStatus);
+int processWaitingState(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *_flow, char *extension, char * statusFile);
 int writeWaitedFile( SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char *extension, const char *_flow, const char *statusFile);
 
 /********************************************************************************
@@ -2755,8 +2755,8 @@ int checkTargetedIterations(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr depNodeDa
 {
    SeqUtil_TRACE(TL_FULL_TRACE, "checkTargetedIterations() begin\n");
    int retval = SEQ_DEP_GO;
+   char statusFile[SEQ_MAXFIELD];
    char *lastCheckedIndex = NULL;
-   int undoneIteration = 0, writeStatus = 0;
    LISTNODEPTR extensions = SeqLoops_getLoopContainerExtensionsInReverse(
          depNodeDataPtr, dep->index );
    LISTNODEPTR itr;
@@ -2766,70 +2766,50 @@ int checkTargetedIterations(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr depNodeDa
     */
    for(itr = extensions; itr != NULL; itr = itr->nextPtr){
       lastCheckedIndex = itr->data;
-      if(checkDepIteration(_nodeDataPtr, dep, _flow, itr->data, &writeStatus)
-                                                               == SEQ_DEP_WAIT ){
-         /* Record the reason for exiting */
-         undoneIteration = 1;
-         break;
-      }
+      memset(statusFile, '\0', SEQ_MAXFIELD); 
+      SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
+                                       dep->datestamp, itr->data, dep->status);
+      _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+      if(!_isFileExists(statusFile,"maestro.checkTargetedIterations()", _nodeDataPtr->expHome)){
+           /* create waiting file and set state to waiting */
+           retval=processWaitingState(_nodeDataPtr,dep,_flow,lastCheckedIndex, statusFile);
+           _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
+           break; 
+       }
+      _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
    }
 
-   /*
-    * Post-treatement: If*/
-   if( undoneIteration ) {
-      char *waitingMsg = NULL;
-      retval =  SEQ_DEP_WAIT;
-      waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name,
-            lastCheckedIndex, dep->datestamp );
-      setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
-      free( waitingMsg );
-   } else if ( writeStatus != 0 ){
-      retval =  SEQ_DEP_WAIT;
-   }
 out_free:
    SeqListNode_deleteWholeList(&extensions);
    SeqUtil_TRACE(TL_FULL_TRACE, "checkTargetedIterations() end\n");
    return retval;
 }
 
+
 /********************************************************************************
- * Verifies the status of a single iteration of a dependency and writes the
- * current SeqNode into the appropriate waited_XXX file if that particular
- * iteration is not done.
- * The input is an iteration of a node specified by dep and extension,
- * the output is itrIsUndone, which tells the caller that this iteration is not
- * complete, and writeStatus, which is used to inform the caller of the status
- * of the write to the waited_XXX file.
+ * Will create the waiting message and file for a given node caused by an unsatisfied
+ * dependency
+ * The input is the node, the dependant node and waiting extension
+ * the output is proceesing the waiting state being completed. 
 ********************************************************************************/
-int checkDepIteration(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep,
-                      const char *_flow, const char *extension, int *writeStatus)
+
+int processWaitingState(SeqNodeDataPtr _nodeDataPtr, SeqDepDataPtr dep, const char* _flow , char * extension, char * statusFile)
 {
-   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() begin checking extension %s\n",
-                                                                     extension);
-   int itrIsUndone = 0;
-   char statusFile[SEQ_MAXFIELD];
-   if( dep->exp != NULL ) {
-      SeqUtil_sprintStatusFile(statusFile, dep->exp, dep->node_name,
-                                       dep->datestamp, extension, dep->status);
-   } else {
-      /* CAN'T HAPPEN: validateDependencies sets dep->exp to a non-null value,
-       * (specifically, the function validateSingleDep */
-      SeqUtil_sprintStatusFile(statusFile, _nodeDataPtr->workdir, dep->node_name,
-                                       dep->datestamp, extension, dep->status);
+   SeqUtil_TRACE(TL_FULL_TRACE, "processWaitingState() begin\n");
+   char *waitingMsg = NULL;
+   int writeStatus =0; 
+   waitingMsg = formatWaitingMsg(  dep->exp_scope, dep->exp, dep->node_name,
+            extension, dep->datestamp );
+   setWaitingState( _nodeDataPtr, waitingMsg, dep->status );
+   free( waitingMsg );
+   writeStatus = writeWaitedFile(_nodeDataPtr, dep, extension , _flow, statusFile);
+   if ( writeStatus == 0 ) { 
+       raiseError("processWaitingState() couldn't write dependency into %s in maestro.processDepStatus()\n", statusFile);
    }
+   SeqUtil_TRACE(TL_FULL_TRACE, "processWaitingState() begin\n");
 
-   _lock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
-   if(!_isFileExists(statusFile,"maestro.processDepStatus()", _nodeDataPtr->expHome)){
-      itrIsUndone = 1;
-      *writeStatus = writeWaitedFile(_nodeDataPtr, dep, extension, _flow, statusFile);
-   }
-   _unlock( statusFile , _nodeDataPtr->datestamp, _nodeDataPtr->expHome );
-
-out:
-   SeqUtil_TRACE(TL_FULL_TRACE, "checkDepIteration() end\n");
-   return itrIsUndone;
+   return SEQ_DEP_WAIT; 
 }
-
 
 /********************************************************************************
  * Writes in the waited file for the dependency and the current extension.
