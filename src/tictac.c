@@ -94,7 +94,7 @@ extern char* tictac_getDate( char* _expHome, char *format, char * datestamp ) {
    int i = 0;
    char *dateFileName = NULL, *tmpstrtok = NULL, *tmpLatestFile=NULL;
    char statePattern[SEQ_MAXFIELD] = {'\0'};
-   char dateValue[PADDED_DATE_LENGTH] = {'\0'};
+   char dateValue[PADDED_DATE_LENGTH+1] = {'\0'};
    char* returnDate = NULL, *envDate=NULL;
    size_t counter=0;
    glob_t glob_logs; 
