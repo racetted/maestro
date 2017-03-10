@@ -258,7 +258,7 @@ void SeqNode_setCpuMultiplier ( SeqNodeDataPtr node_ptr, const char* cpu_multipl
     snprintf(result,10,"%d",mult);
     free( node_ptr->cpu_multiplier );
     if ((node_ptr->cpu_multiplier = malloc( strlen(cpu_multiplier) + 1 )) != NULL){
-        strcpy( node_ptr->cpu_multiplier, tmpMult );
+        strcpy( node_ptr->cpu_multiplier, result );
     } else {
         raiseError("OutOfMemory exception in SeqNode_setCpuMultiplier()\n");
     }
