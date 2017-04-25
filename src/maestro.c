@@ -2569,7 +2569,7 @@ void check_depIsInScope(SeqNodeDataPtr ndp, SeqDepDataPtr dep)
 
    /* If valid_dow is specified */
    if( strlen(dep->valid_dow) > 0){
-      if(!SeqDatesUtil_isDepDOWValid(ndp->datestamp,dep->valid_hour)){
+      if(!SeqDatesUtil_isDepDOWValid(ndp->datestamp,dep->valid_dow)){
          isDepInScope = 0;
          goto out;
       }
