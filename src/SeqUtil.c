@@ -723,6 +723,7 @@ char* SeqUtil_getdef( const char* filename, const char* key , const char* _seq_e
   }
 
   passwdEnt = getpwuid(fileStat.st_uid);
+  if (passwdEnt == NULL ) raiseError("SeqUtil_getdef err:%s while getting HOME value for uid: %lu\n", strerror(errno), (unsigned long int) fileStat.st_uid );
   home = passwdEnt->pw_dir;
   ovpath = (char *) malloc( strlen(home) + strlen(ovext) + 1 );
   defpath = (char *) malloc( strlen(home) + strlen(defext) + 1 );
