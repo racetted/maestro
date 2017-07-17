@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <regex.h>
 #include "logreader.h"
 #include "SeqUtil.h"
 #include "SeqDatesUtil.h" 
@@ -286,7 +287,32 @@ void read_file (char *base)
    char dstamp[18];
    char node[256], signal[16],loop[32], waitmsg[256];
    int size=0;
+   
+   regex_t regex;
+   char log[1024];
+
+   if (regcomp(&regex, "^TIMESTAMP=([0-9]){8}.([0-9]){2}:([0-9]){2}:([0-9]){2}:SEQNODE=([^:]+):MSGTYPE=([^:]+):SEQLOOP=(.*)$", REG_EXTENDED | REG_NOSUB)) {
+      fprintf(stderr, "Logreader.c: read_file() could not compile regex\n");
+      exit(EXIT_FAILURE);
+   }
+
    for ( ptr = base ; ptr < &base[pt.st_size]; ptr++) {
+
+      qq = strchr(ptr,'\n');
+      if(qq) {
+         memset(log, '\0', sizeof(log));
+         size = qq - ptr;
+         strncpy(log, ptr, size);
+      } else {
+         break;
+      }
+
+      if (regexec(&regex, log, 0, NULL, 0)) {
+         SeqUtil_TRACE(TL_FULL_TRACE, "logreader read_file() ignoring malformed line: %s\n", log);
+         ptr = qq;
+         continue;
+      }
+
       memset(dstamp,'\0',sizeof(dstamp));
       memset(node,'\0',sizeof(node));
       memset(signal,'\0',sizeof(signal));
@@ -351,6 +377,8 @@ void read_file (char *base)
       ptr=qq;
   
    }
+
+   regfree(&regex);
 
 }
 
