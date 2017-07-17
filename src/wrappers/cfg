@@ -96,9 +96,9 @@ function Sys_AddWrapperHeader
    cat >> ${dest_file} << END
 
 if [[ "\${SEQ_LOOP_EXT}" == "" ]] ; then  
-   jobout=${listing_dir}/\${SEQ_NAME}.${SEQ_DATE}.pgmout\$$
+   jobout=${listing_dir}/\${SEQ_NAME}.${SEQ_DATE}.pgmout\${JOB_ID}.\$$
 else
-   jobout=${listing_dir}/\${SEQ_NAME}.\${SEQ_LOOP_EXT}.${SEQ_DATE}.pgmout\$$
+   jobout=${listing_dir}/\${SEQ_NAME}.\${SEQ_LOOP_EXT}.${SEQ_DATE}.pgmout\${JOB_ID}.\$$
 fi
 set ${Set_ex}
 exec 2>\$jobout >> \$jobout 1>&2
