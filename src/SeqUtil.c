@@ -110,7 +110,8 @@ out:
  *******************************************************************************/
 void SeqUtil_TRACE(int messageImportance ,const char * fmt, ... ){
 
-	char message[SEQ_MAXFIELD],prefix[SEQ_MAXFIELD];
+    int maxOutputLength=10000;
+	char message[maxOutputLength],prefix[maxOutputLength];
 	va_list ap;
 	 
 	memset( message, '\0', sizeof(message));
@@ -132,7 +133,7 @@ void SeqUtil_TRACE(int messageImportance ,const char * fmt, ... ){
 	}
 	if ( traceFlags.otherInfo )
 		strcat(prefix,"OtherInfo " /*other info */);
-	strcat(prefix,message);
+	strncat(prefix,message,maxOutputLength - strlen(prefix));
 
 	/* Print message */
 	fprintf(stderr, "%s", prefix);
