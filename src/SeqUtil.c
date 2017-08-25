@@ -110,7 +110,7 @@ out:
  *******************************************************************************/
 void SeqUtil_TRACE(int messageImportance ,const char * fmt, ... ){
 
-    int maxOutputLength=10000;
+    int maxOutputLength=50000;
 	char message[maxOutputLength],prefix[maxOutputLength];
 	va_list ap;
 	 
@@ -123,7 +123,7 @@ void SeqUtil_TRACE(int messageImportance ,const char * fmt, ... ){
 
 	/* Put formatted message in a string */
 	va_start (ap, fmt);
-	vsprintf(message,fmt,ap); 
+	vsnprintf(message,maxOutputLength,fmt,ap); 
 	va_end (ap);
 
 	/* Add appropriate info corresponding to the set flags */
@@ -133,6 +133,7 @@ void SeqUtil_TRACE(int messageImportance ,const char * fmt, ... ){
 	}
 	if ( traceFlags.otherInfo )
 		strcat(prefix,"OtherInfo " /*other info */);
+
 	strncat(prefix,message,maxOutputLength - strlen(prefix));
 
 	/* Print message */

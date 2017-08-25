@@ -2122,6 +2122,7 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
 
                /* Process each line in the list */
                current_dep_line = dependencyLines;
+
                while ( current_dep_line != NULL ) {
 
                   /* Extract dependant node information from line */
@@ -2201,12 +2202,12 @@ static void submitDependencies ( const SeqNodeDataPtr _nodeDataPtr, const char* 
             raiseError( "maestro cannot read file: %s (submitDependencies) \n", waited_filename );
          } /* if ((waitedFilePtr = _fopen(waited_filename, MLLServerConnectionFid)) != NULL ) */
       } /* if ( _access(waited_filename, R_OK, _nodeDataPtr->expHome) == 0 ) */
+      SeqListNode_deleteWholeList( &dependencyLines);
    } /* for( count=0; count < 2; count++ ) */
    
    free(extName);
    free(tmpExt);
    free(tmpValue);
-   SeqListNode_deleteWholeList( &dependencyLines);
 
 }
 
