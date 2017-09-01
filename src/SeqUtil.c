@@ -1110,6 +1110,8 @@ int WriteNodeWaitedFile_nfs ( const char* seq_xp_home, const char* nname, const 
     /* sua   : need to add more logic for duplication and handle more than one entry in the waited file 
        Rochdi: we added comparaison of xp inode:  /.suites vs /maestro_suites (ie real case) */
     while( fgets(line, SEQ_MAXFIELD, waitingFile) != NULL ) {
+           /* clear LloopArgs since args might be empty, meaning it would not match in the sscanf which would leave LloopArgs unchanged */
+           memset(LloopArgs,'\0',sizeof(LloopArgs));
            n=sscanf(line,"exp=%s node=%s datestamp=%s args=%s",Lexp,Lnode,Ldatestamp,LloopArgs);
            if ( (Linode=get_Inode(Lexp)) < 0 ) {
                    fprintf(stderr,"writeNodeWaitedFile_nfs: Cannot get Inode of registred xp=%s\n",Lexp);
