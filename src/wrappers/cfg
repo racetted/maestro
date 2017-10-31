@@ -43,8 +43,8 @@ function Sys_ErrorTrap
       loopArgs=$(grep SEQ_LOOP_ARGS ${jobcfg} | cut -d '=' -f 2- | cut -d '"' -f 2)
    fi
 
-   ${SEQ_BIN}/nodelogger -n "${node}" ${loopArgs} -s abort -m "ord_soumet failed status=$1 on `hostname`\n${LastErrorMessage}"
-   exit 3
+   ${SEQ_BIN}/nodelogger -n "${node}" ${loopArgs} -s abort -m "ord_soumet failed on `hostname`. Check submission listing. ${LastErrorMessage}"
+   exit 1
 }
 
 function Sys_SwitchUser
@@ -92,7 +92,7 @@ function Sys_AddWrapperHeader
    jobname=$1
    dest_file=$2
    listing_dir=$3
-
+   set -ex 
    cat >> ${dest_file} << END
 
 if [[ "\${SEQ_LOOP_EXT}" == "" ]] ; then  
@@ -113,7 +113,7 @@ function Sys_AddWrapper
    listing_dir=$4
    trap_arch=${5:-LINUX}
    config_dir=$6
-
+   set -ex 
    Sys_AddWrapperHeader ${jobname} ${dest_file} ${listing_dir}
    seqBegin="\${SEQ_BIN}/maestro -s begin -n \${SEQ_NODE} -f \${SEQ_XFER} \${SEQ_LOOP_ARGS}"
    seqEnd="\${SEQ_BIN}/maestro -s end -n \${SEQ_NODE} -f \${SEQ_XFER} \${SEQ_LOOP_ARGS}"
@@ -125,7 +125,7 @@ function Sys_AddWrapper
    # add the trap
    cat ${topWrapper} >> ${dest_file}
 
-   printf "\n printf \"Starting \$SEQ_NODE \$(date) \\n \" " >> ${dest_file}
+   printf "\n printf \"Starting \$SEQ_NODE \$(date) JOB_ID=\${JOB_ID:-\${LOADL_STEP_ID}} \\n \\n \" " >> ${dest_file}
  
    printf "\n cd \${TMPDIR}" >> ${dest_file}
    printf "\n${seqBegin}" >> ${dest_file}
