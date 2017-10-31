@@ -708,12 +708,16 @@ int printAverage() {
 
    while ( node_tmpptr != NULL ) { 
       if ((prev_node == NULL) || (strcmp (node_tmpptr->node, prev_node) != 0)){
-         fprintf(stdout,"%s\\avg {%s {",node_tmpptr->node, node_tmpptr->member);
-      } else {
-         fprintf(stdout," %s {", node_tmpptr->member);
+         fprintf(stdout,"%s\\avg {",node_tmpptr->node, node_tmpptr->member);
       }
+    
+      if (node_tmpptr->member != NULL)  { 
+         fprintf(stdout," %s", node_tmpptr->member);
+      }
+      fprintf(stdout," {");
 
       output_line=malloc(256);
+      memset(output_line,'\0',strlen(output_line)); 
       time_tmpptr=node_tmpptr->times;
       if (  time_tmpptr->exectime && strlen( time_tmpptr->exectime ) > 0 ) { 
          output_line = sconcat (output_line," exectime ");  
