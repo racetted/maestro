@@ -1395,6 +1395,9 @@ int main ( int argc , char * argv[] )
   snprintf(buf,sizeof(buf),"%s/.suites/mconfig.xml",passwdEnt->pw_dir);
   ret = ParseXmlConfigFile(buf, &L2D2 );
 
+  /* Making sure server has present workspace */
+  setenv("TMPDIR",L2D2.logdir,1);
+
   /* detach from current terminal */
   if ( fork() > 0 ) {
       usleep(250000);
