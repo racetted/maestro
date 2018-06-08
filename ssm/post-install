@@ -9,6 +9,7 @@ Platform=`uname -s` ; [[ $Platform = Linux ]] && Platform=${Platform}-`uname -m`
 cp ${packageHome}/.ssm.d/profile.sh ${profilePath}
 echo "export SEQ_BIN=${packageHome}/bin" >> ${profilePath}
 echo "export SEQ_MAESTRO_DOMAIN=${domainHome}" >> ${profilePath}
+echo "export SEQ_MAESTRO_SHORTCUT=\". ssmuse-sh -d ${domainHome}\"" >> ${profilePath}
 echo 'export TMPDIR=${TMPDIR:-/tmp/$USER/$$} && mkdir -p ${TMPDIR}' >> ${profilePath}
 echo 'export TRUE_HOST=${TRUE_HOST:-$(hostname)}' >> ${profilePath}
 chmod 644 ${profilePath}
