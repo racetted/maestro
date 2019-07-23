@@ -17,6 +17,9 @@ fi
 test "$clone" != "0" && FatalError "Cannot clone when running with maestro"
 test "{jn}"  = ""  && FatalError "job name is mandatory with maestro"
 
+#temporarily replace jn to remove caret, PBS 19.2 restriction 
+jn=$(echo $jn | sed 's/\^/-/g')
+
 if [[ "${SEQ_BIN}" = "" ]]; then
    test $(which maestro) && SEQ_BIN=$(dirname `which maestro`) || FatalError "SEQ_BIN not set properly, can't find path to sequencer binaries!"
 fi
@@ -233,8 +236,6 @@ function Sys_PostSubmit
    container="${node%/*}"
    #create right jobinfo link, remove old reference. system_job_id = $SgeCell $jn 
    #
-   jnPrefix=`${SEQ_BIN}/getdef resources SEQ_JOBNAME_PREFIX 2>/dev/null` || jnPrefix=""
-   jnNoPrefix=${jn##$jnPrefix}
    ln -s "$SgeCell $jnNoPrefix" ${job_info_dir}/${container}/${SEQ_DATE}@${system_job_id}
    rm -f ${job_info_dir}/${system_job_id} 
 
