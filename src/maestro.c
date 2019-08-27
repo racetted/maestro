@@ -3251,12 +3251,16 @@ int maestro( char* _node, char* _signal, char* _flow, SeqNameValuesPtr _loops, i
             raiseError("OutOfMemory exception in maestro()\n");
          }     
          if ( (runStats=SeqUtil_getdef( defFile, "SEQ_RUN_STATS_ON", nodeDataPtr->expHome )) != NULL ) {
-            SeqUtil_TRACE(TL_FULL_TRACE, "maestro() running job statictics.\n");
-            logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, LR_SHOW_STATS, 0,0); 
-            if ( (windowAverage=SeqUtil_getdef( defFile, "SEQ_AVERAGE_WINDOW", nodeDataPtr->expHome )) != NULL ) {
-               SeqUtil_TRACE(TL_FULL_TRACE, "maestro() running averaging.\n");
-               logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, LR_CALC_AVG, atoi(windowAverage),0); 
-            } 
+            if ((strncmp(runStats,"off", 3 ) == 0 ) || (strncmp(runStats,"0", 1 )  == 0 )) {
+               SeqUtil_TRACE(TL_FULL_TRACE, "maestro() skipping job statictics.\n");
+            } else {
+               SeqUtil_TRACE(TL_FULL_TRACE, "maestro() running job statictics.\n");
+               logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, LR_SHOW_STATS, 0,0); 
+               if ( (windowAverage=SeqUtil_getdef( defFile, "SEQ_AVERAGE_WINDOW", nodeDataPtr->expHome )) != NULL ) {
+                  SeqUtil_TRACE(TL_FULL_TRACE, "maestro() running averaging.\n");
+                  logreader(NULL,NULL,nodeDataPtr->expHome,nodeDataPtr->datestamp, LR_CALC_AVG, atoi(windowAverage),0); 
+               }
+            }
          }
          free(defFile);
       }
